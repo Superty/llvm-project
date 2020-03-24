@@ -5,7 +5,6 @@ set(LLVM_OPTIONAL_SOURCES
   Liveness.cpp
   LoopAnalysis.cpp
   NestedMatcher.cpp
-  Simplex.cpp
   SliceAnalysis.cpp
   Utils.cpp
   )
@@ -53,3 +52,5 @@ target_link_libraries(MLIRLoopAnalysis
   MLIRControlFlowInterfaces
   MLIRInferTypeOpInterface
   MLIRLoopOps)
+
+add_subdirectory(Presburger)

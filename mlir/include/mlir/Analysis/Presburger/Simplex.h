@@ -1,9 +1,8 @@
-#ifndef MLIR_ANALYSIS_SIMPLEX_H
-#define MLIR_ANALYSIS_SIMPLEX_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
+#define MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 
-#include "AffineStructures.h"
-#include "Matrix.h"
-
+#include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/AffineStructures.h"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/SmallVector.h>
@@ -199,4 +198,4 @@ private:
   std::vector<Unknown> con, var;
 };
 } // namespace mlir
-#endif // MLIR_ANALYSIS_SIMPLEX_H
+#endif // MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H

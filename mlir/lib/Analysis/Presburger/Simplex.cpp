@@ -1,5 +1,5 @@
-#include "mlir/Analysis/Simplex.h"
-#include "mlir/Analysis/Matrix.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/MathExtras.h"
 
