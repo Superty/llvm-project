@@ -41,7 +41,7 @@ private:
 
 template <typename INT>
 Matrix<INT>::Matrix(unsigned rows, unsigned columns)
-    : nColumns{columns}, data(rows, std::vector<INT>(columns, 0)) {}
+    : nColumns{columns}, data(rows, std::vector<INT>(columns)) {}
 
 template <typename INT>
 INT &Matrix<INT>::operator()(unsigned row, unsigned column) {
@@ -69,8 +69,8 @@ template <typename INT>
 void Matrix<INT>::resize(unsigned newNRows, unsigned newNColumns) {
   nColumns = newNColumns;
   for (auto &row : data)
-    row.resize(nColumns, 0);
-  data.resize(newNRows, std::vector<INT>(nColumns, 0));
+    row.resize(nColumns);
+  data.resize(newNRows, std::vector<INT>(nColumns));
 }
 
 template <typename INT>
