@@ -80,8 +80,9 @@ Simplex::Unknown &Simplex::unknownFromRow(size_t row) {
 // scaled by the coefficient for the variable, accounting for the two rows
 // potentially having different denominators. The new denominator is the
 // lcm of the two.
-size_t Simplex::addRow(int64_t constTerm,
-                       const std::vector<std::pair<int, int64_t>> &coeffs) {
+size_t Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
+  assert(coeffs.size() == var.size() && "Incorrect number of coefficients!");
+
   if (nRow >= tableau.getNRows())
     tableau.resize(tableau.getNRows() + 1, tableau.getNColumns());
 
@@ -95,25 +96,23 @@ size_t Simplex::addRow(int64_t constTerm,
   for (size_t col = 2; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
-  for (const auto &p : coeffs) {
-    assert(size_t(p.first) < var.size() && "var index is out of range");
-    size_t idx = var[p.first].pos;
-    int64_t coeffVal = p.second;
-    if (coeffVal == 0)
+  for (size_t i = 0; i < var.size(); ++i) {
+    size_t pos = var[i].pos;
+    if (coeffs[i] == 0)
       continue;
 
-    if (!var[p.first].ownsRow) {
-      tableau(nRow - 1, idx) += coeffVal * tableau(nRow - 1, 0);
+    if (!var[i].ownsRow) {
+      tableau(nRow - 1, pos) += coeffs[i] * tableau(nRow - 1, 0);
       continue;
     }
 
-    int64_t lcm = mlir::lcm(tableau(nRow - 1, 0), tableau(idx, 0));
+    int64_t lcm = mlir::lcm(tableau(nRow - 1, 0), tableau(pos, 0));
     int64_t nRowCoeff = lcm / tableau(nRow - 1, 0);
-    int64_t idxRowCoeff = coeffVal * (lcm / tableau(idx, 0));
+    int64_t idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
     tableau(nRow - 1, 0) = lcm;
     for (size_t col = 1; col < nCol; ++col)
       tableau(nRow - 1, col) =
-          nRowCoeff * tableau(nRow - 1, col) + idxRowCoeff * tableau(idx, col);
+          nRowCoeff * tableau(nRow - 1, col) + idxRowCoeff * tableau(pos, col);
   }
 
   normalizeRow(nRow - 1);
@@ -431,8 +430,7 @@ bool Simplex::isMarkedRedundant(int conIndex) const {
 // We add the inequality and mark it as restricted. We then try to make its
 // sample value non-negative. If this is not possible, the tableau has become
 // empty and we mark it as such.
-void Simplex::addIneq(int64_t constTerm,
-                      const std::vector<std::pair<int, int64_t>> &coeffs) {
+void Simplex::addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   size_t conIndex = addRow(constTerm, coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
@@ -446,12 +444,11 @@ void Simplex::addIneq(int64_t constTerm,
 //
 // We simply add two opposing inequalities, which force the expression to
 // be zero.
-void Simplex::addEq(int64_t constTerm,
-                    const std::vector<std::pair<int, int64_t>> &coeffs) {
+void Simplex::addEq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   addIneq(constTerm, coeffs);
-  std::vector<std::pair<int, int64_t>> negatedCoeffs;
-  for (const auto &pr : coeffs)
-    negatedCoeffs.emplace_back(pr.first, -pr.second);
+  SmallVector<int64_t, 64> negatedCoeffs;
+  for (auto coeff : coeffs)
+    negatedCoeffs.emplace_back(-coeff);
   addIneq(-constTerm, negatedCoeffs);
 }
 

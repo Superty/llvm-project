@@ -5,6 +5,8 @@
 #include "Matrix.h"
 
 #include <llvm/ADT/Optional.h>
+#include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/SmallVector.h>
 
 #include <iostream>
 #include <limits>
@@ -48,8 +50,7 @@ public:
 
   /// Add an inequality to the tableau. The inequality is represented as
   /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) >= 0.
-  void addIneq(int64_t constTerm,
-               const std::vector<std::pair<int, int64_t>> &coeffs);
+  void addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// \returns the number of variables in the tableau.
   size_t numberVariables() const;
@@ -59,8 +60,7 @@ public:
 
   /// Add an equality to the tableau. The equality is represented as
   /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) == 0.
-  void addEq(int64_t constTerm,
-             const std::vector<std::pair<int, int64_t>> &coeffs);
+  void addEq(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// Mark the tableau as being empty.
   void markEmpty();
@@ -123,8 +123,7 @@ private:
   Unknown &unknownFromRow(size_t row);
 
   /// Add a new row to the tableau and the associated data structures.
-  size_t addRow(int64_t constTerm,
-                const std::vector<std::pair<int, int64_t>> &coeffs);
+  size_t addRow(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// Check if there is obviously no lower bound on \p unknown.
   ///
