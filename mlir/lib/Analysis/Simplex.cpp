@@ -1,6 +1,3 @@
-#ifndef LIBINT_SIMPLEX_CPP
-#define LIBINT_SIMPLEX_CPP
-
 #include "llvm/Support/MathExtras.h"
 #include "mlir/Analysis/Simplex.h"
 #include "mlir/Analysis/Matrix.h"
@@ -541,4 +538,3 @@ void Simplex::dump() const {
 }
 
 } // namespace mlir
-#endif // LIBINT_SIMPLEX_CPP
