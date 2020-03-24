@@ -33,9 +33,9 @@ Simplex::Simplex(unsigned nVar)
 Simplex::Simplex(FlatAffineConstraints constraints)
     : Simplex(constraints.getNumIds()) {
   for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
-    addIneq(0, constraints.getInequality(i));
+    addInequality(0, constraints.getInequality(i));
   for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
-    addEq(0, constraints.getEquality(i));
+    addEquality(0, constraints.getEquality(i));
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
@@ -93,8 +93,8 @@ Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
 unsigned Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   assert(coeffs.size() == var.size() && "Incorrect number of coefficients!");
 
-  if (nRow >= tableau.getNRows())
-    tableau.resize(tableau.getNRows() + 1, tableau.getNColumns());
+  if (nRow >= tableau.getNumRows())
+    tableau.resize(tableau.getNumRows() + 1, tableau.getNumColumns());
 
   rowVar.push_back(~con.size());
   nRow++;
@@ -129,9 +129,9 @@ unsigned Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   return con.size() - 1;
 }
 
-unsigned Simplex::getNColumns() const { return nCol; }
+unsigned Simplex::getNumColumns() const { return nCol; }
 
-unsigned Simplex::getNRows() const { return nRow; }
+unsigned Simplex::getNumRows() const { return nRow; }
 
 // Normalize the row by removing common factors that are common between the
 // denominator and all the numerator coefficients.
@@ -440,7 +440,7 @@ bool Simplex::isMarkedRedundant(int conIndex) const {
 // We add the inequality and mark it as restricted. We then try to make its
 // sample value non-negative. If this is not possible, the tableau has become
 // empty and we mark it as such.
-void Simplex::addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
+void Simplex::addInequality(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   unsigned conIndex = addRow(constTerm, coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
@@ -454,12 +454,12 @@ void Simplex::addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
 //
 // We simply add two opposing inequalities, which force the expression to
 // be zero.
-void Simplex::addEq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
-  addIneq(constTerm, coeffs);
+void Simplex::addEquality(int64_t constTerm, ArrayRef<int64_t> coeffs) {
+  addInequality(constTerm, coeffs);
   SmallVector<int64_t, 64> negatedCoeffs;
   for (auto coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
-  addIneq(-constTerm, negatedCoeffs);
+  addInequality(-constTerm, negatedCoeffs);
 }
 
 // Mark the row as being redundant.

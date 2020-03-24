@@ -48,9 +48,9 @@ public:
   /// Swap the given rows.
   void swapRows(unsigned row, unsigned otherRow);
 
-  unsigned getNRows() const;
+  unsigned getNumRows() const;
 
-  unsigned getNColumns() const;
+  unsigned getNumColumns() const;
 
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
@@ -70,25 +70,25 @@ Matrix<INT>::Matrix(unsigned rows, unsigned columns)
 
 template <typename INT>
 INT &Matrix<INT>::operator()(unsigned row, unsigned column) {
-  assert(row < getNRows() && "Row outside of range");
-  assert(column < getNColumns() && "Column outside of range");
+  assert(row < getNumRows() && "Row outside of range");
+  assert(column < getNumColumns() && "Column outside of range");
   return data[row][column];
 }
 
 template <typename INT>
 INT Matrix<INT>::operator()(unsigned row, unsigned column) const {
-  assert(row < getNRows() && "Row outside of range");
-  assert(column < getNColumns() && "Column outside of range");
+  assert(row < getNumRows() && "Row outside of range");
+  assert(column < getNumColumns() && "Column outside of range");
   return data[row][column];
 }
 
 template <typename INT>
-unsigned Matrix<INT>::getNRows() const {
+unsigned Matrix<INT>::getNumRows() const {
   return data.size();
 }
 
 template <typename INT>
-unsigned Matrix<INT>::getNColumns() const {
+unsigned Matrix<INT>::getNumColumns() const {
   return nColumns;
 }
 
@@ -102,14 +102,14 @@ void Matrix<INT>::resize(unsigned newNRows, unsigned newNColumns) {
 
 template <typename INT>
 void Matrix<INT>::swapRows(unsigned row, unsigned otherRow) {
-  assert(row < getNRows() && otherRow < getNRows() &&
+  assert(row < getNumRows() && otherRow < getNumRows() &&
          "Given row out of bounds");
   swap(data[row], data[otherRow]);
 }
 
 template <typename INT>
 void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
-  assert(column < getNColumns() && otherColumn < getNColumns() &&
+  assert(column < getNumColumns() && otherColumn < getNumColumns() &&
          "Given column out of bounds");
   for (auto &row : data)
     std::swap(row[column], row[otherColumn]);
@@ -117,17 +117,17 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
 
 template <typename INT>
 void Matrix<INT>::dump() const {
-  llvm::errs() << "Dumping matrix, rows = " << getNRows()
-               << ", columns: " << getNColumns() << '\n';
+  llvm::errs() << "Dumping matrix, rows = " << getNumRows()
+               << ", columns: " << getNumColumns() << '\n';
   llvm::errs() << "r/c  ";
-  for (unsigned column = 0; column < getNColumns(); ++column) {
+  for (unsigned column = 0; column < getNumColumns(); ++column) {
     llvm::errs() << "| " << column << " ";
   }
   llvm::errs() << '\n';
-  llvm::errs() << std::string(5 + getNColumns() * 5, '-') << '\n';
-  for (unsigned row = 0; row < getNRows(); ++row) {
+  llvm::errs() << std::string(5 + getNumColumns() * 5, '-') << '\n';
+  for (unsigned row = 0; row < getNumRows(); ++row) {
     llvm::errs() << row << " | ";
-    for (unsigned column = 0; column < getNColumns(); ++column) {
+    for (unsigned column = 0; column < getNumColumns(); ++column) {
       llvm::errs() << data[row][column] << " ";
     }
     llvm::errs() << '\n';

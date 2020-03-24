@@ -82,8 +82,8 @@ TEST(MatrixTest, SwapRows) {
 
 TEST(MatrixTest, Resize) {
   Matrix<int> mat(5, 5);
-  EXPECT_EQ(mat.getNRows(), 5u);
-  EXPECT_EQ(mat.getNColumns(), 5u);
+  EXPECT_EQ(mat.getNumRows(), 5u);
+  EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
       mat(row, col) = 10*row + col;
@@ -91,8 +91,8 @@ TEST(MatrixTest, Resize) {
   }
 
   mat.resize(3, 3);
-  EXPECT_EQ(mat.getNRows(), 3u);
-  EXPECT_EQ(mat.getNColumns(), 3u);
+  EXPECT_EQ(mat.getNumRows(), 3u);
+  EXPECT_EQ(mat.getNumColumns(), 3u);
   for (unsigned row = 0; row < 3; ++row) {
     for (unsigned col = 0; col < 3; ++col) {
       EXPECT_EQ(mat(row, col), int(10*row + col));
@@ -100,8 +100,8 @@ TEST(MatrixTest, Resize) {
   }
 
   mat.resize(5, 5);
-  EXPECT_EQ(mat.getNRows(), 5u);
-  EXPECT_EQ(mat.getNColumns(), 5u);
+  EXPECT_EQ(mat.getNumRows(), 5u);
+  EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
       EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : int(10*row + col));

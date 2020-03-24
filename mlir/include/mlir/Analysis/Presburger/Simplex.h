@@ -50,8 +50,8 @@ public:
   Simplex(unsigned nVar);
   Simplex(FlatAffineConstraints constraints);
   ~Simplex() = default;
-  unsigned getNRows() const;
-  unsigned getNColumns() const;
+  unsigned getNumRows() const;
+  unsigned getNumColumns() const;
 
   /// \returns True is the tableau is empty (has conflicting constraints),
   /// False otherwise.
@@ -67,7 +67,7 @@ public:
 
   /// Add an inequality to the tableau. The inequality is represented as
   /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) >= 0.
-  void addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  void addInequality(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// \returns the number of variables in the tableau.
   unsigned numberVariables() const;
@@ -77,7 +77,7 @@ public:
 
   /// Add an equality to the tableau. The equality is represented as
   /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) == 0.
-  void addEq(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  void addEquality(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// Mark the tableau as being empty.
   void markEmpty();
