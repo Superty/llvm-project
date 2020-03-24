@@ -1,5 +1,5 @@
-#ifndef LIBINT_MATRIX_H
-#define LIBINT_MATRIX_H
+#ifndef MLIR_ANALYSIS_MATRIX_H
+#define MLIR_ANALYSIS_MATRIX_H
 
 #include <cassert>
 #include <iomanip>
@@ -108,4 +108,4 @@ std::ostream &operator<<(std::ostream &out, const Matrix<INT> &c) {
   return out;
 }
 } // namespace mlir
-#endif // LIBINT_MATRIX_H
+#endif // MLIR_ANALYSIS_MATRIX_H

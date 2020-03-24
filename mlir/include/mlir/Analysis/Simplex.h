@@ -1,5 +1,5 @@
-#ifndef LIBINT_SIMPLEX_H
-#define LIBINT_SIMPLEX_H
+#ifndef MLIR_ANALYSIS_SIMPLEX_H
+#define MLIR_ANALYSIS_SIMPLEX_H
 
 #include "AffineStructures.h"
 #include "Matrix.h"
@@ -180,4 +180,4 @@ private:
   std::vector<Unknown> con, var;
 };
 } // namespace mlir
-#endif // LIBINT_SIMPLEX_H
+#endif // MLIR_ANALYSIS_SIMPLEX_H
