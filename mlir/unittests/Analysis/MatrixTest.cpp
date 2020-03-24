@@ -13,7 +13,7 @@ TEST(MatrixTest, ReadWrite) {
   }
   for (size_t row = 0; row < 5; ++row) {
     for (size_t col = 0; col < 5; ++col) {
-      EXPECT_EQ(mat(row, col), 10*row + col);
+      EXPECT_EQ(mat(row, col), int(10*row + col));
     }
   }
 }
@@ -74,8 +74,8 @@ TEST(MatrixTest, SwapRows) {
 
 TEST(MatrixTest, Resize) {
   Matrix<int> mat(5, 5);
-  EXPECT_EQ(mat.getNRows(), 5);
-  EXPECT_EQ(mat.getNColumns(), 5);
+  EXPECT_EQ(mat.getNRows(), 5u);
+  EXPECT_EQ(mat.getNColumns(), 5u);
   for (size_t row = 0; row < 5; ++row) {
     for (size_t col = 0; col < 5; ++col) {
       mat(row, col) = 10*row + col;
@@ -83,20 +83,20 @@ TEST(MatrixTest, Resize) {
   }
 
   mat.resize(3, 3);
-  EXPECT_EQ(mat.getNRows(), 3);
-  EXPECT_EQ(mat.getNColumns(), 3);
+  EXPECT_EQ(mat.getNRows(), 3u);
+  EXPECT_EQ(mat.getNColumns(), 3u);
   for (size_t row = 0; row < 3; ++row) {
     for (size_t col = 0; col < 3; ++col) {
-      EXPECT_EQ(mat(row, col), 10*row + col);
+      EXPECT_EQ(mat(row, col), int(10*row + col));
     }
   }
 
   mat.resize(5, 5);
-  EXPECT_EQ(mat.getNRows(), 5);
-  EXPECT_EQ(mat.getNColumns(), 5);
+  EXPECT_EQ(mat.getNRows(), 5u);
+  EXPECT_EQ(mat.getNColumns(), 5u);
   for (size_t row = 0; row < 5; ++row) {
     for (size_t col = 0; col < 5; ++col) {
-      EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : 10*row + col);
+      EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : int(10*row + col));
     }
   }
 }
