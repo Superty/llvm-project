@@ -18,7 +18,7 @@ Simplex::Simplex(size_t nVar)
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
   for (size_t i = 0; i < nVar; ++i) {
-    var.push_back(Unknown(false, false, nCol));
+    var.push_back(Unknown(/*ownsRow=*/false, /*restricted=*/false, /*pos=*/nCol));
     colVar.push_back(i);
     nCol++;
   }
