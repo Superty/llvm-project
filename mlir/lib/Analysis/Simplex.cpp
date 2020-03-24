@@ -25,7 +25,10 @@ Simplex::Simplex(size_t nVar)
 }
 
 Simplex::Simplex(FlatAffineConstraints constraints) : Simplex(constraints.getNumIds()) {
-  
+  for (size_t i = 0; i < constraints.getNumInequalities(); ++i)
+    addIneq(0, constraints.getInequality(i));
+  for (size_t i = 0; i < constraints.getNumEqualities(); ++i)
+    addEq(0, constraints.getEquality(i));
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
