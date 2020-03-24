@@ -1,3 +1,17 @@
+//===- Simplex.h - MLIR Simplex Class ---------------------------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This class can perform analysis on FlatAffineConstraints. In particular,
+// it can be used to simplify the constraint set by detecting constraints
+// which are redundant.
+//
+//===----------------------------------------------------------------------===//
+
 #ifndef MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 #define MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 
