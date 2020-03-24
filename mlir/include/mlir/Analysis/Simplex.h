@@ -16,12 +16,16 @@
 namespace mlir {
 
 /// This class implements the Simplex algorithm. It supports adding affine
-/// equaliities and inequalities, and can find a subset of these that are
+/// equalities and inequalities, and can find a subset of these that are
 /// redundant, i.e. these don't constraint the affine set further after
 /// adding the non-redundant constraints.
 ///
-/// The unknown corresponding to each row r (resp. column c) is rowVar[r] (resp.
-/// colVar[c]). The first nRedundant rows of the tableau correspond to rows
+/// An unknown is addressed by its index. If the index i is non-negative, then
+/// ith variable is the Unknown being addressed. If the index is negative,
+/// then a constraint is being addressed, having index ~i.
+///
+/// The unknown corresponding to each row r (resp. column c) has index rowVar[r]
+/// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to rows
 /// which have been marked redundant. If at some point it is detected that
 /// that the set of constraints are mutually contradictory and have no solution,
 /// then empty will be set to true.
@@ -170,13 +174,26 @@ private:
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
 
+  /// The number of rows in the tableau.
   unsigned nRow;
+
+  /// The number of columns in the tableau, including the common denominator
+  /// and the constant column.
   unsigned nCol;
 
+  /// The number of constraints marked redundant.
   unsigned nRedundant;
+
+  /// The matrix represnting the tableau.
   Matrix<int64_t> tableau;
+
+  /// True if the tableau has been detected to be empty, False otherwise.
   bool empty;
+
+  /// These hold the indexes of the unknown at a given row or column position.
   std::vector<int> rowVar, colVar;
+
+  /// These hold information about each unknown. 
   std::vector<Unknown> con, var;
 };
 } // namespace mlir
