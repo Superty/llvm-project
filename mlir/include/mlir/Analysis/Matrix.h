@@ -1,6 +1,8 @@
 #ifndef MLIR_ANALYSIS_MATRIX_H
 #define MLIR_ANALYSIS_MATRIX_H
 
+#include <llvm/Support/raw_ostream.h>
+
 #include <cassert>
 #include <iomanip>
 #include <iostream>
@@ -40,7 +42,7 @@ public:
   /// initialized. 
   void resize(unsigned newNRows, unsigned newNColumns);
 
-  friend std::ostream &operator<<(std::ostream &out, const Matrix &c);
+  void dump() const;
 
 private:
   unsigned nColumns;
@@ -97,23 +99,22 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
 }
 
 template <typename INT>
-std::ostream &operator<<(std::ostream &out, const Matrix<INT> &c) {
-  out << "Dumping matrix, rows = " << c.getNRows()
-      << ", columns: " << c.getNColumns() << '\n';
-  out << "r/c  ";
-  for (unsigned column = 0; column < c.getNColumns(); ++column) {
-    out << "| " << std::setw(2) << column << " ";
+void Matrix<INT>::dump() const {
+  llvm::errs() << "Dumping matrix, rows = " << getNRows()
+      << ", columns: " << getNColumns() << '\n';
+  llvm::errs() << "r/c  ";
+  for (unsigned column = 0; column < getNColumns(); ++column) {
+    llvm::errs() << "| " << column << " ";
   }
-  out << std::endl;
-  out << std::string(5 + c.getNColumns() * 5, '-') << std::endl;
-  for (unsigned row = 0; row < c.getNRows(); ++row) {
-    out << std::setw(2) << row << " | ";
-    for (unsigned column = 0; column < c.getNColumns(); ++column) {
-      out << std::setw(4) << c(row, column) << " ";
+  llvm::errs() << '\n';
+  llvm::errs() << std::string(5 + getNColumns() * 5, '-') << '\n';
+  for (unsigned row = 0; row < getNRows(); ++row) {
+    llvm::errs() << row << " | ";
+    for (unsigned column = 0; column < getNColumns(); ++column) {
+      llvm::errs() << data[row][column] << " ";
     }
-    out << std::endl;
+    llvm::errs() << '\n';
   }
-  return out;
 }
 } // namespace mlir
 #endif // MLIR_ANALYSIS_MATRIX_H

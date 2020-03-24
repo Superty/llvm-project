@@ -493,48 +493,48 @@ unsigned Simplex::numberVariables() const { return var.size(); }
 unsigned Simplex::numberConstraints() const { return con.size(); }
 
 void Simplex::dumpUnknown(const Unknown &u) const {
-  std::cerr << (u.ownsRow ? "r" : "c");
-  std::cerr << u.pos;
+  llvm::errs() << (u.ownsRow ? "r" : "c");
+  llvm::errs() << u.pos;
   if (u.restricted)
-    std::cerr << " [>=0]";
+    llvm::errs() << " [>=0]";
   if (u.redundant)
-    std::cerr << " [R]";
+    llvm::errs() << " [R]";
 }
 
 void Simplex::dump() const {
-  std::cerr << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
+  llvm::errs() << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
             << "\nnRedundant = " << nRedundant << "\n";
   if (empty)
-    std::cerr << "Simplex marked empty!\n";
-  std::cerr << "var: ";
+    llvm::errs() << "Simplex marked empty!\n";
+  llvm::errs() << "var: ";
   for (unsigned i = 0; i < var.size(); ++i) {
     if (i > 0)
-      std::cerr << ", ";
+      llvm::errs() << ", ";
     dumpUnknown(var[i]);
   }
-  std::cerr << "\ncon: ";
+  llvm::errs() << "\ncon: ";
   for (unsigned i = 0; i < con.size(); ++i) {
     if (i > 0)
-      std::cerr << ", ";
+      llvm::errs() << ", ";
     dumpUnknown(con[i]);
   }
-  std::cerr << '\n';
+  llvm::errs() << '\n';
   for (unsigned row = 0; row < nRow; ++row) {
     if (row > 0)
-      std::cerr << ", ";
-    std::cerr << "r" << row << ": " << rowVar[row];
+      llvm::errs() << ", ";
+    llvm::errs() << "r" << row << ": " << rowVar[row];
   }
-  std::cerr << '\n';
-  std::cerr << "c0: denom, c1: const";
+  llvm::errs() << '\n';
+  llvm::errs() << "c0: denom, c1: const";
   for (unsigned col = 2; col < nCol; ++col)
-    std::cerr << ", c" << col << ": " << colVar[col];
-  std::cerr << '\n';
+    llvm::errs() << ", c" << col << ": " << colVar[col];
+  llvm::errs() << '\n';
   for (unsigned row = 0; row < nRow; ++row) {
     for (unsigned col = 0; col < nCol; ++col)
-      std::cerr << tableau(row, col) << '\t';
-    std::cerr << '\n';
+      llvm::errs() << tableau(row, col) << '\t';
+    llvm::errs() << '\n';
   }
-  std::cerr << '\n';
+  llvm::errs() << '\n';
 }
 
 } // namespace mlir
