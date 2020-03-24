@@ -4,8 +4,8 @@
 #include "AffineStructures.h"
 #include "Matrix.h"
 
-#include <llvm/ADT/Optional.h>
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/Optional.h>
 #include <llvm/ADT/SmallVector.h>
 
 #include <iostream>
@@ -25,8 +25,8 @@ namespace mlir {
 /// then a constraint is being addressed, having index ~i.
 ///
 /// The unknown corresponding to each row r (resp. column c) has index rowVar[r]
-/// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to rows
-/// which have been marked redundant. If at some point it is detected that
+/// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to
+/// rows which have been marked redundant. If at some point it is detected that
 /// that the set of constraints are mutually contradictory and have no solution,
 /// then empty will be set to true.
 class Simplex {
@@ -93,8 +93,8 @@ private:
   ///
   /// \returns a [row, col] pair denoting a pivot, or an empty llvm::Optional if
   /// no valid pivot exists.
-  llvm::Optional<std::pair<unsigned, unsigned>> findPivot(int row,
-                                                     Direction direction) const;
+  llvm::Optional<std::pair<unsigned, unsigned>>
+  findPivot(int row, Direction direction) const;
 
   /// Swap the row with the column in the tableau's data structures but not the
   // tableau itself. This is used by pivot.
@@ -165,10 +165,12 @@ private:
   /// \returns the row to pivot to, or an empty llvm::Optional if no row was
   /// found.
   llvm::Optional<unsigned> findPivotRow(llvm::Optional<unsigned> skipRow,
-                                     Direction direction, unsigned col) const;
+                                        Direction direction,
+                                        unsigned col) const;
 
   /// \returns True is diff is positive and direction is Direction::UP, or if
-  /// diff is negative and direction is Direction::DOWN. Returns False otherwise.
+  /// diff is negative and direction is Direction::DOWN. Returns False
+  /// otherwise.
   bool diffMatchesDirection(int64_t diff, Direction direction) const;
 
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
@@ -193,7 +195,7 @@ private:
   /// These hold the indexes of the unknown at a given row or column position.
   std::vector<int> rowVar, colVar;
 
-  /// These hold information about each unknown. 
+  /// These hold information about each unknown.
   std::vector<Unknown> con, var;
 };
 } // namespace mlir

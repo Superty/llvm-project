@@ -1,7 +1,7 @@
-#include "llvm/Support/MathExtras.h"
 #include "mlir/Analysis/Simplex.h"
 #include "mlir/Analysis/Matrix.h"
 #include "mlir/Support/MathExtras.h"
+#include "llvm/Support/MathExtras.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -15,13 +15,15 @@ Simplex::Simplex(unsigned nVar)
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
   for (unsigned i = 0; i < nVar; ++i) {
-    var.push_back(Unknown(/*ownsRow=*/false, /*restricted=*/false, /*pos=*/nCol));
+    var.push_back(
+        Unknown(/*ownsRow=*/false, /*restricted=*/false, /*pos=*/nCol));
     colVar.push_back(i);
     nCol++;
   }
 }
 
-Simplex::Simplex(FlatAffineConstraints constraints) : Simplex(constraints.getNumIds()) {
+Simplex::Simplex(FlatAffineConstraints constraints)
+    : Simplex(constraints.getNumIds()) {
   for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
     addIneq(0, constraints.getInequality(i));
   for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
@@ -225,7 +227,7 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert(pivotRow >= nRedundant && pivotCol >= 2 &&
-    "Refusing to pivot redundant row or invalid column");
+         "Refusing to pivot redundant row or invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -303,8 +305,8 @@ bool Simplex::restoreRow(Unknown &u) {
 // the same bound by considering a lexicographic ordering where we prefer
 // unknowns with lower index value.
 llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
-                                            Direction direction,
-                                            unsigned col) const {
+                                               Direction direction,
+                                               unsigned col) const {
   llvm::Optional<unsigned> retRow;
   int64_t retElem, retConst;
   for (unsigned row = nRedundant; row < nRow; ++row) {
@@ -458,7 +460,8 @@ void Simplex::addEq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
 // we move our row to the row at position nRedundant if it is not already
 bool Simplex::markRedundant(unsigned row) {
   assert(!unknownFromRow(row).redundant && "Row is already marked redundant");
-  assert(row >= nRedundant && "Row is not marked redundant but row < nRedundant");
+  assert(row >= nRedundant &&
+         "Row is not marked redundant but row < nRedundant");
 
   Unknown &unknown = unknownFromRow(row);
   unknown.redundant = true;
@@ -483,7 +486,8 @@ void Simplex::detectRedundant() {
     if (constraintIsRedundant(i)) {
       // constraintIsRedundant must leave the constraint in row position if it
       // returns true.
-      assert(con[i].ownsRow && "Constraint to be marked redundant must be a row!");
+      assert(con[i].ownsRow &&
+             "Constraint to be marked redundant must be a row!");
       markRedundant(con[i].pos);
     }
   }
@@ -503,7 +507,7 @@ void Simplex::dumpUnknown(const Unknown &u) const {
 
 void Simplex::dump() const {
   llvm::errs() << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
-            << "\nnRedundant = " << nRedundant << "\n";
+               << "\nnRedundant = " << nRedundant << "\n";
   if (empty)
     llvm::errs() << "Simplex marked empty!\n";
   llvm::errs() << "var: ";

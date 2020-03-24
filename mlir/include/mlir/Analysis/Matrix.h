@@ -13,7 +13,8 @@ namespace mlir {
 /// This is a simple class to represent a resizable matrix.
 ///
 /// The data is stored in the form of a vector of vectors.
-template <typename INT> class Matrix {
+template <typename INT>
+class Matrix {
 public:
   Matrix() = delete;
 
@@ -39,7 +40,7 @@ public:
 
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
-  /// initialized. 
+  /// initialized.
   void resize(unsigned newNRows, unsigned newNColumns);
 
   void dump() const;
@@ -67,11 +68,13 @@ INT Matrix<INT>::operator()(unsigned row, unsigned column) const {
   return data[row][column];
 }
 
-template <typename INT> unsigned Matrix<INT>::getNRows() const {
+template <typename INT>
+unsigned Matrix<INT>::getNRows() const {
   return data.size();
 }
 
-template <typename INT> unsigned Matrix<INT>::getNColumns() const {
+template <typename INT>
+unsigned Matrix<INT>::getNColumns() const {
   return nColumns;
 }
 
@@ -85,15 +88,15 @@ void Matrix<INT>::resize(unsigned newNRows, unsigned newNColumns) {
 
 template <typename INT>
 void Matrix<INT>::swapRows(unsigned row, unsigned otherRow) {
-  assert(row < getNRows() && otherRow < getNRows()
-                          && "Given row out of bounds");
+  assert(row < getNRows() && otherRow < getNRows() &&
+         "Given row out of bounds");
   swap(data[row], data[otherRow]);
 }
 
 template <typename INT>
 void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
   assert(column < getNColumns() && otherColumn < getNColumns() &&
-    "Given column out of bounds");
+         "Given column out of bounds");
   for (auto &row : data)
     std::swap(row[column], row[otherColumn]);
 }
@@ -101,7 +104,7 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
 template <typename INT>
 void Matrix<INT>::dump() const {
   llvm::errs() << "Dumping matrix, rows = " << getNRows()
-      << ", columns: " << getNColumns() << '\n';
+               << ", columns: " << getNColumns() << '\n';
   llvm::errs() << "r/c  ";
   for (unsigned column = 0; column < getNColumns(); ++column) {
     llvm::errs() << "| " << column << " ";
