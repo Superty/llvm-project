@@ -15,21 +15,29 @@ template <typename INT> class Matrix {
 public:
   Matrix() = delete;
 
+  /// Construct a matrix with the specified number of rows and columns.
+  /// Initially, the values are default initialized.
   Matrix(unsigned rows, unsigned columns);
 
   Matrix(const Matrix &);
 
+  /// Access the element at the specified row and column.
   INT &operator()(unsigned row, unsigned column);
   INT operator()(unsigned row, unsigned column) const;
 
+  /// Swap the given columns.
   void swapColumns(unsigned column, unsigned otherColumn);
 
+  /// Swap the given rows.
   void swapRows(unsigned row, unsigned otherRow);
 
   unsigned getNRows() const;
 
   unsigned getNColumns() const;
 
+  /// Resize the matrix to the specified dimensions. If a dimension is smaller,
+  /// the values are truncated; if it is bigger, the new values are default
+  /// initialized. 
   void resize(unsigned newNRows, unsigned newNColumns);
 
   friend std::ostream &operator<<(std::ostream &out, const Matrix &c);
