@@ -10,11 +10,11 @@ namespace mlir {
 const int NULL_INDEX = std::numeric_limits<int>::max();
 
 // Construct a Simplex object with `nVar` variables.
-Simplex::Simplex(size_t nVar)
+Simplex::Simplex(unsigned nVar)
     : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
-  for (size_t i = 0; i < nVar; ++i) {
+  for (unsigned i = 0; i < nVar; ++i) {
     var.push_back(Unknown(/*ownsRow=*/false, /*restricted=*/false, /*pos=*/nCol));
     colVar.push_back(i);
     nCol++;
@@ -22,9 +22,9 @@ Simplex::Simplex(size_t nVar)
 }
 
 Simplex::Simplex(FlatAffineConstraints constraints) : Simplex(constraints.getNumIds()) {
-  for (size_t i = 0; i < constraints.getNumInequalities(); ++i)
+  for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
     addIneq(0, constraints.getInequality(i));
-  for (size_t i = 0; i < constraints.getNumEqualities(); ++i)
+  for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
     addEq(0, constraints.getEquality(i));
 }
 
@@ -37,12 +37,12 @@ const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
     return con[~index];
 }
 
-const Simplex::Unknown &Simplex::unknownFromColumn(size_t col) const {
+const Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) const {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colVar[col]);
 }
 
-const Simplex::Unknown &Simplex::unknownFromRow(size_t row) const {
+const Simplex::Unknown &Simplex::unknownFromRow(unsigned row) const {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowVar[row]);
 }
@@ -56,12 +56,12 @@ Simplex::Unknown &Simplex::unknownFromIndex(int index) {
     return con[~index];
 }
 
-Simplex::Unknown &Simplex::unknownFromColumn(size_t col) {
+Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colVar[col]);
 }
 
-Simplex::Unknown &Simplex::unknownFromRow(size_t row) {
+Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowVar[row]);
 }
@@ -80,7 +80,7 @@ Simplex::Unknown &Simplex::unknownFromRow(size_t row) {
 // scaled by the coefficient for the variable, accounting for the two rows
 // potentially having different denominators. The new denominator is the
 // lcm of the two.
-size_t Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
+unsigned Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   assert(coeffs.size() == var.size() && "Incorrect number of coefficients!");
 
   if (nRow >= tableau.getNRows())
@@ -93,11 +93,11 @@ size_t Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = constTerm;
-  for (size_t col = 2; col < nCol; ++col)
+  for (unsigned col = 2; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
-  for (size_t i = 0; i < var.size(); ++i) {
-    size_t pos = var[i].pos;
+  for (unsigned i = 0; i < var.size(); ++i) {
+    unsigned pos = var[i].pos;
     if (coeffs[i] == 0)
       continue;
 
@@ -110,7 +110,7 @@ size_t Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
     int64_t nRowCoeff = lcm / tableau(nRow - 1, 0);
     int64_t idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
     tableau(nRow - 1, 0) = lcm;
-    for (size_t col = 1; col < nCol; ++col)
+    for (unsigned col = 1; col < nCol; ++col)
       tableau(nRow - 1, col) =
           nRowCoeff * tableau(nRow - 1, col) + idxRowCoeff * tableau(pos, col);
   }
@@ -119,20 +119,20 @@ size_t Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   return con.size() - 1;
 }
 
-size_t Simplex::getNColumns() const { return nCol; }
+unsigned Simplex::getNColumns() const { return nCol; }
 
-size_t Simplex::getNRows() const { return nRow; }
+unsigned Simplex::getNRows() const { return nRow; }
 
 // Normalize the row by removing common factors that are common between the
 // denominator and all the numerator coefficients.
-void Simplex::normalizeRow(size_t row) {
+void Simplex::normalizeRow(unsigned row) {
   int64_t gcd = 0;
-  for (size_t col = 0; col < nCol; ++col) {
+  for (unsigned col = 0; col < nCol; ++col) {
     if (gcd == 1)
       break;
     gcd = llvm::greatestCommonDivisor(gcd, tableau(row, col));
   }
-  for (size_t col = 0; col < nCol; ++col)
+  for (unsigned col = 0; col < nCol; ++col)
     tableau(row, col) /= gcd;
 }
 
@@ -160,10 +160,10 @@ Simplex::Direction Simplex::flippedDirection(Direction direction) const {
 //
 // If multiple columns are valid, we break ties by considering a lexicographic
 // ordering where we prefer unknowns with lower index.
-llvm::Optional<std::pair<size_t, size_t>>
+llvm::Optional<std::pair<unsigned, unsigned>>
 Simplex::findPivot(int row, Direction direction) const {
-  llvm::Optional<size_t> col;
-  for (size_t j = 2; j < nCol; ++j) {
+  llvm::Optional<unsigned> col;
+  for (unsigned j = 2; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
     if (elem == 0)
       continue;
@@ -181,10 +181,10 @@ Simplex::findPivot(int row, Direction direction) const {
   Direction newDirection =
       tableau(row, *col) < 0 ? flippedDirection(direction) : direction;
   auto opt = findPivotRow(row, newDirection, *col);
-  return std::pair<size_t, size_t>{opt.getValueOr(row), *col};
+  return std::pair<unsigned, unsigned>{opt.getValueOr(row), *col};
 }
 
-void Simplex::swapRowWithCol(size_t row, size_t col) {
+void Simplex::swapRowWithCol(unsigned row, unsigned col) {
   std::swap(rowVar[row], colVar[col]);
   Unknown *uCol = &unknownFromColumn(col);
   Unknown *uRow = &unknownFromRow(row);
@@ -194,7 +194,7 @@ void Simplex::swapRowWithCol(size_t row, size_t col) {
   uRow->pos = row;
 }
 
-void Simplex::pivot(const std::pair<size_t, size_t> &p) {
+void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
   pivot(p.first, p.second);
 }
 
@@ -223,7 +223,7 @@ void Simplex::pivot(const std::pair<size_t, size_t> &p) {
 // The pivot row transform is accomplished be swapping a with the pivot row's
 // common denominator and negating the pivot row except for the pivot column
 // element.
-void Simplex::pivot(size_t pivotRow, size_t pivotCol) {
+void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert(pivotRow >= nRedundant && pivotCol >= 2 &&
     "Refusing to pivot redundant row or invalid column");
 
@@ -236,7 +236,7 @@ void Simplex::pivot(size_t pivotRow, size_t pivotCol) {
     tableau(pivotRow, 0) = -tableau(pivotRow, 0);
     tableau(pivotRow, pivotCol) = -tableau(pivotRow, pivotCol);
   } else {
-    for (size_t col = 1; col < nCol; ++col) {
+    for (unsigned col = 1; col < nCol; ++col) {
       if (col == pivotCol)
         continue;
       tableau(pivotRow, col) = -tableau(pivotRow, col);
@@ -244,13 +244,13 @@ void Simplex::pivot(size_t pivotRow, size_t pivotCol) {
   }
   normalizeRow(pivotRow);
 
-  for (size_t row = 0; row < nRow; ++row) {
+  for (unsigned row = 0; row < nRow; ++row) {
     if (row == pivotRow)
       continue;
     if (tableau(row, pivotCol) == 0) // Nothing to do.
       continue;
     tableau(row, 0) *= tableau(pivotRow, 0);
-    for (size_t j = 1; j < nCol; ++j) {
+    for (unsigned j = 1; j < nCol; ++j) {
       if (j == pivotCol)
         continue;
       // Add rather than subtract because the pivot row has been negated.
@@ -302,12 +302,12 @@ bool Simplex::restoreRow(Unknown &u) {
 // hence saturates the bound it imposes. We break ties between rows that impose
 // the same bound by considering a lexicographic ordering where we prefer
 // unknowns with lower index value.
-llvm::Optional<size_t> Simplex::findPivotRow(llvm::Optional<size_t> skipRow,
+llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
                                             Direction direction,
-                                            size_t col) const {
-  llvm::Optional<size_t> retRow;
+                                            unsigned col) const {
+  llvm::Optional<unsigned> retRow;
   int64_t retElem, retConst;
-  for (size_t row = nRedundant; row < nRow; ++row) {
+  for (unsigned row = nRedundant; row < nRow; ++row) {
     if (skipRow && row == *skipRow)
       continue;
     auto elem = tableau(row, col);
@@ -339,7 +339,7 @@ llvm::Optional<size_t> Simplex::findPivotRow(llvm::Optional<size_t> skipRow,
 
 bool Simplex::isEmpty() const { return empty; }
 
-void Simplex::swapRows(size_t i, size_t j) {
+void Simplex::swapRows(unsigned i, unsigned j) {
   tableau.swapRows(i, j);
   std::swap(rowVar[i], rowVar[j]);
   unknownFromRow(i).pos = i;
@@ -361,7 +361,7 @@ bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
   if (unknown.ownsRow)
     return false;
 
-  for (size_t i = nRedundant; i < nRow; ++i) {
+  for (unsigned i = nRedundant; i < nRow; ++i) {
     if (unknownFromRow(i).restricted && tableau(i, unknown.pos) > 0)
       return false;
   }
@@ -384,7 +384,7 @@ bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
 //
 // Otherwise, if the unknown has a negative sample value, then it is not
 // not redundant, so we restore the row to a non-negative value and return.
-bool Simplex::constraintIsRedundant(size_t conIndex) {
+bool Simplex::constraintIsRedundant(unsigned conIndex) {
   if (con[conIndex].redundant)
     return true;
 
@@ -392,7 +392,7 @@ bool Simplex::constraintIsRedundant(size_t conIndex) {
     return false;
 
   if (!con[conIndex].ownsRow) {
-    size_t col = con[conIndex].pos;
+    unsigned col = con[conIndex].pos;
     if (auto maybeRow = findPivotRow({}, Direction::DOWN, col))
       pivot(*maybeRow, col);
     else
@@ -404,8 +404,8 @@ bool Simplex::constraintIsRedundant(size_t conIndex) {
     if (!p)
       return true;
 
-    size_t row = p->first;
-    size_t col = p->second;
+    unsigned row = p->first;
+    unsigned col = p->second;
     if (row == con[conIndex].pos)
       return false;
     pivot(row, col);
@@ -431,7 +431,7 @@ bool Simplex::isMarkedRedundant(int conIndex) const {
 // sample value non-negative. If this is not possible, the tableau has become
 // empty and we mark it as such.
 void Simplex::addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
-  size_t conIndex = addRow(constTerm, coeffs);
+  unsigned conIndex = addRow(constTerm, coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
   bool success = restoreRow(u);
@@ -456,7 +456,7 @@ void Simplex::addEq(int64_t constTerm, ArrayRef<int64_t> coeffs) {
 //
 // Since all the rows are stored contiguously as the first nRedundant rows,
 // we move our row to the row at position nRedundant if it is not already
-bool Simplex::markRedundant(size_t row) {
+bool Simplex::markRedundant(unsigned row) {
   assert(!unknownFromRow(row).redundant && "Row is already marked redundant");
   assert(row >= nRedundant && "Row is not marked redundant but row < nRedundant");
 
@@ -489,8 +489,8 @@ void Simplex::detectRedundant() {
   }
 }
 
-size_t Simplex::numberVariables() const { return var.size(); }
-size_t Simplex::numberConstraints() const { return con.size(); }
+unsigned Simplex::numberVariables() const { return var.size(); }
+unsigned Simplex::numberConstraints() const { return con.size(); }
 
 void Simplex::dumpUnknown(const Unknown &u) const {
   std::cerr << (u.ownsRow ? "r" : "c");
@@ -507,30 +507,30 @@ void Simplex::dump() const {
   if (empty)
     std::cerr << "Simplex marked empty!\n";
   std::cerr << "var: ";
-  for (size_t i = 0; i < var.size(); ++i) {
+  for (unsigned i = 0; i < var.size(); ++i) {
     if (i > 0)
       std::cerr << ", ";
     dumpUnknown(var[i]);
   }
   std::cerr << "\ncon: ";
-  for (size_t i = 0; i < con.size(); ++i) {
+  for (unsigned i = 0; i < con.size(); ++i) {
     if (i > 0)
       std::cerr << ", ";
     dumpUnknown(con[i]);
   }
   std::cerr << '\n';
-  for (size_t row = 0; row < nRow; ++row) {
+  for (unsigned row = 0; row < nRow; ++row) {
     if (row > 0)
       std::cerr << ", ";
     std::cerr << "r" << row << ": " << rowVar[row];
   }
   std::cerr << '\n';
   std::cerr << "c0: denom, c1: const";
-  for (size_t col = 2; col < nCol; ++col)
+  for (unsigned col = 2; col < nCol; ++col)
     std::cerr << ", c" << col << ": " << colVar[col];
   std::cerr << '\n';
-  for (size_t row = 0; row < nRow; ++row) {
-    for (size_t col = 0; col < nCol; ++col)
+  for (unsigned row = 0; row < nRow; ++row) {
+    for (unsigned col = 0; col < nCol; ++col)
       std::cerr << tableau(row, col) << '\t';
     std::cerr << '\n';
   }

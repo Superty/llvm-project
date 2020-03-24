@@ -30,11 +30,11 @@ public:
   enum class Direction { UP, DOWN };
 
   Simplex() = delete;
-  Simplex(size_t nVar);
+  Simplex(unsigned nVar);
   Simplex(FlatAffineConstraints constraints);
   ~Simplex() = default;
-  size_t getNRows() const;
-  size_t getNColumns() const;
+  unsigned getNRows() const;
+  unsigned getNColumns() const;
 
   /// \returns True is the tableau is empty (has conflicting constraints),
   /// False otherwise.
@@ -53,10 +53,10 @@ public:
   void addIneq(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// \returns the number of variables in the tableau.
-  size_t numberVariables() const;
+  unsigned numberVariables() const;
 
   /// \returns the number of constraints in the tableau.
-  size_t numberConstraints() const;
+  unsigned numberConstraints() const;
 
   /// Add an equality to the tableau. The equality is represented as
   /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) == 0.
@@ -70,13 +70,13 @@ public:
 
 private:
   struct Unknown {
-    Unknown(bool oOwnsRow, bool oRestricted, size_t oPos)
+    Unknown(bool oOwnsRow, bool oRestricted, unsigned oPos)
         : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos),
           redundant(false) {}
     Unknown() : Unknown(false, false, -1) {}
     bool ownsRow;
     bool restricted;
-    size_t pos;
+    unsigned pos;
     bool redundant;
   };
 
@@ -89,16 +89,16 @@ private:
   ///
   /// \returns a [row, col] pair denoting a pivot, or an empty llvm::Optional if
   /// no valid pivot exists.
-  llvm::Optional<std::pair<size_t, size_t>> findPivot(int row,
+  llvm::Optional<std::pair<unsigned, unsigned>> findPivot(int row,
                                                      Direction direction) const;
 
   /// Swap the row with the column in the tableau's data structures but not the
   // tableau itself. This is used by pivot.
-  void swapRowWithCol(size_t row, size_t col);
+  void swapRowWithCol(unsigned row, unsigned col);
 
   // Pivot the row with the column.
-  void pivot(size_t row, size_t col);
-  void pivot(const std::pair<size_t, size_t> &p);
+  void pivot(unsigned row, unsigned col);
+  void pivot(const std::pair<unsigned, unsigned> &p);
 
   /// Check if the constraint is redundant by computing its minimum value in
   /// the tableau. If this returns true, the constraint is left in row position
@@ -107,23 +107,23 @@ private:
   /// \param conIndex must be a constraint that is not a dead column
   ///
   /// \returns True if the constraint is redundant, False otherwise.
-  bool constraintIsRedundant(size_t conIndex);
+  bool constraintIsRedundant(unsigned conIndex);
 
   /// \returns the unknown associated with \p index.
   const Unknown &unknownFromIndex(int index) const;
   /// \returns the unknown associated with \p col.
-  const Unknown &unknownFromColumn(size_t col) const;
+  const Unknown &unknownFromColumn(unsigned col) const;
   /// \returns the unknown associated with \p row.
-  const Unknown &unknownFromRow(size_t row) const;
+  const Unknown &unknownFromRow(unsigned row) const;
   /// \returns the unknown associated with \p index.
   Unknown &unknownFromIndex(int index);
   /// \returns the unknown associated with \p col.
-  Unknown &unknownFromColumn(size_t col);
+  Unknown &unknownFromColumn(unsigned col);
   /// \returns the unknown associated with \p row.
-  Unknown &unknownFromRow(size_t row);
+  Unknown &unknownFromRow(unsigned row);
 
   /// Add a new row to the tableau and the associated data structures.
-  size_t addRow(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  unsigned addRow(int64_t constTerm, ArrayRef<int64_t> coeffs);
 
   /// Check if there is obviously no lower bound on \p unknown.
   ///
@@ -133,17 +133,17 @@ private:
 
   /// Normalize the given row by removing common factors between the numerator
   /// and the denominator.
-  void normalizeRow(size_t row);
+  void normalizeRow(unsigned row);
 
   /// Mark the row as being redundant.
   ///
   /// \returns True if the row is interchanged with a later row, False
   /// otherwise. This is used when iterating through the rows; if the return is
   /// true, the same row index must be processed again.
-  bool markRedundant(size_t row);
+  bool markRedundant(unsigned row);
 
   /// Swap the two rows in the tableau and associated data structures.
-  void swapRows(size_t i, size_t j);
+  void swapRows(unsigned i, unsigned j);
 
   /// Restore the unknown to a non-negative sample value.
   ///
@@ -160,8 +160,8 @@ private:
   ///
   /// \returns the row to pivot to, or an empty llvm::Optional if no row was
   /// found.
-  llvm::Optional<size_t> findPivotRow(llvm::Optional<size_t> skipRow,
-                                     Direction direction, size_t col) const;
+  llvm::Optional<unsigned> findPivotRow(llvm::Optional<unsigned> skipRow,
+                                     Direction direction, unsigned col) const;
 
   /// \returns True is diff is positive and direction is Direction::UP, or if
   /// diff is negative and direction is Direction::DOWN. Returns False otherwise.
@@ -170,10 +170,10 @@ private:
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
 
-  size_t nRow;
-  size_t nCol;
+  unsigned nRow;
+  unsigned nCol;
 
-  size_t nRedundant;
+  unsigned nRedundant;
   Matrix<int64_t> tableau;
   bool empty;
   std::vector<int> rowVar, colVar;

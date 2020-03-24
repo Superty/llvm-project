@@ -82,7 +82,7 @@ TEST(SimplexTest, isMarkedRedundant) {
 
   tab.detectRedundant();
 
-  for (size_t i = 0; i < tab.numberConstraints(); ++i)
+  for (unsigned i = 0; i < tab.numberConstraints(); ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << "\n";
 }
 
@@ -122,7 +122,7 @@ TEST(SimplexTest, isMarkedRedundant_a) {
   tab.addIneq(-1, {0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, -8});
 
   tab.detectRedundant();
-  for (size_t i = 0; i < tab.numberConstraints(); ++i)
+  for (unsigned i = 0; i < tab.numberConstraints(); ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << '\n';
 }
 
