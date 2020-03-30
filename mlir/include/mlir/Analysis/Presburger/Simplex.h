@@ -15,8 +15,8 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 #define MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 
-#include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Matrix.h"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/SmallVector.h>

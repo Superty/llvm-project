@@ -1365,8 +1365,8 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   };
   pos = 0;
   for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {
-    if (!simplex.isMarkedRedundant(numIneqs + 2*r) ||
-        !simplex.isMarkedRedundant(numIneqs + 2*r + 1))
+    if (!simplex.isMarkedRedundant(numIneqs + 2 * r) ||
+        !simplex.isMarkedRedundant(numIneqs + 2 * r + 1))
       copyEquality(r, pos++);
   }
   equalities.resize(numReservedCols * pos);

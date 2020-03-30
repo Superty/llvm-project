@@ -16,12 +16,12 @@ TEST(MatrixTest, ReadWrite) {
   Matrix<int> mat(5, 5);
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
-      mat(row, col) = 10*row + col;
+      mat(row, col) = 10 * row + col;
     }
   }
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
-      EXPECT_EQ(mat(row, col), int(10*row + col));
+      EXPECT_EQ(mat(row, col), int(10 * row + col));
     }
   }
 }
@@ -86,7 +86,7 @@ TEST(MatrixTest, Resize) {
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
-      mat(row, col) = 10*row + col;
+      mat(row, col) = 10 * row + col;
     }
   }
 
@@ -95,7 +95,7 @@ TEST(MatrixTest, Resize) {
   EXPECT_EQ(mat.getNumColumns(), 3u);
   for (unsigned row = 0; row < 3; ++row) {
     for (unsigned col = 0; col < 3; ++col) {
-      EXPECT_EQ(mat(row, col), int(10*row + col));
+      EXPECT_EQ(mat(row, col), int(10 * row + col));
     }
   }
 
@@ -104,7 +104,7 @@ TEST(MatrixTest, Resize) {
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row) {
     for (unsigned col = 0; col < 5; ++col) {
-      EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : int(10*row + col));
+      EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : int(10 * row + col));
     }
   }
 }

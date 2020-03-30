@@ -91,7 +91,8 @@ Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
 // potentially having different denominators. The new denominator is the
 // lcm of the two.
 unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == 1 + var.size() && "Incorrect number of coefficients!");
+  assert(coeffs.size() == 1 + var.size() &&
+         "Incorrect number of coefficients!");
 
   if (nRow >= tableau.getNumRows())
     tableau.resize(tableau.getNumRows() + 1, tableau.getNumColumns());

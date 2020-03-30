@@ -185,7 +185,7 @@ TEST(SimplexTest, addInequalityAlreadyRedundant) {
   EXPECT_TRUE(tab.isMarkedRedundant(1));
 }
 
-TEST(SimplexTest, addEqualitySeparate) { 
+TEST(SimplexTest, addEqualitySeparate) {
   Simplex tab(1);
   tab.addInequality({1, -1});
   ASSERT_FALSE(tab.isEmpty());
