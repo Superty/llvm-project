@@ -521,7 +521,7 @@ public:
 
   /// A more expensive check to detect redundant inequalities thatn
   /// removeTrivialRedundancy.
-  void removeRedundantInequalities();
+  void removeRedundantConstraints();
 
   // Removes all equalities and inequalities.
   void clearConstraints();

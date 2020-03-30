@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/IR/AffineValueMap.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
@@ -1332,47 +1333,14 @@ static bool detectAsFloorDiv(const FlatAffineConstraints &cst, unsigned pos,
   return false;
 }
 
-// Fills an inequality row with the value 'val'.
-static inline void fillInequality(FlatAffineConstraints *cst, unsigned r,
-                                  int64_t val) {
-  for (unsigned c = 0, f = cst->getNumCols(); c < f; c++) {
-    cst->atIneq(r, c) = val;
-  }
-}
-
-// Negates an inequality.
-static inline void negateInequality(FlatAffineConstraints *cst, unsigned r) {
-  for (unsigned c = 0, f = cst->getNumCols(); c < f; c++) {
-    cst->atIneq(r, c) = -cst->atIneq(r, c);
-  }
-}
-
 // A more complex check to eliminate redundant inequalities. Uses FourierMotzkin
 // to check if a constraint is redundant.
-void FlatAffineConstraints::removeRedundantInequalities() {
-  SmallVector<bool, 32> redun(getNumInequalities(), false);
-  // To check if an inequality is redundant, we replace the inequality by its
-  // complement (for eg., i - 1 >= 0 by i <= 0), and check if the resulting
-  // system is empty. If it is, the inequality is redundant.
-  FlatAffineConstraints tmpCst(*this);
-  for (unsigned r = 0, e = getNumInequalities(); r < e; r++) {
-    // Change the inequality to its complement.
-    negateInequality(&tmpCst, r);
-    tmpCst.atIneq(r, tmpCst.getNumCols() - 1)--;
-    if (tmpCst.isEmpty()) {
-      redun[r] = true;
-      // Zero fill the redundant inequality.
-      fillInequality(this, r, /*val=*/0);
-      fillInequality(&tmpCst, r, /*val=*/0);
-    } else {
-      // Reverse the change (to avoid recreating tmpCst each time).
-      tmpCst.atIneq(r, tmpCst.getNumCols() - 1)++;
-      negateInequality(&tmpCst, r);
-    }
-  }
+void FlatAffineConstraints::removeRedundantConstraints() {
+  Simplex simplex(*this);
+  simplex.detectRedundant();
 
-  // Scan to get rid of all rows marked redundant, in-place.
-  auto copyRow = [&](unsigned src, unsigned dest) {
+  // Scan to get rid of all inequalities marked redundant, in-place.
+  auto copyInequality = [&](unsigned src, unsigned dest) {
     if (src == dest)
       return;
     for (unsigned c = 0, e = getNumCols(); c < e; c++) {
@@ -1380,11 +1348,28 @@ void FlatAffineConstraints::removeRedundantInequalities() {
     }
   };
   unsigned pos = 0;
-  for (unsigned r = 0, e = getNumInequalities(); r < e; r++) {
-    if (!redun[r])
-      copyRow(r, pos++);
+  unsigned numIneqs = getNumInequalities();
+  for (unsigned r = 0; r < numIneqs; r++) {
+    if (!simplex.isMarkedRedundant(r))
+      copyInequality(r, pos++);
   }
   inequalities.resize(numReservedCols * pos);
+
+  // Scan to get rid of all inequalities marked redundant, in-place.
+  auto copyEquality = [&](unsigned src, unsigned dest) {
+    if (src == dest)
+      return;
+    for (unsigned c = 0, e = getNumCols(); c < e; c++) {
+      atEq(dest, c) = atEq(src, c);
+    }
+  };
+  pos = 0;
+  for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {
+    if (!simplex.isMarkedRedundant(numIneqs + 2*r) ||
+        !simplex.isMarkedRedundant(numIneqs + 2*r + 1))
+      copyEquality(r, pos++);
+  }
+  equalities.resize(numReservedCols * pos);
 }
 
 std::pair<AffineMap, AffineMap> FlatAffineConstraints::getLowerAndUpperBound(
@@ -1605,7 +1590,7 @@ void FlatAffineConstraints::getSliceBounds(unsigned offset, unsigned num,
           tmpClone.emplace(FlatAffineConstraints(*this));
           // Removing redundant inequalities is necessary so that we don't get
           // redundant loop bounds.
-          tmpClone->removeRedundantInequalities();
+          tmpClone->removeRedundantConstraints();
         }
         std::tie(lbMap, ubMap) = tmpClone->getLowerAndUpperBound(
             pos, offset, num, getNumDimIds(), /*localExprs=*/{}, context);

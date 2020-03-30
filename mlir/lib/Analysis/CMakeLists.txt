@@ -51,6 +51,7 @@ target_link_libraries(MLIRLoopAnalysis
   MLIRCallInterfaces
   MLIRControlFlowInterfaces
   MLIRInferTypeOpInterface
-  MLIRLoopOps)
+  MLIRLoopOps
+  MLIRPresburger)
 
 add_subdirectory(Presburger)
