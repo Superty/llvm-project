@@ -30,12 +30,12 @@ Simplex::Simplex(unsigned nVar)
   }
 }
 
-Simplex::Simplex(FlatAffineConstraints constraints)
+Simplex::Simplex(const FlatAffineConstraints &constraints)
     : Simplex(constraints.getNumIds()) {
   for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
-    addInequality(0, constraints.getInequality(i));
+    addInequality(constraints.getInequality(i));
   for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
-    addEquality(0, constraints.getEquality(i));
+    addEquality(constraints.getEquality(i));
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
@@ -90,8 +90,8 @@ Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
 // scaled by the coefficient for the variable, accounting for the two rows
 // potentially having different denominators. The new denominator is the
 // lcm of the two.
-unsigned Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == var.size() && "Incorrect number of coefficients!");
+unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
+  assert(coeffs.size() == 1 + var.size() && "Incorrect number of coefficients!");
 
   if (nRow >= tableau.getNumRows())
     tableau.resize(tableau.getNumRows() + 1, tableau.getNumColumns());
@@ -102,7 +102,7 @@ unsigned Simplex::addRow(int64_t constTerm, ArrayRef<int64_t> coeffs) {
   con.emplace_back(true, false, nRow - 1);
 
   tableau(nRow - 1, 0) = 1;
-  tableau(nRow - 1, 1) = constTerm;
+  tableau(nRow - 1, 1) = coeffs.back();
   for (unsigned col = 2; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
@@ -433,15 +433,15 @@ bool Simplex::isMarkedRedundant(int conIndex) const {
   return con[conIndex].redundant;
 }
 
-// Add an inequality to the tableau. The inequality is represented as
-// constTerm + sum (coeffs[i].second * var(coeffs[i].first]) >= 0.
-// Returns the index of the newly added constraint.
+// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+// is the curent number of variables, then the corresponding inequality is
+// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
 //
 // We add the inequality and mark it as restricted. We then try to make its
 // sample value non-negative. If this is not possible, the tableau has become
 // empty and we mark it as such.
-void Simplex::addInequality(int64_t constTerm, ArrayRef<int64_t> coeffs) {
-  unsigned conIndex = addRow(constTerm, coeffs);
+void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
+  unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
   bool success = restoreRow(u);
@@ -449,17 +449,18 @@ void Simplex::addInequality(int64_t constTerm, ArrayRef<int64_t> coeffs) {
     markEmpty();
 }
 
-// Add an equality to the tableau. The equality is represented as
-// constTerm + sum (coeffs[i].second * var(coeffs[i].first]) = 0.
+// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+// is the curent number of variables, then the corresponding inequality is
+// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
 //
 // We simply add two opposing inequalities, which force the expression to
 // be zero.
-void Simplex::addEquality(int64_t constTerm, ArrayRef<int64_t> coeffs) {
-  addInequality(constTerm, coeffs);
+void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
+  addInequality(coeffs);
   SmallVector<int64_t, 64> negatedCoeffs;
   for (auto coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
-  addInequality(-constTerm, negatedCoeffs);
+  addInequality(negatedCoeffs);
 }
 
 // Mark the row as being redundant.

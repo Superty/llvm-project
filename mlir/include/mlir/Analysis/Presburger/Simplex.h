@@ -48,7 +48,7 @@ public:
 
   Simplex() = delete;
   Simplex(unsigned nVar);
-  Simplex(FlatAffineConstraints constraints);
+  Simplex(const FlatAffineConstraints &constraints);
   ~Simplex() = default;
   unsigned getNumRows() const;
   unsigned getNumColumns() const;
@@ -65,9 +65,10 @@ public:
   /// Check whether the constraint has been marked redundant.
   bool isMarkedRedundant(int conIndex) const;
 
-  /// Add an inequality to the tableau. The inequality is represented as
-  /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) >= 0.
-  void addInequality(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+  /// is the curent number of variables, then the corresponding inequality is
+  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
+  void addInequality(ArrayRef<int64_t> coeffs);
 
   /// \returns the number of variables in the tableau.
   unsigned numberVariables() const;
@@ -75,9 +76,10 @@ public:
   /// \returns the number of constraints in the tableau.
   unsigned numberConstraints() const;
 
-  /// Add an equality to the tableau. The equality is represented as
-  /// constTerm + sum (coeffs[i].first * var(coeffs[i].second]) == 0.
-  void addEquality(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+  /// is the curent number of variables, then the corresponding inequality is
+  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
+  void addEquality(ArrayRef<int64_t> coeffs);
 
   /// Mark the tableau as being empty.
   void markEmpty();
@@ -140,7 +142,7 @@ private:
   Unknown &unknownFromRow(unsigned row);
 
   /// Add a new row to the tableau and the associated data structures.
-  unsigned addRow(int64_t constTerm, ArrayRef<int64_t> coeffs);
+  unsigned addRow(ArrayRef<int64_t> coeffs);
 
   /// Check if there is obviously no lower bound on \p unknown.
   ///
