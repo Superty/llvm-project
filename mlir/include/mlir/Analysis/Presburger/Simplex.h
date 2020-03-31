@@ -47,9 +47,8 @@ public:
   enum class Direction { UP, DOWN };
 
   Simplex() = delete;
-  Simplex(unsigned nVar);
-  Simplex(const FlatAffineConstraints &constraints);
-  ~Simplex() = default;
+  explicit Simplex(unsigned nVar);
+  explicit Simplex(const FlatAffineConstraints &constraints);
   unsigned getNumRows() const;
   unsigned getNumColumns() const;
 
@@ -112,10 +111,10 @@ private:
   findPivot(int row, Direction direction) const;
 
   /// Swap the row with the column in the tableau's data structures but not the
-  // tableau itself. This is used by pivot.
+  /// tableau itself. This is used by pivot.
   void swapRowWithCol(unsigned row, unsigned col);
 
-  // Pivot the row with the column.
+  /// Pivot the row with the column.
   void pivot(unsigned row, unsigned col);
   void pivot(const std::pair<unsigned, unsigned> &p);
 

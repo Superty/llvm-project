@@ -14,7 +14,6 @@
 #ifndef MLIR_ANALYSIS_MATRIX_H
 #define MLIR_ANALYSIS_MATRIX_H
 
-#include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include <cassert>
@@ -65,7 +64,7 @@ private:
 
 template <typename INT>
 Matrix<INT>::Matrix(unsigned rows, unsigned columns)
-    : nColumns{columns}, data(rows, std::vector<INT>(columns)) {}
+    : nColumns(columns), data(rows, std::vector<INT>(columns)) {}
 
 template <typename INT>
 INT &Matrix<INT>::operator()(unsigned row, unsigned column) {

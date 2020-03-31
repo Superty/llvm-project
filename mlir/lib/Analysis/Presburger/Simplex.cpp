@@ -9,7 +9,6 @@
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
-#include "llvm/Support/MathExtras.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -225,7 +224,7 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // pivot row     a             b       ->   pivot row     1/a         -b/a
 // other row     c             d            other row     c/a        d - bc/a
 //
-// Taking into the common denominators p and q:
+// Taking into account the common denominators p and q:
 //
 //            pivot col    other col                    pivot col   other col
 // pivot row     a/p          b/p     ->   pivot row      p/a         -b/a
