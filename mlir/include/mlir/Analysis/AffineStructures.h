@@ -519,8 +519,11 @@ public:
   /// constraints by their GCD and performs GCD tightening on inequalities.
   void removeTrivialRedundancy();
 
-  /// A more expensive check to detect redundant inequalities thatn
-  /// removeTrivialRedundancy.
+  /// A more expensive check to detect redundant inequalities than
+  /// removeTrivialRedundancy. Uses Fourier-Motzkin.
+  void removeRedundantInequalities();
+
+  /// A more expensive check to detect redundant constraints. Uses Simplex.
   void removeRedundantConstraints();
 
   // Removes all equalities and inequalities.
