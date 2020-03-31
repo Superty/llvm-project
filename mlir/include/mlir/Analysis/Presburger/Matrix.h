@@ -27,8 +27,7 @@ namespace mlir {
 /// This is a simple class to represent a resizable matrix.
 ///
 /// The data is stored in the form of a vector of vectors.
-template <typename INT>
-class Matrix {
+template <typename INT> class Matrix {
 public:
   Matrix() = delete;
 
@@ -82,13 +81,11 @@ INT Matrix<INT>::operator()(unsigned row, unsigned column) const {
   return data[row][column];
 }
 
-template <typename INT>
-unsigned Matrix<INT>::getNumRows() const {
+template <typename INT> unsigned Matrix<INT>::getNumRows() const {
   return data.size();
 }
 
-template <typename INT>
-unsigned Matrix<INT>::getNumColumns() const {
+template <typename INT> unsigned Matrix<INT>::getNumColumns() const {
   return nColumns;
 }
 
@@ -115,8 +112,7 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
     std::swap(row[column], row[otherColumn]);
 }
 
-template <typename INT>
-void Matrix<INT>::dump() const {
+template <typename INT> void Matrix<INT>::dump() const {
   llvm::errs() << "Dumping matrix, rows = " << getNumRows()
                << ", columns: " << getNumColumns() << '\n';
   llvm::errs() << "r/c  ";
