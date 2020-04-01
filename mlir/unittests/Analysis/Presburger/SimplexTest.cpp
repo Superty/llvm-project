@@ -28,6 +28,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
   tab.addInequality({0}); // 0 >= 0
 
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
 }
 
@@ -35,6 +36,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_eq) {
   Simplex tab(0);
   tab.addEquality({0}); // 0 == 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
 }
 
@@ -43,6 +45,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_eq) {
   tab.addEquality({1, 0}); // x == 0
 
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
@@ -50,6 +53,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_eq) {
   Simplex tab(1);
   tab.addEquality({0, 0}); // 0x == 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
 }
 
@@ -57,6 +61,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_eq) {
   Simplex tab(1);
   tab.addEquality({-1, 0}); // -x == 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
@@ -64,6 +69,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_ge) {
   Simplex tab(1);
   tab.addInequality({1, 0}); // x >= 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
@@ -71,6 +77,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_ge) {
   Simplex tab(1);
   tab.addInequality({0, 0}); // 0x >= 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
 }
 
@@ -78,6 +85,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
   Simplex tab(1);
   tab.addInequality({-1, 0}); // x <= 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
@@ -89,6 +97,7 @@ TEST(SimplexTest, isMarkedRedundant) {
   tab.addInequality({1, -16, 0, 0});  //      (u - 16v) >= 0
 
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
 
   for (unsigned i = 0; i < tab.numberConstraints(); ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << "\n";
@@ -130,6 +139,7 @@ TEST(SimplexTest, isMarkedRedundant_a) {
   tab.addInequality({0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, -8, -1});
 
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   for (unsigned i = 0; i < tab.numberConstraints(); ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << '\n';
 }
@@ -141,14 +151,14 @@ TEST(SimplexTest, isMarkedRedundant1) {
   s.addInequality({0, -1, 0, 1}); // [0]: y <= 1
   s.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7
   s.addInequality({1, 0, -8, 0}); // [2]: 8x <= x
-  s.addInequality({0, 1, 0, 0}); //  [3]: y >= 0
+  s.addInequality({0, 1, 0, 0});  // [3]: y >= 0
   s.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x
   s.addInequality({1, 0, -8, 0}); // [5]: 8z <= x
   s.addInequality({0, 1, 0, 0});  // [6]: y >= 0
   s.addInequality({0, -1, 0, 1}); // [7]: y <= 1
 
   s.detectRedundant();
-  ASSERT_FALSE(tab.isEmpty());
+  ASSERT_FALSE(s.isEmpty());
 
   EXPECT_EQ(s.isMarkedRedundant(0), false);
   EXPECT_EQ(s.isMarkedRedundant(1), false);
@@ -194,6 +204,7 @@ TEST(SimplexTest, addInequalityAlreadyRedundant) {
   tab.addInequality({1, -1}); // x >= 1
   tab.addInequality({1, 0});  // x >= 0
   tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
   EXPECT_TRUE(tab.isMarkedRedundant(1));
 }
