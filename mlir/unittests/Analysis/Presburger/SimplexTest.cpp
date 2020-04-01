@@ -14,13 +14,13 @@
 namespace mlir {
 
 TEST(SimplexTest, Empty) {
-  Simplex s(2);
+  Simplex tab(2);
   // (u - v) >= 0
-  s.addInequality({1, -1, 0});
+  tab.addInequality({1, -1, 0});
   // (u - v) <= -1
-  EXPECT_FALSE(s.isEmpty());
-  s.addInequality({-1, 1, -1});
-  EXPECT_TRUE(s.isEmpty());
+  EXPECT_FALSE(tab.isEmpty());
+  tab.addInequality({-1, 1, -1});
+  EXPECT_TRUE(tab.isEmpty());
 }
 
 TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
@@ -145,29 +145,29 @@ TEST(SimplexTest, isMarkedRedundant_a) {
 }
 
 TEST(SimplexTest, isMarkedRedundant1) {
-  Simplex s(3);
+  Simplex tab(3);
 
   // [4] to [7] are repeats of [0] to [3].
-  s.addInequality({0, -1, 0, 1}); // [0]: y <= 1
-  s.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7
-  s.addInequality({1, 0, -8, 0}); // [2]: 8x <= x
-  s.addInequality({0, 1, 0, 0});  // [3]: y >= 0
-  s.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x
-  s.addInequality({1, 0, -8, 0}); // [5]: 8z <= x
-  s.addInequality({0, 1, 0, 0});  // [6]: y >= 0
-  s.addInequality({0, -1, 0, 1}); // [7]: y <= 1
+  tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
+  tab.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7
+  tab.addInequality({1, 0, -8, 0}); // [2]: 8x <= x
+  tab.addInequality({0, 1, 0, 0});  // [3]: y >= 0
+  tab.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x
+  tab.addInequality({1, 0, -8, 0}); // [5]: 8z <= x
+  tab.addInequality({0, 1, 0, 0});  // [6]: y >= 0
+  tab.addInequality({0, -1, 0, 1}); // [7]: y <= 1
 
-  s.detectRedundant();
-  ASSERT_FALSE(s.isEmpty());
+  tab.detectRedundant();
+  ASSERT_FALSE(tab.isEmpty());
 
-  EXPECT_EQ(s.isMarkedRedundant(0), false);
-  EXPECT_EQ(s.isMarkedRedundant(1), false);
-  EXPECT_EQ(s.isMarkedRedundant(2), false);
-  EXPECT_EQ(s.isMarkedRedundant(3), false);
-  EXPECT_EQ(s.isMarkedRedundant(4), true);
-  EXPECT_EQ(s.isMarkedRedundant(5), true);
-  EXPECT_EQ(s.isMarkedRedundant(6), true);
-  EXPECT_EQ(s.isMarkedRedundant(7), true);
+  EXPECT_EQ(tab.isMarkedRedundant(0), false);
+  EXPECT_EQ(tab.isMarkedRedundant(1), false);
+  EXPECT_EQ(tab.isMarkedRedundant(2), false);
+  EXPECT_EQ(tab.isMarkedRedundant(3), false);
+  EXPECT_EQ(tab.isMarkedRedundant(4), true);
+  EXPECT_EQ(tab.isMarkedRedundant(5), true);
+  EXPECT_EQ(tab.isMarkedRedundant(6), true);
+  EXPECT_EQ(tab.isMarkedRedundant(7), true);
 }
 
 TEST(SimplexTest, isMarkedRedundant2) {
