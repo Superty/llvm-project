@@ -29,13 +29,13 @@ namespace mlir {
 /// adding the non-redundant constraints.
 ///
 /// An unknown is addressed by its index. If the index i is non-negative, then
-/// ith variable is the Unknown being addressed. If the index is negative,
+/// the ith variable is the Unknown being addressed. If the index is negative,
 /// then a constraint is being addressed, having index ~i.
 ///
 /// The unknown corresponding to each row r (resp. column c) has index rowVar[r]
 /// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to
 /// rows which have been marked redundant. If at some point it is detected that
-/// that the set of constraints are mutually contradictory and have no solution,
+/// the set of constraints are mutually contradictory and have no solution,
 /// then empty will be set to true.
 class Simplex {
 public:
