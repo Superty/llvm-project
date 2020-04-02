@@ -13,7 +13,7 @@
 
 namespace mlir {
 
-TEST(SimplexTest, Empty) {
+TEST(SimplexTest, empty) {
   Simplex tab(2);
   // (u - v) >= 0
   tab.addInequality({1, -1, 0});
@@ -89,7 +89,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
-TEST(SimplexTest, isMarkedRedundant) {
+TEST(SimplexTest, isMarkedRedundant_no_redundant) {
   Simplex tab(3);
 
   tab.addEquality({-1, 0, 1, 0});     // u = w
@@ -103,7 +103,7 @@ TEST(SimplexTest, isMarkedRedundant) {
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << "\n";
 }
 
-TEST(SimplexTest, isMarkedRedundant_a) {
+TEST(SimplexTest, isMarkedRedundant_regression_test) {
   Simplex tab(17);
 
   tab.addEquality({0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0});
@@ -144,7 +144,7 @@ TEST(SimplexTest, isMarkedRedundant_a) {
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << '\n';
 }
 
-TEST(SimplexTest, isMarkedRedundant1) {
+TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
   Simplex tab(3);
 
   // [4] to [7] are repeats of [0] to [3].
@@ -170,7 +170,7 @@ TEST(SimplexTest, isMarkedRedundant1) {
   EXPECT_EQ(tab.isMarkedRedundant(7), true);
 }
 
-TEST(SimplexTest, isMarkedRedundant2) {
+TEST(SimplexTest, isMarkedRedundant) {
   Simplex tab(3);
   tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
   tab.addInequality({1, 0, 0, -1}); // [1]: x >= 1
@@ -199,7 +199,7 @@ TEST(SimplexTest, isMarkedRedundant2) {
   EXPECT_FALSE(tab.isMarkedRedundant(7));
 }
 
-TEST(SimplexTest, addInequalityAlreadyRedundant) {
+TEST(SimplexTest, addInequality_already_redundant) {
   Simplex tab(1);
   tab.addInequality({1, -1}); // x >= 1
   tab.addInequality({1, 0});  // x >= 0
@@ -209,7 +209,7 @@ TEST(SimplexTest, addInequalityAlreadyRedundant) {
   EXPECT_TRUE(tab.isMarkedRedundant(1));
 }
 
-TEST(SimplexTest, addEqualitySeparate) {
+TEST(SimplexTest, addEquality_separate) {
   Simplex tab(1);
   tab.addInequality({1, -1}); // x >= 1
   ASSERT_FALSE(tab.isEmpty());
