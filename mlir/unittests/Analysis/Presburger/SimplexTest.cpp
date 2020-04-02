@@ -150,7 +150,7 @@ TEST(SimplexTest, isMarkedRedundant1) {
   // [4] to [7] are repeats of [0] to [3].
   tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
   tab.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7
-  tab.addInequality({1, 0, -8, 0}); // [2]: 8x <= x
+  tab.addInequality({1, 0, -8, 0}); // [2]: 8z <= x
   tab.addInequality({0, 1, 0, 0});  // [3]: y >= 0
   tab.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x
   tab.addInequality({1, 0, -8, 0}); // [5]: 8z <= x
