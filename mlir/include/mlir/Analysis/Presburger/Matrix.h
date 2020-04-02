@@ -96,14 +96,14 @@ void Matrix<INT>::resize(unsigned newNRows, unsigned newNColumns) {
 
 template <typename INT>
 void Matrix<INT>::swapRows(unsigned row, unsigned otherRow) {
-  assert(row < getNumRows() && otherRow < getNumRows() &&
+  assert((row < getNumRows() && otherRow < getNumRows()) &&
          "Given row out of bounds");
   swap(data[row], data[otherRow]);
 }
 
 template <typename INT>
 void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
-  assert(column < getNumColumns() && otherColumn < getNumColumns() &&
+  assert((column < getNumColumns() && otherColumn < getNumColumns()) &&
          "Given column out of bounds");
   for (auto &row : data)
     std::swap(row[column], row[otherColumn]);

@@ -234,7 +234,7 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // common denominator and negating the pivot row except for the pivot column
 // element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotRow >= nRedundant && pivotCol >= 2 &&
+  assert((pivotRow >= nRedundant && pivotCol >= 2) &&
          "Refusing to pivot redundant row or invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
