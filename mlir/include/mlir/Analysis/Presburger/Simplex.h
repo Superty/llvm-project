@@ -59,8 +59,6 @@ public:
   /// Check for redundant constraints and mark them as redundant.
   void detectRedundant();
 
-  friend std::ostream &operator<<(std::ostream &out, const Simplex &s);
-
   /// Check whether the constraint has been marked redundant.
   bool isMarkedRedundant(int conIndex) const;
 
