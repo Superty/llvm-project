@@ -17,8 +17,6 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include <cassert>
-#include <iomanip>
-#include <iostream>
 #include <vector>
 
 namespace mlir {

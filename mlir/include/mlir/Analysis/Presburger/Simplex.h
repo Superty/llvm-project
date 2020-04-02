@@ -21,11 +21,6 @@
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/SmallVector.h>
 
-#include <iostream>
-#include <limits>
-#include <stack>
-#include <vector>
-
 namespace mlir {
 
 /// This class implements the Simplex algorithm. It supports adding affine
