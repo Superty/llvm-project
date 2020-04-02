@@ -1333,7 +1333,6 @@ static bool detectAsFloorDiv(const FlatAffineConstraints &cst, unsigned pos,
   return false;
 }
 
-
 // Fills an inequality row with the value 'val'.
 static inline void fillInequality(FlatAffineConstraints *cst, unsigned r,
                                   int64_t val) {
