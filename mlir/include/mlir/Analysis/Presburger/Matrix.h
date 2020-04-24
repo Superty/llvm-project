@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_ANALYSIS_MATRIX_H
-#define MLIR_ANALYSIS_MATRIX_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_MATRIX_H
+#define MLIR_ANALYSIS_PRESBURGER_MATRIX_H
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -127,4 +127,4 @@ template <typename INT> void Matrix<INT>::dump() const {
   }
 }
 } // namespace mlir
-#endif // MLIR_ANALYSIS_MATRIX_H
+#endif // MLIR_ANALYSIS_PRESBURGER_MATRIX_H
