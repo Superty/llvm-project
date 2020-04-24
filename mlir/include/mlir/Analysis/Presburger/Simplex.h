@@ -25,8 +25,8 @@ namespace mlir {
 
 /// This class implements the Simplex algorithm. It supports adding affine
 /// equalities and inequalities, and can find a subset of these that are
-/// redundant, i.e. these don't constraint the affine set further after
-/// adding the non-redundant constraints.
+/// redundant, i.e. a subset of constraints that doesn't constrain the affine
+/// set further after adding the non-redundant constraints.
 ///
 /// An unknown is addressed by its index. If the index i is non-negative, then
 /// the ith variable is the Unknown being addressed. If the index is negative,
