@@ -1398,9 +1398,8 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   auto copyInequality = [&](unsigned src, unsigned dest) {
     if (src == dest)
       return;
-    for (unsigned c = 0, e = getNumCols(); c < e; c++) {
+    for (unsigned c = 0, e = getNumCols(); c < e; c++)
       atIneq(dest, c) = atIneq(src, c);
-    }
   };
   unsigned pos = 0;
   unsigned numIneqs = getNumInequalities();
@@ -1414,9 +1413,8 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   auto copyEquality = [&](unsigned src, unsigned dest) {
     if (src == dest)
       return;
-    for (unsigned c = 0, e = getNumCols(); c < e; c++) {
+    for (unsigned c = 0, e = getNumCols(); c < e; c++)
       atEq(dest, c) = atEq(src, c);
-    }
   };
   pos = 0;
   for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {

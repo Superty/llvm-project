@@ -113,16 +113,14 @@ template <typename INT> void Matrix<INT>::dump() const {
   llvm::errs() << "Dumping matrix, rows = " << getNumRows()
                << ", columns: " << getNumColumns() << '\n';
   llvm::errs() << "r/c  ";
-  for (unsigned column = 0; column < getNumColumns(); ++column) {
+  for (unsigned column = 0; column < getNumColumns(); ++column)
     llvm::errs() << "| " << column << " ";
-  }
   llvm::errs() << '\n';
   llvm::errs() << std::string(5 + getNumColumns() * 5, '-') << '\n';
   for (unsigned row = 0; row < getNumRows(); ++row) {
     llvm::errs() << row << " | ";
-    for (unsigned column = 0; column < getNumColumns(); ++column) {
+    for (unsigned column = 0; column < getNumColumns(); ++column)
       llvm::errs() << data[row][column] << " ";
-    }
     llvm::errs() << '\n';
   }
 }
