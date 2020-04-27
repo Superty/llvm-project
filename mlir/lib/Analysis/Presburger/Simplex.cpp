@@ -291,9 +291,8 @@ bool Simplex::restoreRow(Unknown &u) {
 }
 
 // Find a row that can be used to pivot the column in the specified direction.
-// The column unknown is assumed to be bounded in the specified direction.
-// This returns an empty optional if and only if the column is unbounded below
-// (ignoring skipRow, if skipRow is set).
+// This returns an empty optional if and only if the column is unbounded in the
+// specified direction (ignoring skipRow, if skipRow is set).
 //
 // If skipRow is set, this row is not considered, and (if it is restricted) its
 // restriction may be violated by the returned pivot. Usually, skipRow is set
