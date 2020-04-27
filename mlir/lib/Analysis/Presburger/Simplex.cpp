@@ -384,28 +384,28 @@ bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
 // The constraint is redundant if the minimal value of the unknown (while
 // respecting the other non-redundant constraints) is non-negative.
 //
-// If the unknown is in column position, we try to pivot it down to a row.
+// If the unknown is in column position, we try to pivot it down to a row. If
+// no pivot is found, this means that the constraint is unbounded below, i.e.
+// it is not redundant, so we return false.
 //
-// Otherwise, we keep trying to pivot down until the sample value becomes less
-// than origin. If the next pivot would move the unknown to column position,
-// then it is unbounded below and we can return false. If no more pivots are
-// possible and the sample value is still non-negative, return true.
+// Otherwise, the constraint is in row position. We keep trying to pivot
+// downwards until the sample value becomes negative. If the next pivot would
+// move the unknown to column position, then it is unbounded below and we can
+// return false. If no more pivots are possible and the sample value is still
+// non-negative, return true.
 //
-// Otherwise, if the unknown has a negative sample value, then it is not
+// Otherwise, if the unknown has a negative sample value, then it is
 // not redundant, so we restore the row to a non-negative value and return.
 bool Simplex::constraintIsRedundant(unsigned conIndex) {
   if (con[conIndex].redundant)
     return true;
 
-  if (minIsObviouslyUnbounded(con[conIndex]))
-    return false;
-
   if (!con[conIndex].ownsRow) {
     unsigned col = con[conIndex].pos;
-    if (auto maybeRow = findPivotRow({}, Direction::DOWN, col))
-      pivot(*maybeRow, col);
-    else
-      return true;
+    auto maybeRow = findPivotRow({}, Direction::DOWN, col);
+    if (!maybeRow)
+      return false;
+    pivot(*maybeRow, col);
   }
 
   while (tableau(con[conIndex].pos, 1) >= 0) {
