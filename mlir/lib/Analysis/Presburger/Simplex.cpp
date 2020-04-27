@@ -357,26 +357,6 @@ void Simplex::swapRows(unsigned i, unsigned j) {
 
 void Simplex::markEmpty() { empty = true; }
 
-// The minimum of an unknown is obviously unbounded if it is a column variable
-// and no constraint limits its value from below.
-//
-// The minimum of a row variable is not obvious because it depends on the
-// boundedness of all referenced column variables.
-//
-// A column variable is bounded from below if there a exists a constraint for
-// which the corresponding column coefficient is strictly positive and the row
-// variable is non-negative (restricted).
-bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
-  if (unknown.ownsRow)
-    return false;
-
-  for (unsigned i = nRedundant; i < nRow; ++i) {
-    if (unknownFromRow(i).restricted && tableau(i, unknown.pos) > 0)
-      return false;
-  }
-  return true;
-}
-
 // Find out if the constraint is redundant by computing its minimum value in
 // the tableau. If this returns true, the constraint is left in row position
 // upon return.

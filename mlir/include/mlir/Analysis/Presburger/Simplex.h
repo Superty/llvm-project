@@ -136,12 +136,6 @@ private:
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);
 
-  /// Check if there is obviously no lower bound on \p unknown.
-  ///
-  /// \returns True if \p unknown is obviously unbounded from below, False
-  /// otherwise.
-  bool minIsObviouslyUnbounded(Unknown &unknown) const;
-
   /// Normalize the given row by removing common factors between the numerator
   /// and the denominator.
   void normalizeRow(unsigned row);
