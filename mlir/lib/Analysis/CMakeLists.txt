@@ -13,7 +13,6 @@ add_mlir_library(MLIRAnalysis
   CallGraph.cpp
   Liveness.cpp
   SliceAnalysis.cpp
-  Simplex.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Analysis
@@ -29,6 +28,7 @@ target_link_libraries(MLIRAnalysis
   MLIRControlFlowInterfaces
   MLIRInferTypeOpInterface
   MLIRLoopOps
+  MLIRPresburger
   )
 
 add_mlir_library(MLIRLoopAnalysis
