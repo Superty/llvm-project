@@ -910,6 +910,16 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
   }
 }
 
+llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
+  if (empty)
+    return {};
+
+  unsigned nDims = var.size();
+  Matrix<int64_t> basis = Matrix<int64_t>::getIdentityMatrix(nDims);
+  tableau.resize(nDims + 1, tableau.getNumColumns());
+  return findIntegerSampleRecursively(basis, 0);
+}
+
 // Search for an integer sample point using a branch and bound algorithm.
 //
 // If all variables have been assigned values already, simply return the current

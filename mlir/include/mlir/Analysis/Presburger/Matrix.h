@@ -34,6 +34,8 @@ public:
 
   Matrix(const Matrix &);
 
+  static Matrix getIdentityMatrix(unsigned dimension);
+
   /// Access the element at the specified row and column.
   INT &operator()(unsigned row, unsigned column);
   INT operator()(unsigned row, unsigned column) const;
@@ -67,6 +69,15 @@ private:
 template <typename INT>
 Matrix<INT>::Matrix(unsigned rows, unsigned columns)
     : nColumns(columns), data(rows, std::vector<INT>(columns)) {}
+
+template <typename INT>
+Matrix<INT>
+Matrix<INT>::getIdentityMatrix(unsigned dimension) {
+  Matrix<INT> matrix(dimension, dimension);
+  for (size_t i = 0; i < dimension; i++)
+    matrix(i, i) = 1;
+  return std::move(matrix);
+}
 
 template <typename INT>
 INT &Matrix<INT>::operator()(unsigned row, unsigned column) {
