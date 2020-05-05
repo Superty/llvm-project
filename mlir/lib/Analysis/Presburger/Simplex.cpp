@@ -595,6 +595,24 @@ llvm::Optional<Fraction<int64_t>> Simplex::computeOptimum(
   rollback(snap);
   return optimum;
 }
+
+llvm::Optional<std::vector<int64_t>>
+Simplex::getSamplePointIfIntegral() const {
+  if (empty)
+    return {};
+
+  std::vector<int64_t> sample;
+  for (const Unknown &u : var) {
+    if (!u.ownsRow)
+      sample.push_back(0);
+    else {
+      if (tableau(u.pos, 1) % tableau(u.pos, 0) != 0)
+        return {};
+      sample.push_back(tableau(u.pos, 1) / tableau(u.pos, 0));
+    }
+  }
+  return sample;
+}
 void Simplex::dumpUnknown(const Unknown &u) const {
   llvm::errs() << (u.ownsRow ? "r" : "c");
   llvm::errs() << u.pos;

@@ -102,6 +102,9 @@ public:
   /// optimum exists, i.e. if the expression is unbounded in this direction.
   llvm::Optional<Fraction<int64_t>> computeOptimum(
     Direction direction, ArrayRef<int64_t> coeffs);
+
+  llvm::Optional<std::vector<int64_t>> getSamplePointIfIntegral() const;
+
   // Dump the tableau's internal state.
   void dump() const;
 
