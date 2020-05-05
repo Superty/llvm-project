@@ -146,12 +146,12 @@ void Simplex::normalizeRow(unsigned row) {
     tableau(row, col) /= gcd;
 }
 
-bool Simplex::diffMatchesDirection(int64_t diff, Direction direction) const {
-  assert(diff != 0 && "diff is 0");
+bool Simplex::signMatchesDirection(int64_t elem, Direction direction) const {
+  assert(elem != 0 && "elem should not be 0");
   if (direction == Direction::UP)
-    return diff > 0;
+    return elem > 0;
   else
-    return diff < 0;
+    return elem < 0;
 }
 
 Simplex::Direction Simplex::flippedDirection(Direction direction) const {
@@ -179,7 +179,7 @@ Simplex::findPivot(int row, Direction direction) const {
       continue;
 
     if (unknownFromColumn(j).restricted &&
-        !diffMatchesDirection(elem, direction))
+        !signMatchesDirection(elem, direction))
       continue;
     if (!col || colVar[j] < colVar[*col])
       col = j;
@@ -324,7 +324,7 @@ llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
       continue;
     if (!unknownFromRow(row).restricted)
       continue;
-    if (diffMatchesDirection(elem, direction))
+    if (signMatchesDirection(elem, direction))
       continue;
     auto constTerm = tableau(row, 1);
 
@@ -337,7 +337,7 @@ llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
 
     auto diff = retConst * elem - constTerm * retElem;
     if ((diff == 0 && rowVar[row] < rowVar[*retRow]) ||
-        (diff != 0 && !diffMatchesDirection(diff, direction))) {
+        (diff != 0 && !signMatchesDirection(diff, direction))) {
       retRow = row;
       retElem = elem;
       retConst = constTerm;

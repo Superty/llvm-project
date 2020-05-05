@@ -169,10 +169,10 @@ private:
                                         Direction direction,
                                         unsigned col) const;
 
-  /// \returns True is diff is positive and direction is Direction::UP, or if
-  /// diff is negative and direction is Direction::DOWN. Returns False
+  /// \returns True \p value is positive and direction is Direction::UP, or if
+  /// \p value is negative and direction is Direction::DOWN. Returns False
   /// otherwise.
-  bool diffMatchesDirection(int64_t diff, Direction direction) const;
+  bool signMatchesDirection(int64_t value, Direction direction) const;
 
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
