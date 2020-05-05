@@ -126,6 +126,8 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   }
 
   normalizeRow(nRow - 1);
+  // Push to undo stack along with the index of the new constraint.
+  undoLog.emplace_back(UndoOp::DEALLOCATE, ~(con.size() - 1));
   return con.size() - 1;
 }
 
@@ -358,7 +360,11 @@ void Simplex::swapRows(unsigned i, unsigned j) {
   unknownFromRow(j).pos = j;
 }
 
-void Simplex::markEmpty() { empty = true; }
+// Mark this tableau empty and push an entry to the undo stack.
+void Simplex::markEmpty() {
+  undoLog.emplace_back(UndoOp::UNMARK_EMPTY, llvm::Optional<int>());
+  empty = true;
+}
 
 // Find out if the constraint is redundant by computing its minimum value in
 // the tableau. If this returns true, the constraint is left in row position
@@ -445,14 +451,16 @@ void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(negatedCoeffs);
 }
 
-// Mark the row as being redundant.
+// Mark the row as being redundant and push an entry to the undo stack.
 //
 // Since all the rows are stored contiguously as the first nRedundant rows,
-// we move our row to the row at position nRedundant if it is not already
+// we move our row to the row at position nRedundant.
 bool Simplex::markRedundant(unsigned row) {
   assert(!unknownFromRow(row).redundant && "Row is already marked redundant");
   assert(row >= nRedundant &&
          "Row is not marked redundant but row < nRedundant");
+
+  undoLog.emplace_back(UndoOp::UNMARK_EMPTY, rowVar[row]);
 
   Unknown &unknown = unknownFromRow(row);
   unknown.redundant = true;
@@ -486,6 +494,85 @@ void Simplex::detectRedundant() {
 unsigned Simplex::numberVariables() const { return var.size(); }
 unsigned Simplex::numberConstraints() const { return con.size(); }
 
+// Return a snapshot of the curent state. This is just the current size of the
+// undo log.
+unsigned Simplex::getSnapshot() const {
+  return undoLog.size();
+}
+
+void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
+  if (op == UndoOp::DEALLOCATE) {
+    assert(index.hasValue() && "DEALLOCATE undo entry must be accompanied by an index");
+
+    assert(index < 0 && "Unknown to be deallocated must be a constraint");
+    Unknown &unknown = unknownFromIndex(*index);
+
+    if (!unknown.ownsRow) {
+      unsigned column = unknown.pos;
+      llvm::Optional<unsigned> row;
+
+      // Try to find any pivot row for this column that preserves tableau
+      // consistency (except possibly the column itself, which is going to be
+      // deallocated anyway).
+      // 
+      // If no pivot row is found in either direction,
+      // then the column is unbounded in both directions and we are free to
+      // perform any pivot at all. To do this, we just need to find any row with
+      // a non-zero coefficient for the column.
+      if (auto maybeRow = findPivotRow({}, Direction::UP, column))
+        row = *maybeRow;
+      else if (auto maybeRow = findPivotRow({}, Direction::DOWN, column))
+        row = *maybeRow;
+      else {
+        // The loop doesn't find a pivot row only if the column has zero
+        // coefficients for every row. But the unknown is a constraint,
+        // so it was added initially as a row. Such a row could never have been
+        // pivoted to a column. So a pivot row will always be found.
+        for (unsigned i = nRedundant; i < nRow; ++i) {
+          if (tableau(i, column) != 0) {
+            row = i;
+            break;
+          }
+        }
+      }
+      assert(row.hasValue() && "No pivot row found!");
+      pivot(*row, column);
+    }
+
+    // Move this unknown to the last row and remove the last row from the tableau.
+    swapRows(unknown.pos, nRow - 1);
+    // It is not strictly necessary to resize tableau, but for now we maintain the invariant
+    // that the actual size of the tableau is (nRow, nCol).
+    tableau.resize(nRow - 1, nCol);
+    nRow--;
+    rowVar.pop_back();
+    con.pop_back();
+  } else if (op == UndoOp::UNMARK_EMPTY) {
+    empty = false;
+  } else if (op == UndoOp::UNMARK_REDUNDANT) {
+    assert(index.hasValue() && "UNMARK_REDUNDANT undo entry must be accompanied by an index");
+    assert(nRedundant != 0 && "No redundant constraints present.");
+
+    Unknown &unknown = unknownFromIndex(*index);
+    assert(unknown.ownsRow &&
+           "Constraint to be unmarked as redundant must be a row");
+    swapRows(unknown.pos, nRedundant - 1);
+    unknown.redundant = false;
+    nRedundant--;
+  }
+}
+
+// Rollback to the specified snapshot.
+//
+// We undo all the log entries until the log size when the snapshot was taken
+// is reached.
+void Simplex::rollback(unsigned snapshot) {
+  while (undoLog.size() > snapshot) {
+    auto entry = undoLog.back();
+    undoLog.pop_back();
+    undoOp(entry.first, entry.second);
+  }
+}
 void Simplex::dumpUnknown(const Unknown &u) const {
   llvm::errs() << (u.ownsRow ? "r" : "c");
   llvm::errs() << u.pos;

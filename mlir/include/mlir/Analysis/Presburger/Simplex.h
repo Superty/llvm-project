@@ -40,6 +40,11 @@ namespace mlir {
 class Simplex {
 public:
   enum class Direction { UP, DOWN };
+  enum class UndoOp {
+    DEALLOCATE,
+    UNMARK_EMPTY,
+    UNMARK_REDUNDANT,
+  };
 
   Simplex() = delete;
   explicit Simplex(unsigned nVar);
@@ -76,6 +81,11 @@ public:
   /// Mark the tableau as being empty.
   void markEmpty();
 
+  /// Get a snapshot of the current state. This is used for rolling back.
+  unsigned getSnapshot() const;
+
+  /// Rollback to a snapshot. This invalidates all later snapshots.
+  void rollback(unsigned snapshot);
   // Dump the tableau's internal state.
   void dump() const;
 
@@ -156,6 +166,8 @@ private:
   /// sample value, False otherwise.
   bool restoreRow(Unknown &u);
 
+  void undoOp(UndoOp op, llvm::Optional<int> index);
+
   /// Find a row that can be used to pivot the column in the specified
   /// direction. If \p skipRow is not null, then this row is excluded
   /// from consideration. The returned pivot will maintain all constraints
@@ -191,6 +203,9 @@ private:
 
   /// True if the tableau has been detected to be empty, False otherwise.
   bool empty;
+
+  /// Holds a log of operations, used for rolling back to a previoous state.
+  std::vector<std::pair<UndoOp, llvm::Optional<int>>> undoLog;
 
   /// These hold the indexes of the unknown at a given row or column position.
   std::vector<int> rowVar, colVar;
