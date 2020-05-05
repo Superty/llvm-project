@@ -692,6 +692,286 @@ Simplex::getSamplePointIfIntegral() const {
   }
   return sample;
 }
+
+// Given a simplex, construct a new simplex whose variables are identified with
+// a pair of points (x, y). Supports some operations needed for general basis
+// reduction.
+class GBRSimplex {
+public:
+  GBRSimplex(const Simplex &originalSimplex)
+      : simplex(
+            Simplex::makeProduct(originalSimplex, originalSimplex)),
+        simplexConstraintOffset(simplex.numberConstraints()) {}
+
+  // Add equality <dir, x - y> = 0
+  void addEqualityForDirection(const std::vector<int64_t> &dir) {
+    undoLog.push_back(simplex.getSnapshot());
+    simplex.addEquality(getCoeffsForDirection(dir));
+  }
+
+  // Compute max(<dir, x - y>) and save the dual variables for only the
+  // direction constraints to `dufal`.
+  Fraction<int64_t> computeWidthAndDuals(const std::vector<int64_t> &dir,
+                                    std::vector<int64_t> &dual,
+                                    int64_t &dualDenom) {
+    unsigned snap = simplex.getSnapshot();
+    unsigned conIndex = simplex.addRow(getCoeffsForDirection(dir));
+    unsigned row = simplex.con[conIndex].pos;
+    auto width =
+        simplex.computeRowOptimum(Simplex::Direction::UP, row);
+    assert(width && "Width should not be unbounded!");
+    dualDenom = simplex.tableau(row, 0);
+    dual.clear();
+    // The increment is i += 2 because we add equalities, one positive and one
+    // negative. We want only the positive ones.
+    for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2) {
+      if (simplex.con[i].ownsRow)
+        dual.push_back(0);
+      else {
+        // The dual variable is the negative of the row coefficient.
+        dual.push_back(-simplex.tableau(row, simplex.con[i].pos));
+      }
+    }
+    simplex.rollback(snap);
+    return *width;
+  }
+
+  void removeLastConstraint() {
+    assert(!undoLog.empty() && "Undo stack is empty!");
+    simplex.rollback(undoLog.back());
+    undoLog.pop_back();
+  }
+
+private:
+  // Returns coeffs for the row <dir, x - y>
+  std::vector<int64_t>
+  getCoeffsForDirection(ArrayRef<int64_t> dir) {
+    assert(2 * dir.size() == simplex.numberVariables() &&
+           "Direction vector has wrong dimensionality");
+    std::vector<int64_t> coeffs;
+    for (unsigned i = 0; i < dir.size(); i++)
+      coeffs.emplace_back(dir[i]);
+    for (unsigned i = 0; i < dir.size(); i++)
+      coeffs.emplace_back(-dir[i]);
+    coeffs.emplace_back(0); // constant term
+    return coeffs;
+  }
+
+  Simplex simplex;
+  unsigned simplexConstraintOffset;
+  std::vector<unsigned> undoLog;
+};
+
+// Let b_{level}, b_{level + 1}, ... b_n be the current basis.
+// Let F_i(v) = max <v, x - y> where x and y are points in the original polytope
+// and <b_j, x - y> = 0 is satisfied for all j < i. (here <u, v> denotes the
+// inner product)
+//
+// In every iteration, we first replace b_{i+1} with b_{i+1} + u*b_i, where u is
+// the integer such that F_i(b_{i+1} + u*b_i) minimized. Let alpha be the dual
+// variable associated with the constraint <b_i, x - y> = 0 when computing
+// F_{i+1}(b_{i+1}). alpha must be the minimizing value of u, if it were allowed
+// to be rational. Due to convexity, the minimizing integer value is either
+// floor(alpha) or ceil(alpha), so we just need to check which of these gives a
+// lower F_{i+1} value. If alpha turned out to be an integer, then u = alpha.
+//
+// Now if F_i(b_{i+1}) < eps * F_i(b_i), we swap b_i and (the new) b_{i + 1}
+// and decrement i (unless i = level, in which case we stay at the same i).
+// Otherwise, we increment i. We use eps = 0.75.
+//
+// In an iteration we need to compute:
+// 
+// Some of the required F and alpha values may already be known. We cache the
+// known values and reuse them if possible. In particular:
+//
+// When we set b_{i+1} to b_{i+1} + u*b_i, no F values are changed since we only
+// added a multiple of b_i to b_{i+1}. In particular F_{i+1}(b_{i+1})
+// = min F_i(b_{i+1} + alpha * b_i) so adding u*b_i to b_{i+1} does not
+// change this. Also <b_i, x - y> = 0 and <b_{i+1}, x - y> = 0 already
+// imply <b_{i+1} + u*b_i, x - y> = 0, so the constraints are unchanged.
+//
+// When we decrement i, we swap b_i and b_{i+1}. In the following paragraphs we
+// always refer to the final vector b_{i+1} after updating). But note that when
+// we come to the end of an iteration we always know F_i(b_{i+1}), so we just
+// need to update the cached value to reflect this. However the value of
+// F_{i+1}(b_i) is not already known, so if there was a stale value of F[i+1] in
+// the cache we remove this. Moreover, the iteration after decrementing will
+// want the dual variables from this computation so we cache this when we
+// compute the minimizing value of u.
+//
+// If alpha turns out to be an integer, then we never compute F_i(b_{i+1}) in
+// this iteration. But in this case, F_{i+1}(b_{i+1}) = F_{i+1}(b'_{i+1}) where
+// b'_{i+1} is the vector before updating. Therefore, we can update the cache
+// with this value. Furthermore, we can just inherit the dual variables from
+// this computation.
+//
+// When incrementing i we do not make any changes to the basis so no
+// invalidation occurs.
+void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
+  const Fraction<int64_t> epsilon(3, 4);
+
+  if (level == basis.getNumRows() - 1)
+    return;
+
+  GBRSimplex gbrSimplex(*this);
+  std::vector<Fraction<int64_t>> F;
+  std::vector<int64_t> alpha;
+  int64_t alphaDenom;
+  auto findUAndGetFCandidate = [&](unsigned i) -> Fraction<int64_t> {
+    assert(i < level + alpha.size() && "alpha_i is not known!");
+
+    int64_t u = floorDiv(alpha[i - level], alphaDenom);
+    basis.addToRow(i, i + 1, u);
+    if (alpha[i - level] % alphaDenom != 0) {
+      std::vector<int64_t> uAlpha[2];
+      int64_t uAlphaDenom[2];
+      Fraction<int64_t> F_i[2];
+
+      // Initially u is floor(alpha) and basis reflects this.
+      F_i[0] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[0],
+                                               uAlphaDenom[0]);
+
+      // Now try ceil(alpha), i.e. floor(alpha) + 1.
+      ++u;
+      basis.addToRow(i, i + 1, 1);
+      F_i[1] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[1],
+                                               uAlphaDenom[1]);
+
+      int j = F_i[0] < F_i[1] ? 0 : 1;
+      if (j == 0)
+        // Subtract 1 to go from u = ceil(alpha) back to floor(alpha).
+        basis.addToRow(i, i + 1, -1);
+
+      alpha = std::move(uAlpha[j]);
+      alphaDenom = uAlphaDenom[j];
+      return F_i[j];
+    }
+    assert(i + 1 - level < F.size() && "F_{i+1} wasn't saved");
+    // When alpha minimizes F_i(b_{i+1} + alpha*b_i), this is equal to
+    // F_{i+1}(b_{i+1}).
+    return F[i + 1 - level];
+  };
+
+  // In the ith iteration of the loop, gbrSimplex has constraints for directions
+  // from `level` to i - 1.
+  unsigned i = level;
+  while (i < basis.getNumRows() - 1) {
+    Fraction<int64_t> F_i_candidate; // F_i(b_{i+1} + u*b_i)
+    if (i >= level + F.size()) {
+      // We don't even know the value of F_i(b_i), so let's find that first.
+      // We have to do this first since later we assume that F already contains
+      // values up to and including i.
+
+      assert((i == 0 || i - 1 < level + F.size()) &&
+             "We are at level i but we don't know the value of F_{i-1}");
+
+      // We don't actually use these duals at all, but it doesn't matter
+      // because this case should only occur when i is level, and there are no
+      // duals in that case anyway.
+      assert(i == level && "This case should only occur when i == level");
+      F.push_back(
+          gbrSimplex.computeWidthAndDuals(basis.getRow(i), alpha, alphaDenom));
+    }
+
+    if (i >= level + alpha.size()) {
+      assert(i + 1 >= level + F.size() &&
+        "We don't know alpha_i but we know F_{i+1}, this should never happen");
+      // We don't know alpha for our level, so let's find it.
+      gbrSimplex.addEqualityForDirection(basis.getRow(i));
+      F.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), alpha,
+                                                  alphaDenom));
+      gbrSimplex.removeLastConstraint();
+    }
+
+    F_i_candidate = findUAndGetFCandidate(i);
+
+    if (F_i_candidate < epsilon * F[i - level]) {
+      basis.swapRows(i, i + 1);
+      F[i - level] = F_i_candidate;
+      // The values of F_{i+1}(b_{i+1}) and higher may change after the swap,
+      // so we remove the cached values here.
+      F.resize(i - level + 1);
+      if (i == level) {
+        // TODO (performance) isl seems to assume alpha is 0 in this case. Look
+        // into this. For now we assume that alpha is not known and must be
+        // recomputed.
+        alpha.clear();
+        continue;
+      }
+
+      gbrSimplex.removeLastConstraint();
+      i--;
+      continue;
+    }
+
+    alpha.clear();
+    gbrSimplex.addEqualityForDirection(basis.getRow(i));
+    i++;
+  }
+}
+
+// Search for an integer sample point using a branch and bound algorithm.
+//
+// If all variables have been assigned values already, simply return the current
+// sample point if it is integral, or an empty llvm::Optional otherwise.
+//
+// Otherwise, compute the minimum and maximum rational values of this direction.
+// If only one integer point lies in this range, constrain the variable to
+// have this value and recurse to the next variable.
+//
+// If the range has multiple values, perform general basis reduction via
+// reduceBasis and then compute the bounds again. Now we can't do any better
+// than this, so we just recurse on every integer value in this range.
+//
+// If the range contains no integer value, then of course the polytope is empty.
+llvm::Optional<std::vector<int64_t>>
+Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
+  if (level == basis.getNumRows())
+    return getSamplePointIfIntegral();
+
+  std::vector<int64_t> basisCoeffVector = basis.getRow(level);
+  basisCoeffVector.emplace_back(0); // constant term
+
+  auto getBounds = [&]() -> std::pair<int64_t, int64_t> {
+    int64_t min_rounded_up;
+    if (auto opt = computeOptimum(Direction::DOWN, basisCoeffVector))
+      min_rounded_up = ceil(*opt);
+    else
+      llvm_unreachable("Tableau should not be unbounded");
+
+    int64_t max_rounded_down;
+    if (auto opt = computeOptimum(Direction::UP, basisCoeffVector))
+      max_rounded_down = floor(*opt);
+    else
+      llvm_unreachable("Tableau should not be unbounded");
+
+    return {min_rounded_up, max_rounded_down};
+  };
+
+  int64_t min_rounded_up, max_rounded_down;
+  std::tie(min_rounded_up, max_rounded_down) = getBounds();
+
+  // Heuristic: if the sample point is integral at this point, just return it.
+  if (auto opt = getSamplePointIfIntegral())
+    return *opt;
+
+  if (min_rounded_up < max_rounded_down) {
+    reduceBasis(basis, level);
+    std::tie(min_rounded_up, max_rounded_down) = getBounds();
+  }
+
+  for (int64_t i = min_rounded_up; i <= max_rounded_down; ++i) {
+    auto snapshot = getSnapshot();
+    basisCoeffVector.back() = -i;
+    addEquality(basisCoeffVector);
+    if (auto opt = findIntegerSampleRecursively(basis, level + 1))
+      return *opt;
+    rollback(snapshot);
+  }
+
+  return {};
+}
+
 void Simplex::dumpUnknown(const Unknown &u) const {
   llvm::errs() << (u.ownsRow ? "r" : "c");
   llvm::errs() << u.pos;

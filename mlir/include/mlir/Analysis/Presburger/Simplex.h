@@ -24,6 +24,8 @@
 
 namespace mlir {
 
+class GBRSimplex;
+
 /// This class implements the Simplex algorithm. It supports adding affine
 /// equalities and inequalities, and can find a subset of these that are
 /// redundant, i.e. a subset of constraints that doesn't constrain the affine
@@ -114,6 +116,8 @@ public:
   void dump() const;
 
 private:
+  friend class GBRSimplex;
+
   struct Unknown {
     Unknown(bool oOwnsRow, bool oRestricted, unsigned oPos)
         : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos),
@@ -211,6 +215,11 @@ private:
 
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
+
+  llvm::Optional<std::vector<int64_t>>
+  findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level);
+
+  void reduceBasis(Matrix<int64_t> &basis, unsigned level);
 
   /// The number of rows in the tableau.
   unsigned nRow;
