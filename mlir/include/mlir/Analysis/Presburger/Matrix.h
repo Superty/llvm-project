@@ -102,6 +102,8 @@ template <typename INT>
 void Matrix<INT>::swapRows(unsigned row, unsigned otherRow) {
   assert((row < getNumRows() && otherRow < getNumRows()) &&
          "Given row out of bounds");
+  if (row == otherRow)
+    return;
   swap(data[row], data[otherRow]);
 }
 
@@ -109,6 +111,8 @@ template <typename INT>
 void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
   assert((column < getNumColumns() && otherColumn < getNumColumns()) &&
          "Given column out of bounds");
+  if (column == otherColumn)
+    return;
   for (auto &row : data)
     std::swap(row[column], row[otherColumn]);
 }
