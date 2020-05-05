@@ -104,6 +104,10 @@ public:
   llvm::Optional<Fraction<int64_t>> computeOptimum(
     Direction direction, ArrayRef<int64_t> coeffs);
 
+  /// Make a tableau to represent a pair of points in the given tableaus, one in
+  /// tableau \p A and one in \p B.
+  static Simplex makeProduct(const Simplex &A, const Simplex &B);
+
   llvm::Optional<std::vector<int64_t>> getSamplePointIfIntegral() const;
 
   // Dump the tableau's internal state.

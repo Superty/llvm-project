@@ -596,6 +596,85 @@ llvm::Optional<Fraction<int64_t>> Simplex::computeOptimum(
   return optimum;
 }
 
+template <typename T>
+std::vector<T> concat(const std::vector<T> &v, const std::vector<T> &w) {
+  auto result = v;
+  result.insert(result.end(), w.begin(), w.end());
+  return std::move(result);
+}
+
+// Make a tableau to represent a pair of points in the original tableau.
+//
+// The product constraints and variables are stored as: first A's, then B's.
+//
+// The product tableau has row layout:
+//   A's redundant rows, B's redundant rows, A's other rows, B's other rows.
+//
+// It has column layout:
+//   denominator, constant, A's columns, B's columns.
+Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
+  unsigned numVar = A.numberVariables() + B.numberVariables();
+  unsigned numCon = A.numberConstraints() + B.numberConstraints();
+  Simplex result(numVar);
+
+  result.tableau.resize(numCon, numVar);
+  result.nRedundant = A.nRedundant + B.nRedundant;
+  result.empty = A.empty || B.empty;
+
+  auto indexFromBIndex = [&](int index) {
+    if (index < 0)
+      return ~(A.numberConstraints() + ~index);
+    else
+      return A.numberVariables() + index;
+  };
+
+  result.con = concat(A.con, B.con);
+  result.var = concat(A.var, B.var);
+  for (unsigned i = 2; i < A.nCol; i++) {
+    result.colVar.push_back(A.colVar[i]);
+    result.unknownFromIndex(result.colVar.back()).pos =
+        result.colVar.size() - 1;
+  }
+  for (unsigned i = 2; i < B.nCol; i++) {
+    result.colVar.push_back(indexFromBIndex(B.colVar[i]));
+    result.unknownFromIndex(result.colVar.back()).pos =
+        result.colVar.size() - 1;
+  }
+
+  auto appendRowFromA = [&](unsigned row) {
+    for (unsigned col = 0; col < A.nCol; col++)
+      result.tableau(result.nRow, col) = A.tableau(row, col);
+    result.rowVar.push_back(A.rowVar[row]);
+    result.unknownFromIndex(result.rowVar.back()).pos =
+        result.rowVar.size() - 1;
+    result.nRow++;
+  };
+
+  // Also fixes the corresponding entry in rowVar and var/con.
+  auto appendRowFromB = [&](unsigned row) {
+    result.tableau(result.nRow, 0) = A.tableau(row, 0);
+    result.tableau(result.nRow, 1) = A.tableau(row, 1);
+
+    unsigned offset = A.nCol - 2;
+    for (unsigned col = 2; col < B.nCol; col++)
+      result.tableau(result.nRow, offset + col) = B.tableau(row, col);
+    result.rowVar.push_back(indexFromBIndex(B.rowVar[row]));
+    result.unknownFromIndex(result.rowVar.back()).pos =
+        result.rowVar.size() - 1;
+    result.nRow++;
+  };
+  for (unsigned row = 0; row < A.nRedundant; row++)
+    appendRowFromA(row);
+  for (unsigned row = 0; row < B.nRedundant; row++)
+    appendRowFromB(row);
+  for (unsigned row = A.nRedundant; row < A.nRow; row++)
+    appendRowFromA(row);
+  for (unsigned row = B.nRedundant; row < B.nRow; row++)
+    appendRowFromB(row);
+
+  return result;
+}
+
 llvm::Optional<std::vector<int64_t>>
 Simplex::getSamplePointIfIntegral() const {
   if (empty)
