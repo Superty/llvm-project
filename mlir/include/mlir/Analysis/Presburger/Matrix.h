@@ -48,6 +48,7 @@ public:
 
   unsigned getNumColumns() const;
 
+  const std::vector<INT> getRow(unsigned row) const;
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
   /// initialized.
@@ -109,6 +110,10 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
     std::swap(row[column], row[otherColumn]);
 }
 
+template <typename INT>
+const std::vector<INT> Matrix<INT>::getRow(unsigned row) const {
+  return data[row];
+}
 template <typename INT> void Matrix<INT>::dump() const {
   llvm::errs() << "Dumping matrix, rows = " << getNumRows()
                << ", columns: " << getNumColumns() << '\n';
