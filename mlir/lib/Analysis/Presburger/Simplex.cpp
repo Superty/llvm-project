@@ -573,6 +573,28 @@ void Simplex::rollback(unsigned snapshot) {
     undoOp(entry.first, entry.second);
   }
 }
+
+llvm::Optional<Fraction<int64_t>>
+Simplex::computeRowOptimum(Direction direction, unsigned row) {
+  while (auto maybePivot = findPivot(row, direction)) {
+    if (maybePivot->first == row)
+      return {};
+    pivot(*maybePivot);
+  }
+  return Fraction<int64_t>(tableau(row, 1), tableau(row, 0));
+}
+
+llvm::Optional<Fraction<int64_t>> Simplex::computeOptimum(
+    Direction direction, ArrayRef<int64_t> coeffs) {
+  assert(!empty && "Tableau should not be empty");
+
+  auto snap = getSnapshot();
+  unsigned conIndex = addRow(coeffs);
+  unsigned row = con[conIndex].pos;
+  auto optimum = computeRowOptimum(direction, row);
+  rollback(snap);
+  return optimum;
+}
 void Simplex::dumpUnknown(const Unknown &u) const {
   llvm::errs() << (u.ownsRow ? "r" : "c");
   llvm::errs() << u.pos;

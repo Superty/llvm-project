@@ -86,6 +86,22 @@ public:
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
+
+  /// Compute the maximum or minimum value of the given row, depending on
+  /// \p direction.
+  ///
+  /// \returns a {num, den} pair denoting the optimum, or a null value if no
+  /// optimum exists, i.e. if the expression is unbounded in this direction.
+  llvm::Optional<Fraction<int64_t>>
+  computeRowOptimum(Direction direction, unsigned row);
+
+  /// Compute the maximum or minimum value of the given expression, depending on
+  /// \p direction.
+  ///
+  /// \returns a {num, den} pair denoting the optimum, or a null value if no
+  /// optimum exists, i.e. if the expression is unbounded in this direction.
+  llvm::Optional<Fraction<int64_t>> computeOptimum(
+    Direction direction, ArrayRef<int64_t> coeffs);
   // Dump the tableau's internal state.
   void dump() const;
 
