@@ -49,6 +49,9 @@ public:
   unsigned getNumColumns() const;
 
   const std::vector<INT> getRow(unsigned row) const;
+
+  void addToRow(unsigned sourceRow, unsigned targetRow, INT scale);
+
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
   /// initialized.
@@ -114,6 +117,16 @@ template <typename INT>
 const std::vector<INT> Matrix<INT>::getRow(unsigned row) const {
   return data[row];
 }
+
+template <typename INT>
+void Matrix<INT>::addToRow(unsigned sourceRow, unsigned targetRow, INT scale) {
+  if (scale == 0)
+    return;
+  for (unsigned col = 0; col < getNumColumns(); ++col)
+    data[targetRow][col] += scale * data[sourceRow][col];
+  return;
+}
+
 template <typename INT> void Matrix<INT>::dump() const {
   llvm::errs() << "Dumping matrix, rows = " << getNumRows()
                << ", columns: " << getNumColumns() << '\n';
