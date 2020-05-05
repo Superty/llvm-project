@@ -304,7 +304,8 @@ bool Simplex::restoreRow(Unknown &u) {
 // (positive) coefficient for the column, then this row imposes a bound on how
 // much the sample value of the column can change. Such a row with constant term
 // c and coefficient f for the column imposes a bound of c/|f| on the change in
-// sample value (in the specified direction).
+// sample value (in the specified direction). (note that c is non-negative here
+// since the row is restricted and the tableau is consistent)
 //
 // We iterate through the rows and pick the row which imposes the most stringent
 // bound, since pivoting with a row changes the row's sample value to 0 and
@@ -349,6 +350,8 @@ llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
 bool Simplex::isEmpty() const { return empty; }
 
 void Simplex::swapRows(unsigned i, unsigned j) {
+  if (i == j)
+    return;
   tableau.swapRows(i, j);
   std::swap(rowVar[i], rowVar[j]);
   unknownFromRow(i).pos = i;
@@ -453,8 +456,7 @@ bool Simplex::markRedundant(unsigned row) {
 
   Unknown &unknown = unknownFromRow(row);
   unknown.redundant = true;
-  if (row != nRedundant)
-    swapRows(row, nRedundant);
+  swapRows(row, nRedundant);
   nRedundant++;
   return false;
 }

@@ -157,14 +157,13 @@ private:
   bool restoreRow(Unknown &u);
 
   /// Find a row that can be used to pivot the column in the specified
-  /// direction. If no direction is specified, any direction is allowed. The
-  /// column unknown is assumed to be bounded in the specified direction. If no
-  /// direction is specified then the column unknown is assumed to be unbounded
-  /// in both directions. If \p skipRow is not null, then this row is excluded
-  /// from consideration.
+  /// direction. If \p skipRow is not null, then this row is excluded
+  /// from consideration. The returned pivot will maintain all constraints
+  /// except the column itself and \p skipRow, if it is set. (if these unknowns
+  /// are restricted).
   ///
-  /// \returns the row to pivot to, or an empty llvm::Optional if no row was
-  /// found.
+  /// \returns the row to pivot to, or an empty llvm::Optional if the column
+  /// is unbounded in the specified direction.
   llvm::Optional<unsigned> findPivotRow(llvm::Optional<unsigned> skipRow,
                                         Direction direction,
                                         unsigned col) const;
