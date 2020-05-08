@@ -112,6 +112,8 @@ public:
 
   llvm::Optional<std::vector<int64_t>> getSamplePointIfIntegral() const;
 
+  llvm::Optional<std::vector<int64_t>> findIntegerSample();
+
   // Dump the tableau's internal state.
   void dump() const;
 
@@ -215,8 +217,6 @@ private:
 
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
-
-  llvm::Optional<std::vector<int64_t>> findIntegerSample();
   
   llvm::Optional<std::vector<int64_t>>
   findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level);
