@@ -71,12 +71,11 @@ Matrix<INT>::Matrix(unsigned rows, unsigned columns)
     : nColumns(columns), data(rows, std::vector<INT>(columns)) {}
 
 template <typename INT>
-Matrix<INT>
-Matrix<INT>::getIdentityMatrix(unsigned dimension) {
+Matrix<INT> Matrix<INT>::getIdentityMatrix(unsigned dimension) {
   Matrix<INT> matrix(dimension, dimension);
   for (size_t i = 0; i < dimension; i++)
     matrix(i, i) = 1;
-  return std::move(matrix);
+  return matrix;
 }
 
 template <typename INT>
