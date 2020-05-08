@@ -1036,6 +1036,11 @@ bool FlatAffineConstraints::isEmptyByGCDTest() const {
   return false;
 }
 
+llvm::Optional<std::vector<int64_t>> FlatAffineConstraints::findSample() const {
+  Simplex simplex(*this);
+  return simplex.findIntegerSample();
+}
+
 /// Tightens inequalities given that we are dealing with integer spaces. This is
 /// analogous to the GCD test but applied to inequalities. The constant term can
 /// be reduced to the preceding multiple of the GCD of the coefficients, i.e.,

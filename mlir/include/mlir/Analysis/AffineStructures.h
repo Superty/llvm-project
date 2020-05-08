@@ -139,6 +139,8 @@ public:
   // returns true, no integer solution to the equality constraints can exist.
   bool isEmptyByGCDTest() const;
 
+  llvm::Optional<std::vector<int64_t>> findSample() const;
+
   // Clones this object.
   std::unique_ptr<FlatAffineConstraints> clone() const;
 
