@@ -73,7 +73,7 @@ Matrix<INT>::Matrix(unsigned rows, unsigned columns)
 template <typename INT>
 Matrix<INT> Matrix<INT>::getIdentityMatrix(unsigned dimension) {
   Matrix<INT> matrix(dimension, dimension);
-  for (size_t i = 0; i < dimension; i++)
+  for (size_t i = 0; i < dimension; ++i)
     matrix(i, i) = 1;
   return matrix;
 }
