@@ -139,6 +139,10 @@ public:
   // returns true, no integer solution to the equality constraints can exist.
   bool isEmptyByGCDTest() const;
 
+  // Find a sample point satisfying the constraints. This uses a branch and
+  // bound algorithm with general basis reduction.
+  //
+  // Returns such a point if one exists, or an empty llvm::Optional otherwise.
   llvm::Optional<std::vector<int64_t>> findSample() const;
 
   // Clones this object.
