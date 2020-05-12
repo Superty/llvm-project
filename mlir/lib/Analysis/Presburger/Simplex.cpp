@@ -140,7 +140,7 @@ void Simplex::normalizeRow(unsigned row) {
   for (unsigned col = 0; col < nCol; ++col) {
     if (gcd == 1)
       break;
-    gcd = llvm::greatestCommonDivisor(gcd, tableau(row, col));
+    gcd = llvm::greatestCommonDivisor(gcd, std::abs(tableau(row, col)));
   }
   for (unsigned col = 0; col < nCol; ++col)
     tableau(row, col) /= gcd;
