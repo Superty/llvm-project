@@ -93,12 +93,10 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   assert(coeffs.size() == 1 + var.size() &&
          "Incorrect number of coefficients!");
 
-  if (nRow >= tableau.getNumRows())
-    tableau.resize(tableau.getNumRows() + 1, tableau.getNumColumns());
-
-  rowVar.push_back(~con.size());
   nRow++;
-
+  if (nRow >= tableau.getNumRows())
+    tableau.resize(nRow, tableau.getNumColumns());
+  rowVar.push_back(~con.size());
   con.emplace_back(true, false, nRow - 1);
 
   tableau(nRow - 1, 0) = 1;
