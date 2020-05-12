@@ -110,8 +110,12 @@ public:
   /// tableau \p A and one in \p B.
   static Simplex makeProduct(const Simplex &A, const Simplex &B);
 
+  /// \returns the current sample point if it is integral. Otherwise, returns an
+  /// empty llvm::Optional.
   llvm::Optional<std::vector<int64_t>> getSamplePointIfIntegral() const;
 
+  /// \returns an integral sample point if one exists, or an empty
+  /// llvm::Optional otherwise.
   llvm::Optional<std::vector<int64_t>> findIntegerSample();
 
   // Dump the tableau's internal state.
@@ -218,9 +222,13 @@ private:
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
   
+  /// Searches for an integer sample point recursively using a branch and bound
+  /// algorithm and general basis reduction.
   llvm::Optional<std::vector<int64_t>>
   findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level);
 
+  /// Reduce the given basis, starting at the specified level, using general
+  /// basis reduction.
   void reduceBasis(Matrix<int64_t> &basis, unsigned level);
 
   /// The number of rows in the tableau.

@@ -691,9 +691,9 @@ Simplex::getSamplePointIfIntegral() const {
   return sample;
 }
 
-// Given a simplex, construct a new simplex whose variables are identified with
-// a pair of points (x, y). Supports some operations needed for general basis
-// reduction.
+// Given a simplex for a polytope, construct a new simplex whose variables are identified with
+// a pair of points (x, y) in the original polytope. Supports some operations needed for general basis
+// reduction. In what follows, <x, y> denotes the dot product of the vectors x and y.
 class GBRSimplex {
 public:
   GBRSimplex(const Simplex &originalSimplex)
@@ -701,14 +701,14 @@ public:
             Simplex::makeProduct(originalSimplex, originalSimplex)),
         simplexConstraintOffset(simplex.numberConstraints()) {}
 
-  // Add equality <dir, x - y> = 0
+  // Add an equality <dir, x - y> = 0.
   void addEqualityForDirection(const std::vector<int64_t> &dir) {
-    undoLog.push_back(simplex.getSnapshot());
+    snapshotStack.push_back(simplex.getSnapshot());
     simplex.addEquality(getCoeffsForDirection(dir));
   }
 
   // Compute max(<dir, x - y>) and save the dual variables for only the
-  // direction constraints to `dufal`.
+  // direction constraints to `dual`.
   Fraction<int64_t> computeWidthAndDuals(const std::vector<int64_t> &dir,
                                     std::vector<int64_t> &dual,
                                     int64_t &dualDenom) {
@@ -720,8 +720,8 @@ public:
     assert(width && "Width should not be unbounded!");
     dualDenom = simplex.tableau(row, 0);
     dual.clear();
-    // The increment is i += 2 because we add equalities, one positive and one
-    // negative. We want only the positive ones.
+    // The increment is i += 2 because equalities are added as two inequalities,
+    // one positive and one negative. We only want to process the positive ones.
     for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2) {
       if (simplex.con[i].ownsRow)
         dual.push_back(0);
@@ -734,14 +734,15 @@ public:
     return *width;
   }
 
-  void removeLastConstraint() {
-    assert(!undoLog.empty() && "Undo stack is empty!");
-    simplex.rollback(undoLog.back());
-    undoLog.pop_back();
+  // Remove the last equality that was added through addEqualityForDirection.
+  void removeLastEquality() {
+    assert(!snapshotStack.empty() && "Snapshot stack is empty!");
+    simplex.rollback(snapshotStack.back());
+    snapshotStack.pop_back();
   }
 
 private:
-  // Returns coeffs for the row <dir, x - y>
+  // Returns coefficients for the expression <dir, x - y>.
   std::vector<int64_t>
   getCoeffsForDirection(ArrayRef<int64_t> dir) {
     assert(2 * dir.size() == simplex.numberVariables() &&
@@ -756,8 +757,11 @@ private:
   }
 
   Simplex simplex;
+  // The first index of the equality constraints, the index immediately after
+  // the last constraint in the initial product simplex.
   unsigned simplexConstraintOffset;
-  std::vector<unsigned> undoLog;
+  // A stack of snapshots, used for rolling back.
+  std::vector<unsigned> snapshotStack;
 };
 
 // Let b_{level}, b_{level + 1}, ... b_n be the current basis.
@@ -878,7 +882,7 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
       gbrSimplex.addEqualityForDirection(basis.getRow(i));
       F.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), alpha,
                                                   alphaDenom));
-      gbrSimplex.removeLastConstraint();
+      gbrSimplex.removeLastEquality();
     }
 
     F_i_candidate = findUAndGetFCandidate(i);
@@ -897,7 +901,7 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
         continue;
       }
 
-      gbrSimplex.removeLastConstraint();
+      gbrSimplex.removeLastEquality();
       i--;
       continue;
     }
@@ -908,6 +912,10 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
   }
 }
 
+// Try to an integer sample point in the polytope.
+//
+// If such a point exists, this function returns it. Otherwise, it returns and
+// empty llvm::Optional.
 llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
   if (empty)
     return {};
@@ -919,10 +927,12 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 
 // Search for an integer sample point using a branch and bound algorithm.
 //
-// If all variables have been assigned values already, simply return the current
-// sample point if it is integral, or an empty llvm::Optional otherwise.
+// Each row in the basis matrix is a vector, and the set of basis vectors should
+// span the space. Initially this is called with the identity matrix, i.e., the
+// basis vectors are just the variables.
 //
-// Otherwise, compute the minimum and maximum rational values of this direction.
+// In every level, a value is assigned to the level-th basis vector, as follows.
+// Compute the minimum and maximum rational values of this direction.
 // If only one integer point lies in this range, constrain the variable to
 // have this value and recurse to the next variable.
 //
@@ -930,7 +940,12 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 // reduceBasis and then compute the bounds again. Now we can't do any better
 // than this, so we just recurse on every integer value in this range.
 //
-// If the range contains no integer value, then of course the polytope is empty.
+// If the range contains no integer value, then of course the polytope is empty
+// for the current assignment of the values in previous levels, so return to
+// the previous level.
+//
+// If we reach the last level where all the variables have been assigned values already, then we simply return the current
+// sample point if it is integral, or an empty llvm::Optional otherwise.
 llvm::Optional<std::vector<int64_t>>
 Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   if (level == basis.getNumRows())
@@ -970,6 +985,7 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   for (int64_t i = min_rounded_up; i <= max_rounded_down; ++i) {
     auto snapshot = getSnapshot();
     basisCoeffVector.back() = -i;
+    // Add the constraint `basisCoeffVector = i`.
     addEquality(basisCoeffVector);
     if (auto opt = findIntegerSampleRecursively(basis, level + 1))
       return *opt;
