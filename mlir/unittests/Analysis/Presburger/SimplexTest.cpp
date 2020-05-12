@@ -221,7 +221,8 @@ TEST(SimplexTest, addEquality_separate) {
   EXPECT_TRUE(tab.isEmpty());
 }
 
-void expectInequalityMakesTabEmpty(Simplex &tab, ArrayRef<int64_t> coeffs, bool expect) {
+void expectInequalityMakesTabEmpty(Simplex &tab, ArrayRef<int64_t> coeffs,
+                                   bool expect) {
   ASSERT_FALSE(tab.isEmpty());
   auto snapshot = tab.getSnapshot();
   tab.addInequality(coeffs);

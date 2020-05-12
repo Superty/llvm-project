@@ -16,8 +16,8 @@
 #define MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H
 
 #include "mlir/Analysis/AffineStructures.h"
-#include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Analysis/Presburger/Fraction.h"
+#include "mlir/Analysis/Presburger/Matrix.h"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/SmallVector.h>
@@ -95,16 +95,16 @@ public:
   ///
   /// \returns a {num, den} pair denoting the optimum, or a null value if no
   /// optimum exists, i.e. if the expression is unbounded in this direction.
-  llvm::Optional<Fraction<int64_t>>
-  computeRowOptimum(Direction direction, unsigned row);
+  llvm::Optional<Fraction<int64_t>> computeRowOptimum(Direction direction,
+                                                      unsigned row);
 
   /// Compute the maximum or minimum value of the given expression, depending on
   /// \p direction.
   ///
   /// \returns a {num, den} pair denoting the optimum, or a null value if no
   /// optimum exists, i.e. if the expression is unbounded in this direction.
-  llvm::Optional<Fraction<int64_t>> computeOptimum(
-    Direction direction, ArrayRef<int64_t> coeffs);
+  llvm::Optional<Fraction<int64_t>> computeOptimum(Direction direction,
+                                                   ArrayRef<int64_t> coeffs);
 
   /// Make a tableau to represent a pair of points in the given tableaus, one in
   /// tableau \p A and one in \p B.
@@ -221,7 +221,7 @@ private:
 
   /// \returns Direction::UP if \p direction is Direction::DOWN and vice versa.
   Direction flippedDirection(Direction direction) const;
-  
+
   /// Searches for an integer sample point recursively using a branch and bound
   /// algorithm and general basis reduction.
   llvm::Optional<std::vector<int64_t>>

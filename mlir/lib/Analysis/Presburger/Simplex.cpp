@@ -494,13 +494,12 @@ unsigned Simplex::numberConstraints() const { return con.size(); }
 
 // Return a snapshot of the curent state. This is just the current size of the
 // undo log.
-unsigned Simplex::getSnapshot() const {
-  return undoLog.size();
-}
+unsigned Simplex::getSnapshot() const { return undoLog.size(); }
 
 void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
   if (op == UndoOp::DEALLOCATE) {
-    assert(index.hasValue() && "DEALLOCATE undo entry must be accompanied by an index");
+    assert(index.hasValue() &&
+           "DEALLOCATE undo entry must be accompanied by an index");
 
     assert(index < 0 && "Unknown to be deallocated must be a constraint");
     Unknown &unknown = unknownFromIndex(*index);
@@ -512,7 +511,7 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
       // Try to find any pivot row for this column that preserves tableau
       // consistency (except possibly the column itself, which is going to be
       // deallocated anyway).
-      // 
+      //
       // If no pivot row is found in either direction,
       // then the column is unbounded in both directions and we are free to
       // perform any pivot at all. To do this, we just need to find any row with
@@ -537,10 +536,11 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
       pivot(*row, column);
     }
 
-    // Move this unknown to the last row and remove the last row from the tableau.
+    // Move this unknown to the last row and remove the last row from the
+    // tableau.
     swapRows(unknown.pos, nRow - 1);
-    // It is not strictly necessary to resize tableau, but for now we maintain the invariant
-    // that the actual size of the tableau is (nRow, nCol).
+    // It is not strictly necessary to resize tableau, but for now we maintain
+    // the invariant that the actual size of the tableau is (nRow, nCol).
     tableau.resize(nRow - 1, nCol);
     nRow--;
     rowVar.pop_back();
@@ -548,7 +548,8 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
   } else if (op == UndoOp::UNMARK_EMPTY) {
     empty = false;
   } else if (op == UndoOp::UNMARK_REDUNDANT) {
-    assert(index.hasValue() && "UNMARK_REDUNDANT undo entry must be accompanied by an index");
+    assert(index.hasValue() &&
+           "UNMARK_REDUNDANT undo entry must be accompanied by an index");
     assert(nRedundant != 0 && "No redundant constraints present.");
 
     Unknown &unknown = unknownFromIndex(*index);
@@ -582,8 +583,8 @@ Simplex::computeRowOptimum(Direction direction, unsigned row) {
   return Fraction<int64_t>(tableau(row, 1), tableau(row, 0));
 }
 
-llvm::Optional<Fraction<int64_t>> Simplex::computeOptimum(
-    Direction direction, ArrayRef<int64_t> coeffs) {
+llvm::Optional<Fraction<int64_t>>
+Simplex::computeOptimum(Direction direction, ArrayRef<int64_t> coeffs) {
   assert(!empty && "Tableau should not be empty");
 
   auto snap = getSnapshot();
@@ -673,8 +674,7 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
   return result;
 }
 
-llvm::Optional<std::vector<int64_t>>
-Simplex::getSamplePointIfIntegral() const {
+llvm::Optional<std::vector<int64_t>> Simplex::getSamplePointIfIntegral() const {
   if (empty)
     return {};
 
@@ -691,14 +691,14 @@ Simplex::getSamplePointIfIntegral() const {
   return sample;
 }
 
-// Given a simplex for a polytope, construct a new simplex whose variables are identified with
-// a pair of points (x, y) in the original polytope. Supports some operations needed for general basis
-// reduction. In what follows, <x, y> denotes the dot product of the vectors x and y.
+// Given a simplex for a polytope, construct a new simplex whose variables are
+// identified with a pair of points (x, y) in the original polytope. Supports
+// some operations needed for general basis reduction. In what follows, <x, y>
+// denotes the dot product of the vectors x and y.
 class GBRSimplex {
 public:
   GBRSimplex(const Simplex &originalSimplex)
-      : simplex(
-            Simplex::makeProduct(originalSimplex, originalSimplex)),
+      : simplex(Simplex::makeProduct(originalSimplex, originalSimplex)),
         simplexConstraintOffset(simplex.numberConstraints()) {}
 
   // Add an equality <dir, x - y> = 0.
@@ -710,13 +710,12 @@ public:
   // Compute max(<dir, x - y>) and save the dual variables for only the
   // direction constraints to `dual`.
   Fraction<int64_t> computeWidthAndDuals(const std::vector<int64_t> &dir,
-                                    std::vector<int64_t> &dual,
-                                    int64_t &dualDenom) {
+                                         std::vector<int64_t> &dual,
+                                         int64_t &dualDenom) {
     unsigned snap = simplex.getSnapshot();
     unsigned conIndex = simplex.addRow(getCoeffsForDirection(dir));
     unsigned row = simplex.con[conIndex].pos;
-    auto width =
-        simplex.computeRowOptimum(Simplex::Direction::UP, row);
+    auto width = simplex.computeRowOptimum(Simplex::Direction::UP, row);
     assert(width && "Width should not be unbounded!");
     dualDenom = simplex.tableau(row, 0);
     dual.clear();
@@ -743,8 +742,7 @@ public:
 
 private:
   // Returns coefficients for the expression <dir, x - y>.
-  std::vector<int64_t>
-  getCoeffsForDirection(ArrayRef<int64_t> dir) {
+  std::vector<int64_t> getCoeffsForDirection(ArrayRef<int64_t> dir) {
     assert(2 * dir.size() == simplex.numberVariables() &&
            "Direction vector has wrong dimensionality");
     std::vector<int64_t> coeffs;
@@ -782,7 +780,7 @@ private:
 // Otherwise, we increment i. We use eps = 0.75.
 //
 // In an iteration we need to compute:
-// 
+//
 // Some of the required F and alpha values may already be known. We cache the
 // known values and reuse them if possible. In particular:
 //
@@ -876,8 +874,8 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
     }
 
     if (i >= level + alpha.size()) {
-      assert(i + 1 >= level + F.size() &&
-        "We don't know alpha_i but we know F_{i+1}, this should never happen");
+      assert(i + 1 >= level + F.size() && "We don't know alpha_i but we know "
+                                          "F_{i+1}, this should never happen");
       // We don't know alpha for our level, so let's find it.
       gbrSimplex.addEqualityForDirection(basis.getRow(i));
       F.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), alpha,
@@ -944,8 +942,9 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 // for the current assignment of the values in previous levels, so return to
 // the previous level.
 //
-// If we reach the last level where all the variables have been assigned values already, then we simply return the current
-// sample point if it is integral, or an empty llvm::Optional otherwise.
+// If we reach the last level where all the variables have been assigned values
+// already, then we simply return the current sample point if it is integral, or
+// an empty llvm::Optional otherwise.
 llvm::Optional<std::vector<int64_t>>
 Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   if (level == basis.getNumRows())
