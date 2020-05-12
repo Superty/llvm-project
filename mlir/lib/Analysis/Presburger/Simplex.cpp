@@ -916,7 +916,6 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 
   unsigned nDims = var.size();
   Matrix<int64_t> basis = Matrix<int64_t>::getIdentityMatrix(nDims);
-  tableau.resize(nDims + 1, tableau.getNumColumns());
   return findIntegerSampleRecursively(basis, 0);
 }
 
