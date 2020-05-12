@@ -123,8 +123,6 @@ TEST(FlatAffineConstraintsTest, FindSampleTest) {
   // 4q + r = 7 and r = 0
   // Solution: q = 1, r = 3
   checkSample(false, makeFACFromConstraints(2, {}, {{4, 1, -7}, {0, 1, 0}}));
-
-  
 }
 
 } // namespace mlir
