@@ -7,8 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // This class can perform analysis on FlatAffineConstraints. In particular,
-// it can be used to simplify the constraint set by detecting constraints
-// which are redundant.
+// it can be used to perform emptiness checks.
 //
 //===----------------------------------------------------------------------===//
 
@@ -27,26 +26,24 @@ namespace mlir {
 class GBRSimplex;
 
 /// This class implements the Simplex algorithm. It supports adding affine
-/// equalities and inequalities, and can find a subset of these that are
-/// redundant, i.e. a subset of constraints that doesn't constrain the affine
-/// set further after adding the non-redundant constraints.
+/// equalities and inequalities, and can perform emptiness checks, i.e., it can
+/// find a solution to the set of constraints if one exists, or say that the
+/// set is empty if no solution exists.
 ///
 /// An unknown is addressed by its index. If the index i is non-negative, then
 /// the ith variable is the Unknown being addressed. If the index is negative,
 /// then a constraint is being addressed, having index ~i.
 ///
 /// The unknown corresponding to each row r (resp. column c) has index rowVar[r]
-/// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to
-/// rows which have been marked redundant. If at some point it is detected that
-/// the set of constraints are mutually contradictory and have no solution,
-/// then empty will be set to true.
+/// (resp. colVar[c]). If at some point it is detected that the set of
+/// constraints are mutually contradictory and have no solution, then empty will
+/// be set to true.
 class Simplex {
 public:
   enum class Direction { UP, DOWN };
   enum class UndoOp {
     DEALLOCATE,
     UNMARK_EMPTY,
-    UNMARK_REDUNDANT,
   };
 
   Simplex() = delete;
@@ -58,12 +55,6 @@ public:
   /// \returns True is the tableau is empty (has conflicting constraints),
   /// False otherwise.
   bool isEmpty() const;
-
-  /// Check for redundant constraints and mark them as redundant.
-  void detectRedundant();
-
-  /// Check whether the constraint has been marked redundant.
-  bool isMarkedRedundant(int conIndex) const;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the curent number of variables, then the corresponding inequality is
@@ -126,13 +117,11 @@ private:
 
   struct Unknown {
     Unknown(bool oOwnsRow, bool oRestricted, unsigned oPos)
-        : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos),
-          redundant(false) {}
+        : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos) {}
     Unknown() : Unknown(false, false, -1) {}
     bool ownsRow;
     bool restricted;
     unsigned pos;
-    bool redundant;
   };
 
   // Dump the internal state of the unknown.
@@ -155,15 +144,6 @@ private:
   void pivot(unsigned row, unsigned col);
   void pivot(const std::pair<unsigned, unsigned> &p);
 
-  /// Check if the constraint is redundant by computing its minimum value in
-  /// the tableau. If this returns true, the constraint is left in row position
-  /// upon return.
-  ///
-  /// \param conIndex must be a constraint that is not a dead column
-  ///
-  /// \returns True if the constraint is redundant, False otherwise.
-  bool constraintIsRedundant(unsigned conIndex);
-
   /// \returns the unknown associated with \p index.
   const Unknown &unknownFromIndex(int index) const;
   /// \returns the unknown associated with \p col.
@@ -183,13 +163,6 @@ private:
   /// Normalize the given row by removing common factors between the numerator
   /// and the denominator.
   void normalizeRow(unsigned row);
-
-  /// Mark the row as being redundant.
-  ///
-  /// \returns True if the row is interchanged with a later row, False
-  /// otherwise. This is used when iterating through the rows; if the return is
-  /// true, the same row index must be processed again.
-  bool markRedundant(unsigned row);
 
   /// Swap the two rows in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
@@ -237,9 +210,6 @@ private:
   /// The number of columns in the tableau, including the common denominator
   /// and the constant column.
   unsigned nCol;
-
-  /// The number of constraints marked redundant.
-  unsigned nRedundant;
 
   /// The matrix represnting the tableau.
   Matrix<int64_t> tableau;
