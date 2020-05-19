@@ -38,20 +38,20 @@ int compare(const Fraction<T> &x, const Fraction<T> &y) {
   return 0;
 }
 
+// Division rounds towards zero, so if the result is already non-negative
+// then num/den is the floor. If the result is negative and the division
+// leaves a remainder then we need to subtract one to get the floor.
 template <typename T>
 T floor(Fraction<T> f) {
-  if (f.num >= 0)
-    return f.num / f.den;
-  else
-    return (f.num / f.den) - (f.num % f.den != 0);
+  return f.num / f.den - (f.num < 0 && f.num % f.den != 0);
 }
 
+// Division rounds towards zero, so if the result is already non-positive
+// then num/den is the ceiling. If the result is positive and the division
+// leaves a remainder then we need to add one to get the ceiling.
 template <typename T>
 T ceil(Fraction<T> f) {
-  if (f.num <= 0)
-    return f.num / f.den;
-  else
-    return (f.num / f.den) + (f.num % f.den != 0);
+  return f.num / f.den + (f.num > 0 && f.num % f.den != 0);
 }
 
 template <typename T>
