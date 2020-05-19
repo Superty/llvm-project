@@ -20,6 +20,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
 
@@ -109,7 +110,8 @@ public:
   /// llvm::Optional otherwise.
   llvm::Optional<std::vector<int64_t>> findIntegerSample();
 
-  // Dump the tableau's internal state.
+  // Print the tableau's internal state.
+  void print(llvm::raw_ostream &os) const;
   void dump() const;
 
 private:
@@ -125,7 +127,7 @@ private:
   };
 
   // Dump the internal state of the unknown.
-  void dumpUnknown(const Unknown &u) const;
+  void printUnknown(llvm::raw_ostream &os, const Unknown &u) const;
 
   /// Find a pivot to change the sample value of \p row in the specified
   /// direction. The returned pivot row will be \p row if and only

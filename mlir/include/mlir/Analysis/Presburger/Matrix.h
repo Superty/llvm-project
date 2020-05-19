@@ -59,6 +59,7 @@ public:
   /// initialized.
   void resize(unsigned newNRows, unsigned newNColumns);
 
+  void print(llvm::raw_ostream &os) const;
   void dump() const;
 
 private:
@@ -141,20 +142,25 @@ void Matrix<INT>::addToRow(unsigned sourceRow, unsigned targetRow, INT scale) {
   return;
 }
 
-template <typename INT> void Matrix<INT>::dump() const {
-  llvm::errs() << "Dumping matrix, rows = " << getNumRows()
+template <typename INT> void Matrix<INT>::print(llvm::raw_ostream &os) const {
+  os << "Dumping matrix, rows = " << getNumRows()
                << ", columns: " << getNumColumns() << '\n';
-  llvm::errs() << "r/c  ";
+  os << "r/c  ";
   for (unsigned column = 0; column < getNumColumns(); ++column)
-    llvm::errs() << "| " << column << " ";
-  llvm::errs() << '\n';
-  llvm::errs() << std::string(5 + getNumColumns() * 5, '-') << '\n';
+    os << "| " << column << " ";
+  os << '\n';
+  os << std::string(5 + getNumColumns() * 5, '-') << '\n';
   for (unsigned row = 0; row < getNumRows(); ++row) {
-    llvm::errs() << row << " | ";
+    os << row << " | ";
     for (unsigned column = 0; column < getNumColumns(); ++column)
-      llvm::errs() << data[row][column] << " ";
-    llvm::errs() << '\n';
+      os << data[row][column] << " ";
+    os << '\n';
   }
 }
+
+template <typename INT> void Matrix<INT>::dump() const {
+  print(llvm::errs());
+}
+
 } // namespace mlir
 #endif // MLIR_ANALYSIS_PRESBURGER_MATRIX_H

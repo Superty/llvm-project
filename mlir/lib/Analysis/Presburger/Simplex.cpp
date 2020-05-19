@@ -883,47 +883,50 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   return {};
 }
 
-void Simplex::dumpUnknown(const Unknown &u) const {
-  llvm::errs() << (u.ownsRow ? "r" : "c");
-  llvm::errs() << u.pos;
+void Simplex::printUnknown(llvm::raw_ostream &os, const Unknown &u) const {
+  os << (u.ownsRow ? "r" : "c");
+  os << u.pos;
   if (u.restricted)
-    llvm::errs() << " [>=0]";
+    os << " [>=0]";
+}
+
+void Simplex::print(llvm::raw_ostream &os) const {
+  os << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol << "\n";
+  if (empty)
+    os << "Simplex marked empty!\n";
+  os << "var: ";
+  for (unsigned i = 0; i < var.size(); ++i) {
+    if (i > 0)
+      os << ", ";
+    printUnknown(os, var[i]);
+  }
+  os << "\ncon: ";
+  for (unsigned i = 0; i < con.size(); ++i) {
+    if (i > 0)
+      os << ", ";
+    printUnknown(os, con[i]);
+  }
+  os << '\n';
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (row > 0)
+      os << ", ";
+    os << "r" << row << ": " << rowVar[row];
+  }
+  os << '\n';
+  os << "c0: denom, c1: const";
+  for (unsigned col = 2; col < nCol; ++col)
+    os << ", c" << col << ": " << colVar[col];
+  os << '\n';
+  for (unsigned row = 0; row < nRow; ++row) {
+    for (unsigned col = 0; col < nCol; ++col)
+      os << tableau(row, col) << '\t';
+    os << '\n';
+  }
+  os << '\n';
 }
 
 void Simplex::dump() const {
-  llvm::errs() << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
-               << "\n";
-  if (empty)
-    llvm::errs() << "Simplex marked empty!\n";
-  llvm::errs() << "var: ";
-  for (unsigned i = 0; i < var.size(); ++i) {
-    if (i > 0)
-      llvm::errs() << ", ";
-    dumpUnknown(var[i]);
-  }
-  llvm::errs() << "\ncon: ";
-  for (unsigned i = 0; i < con.size(); ++i) {
-    if (i > 0)
-      llvm::errs() << ", ";
-    dumpUnknown(con[i]);
-  }
-  llvm::errs() << '\n';
-  for (unsigned row = 0; row < nRow; ++row) {
-    if (row > 0)
-      llvm::errs() << ", ";
-    llvm::errs() << "r" << row << ": " << rowVar[row];
-  }
-  llvm::errs() << '\n';
-  llvm::errs() << "c0: denom, c1: const";
-  for (unsigned col = 2; col < nCol; ++col)
-    llvm::errs() << ", c" << col << ": " << colVar[col];
-  llvm::errs() << '\n';
-  for (unsigned row = 0; row < nRow; ++row) {
-    for (unsigned col = 0; col < nCol; ++col)
-      llvm::errs() << tableau(row, col) << '\t';
-    llvm::errs() << '\n';
-  }
-  llvm::errs() << '\n';
+  print(llvm::errs());
 }
 
 } // namespace mlir
