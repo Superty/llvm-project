@@ -32,7 +32,7 @@ public:
   /// Initially, the values are default initialized.
   Matrix(unsigned rows, unsigned columns);
 
-  Matrix(const Matrix &);
+  explicit Matrix(const Matrix &);
 
   static Matrix getIdentityMatrix(unsigned dimension);
 
