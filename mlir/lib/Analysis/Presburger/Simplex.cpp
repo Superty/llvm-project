@@ -39,11 +39,7 @@ Simplex::Simplex(const FlatAffineConstraints &constraints)
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
   assert(index != NULL_INDEX && "NULL_INDEX passed to unknownFromIndex");
-
-  if (index >= 0)
-    return var[index];
-  else
-    return con[~index];
+  return index >= 0 ? var[index] : con[~index];
 }
 
 const Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) const {
@@ -58,11 +54,7 @@ const Simplex::Unknown &Simplex::unknownFromRow(unsigned row) const {
 
 Simplex::Unknown &Simplex::unknownFromIndex(int index) {
   assert(index != NULL_INDEX && "NULL_INDEX passed to unknownFromIndex");
-
-  if (index >= 0)
-    return var[index];
-  else
-    return con[~index];
+  return index >= 0 ? var[index] : con[~index];
 }
 
 Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) {
@@ -148,10 +140,7 @@ void Simplex::normalizeRow(unsigned row) {
 
 bool Simplex::signMatchesDirection(int64_t elem, Direction direction) const {
   assert(elem != 0 && "elem should not be 0");
-  if (direction == Direction::UP)
-    return elem > 0;
-  else
-    return elem < 0;
+  return direction == Direction::UP ? elem > 0 : elem < 0;
 }
 
 Simplex::Direction Simplex::flippedDirection(Direction direction) const {
@@ -513,10 +502,8 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
   result.empty = A.empty || B.empty;
 
   auto indexFromBIndex = [&](int index) {
-    if (index < 0)
-      return ~(A.numberConstraints() + ~index);
-    else
-      return A.numberVariables() + index;
+    return index >= 0 ? A.numberVariables() + index
+                      : ~(A.numberConstraints() + ~index);
   };
 
   result.con = concat(A.con, B.con);
