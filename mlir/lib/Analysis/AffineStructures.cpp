@@ -1036,7 +1036,16 @@ bool FlatAffineConstraints::isEmptyByGCDTest() const {
   return false;
 }
 
-llvm::Optional<std::vector<int64_t>> FlatAffineConstraints::findSample() const {
+// First, try the GCD test heuristic. If that doesn't find the set empty,
+// use the complete emptiness check provided by findIntegerSample, which gives
+// a definitive answer.
+bool FlatAffineConstraints::isIntegerEmpty() const {
+  if (isEmptyByGCDTest())
+    return true;
+  return !findIntegerSample().hasValue();
+}
+
+llvm::Optional<std::vector<int64_t>> FlatAffineConstraints::findIntegerSample() const {
   Simplex simplex(*this);
   return simplex.findIntegerSample();
 }

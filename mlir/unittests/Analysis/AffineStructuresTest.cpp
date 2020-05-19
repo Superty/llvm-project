@@ -22,7 +22,7 @@ int64_t valueAt(ArrayRef<int64_t> expr, const std::vector<int64_t> &point) {
 }
 
 void checkSample(bool hasValue, const FlatAffineConstraints &fac) {
-  auto maybeSample = fac.findSample();
+  auto maybeSample = fac.findIntegerSample();
   if (!hasValue)
     EXPECT_FALSE(maybeSample.hasValue());
   else {
@@ -80,6 +80,13 @@ TEST(FlatAffineConstraintsTest, FindSampleTest) {
   // 4q + r = 7 and r = 0
   // Solution: q = 1, r = 3
   checkSample(false, makeFACFromConstraints(2, {}, {{4, 1, -7}, {0, 1, 0}}));
+}
+
+TEST(FlatAffineConstraintsTest, IsIntegerEmptyTest) {
+  // 1 <= 5x and 5x <= 4 (no solution)
+  EXPECT_TRUE(makeFACFromConstraints(1, {{5, -1}, {-5, 4}}, {}).isIntegerEmpty());
+  // 1 <= 5x and 5x <= 9 (solution: x = 1)
+  EXPECT_FALSE(makeFACFromConstraints(1, {{5, -1}, {-5, 9}}, {}).isIntegerEmpty());
 }
 
 } // namespace mlir

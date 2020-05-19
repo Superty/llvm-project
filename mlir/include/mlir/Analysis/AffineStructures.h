@@ -139,11 +139,15 @@ public:
   // returns true, no integer solution to the equality constraints can exist.
   bool isEmptyByGCDTest() const;
 
+  // \returns True if the set of constraints has no integer solution, and False
+  // if it does have a solution.
+  bool isIntegerEmpty() const;
+
   // Find a sample point satisfying the constraints. This uses a branch and
   // bound algorithm with general basis reduction.
   //
   // Returns such a point if one exists, or an empty llvm::Optional otherwise.
-  llvm::Optional<std::vector<int64_t>> findSample() const;
+  llvm::Optional<std::vector<int64_t>> findIntegerSample() const;
 
   // Clones this object.
   std::unique_ptr<FlatAffineConstraints> clone() const;
