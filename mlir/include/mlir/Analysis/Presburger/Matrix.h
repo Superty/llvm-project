@@ -32,8 +32,6 @@ public:
   /// Initially, the values are default initialized.
   Matrix(unsigned rows, unsigned columns);
 
-  explicit Matrix(const Matrix &);
-
   static Matrix getIdentityMatrix(unsigned dimension);
 
   /// Access the element at the specified row and column.
