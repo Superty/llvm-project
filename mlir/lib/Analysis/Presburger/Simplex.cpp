@@ -799,7 +799,7 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
   }
 }
 
-// Try to an integer sample point in the polytope.
+// Try to find an integer sample point in the polytope.
 //
 // If such a point exists, this function returns it. Otherwise, it returns and
 // empty llvm::Optional.

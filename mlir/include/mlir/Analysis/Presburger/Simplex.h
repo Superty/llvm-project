@@ -52,12 +52,12 @@ public:
   unsigned getNumRows() const;
   unsigned getNumColumns() const;
 
-  /// \returns True is the tableau is empty (has conflicting constraints),
+  /// \returns True if the tableau is empty (has conflicting constraints),
   /// False otherwise.
   bool isEmpty() const;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-  /// is the curent number of variables, then the corresponding inequality is
+  /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
   void addInequality(ArrayRef<int64_t> coeffs);
 
@@ -68,7 +68,7 @@ public:
   unsigned numberConstraints() const;
 
   /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-  /// is the curent number of variables, then the corresponding inequality is
+  /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
   void addEquality(ArrayRef<int64_t> coeffs);
 
@@ -85,7 +85,7 @@ public:
   /// \p direction.
   ///
   /// \returns a {num, den} pair denoting the optimum, or a null value if no
-  /// optimum exists, i.e. if the expression is unbounded in this direction.
+  /// optimum exists, i.e., if the expression is unbounded in this direction.
   llvm::Optional<Fraction<int64_t>> computeRowOptimum(Direction direction,
                                                       unsigned row);
 
@@ -93,7 +93,7 @@ public:
   /// \p direction.
   ///
   /// \returns a {num, den} pair denoting the optimum, or a null value if no
-  /// optimum exists, i.e. if the expression is unbounded in this direction.
+  /// optimum exists, i.e., if the expression is unbounded in this direction.
   llvm::Optional<Fraction<int64_t>> computeOptimum(Direction direction,
                                                    ArrayRef<int64_t> coeffs);
 
@@ -169,7 +169,7 @@ private:
 
   /// Restore the unknown to a non-negative sample value.
   ///
-  /// \returns True is the unknown was successfully restored to a non-negative
+  /// \returns True if the unknown was successfully restored to a non-negative
   /// sample value, False otherwise.
   bool restoreRow(Unknown &u);
 
@@ -211,7 +211,7 @@ private:
   /// and the constant column.
   unsigned nCol;
 
-  /// The matrix represnting the tableau.
+  /// The matrix representing the tableau.
   Matrix<int64_t> tableau;
 
   /// True if the tableau has been detected to be empty, False otherwise.
