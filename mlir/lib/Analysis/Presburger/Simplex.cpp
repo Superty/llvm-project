@@ -368,9 +368,9 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
     markEmpty();
 }
 
-// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-// is the curent number of variables, then the corresponding inequality is
-// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
+// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+// is the curent number of variables, then the corresponding equality is
+// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
 //
 // We simply add two opposing inequalities, which force the expression to
 // be zero.
