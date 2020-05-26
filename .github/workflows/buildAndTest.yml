@@ -1,0 +1,37 @@
+name: Build and Test
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get LLVM
+      uses: actions/checkout@v2
+    - name: clang-format
+      uses: DoozyX/clang-format-lint-action@v0.5
+      with:
+        source: './mlir'
+        extensions: 'h,cpp'
+        clangFormatVersion: 9
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get LLVM
+      uses: actions/checkout@v2
+      with:
+        path: 'llvm'
+    - name: Cache LLVM Build
+      id: cache-llvm-build
+      uses: actions/cache@v1
+      with:
+        path: 'llvm/build'
+        key: ${{ runner.os }}-llvm-build
+    - name: Setup LLVM build
+      if: steps.cache-llvm-build.outputs.cache-hit != 'true'
+      run: mkdir llvm/build && cd llvm/build && cmake $GITHUB_WORKSPACE/llvm/llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON -DCMAKE_LINKER=/usr/bin/lld -DLLVM_PARALLEL_LINK_JOBS=2 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+    - name: Build and Test LLVM
+      run: cd llvm/build && cmake --build . --target check-mlir
