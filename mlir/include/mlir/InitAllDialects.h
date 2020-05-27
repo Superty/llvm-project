@@ -24,6 +24,7 @@
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/LoopOps/LoopOps.h"
 #include "mlir/Dialect/OpenMP/OpenMPDialect.h"
+#include "mlir/Dialect/Presburger/PresburgerDialect.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/Dialect/SDBM/SDBMDialect.h"
 #include "mlir/Dialect/SPIRV/SPIRVDialect.h"
@@ -54,6 +55,7 @@ inline void registerAllDialects() {
     registerDialect<ROCDL::ROCDLDialect>();
     registerDialect<SDBMDialect>();
     registerDialect<shape::ShapeDialect>();
+    registerDialect<presburger::PresburgerDialect>();
     return true;
   }();
   (void)init_once;

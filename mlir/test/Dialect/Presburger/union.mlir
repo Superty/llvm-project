@@ -1,4 +1,4 @@
-// RUN: presburgerc %s --mlir-print-op-generic | presburgerc | FileCheck %s
+// RUN: mlir-opt %s --mlir-print-op-generic | mlir-opt | FileCheck %s
 
 func @simple_union() {
 

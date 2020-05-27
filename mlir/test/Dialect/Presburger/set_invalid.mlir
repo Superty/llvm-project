@@ -1,4 +1,4 @@
-// RUN: presburgerc %s -split-input-file -verify-diagnostics
+// RUN: mlir-opt %s -split-input-file -verify-diagnostics
 
 func @undeclared_dim_var() {
   // expected-error @+1 {{encountered unknown variable name: x}}

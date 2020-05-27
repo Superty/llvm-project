@@ -1,4 +1,4 @@
-// RUN: presburgerc %s | presburgerc | FileCheck %s
+// RUN: mlir-opt %s | mlir-opt | FileCheck %s
 
 func @simple_intersect() {
 

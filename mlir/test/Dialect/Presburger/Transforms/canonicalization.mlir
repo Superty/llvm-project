@@ -1,4 +1,4 @@
-// RUN: presburgerc -canonicalize %s | FileCheck %s
+// RUN: mlir-opt -canonicalize %s | FileCheck %s
 
 // CHECK-LABEL: func @simple_union
 func @simple_union() -> !presburger.set<1,0> {

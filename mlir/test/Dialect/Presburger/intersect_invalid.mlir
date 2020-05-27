@@ -1,4 +1,4 @@
-// RUN: presburgerc %s -split-input-file -verify-diagnostics
+// RUN: mlir-opt %s -split-input-file -verify-diagnostics
 
 func @intersect_should_match_op_dims() {
   %set1 = presburger.set #presburger<"(x,y)[] : (y >= 0 and -x + 4>= 0)">
