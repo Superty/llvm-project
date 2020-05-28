@@ -114,6 +114,9 @@ public:
   void print(llvm::raw_ostream &os) const;
   void dump() const;
 
+  void addFlatAffineConstraints(const FlatAffineConstraints &cs);
+  // void addFlatAffineConstraintsAsIneqs(const FlatAffineConstraints &cs);
+
 private:
   friend class GBRSimplex;
 

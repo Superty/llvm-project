@@ -1,6 +1,7 @@
 #include "mlir/Dialect/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
 
-// TODO should be change this to a storage type?
+// TODO should we change this to a storage type?
 using namespace mlir;
 using namespace mlir::presburger;
 
@@ -19,7 +20,7 @@ bool PresburgerSet::isUniverse() const {
 }
 
 const SmallVector<FlatAffineConstraints, 4> &
-PresburgerSet::getFlatAffineConstrains() const {
+PresburgerSet::getFlatAffineConstraints() const {
   return flatAffineConstraints;
 }
 
@@ -72,6 +73,174 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   *this = std::move(result);
 }
 
+PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
+  PresburgerSet result(nDim, nSym, true);
+  return result;
+}
+
+// Return the set difference B - S and accumulate the result into `result`.
+// `simplex` must correspond to B.
+//
+// In the following, U denotes union, /\ denotes intersection, - denotes set
+// subtraction and ~ denotes complement.
+// Let B be the basic set and S = (U_i S_i) be the set. We want B - (U_i S_i).
+//
+// Let S_i = /\_j S_ij. To compute B - S_i = B /\ ~S_i, we partition S_i based
+// on the first violated constraint:
+// ~S_i = (~S_i1) U (S_i1 /\ ~S_i2) U (S_i1 /\ S_i2 /\ ~S_i3) U ...
+// And the required result is (B /\ ~S_i1) U (B /\ S_i1 /\ ~S_i2) U ...
+// We recurse by subtracting U_{j > i} S_j from each of these parts and
+// returning the union of the results.
+//
+// TODO reimplement this heuristic:
+// As a heuristic, we try adding all the constraints and check if simplex
+// says that the intersection is empty. Also, in the process we find out that
+// some constraints are redundant, which we then ignore.
+void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
+                         const PresburgerSet &S, unsigned i,
+                         PresburgerSet &result) {
+  if (i == S.getNumBasicSets()) {
+    FlatAffineConstraints BCopy = B;
+    // BCopy.simplify();
+    result.addFlatAffineConstraints(std::move(BCopy));
+    return;
+  }
+  const FlatAffineConstraints &S_i = S.getFlatAffineConstraints()[i];
+  auto initialSnap = simplex.getSnapshot();
+  // unsigned offset = simplex.numberConstraints();
+  // simplex.addBasicSetAsInequalities(set_i);
+  simplex.addFlatAffineConstraints(S_i);
+
+  if (simplex.isEmpty()) {
+    simplex.rollback(initialSnap);
+    subtractRecursively(B, simplex, S, i + 1, result);
+    return;
+  }
+
+  /*std::vector<bool> isMarkedRedundant;
+  for (size_t j = 0; j < 2 * S_i.getNumEqualities() + S_i.getNumInequalities();
+       j++)
+    isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
+  */
+  simplex.rollback(initialSnap);
+  // TODO benchmark does it make a lot of difference if we always_inline this?
+  auto addInequalityFromEquality = [&](const ArrayRef<int64_t> &eq,
+                                       bool negated, bool strict) {
+    SmallVector<int64_t, 64> coeffs;
+    for (auto coeff : eq)
+      coeffs.emplace_back(negated ? -coeff : coeff);
+
+    // The constant is at the end
+    if (strict)
+      --coeffs[eq.size() - 1];
+
+    B.addInequality(coeffs);
+    simplex.addInequality(coeffs);
+  };
+  auto recurseWithInequalityFromEquality = [&, i](const ArrayRef<int64_t> &eq,
+                                                  bool negated, bool strict) {
+    size_t snap = simplex.getSnapshot();
+    addInequalityFromEquality(eq, negated, strict);
+
+    subtractRecursively(B, simplex, S, i + 1, result);
+
+    B.removeInequality(B.getNumInequalities() - 1);
+    simplex.rollback(snap);
+  };
+
+  for (size_t j = 0; j < S_i.getNumEqualities(); j++) {
+    // The first inequality is positive and the second is negative, of which
+    // we need the complements (strict negative and strict positive).
+    const auto &eq = S_i.getEquality(j);
+    /*if (isMarkedRedundant[2 * j]) {
+      recurseWithInequalityFromEquality(eq, true, true);
+      if (!isMarkedRedundant[2 * j + 1]) {
+        addInequalityFromEquality(eq, false, false);
+        continue;
+      }
+    }
+
+    if (isMarkedRedundant[2 * j + 1]) {
+      recurseWithInequalityFromEquality(eq, false, true);
+      if (!isMarkedRedundant[2 * j]) {
+        addInequalityFromEquality(eq, true, false);
+        continue;
+      }
+    }*/
+
+    B.addEquality(eq);
+    // TODO Can we use addValidEq (once it's implemented) here?
+    simplex.addEquality(eq);
+  }
+
+  // offset = 2 * S_i.getNumEqualities();
+  for (size_t j = 0; j < S_i.getNumInequalities(); j++) {
+    /*if (isMarkedRedundant[offset + j])
+      continue;*/
+    const auto &ineq = S_i.getInequality(j);
+
+    size_t snap = simplex.getSnapshot();
+
+    SmallVector<int64_t, 64> complement;
+    for (auto coeff : ineq)
+      complement.emplace_back(-coeff);
+
+    // The constant is at the end
+    --complement[ineq.size() - 1];
+
+    B.addInequality(complement);
+    simplex.addInequality(complement);
+    subtractRecursively(B, simplex, S, i + 1, result);
+    B.removeInequality(B.getNumInequalities() - 1);
+    simplex.rollback(snap);
+
+    simplex.addInequality(ineq);
+  }
+
+  // TODO benchmark technically we can probably drop this as the caller will
+  // rollback. See if it makes much of a difference. Only the last rollback
+  // would be eliminated by this.
+  simplex.rollback(initialSnap);
+}
+
+// Returns the set difference B - S.
+PresburgerSet PresburgerSet::subtract(FlatAffineConstraints c,
+                                      const PresburgerSet &set) {
+  assert(set.getNumDims() == c.getNumDimIds() &&
+         set.getNumSyms() == c.getNumSymbolIds() &&
+         "Sets to be subtracted have different dimensionality");
+  if (c.isEmptyByGCDTest())
+    return PresburgerSet::makeEmptySet(c.getNumDimIds(), c.getNumSymbolIds());
+
+  PresburgerSet result(c.getNumDimIds());
+  Simplex simplex(c);
+  subtractRecursively(c, simplex, set, 0, result);
+  return result;
+}
+
+void PresburgerSet::subtract(const PresburgerSet &set) {
+  assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
+         "Sets to be subtracted have different dimensionality");
+  if (markedEmpty)
+    return;
+  if (set.isMarkedEmpty())
+    return;
+  if (set.isUniverse()) {
+    markedEmpty = true;
+    return;
+  }
+  if (isUniverse()) {
+    llvm_unreachable("unimplemented");
+    //*this = PresburgerSet::complement(s);
+    return;
+  }
+
+  PresburgerSet result = PresburgerSet::makeEmptySet(nDim, nSym);
+  for (const FlatAffineConstraints &c : flatAffineConstraints)
+    result.unionSet(subtract(c, set));
+  *this = result;
+}
+
 bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
   // TODO implemenmt this
   return false;
@@ -91,6 +260,8 @@ void PresburgerSet::print(raw_ostream &os) const {
   }
   os << ")";
 }
+
+void PresburgerSet::dump() const { print(llvm::errs()); }
 
 void PresburgerSet::printVar(raw_ostream &os, int64_t val, unsigned i,
                              unsigned &countNonZero) const {

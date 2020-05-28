@@ -14,15 +14,21 @@ public:
   unsigned getNumBasicSets() const;
   unsigned getNumDims() const;
   unsigned getNumSyms() const;
-  const SmallVector<FlatAffineConstraints, 4> &getFlatAffineConstrains() const;
+  const SmallVector<FlatAffineConstraints, 4> &getFlatAffineConstraints() const;
   void addFlatAffineConstraints(FlatAffineConstraints cs);
   void unionSet(const PresburgerSet &set);
   void intersectSet(const PresburgerSet &set);
   static bool equal(const PresburgerSet &s, const PresburgerSet &t);
   void print(raw_ostream &os) const;
+  void dump() const;
   llvm::hash_code hash_value() const;
   bool isMarkedEmpty() const;
   bool isUniverse() const;
+
+  static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym);
+  void subtract(const PresburgerSet &set);
+  static PresburgerSet subtract(FlatAffineConstraints c,
+                                const PresburgerSet &set);
 
   /*std::optional<std::vector<INT>> findSample();
   static Set complement(const Set &set);
