@@ -604,9 +604,8 @@ public:
     assert(width && "Width should not be unbounded!");
     dualDenom = simplex.tableau(row, 0);
     dual.clear();
-    // The increment is i += 2 because equalities are added as two
-    // inequalities, one positive and one negative. We only want to process
-    // the positive ones.
+    // The increment is i += 2 because equalities are added as two inequalities,
+    // one positive and one negative. We only want to process the positive ones.
     for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2) {
       if (simplex.con[i].ownsRow)
         dual.push_back(0);
@@ -649,18 +648,17 @@ private:
 };
 
 // Let b_{level}, b_{level + 1}, ... b_n be the current basis.
-// Let F_i(v) = max <v, x - y> where x and y are points in the original
-// polytope and <b_j, x - y> = 0 is satisfied for all j < i. (here <u, v>
-// denotes the inner product)
+// Let F_i(v) = max <v, x - y> where x and y are points in the original polytope
+// and <b_j, x - y> = 0 is satisfied for all j < i. (here <u, v> denotes the
+// inner product)
 //
-// In every iteration, we first replace b_{i+1} with b_{i+1} + u*b_i, where u
-// is the integer such that F_i(b_{i+1} + u*b_i) minimized. Let alpha be the
-// dual variable associated with the constraint <b_i, x - y> = 0 when
-// computing F_{i+1}(b_{i+1}). alpha must be the minimizing value of u, if it
-// were allowed to be rational. Due to convexity, the minimizing integer value
-// is either floor(alpha) or ceil(alpha), so we just need to check which of
-// these gives a lower F_{i+1} value. If alpha turned out to be an integer,
-// then u = alpha.
+// In every iteration, we first replace b_{i+1} with b_{i+1} + u*b_i, where u is
+// the integer such that F_i(b_{i+1} + u*b_i) minimized. Let alpha be the dual
+// variable associated with the constraint <b_i, x - y> = 0 when computing
+// F_{i+1}(b_{i+1}). alpha must be the minimizing value of u, if it were allowed
+// to be rational. Due to convexity, the minimizing integer value is either
+// floor(alpha) or ceil(alpha), so we just need to check which of these gives a
+// lower F_{i+1} value. If alpha turned out to be an integer, then u = alpha.
 //
 // Now if F_i(b_{i+1}) < eps * F_i(b_i), we swap b_i and (the new) b_{i + 1}
 // and decrement i (unless i = level, in which case we stay at the same i).
@@ -671,26 +669,26 @@ private:
 // Some of the required F and alpha values may already be known. We cache the
 // known values and reuse them if possible. In particular:
 //
-// When we set b_{i+1} to b_{i+1} + u*b_i, no F values are changed since we
-// only added a multiple of b_i to b_{i+1}. In particular F_{i+1}(b_{i+1}) =
-// min F_i(b_{i+1} + alpha * b_i) so adding u*b_i to b_{i+1} does not change
-// this. Also <b_i, x - y> = 0 and <b_{i+1}, x - y> = 0 already imply <b_{i+1}
-// + u*b_i, x - y> = 0, so the constraints are unchanged.
+// When we set b_{i+1} to b_{i+1} + u*b_i, no F values are changed since we only
+// added a multiple of b_i to b_{i+1}. In particular F_{i+1}(b_{i+1})
+// = min F_i(b_{i+1} + alpha * b_i) so adding u*b_i to b_{i+1} does not
+// change this. Also <b_i, x - y> = 0 and <b_{i+1}, x - y> = 0 already
+// imply <b_{i+1} + u*b_i, x - y> = 0, so the constraints are unchanged.
 //
-// When we decrement i, we swap b_i and b_{i+1}. In the following paragraphs
-// we always refer to the final vector b_{i+1} after updating). But note that
-// when we come to the end of an iteration we always know F_i(b_{i+1}), so we
-// just need to update the cached value to reflect this. However the value of
-// F_{i+1}(b_i) is not already known, so if there was a stale value of F[i+1]
-// in the cache we remove this. Moreover, the iteration after decrementing
-// will want the dual variables from this computation so we cache this when we
+// When we decrement i, we swap b_i and b_{i+1}. In the following paragraphs we
+// always refer to the final vector b_{i+1} after updating). But note that when
+// we come to the end of an iteration we always know F_i(b_{i+1}), so we just
+// need to update the cached value to reflect this. However the value of
+// F_{i+1}(b_i) is not already known, so if there was a stale value of F[i+1] in
+// the cache we remove this. Moreover, the iteration after decrementing will
+// want the dual variables from this computation so we cache this when we
 // compute the minimizing value of u.
 //
 // If alpha turns out to be an integer, then we never compute F_i(b_{i+1}) in
-// this iteration. But in this case, F_{i+1}(b_{i+1}) = F_{i+1}(b'_{i+1})
-// where b'_{i+1} is the vector before updating. Therefore, we can update the
-// cache with this value. Furthermore, we can just inherit the dual variables
-// from this computation.
+// this iteration. But in this case, F_{i+1}(b_{i+1}) = F_{i+1}(b'_{i+1}) where
+// b'_{i+1} is the vector before updating. Therefore, we can update the cache
+// with this value. Furthermore, we can just inherit the dual variables from
+// this computation.
 //
 // When incrementing i we do not make any changes to the basis so no
 // invalidation occurs.
@@ -739,15 +737,15 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
     return F[i + 1 - level];
   };
 
-  // In the ith iteration of the loop, gbrSimplex has constraints for
-  // directions from `level` to i - 1.
+  // In the ith iteration of the loop, gbrSimplex has constraints for directions
+  // from `level` to i - 1.
   unsigned i = level;
   while (i < basis.getNumRows() - 1) {
     Fraction<int64_t> F_i_candidate; // F_i(b_{i+1} + u*b_i)
     if (i >= level + F.size()) {
       // We don't even know the value of F_i(b_i), so let's find that first.
-      // We have to do this first since later we assume that F already
-      // contains values up to and including i.
+      // We have to do this first since later we assume that F already contains
+      // values up to and including i.
 
       assert((i == 0 || i - 1 < level + F.size()) &&
              "We are at level i but we don't know the value of F_{i-1}");
@@ -779,9 +777,9 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
       // so we remove the cached values here.
       F.resize(i - level + 1);
       if (i == level) {
-        // TODO (performance) isl seems to assume alpha is 0 in this case.
-        // Look into this. For now we assume that alpha is not known and must
-        // be recomputed.
+        // TODO (performance) isl seems to assume alpha is 0 in this case. Look
+        // into this. For now we assume that alpha is not known and must be
+        // recomputed.
         alpha.clear();
         continue;
       }
@@ -812,12 +810,12 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 
 // Search for an integer sample point using a branch and bound algorithm.
 //
-// Each row in the basis matrix is a vector, and the set of basis vectors
-// should span the space. Initially this is called with the identity matrix,
-// i.e., the basis vectors are just the variables.
+// Each row in the basis matrix is a vector, and the set of basis vectors should
+// span the space. Initially this is called with the identity matrix, i.e., the
+// basis vectors are just the variables.
 //
-// In every level, a value is assigned to the level-th basis vector, as
-// follows. Compute the minimum and maximum rational values of this direction.
+// In every level, a value is assigned to the level-th basis vector, as follows.
+// Compute the minimum and maximum rational values of this direction.
 // If only one integer point lies in this range, constrain the variable to
 // have this value and recurse to the next variable.
 //
@@ -825,13 +823,13 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
 // reduceBasis and then compute the bounds again. Now we can't do any better
 // than this, so we just recurse on every integer value in this range.
 //
-// If the range contains no integer value, then of course the polytope is
-// empty for the current assignment of the values in previous levels, so
-// return to the previous level.
+// If the range contains no integer value, then of course the polytope is empty
+// for the current assignment of the values in previous levels, so return to
+// the previous level.
 //
-// If we reach the last level where all the variables have been assigned
-// values already, then we simply return the current sample point if it is
-// integral, or an empty llvm::Optional otherwise.
+// If we reach the last level where all the variables have been assigned values
+// already, then we simply return the current sample point if it is integral, or
+// an empty llvm::Optional otherwise.
 llvm::Optional<std::vector<int64_t>>
 Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   if (level == basis.getNumRows())
