@@ -19,4 +19,9 @@ def FoldIntersectPattern : Pat<
   (Presburger_IntersectOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
   (IntersectSets $op, $set1, $set2)>;
 
+def SubtractSets : NativeCodeCall<
+    "subtractSets($_builder, $0.getDefiningOp(), $1, $2)">;
+def FoldSubtractPattern : Pat<
+  (Presburger_SubtractOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
+  (SubtractSets $op, $set1, $set2)>;
 #endif // PRESBURGER_TRANSFORMS

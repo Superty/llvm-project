@@ -1,7 +1,7 @@
+#include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Dialect/Presburger/Attributes.h"
 #include "mlir/Dialect/Presburger/PresburgerOps.h"
 #include "mlir/Dialect/Presburger/Set.h"
-#include "mlir/Analysis/AffineStructures.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/PatternMatch.h"
 
@@ -32,6 +32,18 @@ static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
+static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
+                          PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
+  PresburgerSet ps(attr1.getValue());
+  ps.subtract(attr2.getValue());
+
+  PresburgerSetType type = PresburgerSetType::get(
+      rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
+
+  PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
+}
+
 namespace {
 
 #include "mlir/Dialect/Presburger/Transforms/Transforms.cpp.inc"
@@ -47,4 +59,9 @@ void IntersectOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
 void UnionOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
                                           MLIRContext *context) {
   results.insert<FoldUnionPattern>(context);
+}
+
+void SubtractOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
+                                             MLIRContext *context) {
+  results.insert<FoldSubtractPattern>(context);
 }

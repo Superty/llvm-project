@@ -56,15 +56,38 @@ def Presburger_UnionOp : Presburger_BinSetOp<"union"> {
 
 
 def Presburger_IntersectOp : Presburger_BinSetOp<"intersect"> {
-    let summary = "intersection/on of two presburger sets";
+    let summary = "intersection of two presburger sets";
 
     let description = [{
-        The `presburger.intersect` operator allows us to perfom a intersection of two
+        The `presburger.intersect` operator allows us to perfom an intersection of two
         Presburger sets.
         It requires two operands of type `!presburger.set<dimC, symC>` that have
         matching `dimC` and `symC`.
 
         **Examples:**
+
+        ```mlir
+        %0 = presburger.set #presburger<"(d0)[N] : (d0 - N >= 0 and (-d0) + 4 >= 0)">
+        %1 = presburger.set #presburger<"(d0)[N] : (d0 - 1 >= 0 and -d0 + 3 >= 0)">
+        %2 = presburger.intersect %0, %1 : !presburger.set<1,1>
+        ```
+    }];
+
+    let hasCanonicalizer = 1;
+}
+
+
+def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
+    let summary = "subtraction of two presburger sets";
+
+    let description = [{
+        The `presburger.subtract` operator allows us to perfom a subtraction of two
+        Presburger sets.
+        It requires two operands of type `!presburger.set<dimC, symC>` that have
+        matching `dimC` and `symC`.
+
+        **Examples:**
+        // TODO change example
 
         ```mlir
         %0 = presburger.set #presburger<"(d0)[N] : (d0 - N >= 0 and (-d0) + 4 >= 0)">

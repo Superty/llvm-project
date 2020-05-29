@@ -93,6 +93,14 @@ static void print(OpAsmPrinter &printer, IntersectOp op) {
   printer.printType(op.getType());
 }
 
+static void print(OpAsmPrinter &printer, SubtractOp op) {
+  printer << "presburger.subtract ";
+  printer.printOperand(op.set1());
+  printer << ", ";
+  printer.printOperand(op.set2());
+  printer << " : ";
+  printer.printType(op.getType());
+}
 namespace mlir {
 namespace presburger {
 #define GET_OP_CLASSES
