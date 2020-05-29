@@ -151,26 +151,12 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
   for (size_t j = 0; j < S_i.getNumEqualities(); j++) {
     // The first inequality is positive and the second is negative, of which
     // we need the complements (strict negative and strict positive).
+    // TODO reimplement the heuristics
     const auto &eq = S_i.getEquality(j);
-    /*if (isMarkedRedundant[2 * j]) {
-      recurseWithInequalityFromEquality(eq, true, true);
-      if (!isMarkedRedundant[2 * j + 1]) {
-        addInequalityFromEquality(eq, false, false);
-        continue;
-      }
-    }
-
-    if (isMarkedRedundant[2 * j + 1]) {
-      recurseWithInequalityFromEquality(eq, false, true);
-      if (!isMarkedRedundant[2 * j]) {
-        addInequalityFromEquality(eq, true, false);
-        continue;
-      }
-    }*/
-
-    B.addEquality(eq);
-    // TODO Can we use addValidEq (once it's implemented) here?
-    simplex.addEquality(eq);
+    recurseWithInequalityFromEquality(eq, true, true);
+    addInequalityFromEquality(eq, false, false);
+    recurseWithInequalityFromEquality(eq, false, true);
+    addInequalityFromEquality(eq, true, false);
   }
 
   // offset = 2 * S_i.getNumEqualities();
