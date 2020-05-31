@@ -96,13 +96,16 @@ PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
 // As a heuristic, we try adding all the constraints and check if simplex
 // says that the intersection is empty. Also, in the process we find out that
 // some constraints are redundant, which we then ignore.
-void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
+// TODO we should try to reintroduce the "by reference" to speed this up
+void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
                          const PresburgerSet &S, unsigned i,
                          PresburgerSet &result) {
   if (i == S.getNumBasicSets()) {
-    FlatAffineConstraints BCopy = B;
+    // TODO we only have to do this if we get a reference to B
+    // FlatAffineConstraints BCopy = B;
     // BCopy.simplify();
-    result.addFlatAffineConstraints(std::move(BCopy));
+    // result.addFlatAffineConstraints(std::move(BCopy));
+    result.addFlatAffineConstraints(std::move(B));
     return;
   }
   const FlatAffineConstraints &S_i = S.getFlatAffineConstraints()[i];
@@ -144,6 +147,7 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
 
     subtractRecursively(B, simplex, S, i + 1, result);
 
+    // TODO check if this removes the right inequality
     B.removeInequality(B.getNumInequalities() - 1);
     simplex.rollback(snap);
   };
@@ -154,8 +158,10 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
     // TODO reimplement the heuristics
     const auto &eq = S_i.getEquality(j);
     recurseWithInequalityFromEquality(eq, true, true);
-    addInequalityFromEquality(eq, false, false);
     recurseWithInequalityFromEquality(eq, false, true);
+    // TODO these inequalities get never removed -> this needs to be resolved if
+    // we want to reference B.
+    addInequalityFromEquality(eq, false, false);
     addInequalityFromEquality(eq, true, false);
   }
 
