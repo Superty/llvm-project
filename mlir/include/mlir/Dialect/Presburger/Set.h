@@ -26,6 +26,7 @@ public:
   bool isUniverse() const;
 
   static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym);
+  static PresburgerSet complement(const PresburgerSet &set);
   void subtract(const PresburgerSet &set);
   static PresburgerSet subtract(FlatAffineConstraints c,
                                 const PresburgerSet &set);

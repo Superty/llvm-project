@@ -214,6 +214,11 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints c,
   return result;
 }
 
+PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
+  return subtract(FlatAffineConstraints(set.getNumDims(), set.getNumSyms()),
+                  set);
+}
+
 // Subtracts the set S from the current set.
 //
 // We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
@@ -229,8 +234,7 @@ void PresburgerSet::subtract(const PresburgerSet &set) {
     return;
   }
   if (isUniverse()) {
-    llvm_unreachable("unimplemented");
-    //*this = PresburgerSet::complement(s);
+    *this = PresburgerSet::complement(set);
     return;
   }
 
