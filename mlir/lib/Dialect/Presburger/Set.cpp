@@ -190,6 +190,7 @@ void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
     B.removeInequality(B.getNumInequalities() - 1);
     simplex.rollback(snap);
 
+    B.addInequality(ineq);
     simplex.addInequality(ineq);
   }
 
@@ -252,6 +253,11 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);
+  if (markedEmpty) {
+    // TODO dicuss what we want to print in the empty case
+    // os << ": (1 = 0)";
+    // return;
+  }
   os << " : (";
   bool fst = true;
   for (auto &c : flatAffineConstraints) {

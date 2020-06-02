@@ -153,7 +153,7 @@ func @subtract_multiple_ineqs() -> !presburger.set<2,0> {
   %set2 = presburger.set #presburger<"(x, y)[] : (x >= y and x <= 0)">
 
   // TODO: these constraints will be simplified as soon as simplification is available
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - 1 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
@@ -166,7 +166,7 @@ func @subtract_non_convex_ineqs() -> !presburger.set<2,0> {
   %set1 = presburger.set #presburger<"(x, y)[] : (x + 1 >= 0)">
   %set2 = presburger.set #presburger<"(x, y)[] : (x >= y and x <= 0 or x >= 10)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
@@ -179,7 +179,7 @@ func @subtract_non_convex_ineqs2() -> !presburger.set<2,0> {
   %set1 = presburger.set #presburger<"(x, y)[] : (x + 1 >= 0 and y >= -5)">
   %set2 = presburger.set #presburger<"(x, y)[] : (x >= y and x <= 0 or x >= 10)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and d1 + 5 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d1 + 5 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and d1 + 5 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d1 + 5 >= 0 and d0 - d1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
@@ -192,7 +192,7 @@ func @subtract_non_convex_ineqs3() -> !presburger.set<2,0> {
   %set1 = presburger.set #presburger<"(x, y)[] : (x + 1 >= 0 or y >= -5)">
   %set2 = presburger.set #presburger<"(x, y)[] : (x >= y and x <= 0 or x >= 10)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0 or d1 + 5 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d1 + 5 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0 or d1 + 5 >= 0 and -d0 + d1 - 1 >= 0 and -d0 + 9 >= 0 or d1 + 5 >= 0 and d0 - d1 >= 0 and d0 - 1 >= 0 and -d0 + 9 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
@@ -239,7 +239,7 @@ func @complement_universe() -> !presburger.set<1,0> {
 
 // CHECK-LABEL: func @complement_multi_dim
 func @complement_multi_dim() -> !presburger.set<2,0> {
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (-d0 - 1 >= 0 and d1 + 9 >= 0 or -d1 - 1 >= 0 and d1 + 9 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (-d0 - 1 >= 0 and d1 + 9 >= 0 or d0 >= 0 and -d1 - 1 >= 0 and d1 + 9 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %set = presburger.set #presburger<"(x,y)[] : (x >= 0 and y >= 0 or y <= -10)">
 
