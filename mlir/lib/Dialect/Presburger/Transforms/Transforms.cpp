@@ -44,6 +44,17 @@ static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
+static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
+                           PresburgerSetAttr attr) {
+  PresburgerSet ps = PresburgerSet::complement(attr.getValue());
+
+  PresburgerSetType type = PresburgerSetType::get(
+      rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
+
+  PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
+}
+
 namespace {
 
 #include "mlir/Dialect/Presburger/Transforms/Transforms.cpp.inc"
@@ -64,4 +75,9 @@ void UnionOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
 void SubtractOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
                                              MLIRContext *context) {
   results.insert<FoldSubtractPattern>(context);
+}
+
+void ComplementOp::getCanonicalizationPatterns(
+    OwningRewritePatternList &results, MLIRContext *context) {
+  results.insert<FoldComplementPattern>(context);
 }

@@ -24,4 +24,10 @@ def SubtractSets : NativeCodeCall<
 def FoldSubtractPattern : Pat<
   (Presburger_SubtractOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
   (SubtractSets $op, $set1, $set2)>;
+
+def ComplementSet : NativeCodeCall<
+    "complementSet($_builder, $0.getDefiningOp(), $1)">;
+def FoldComplementPattern : Pat<
+  (Presburger_ComplementOp:$op (Presburger_SetOp $set)),
+  (ComplementSet $op, $set)>;
 #endif // PRESBURGER_TRANSFORMS

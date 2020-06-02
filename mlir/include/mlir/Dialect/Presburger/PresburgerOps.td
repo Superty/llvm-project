@@ -92,7 +92,7 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
         ```mlir
         %0 = presburger.set #presburger<"(d0)[N] : (d0 - N >= 0 and (-d0) + 4 >= 0)">
         %1 = presburger.set #presburger<"(d0)[N] : (d0 - 1 >= 0 and -d0 + 3 >= 0)">
-        %2 = presburger.intersect %0, %1 : !presburger.set<1,1>
+        %2 = presburger.subtract %0, %1 : !presburger.set<1,1>
         ```
     }];
 
@@ -100,4 +100,28 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
 }
 
 
+def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
+                                                    SameOperandsAndResultType]> {
+    let summary = "complement of a Presburger set";
+
+    let description = [{
+        The `presburger.complement` operator allows us to compute the complement 
+        of a given Presburger set
+
+        **Examples:**
+
+        TODO
+
+        ```mlir
+        %0 = presburger.set #presburger<"(d0) : (d0 >= 0 and -d0 + 4 >= 0)">
+        %1 = presburger.complement %0 : !presburger<1,0>
+        ```
+    }];
+
+    let arguments = (ins PresburgerSetType:$set);
+
+    let results = (outs PresburgerSetType:$res);
+
+    let hasCanonicalizer = 1;
+}
 #endif // Presburger_OPS

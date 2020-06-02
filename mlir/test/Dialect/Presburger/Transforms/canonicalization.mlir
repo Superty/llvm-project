@@ -197,3 +197,52 @@ func @subtract_non_convex_ineqs3() -> !presburger.set<2,0> {
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
 }
+
+// ---- 
+
+// CHECK-LABEL: func @complement_simple
+func @complement_simple() -> !presburger.set<1,0> {
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (-d0 - 1 >= 0)">
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(x)[] : (x >= 0)">
+
+  %uset = presburger.complement %set : !presburger.set<1,0>
+  return %uset : !presburger.set<1,0>
+}
+
+// ----
+
+// CHECK-LABEL: func @complement_empty
+func @complement_empty() -> !presburger.set<1,0> {
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(x)[] : (1 = 2)">
+
+  %uset = presburger.complement %set : !presburger.set<1,0>
+  return %uset : !presburger.set<1,0>
+}
+
+// ----
+
+// CHECK-LABEL: func @complement_universe
+func @complement_universe() -> !presburger.set<1,0> {
+  // TODO check how empty is supposed to look
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(x)[] : ()">
+
+  %uset = presburger.complement %set : !presburger.set<1,0>
+  return %uset : !presburger.set<1,0>
+}
+
+// ----
+
+// CHECK-LABEL: func @complement_multi_dim
+func @complement_multi_dim() -> !presburger.set<2,0> {
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0, d1)[] : (-d0 - 1 >= 0 and d1 + 9 >= 0 or -d1 - 1 >= 0 and d1 + 9 >= 0)">
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(x,y)[] : (x >= 0 and y >= 0 or y <= -10)">
+
+  %uset = presburger.complement %set : !presburger.set<2,0>
+  return %uset : !presburger.set<2,0>
+}

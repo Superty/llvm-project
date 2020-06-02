@@ -101,6 +101,35 @@ static void print(OpAsmPrinter &printer, SubtractOp op) {
   printer << " : ";
   printer.printType(op.getType());
 }
+
+// complement
+
+static ParseResult parseComplementOp(OpAsmParser &parser,
+                                     OperationState &result) {
+  OpAsmParser::OperandType op;
+
+  if (parser.parseOperand(op))
+    return failure();
+
+  Type outType;
+  if (parser.parseColon() || parser.parseType(outType))
+    return failure();
+
+  parser.addTypeToList(outType, result.types);
+
+  if (parser.resolveOperands(op, outType, result.operands))
+    return failure();
+
+  return success();
+}
+
+static void print(OpAsmPrinter &printer, ComplementOp op) {
+  printer << "presburger.complement ";
+  printer.printOperand(op.set());
+  printer << " : ";
+  printer.printType(op.getType());
+}
+
 namespace mlir {
 namespace presburger {
 #define GET_OP_CLASSES
