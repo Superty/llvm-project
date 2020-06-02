@@ -43,6 +43,10 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
     addFlatAffineConstraints(std::move(cs));
 }
 
+// Compute the intersection of the two sets.
+//
+// We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
+// as (S_1 and T_1) or (S_1 and T_2) or ...
 void PresburgerSet::intersectSet(const PresburgerSet &set) {
   assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
          "Cannot intersect Presburger sets having different dimensionality");
@@ -210,6 +214,9 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints c,
   return result;
 }
 
+// Subtracts the set S from the current set.
+//
+// We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
          "Sets to be subtracted have different dimensionality");
