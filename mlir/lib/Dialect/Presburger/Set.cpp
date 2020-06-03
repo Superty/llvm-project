@@ -263,8 +263,8 @@ void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);
   if (markedEmpty) {
     // TODO dicuss what we want to print in the empty case
-    // os << " : (1 = 0)";
-    // return;
+    os << " : (1 = 0)";
+    return;
   }
   os << " : (";
   bool fst = true;
