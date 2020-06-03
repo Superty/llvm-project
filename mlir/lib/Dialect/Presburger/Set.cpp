@@ -82,6 +82,22 @@ PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
   return result;
 }
 
+SmallVector<int64_t, 64> inequalityFromEquality(const ArrayRef<int64_t> &eq,
+                                                bool negated, bool strict) {
+  SmallVector<int64_t, 64> coeffs;
+  for (auto coeff : eq)
+    coeffs.emplace_back(negated ? -coeff : coeff);
+
+  // The constant is at the end
+  if (strict)
+    --coeffs[eq.size() - 1];
+
+  return coeffs;
+}
+
+SmallVector<int64_t, 64> complementIneq(const ArrayRef<int64_t> &ineq) {
+  return inequalityFromEquality(ineq, true, true);
+}
 // Return the set difference B - S and accumulate the result into `result`.
 // `simplex` must correspond to B.
 //
@@ -130,14 +146,8 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
   // TODO benchmark does it make a lot of difference if we always_inline this?
   auto addInequalityFromEquality = [&](const ArrayRef<int64_t> &eq,
                                        bool negated, bool strict) {
-    SmallVector<int64_t, 64> coeffs;
-    for (auto coeff : eq)
-      coeffs.emplace_back(negated ? -coeff : coeff);
-
-    // The constant is at the end
-    if (strict)
-      --coeffs[eq.size() - 1];
-
+    SmallVector<int64_t, 64> coeffs =
+        inequalityFromEquality(eq, negated, strict);
     B.addInequality(coeffs);
     simplex.addInequality(coeffs);
   };
@@ -176,12 +186,7 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
 
     size_t snap = simplex.getSnapshot();
 
-    SmallVector<int64_t, 64> complement;
-    for (auto coeff : ineq)
-      complement.emplace_back(-coeff);
-
-    // The constant is at the end
-    --complement[ineq.size() - 1];
+    SmallVector<int64_t, 64> complement = complementIneq(ineq);
 
     B.addInequality(complement);
     simplex.addInequality(complement);
