@@ -227,7 +227,7 @@ func @complement_empty() -> !presburger.set<1,0> {
 // CHECK-LABEL: func @complement_universe
 func @complement_universe() -> !presburger.set<1,0> {
   // TODO check how empty is supposed to look
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (1 = 0)">
   // CHECK-NEXT: return %[[S]]
   %set = presburger.set #presburger<"(x)[] : ()">
 

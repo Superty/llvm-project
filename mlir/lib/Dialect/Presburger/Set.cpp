@@ -16,7 +16,7 @@ unsigned PresburgerSet::getNumSyms() const { return nSym; }
 bool PresburgerSet::isMarkedEmpty() const { return markedEmpty; }
 
 bool PresburgerSet::isUniverse() const {
-  return flatAffineConstraints.size() == 0;
+  return flatAffineConstraints.size() == 0 && !markedEmpty;
 }
 
 const SmallVector<FlatAffineConstraints, 4> &
@@ -100,16 +100,13 @@ PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
 // As a heuristic, we try adding all the constraints and check if simplex
 // says that the intersection is empty. Also, in the process we find out that
 // some constraints are redundant, which we then ignore.
-// TODO we should try to reintroduce the "by reference" to speed this up
-void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
+void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
                          const PresburgerSet &S, unsigned i,
                          PresburgerSet &result) {
   if (i == S.getNumBasicSets()) {
-    // TODO we only have to do this if we get a reference to B
-    // FlatAffineConstraints BCopy = B;
+    FlatAffineConstraints BCopy = B;
     // BCopy.simplify();
-    // result.addFlatAffineConstraints(std::move(BCopy));
-    result.addFlatAffineConstraints(std::move(B));
+    result.addFlatAffineConstraints(std::move(BCopy));
     return;
   }
   const FlatAffineConstraints &S_i = S.getFlatAffineConstraints()[i];
@@ -156,6 +153,8 @@ void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
     simplex.rollback(snap);
   };
 
+  size_t addedIneqs = 0;
+
   for (size_t j = 0; j < S_i.getNumEqualities(); j++) {
     // The first inequality is positive and the second is negative, of which
     // we need the complements (strict negative and strict positive).
@@ -163,10 +162,10 @@ void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
     const auto &eq = S_i.getEquality(j);
     recurseWithInequalityFromEquality(eq, true, true);
     recurseWithInequalityFromEquality(eq, false, true);
-    // TODO these inequalities get never removed -> this needs to be resolved if
-    // we want to reference B.
+
     addInequalityFromEquality(eq, false, false);
     addInequalityFromEquality(eq, true, false);
+    addedIneqs += 2;
   }
 
   // offset = 2 * S_i.getNumEqualities();
@@ -191,8 +190,12 @@ void subtractRecursively(FlatAffineConstraints B, Simplex &simplex,
     simplex.rollback(snap);
 
     B.addInequality(ineq);
+    addedIneqs++;
     simplex.addInequality(ineq);
   }
+
+  for (size_t i = 0; i < addedIneqs; i++)
+    B.removeInequality(B.getNumInequalities() - 1);
 
   // TODO benchmark technically we can probably drop this as the caller will
   // rollback. See if it makes much of a difference. Only the last rollback
@@ -208,6 +211,11 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints c,
          "Sets to be subtracted have different dimensionality");
   if (c.isEmptyByGCDTest())
     return PresburgerSet::makeEmptySet(c.getNumDimIds(), c.getNumSymbolIds());
+
+  if (set.isUniverse())
+    return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
+  if (set.isMarkedEmpty())
+    return PresburgerSet(set.getNumDims(), set.getNumSyms());
 
   PresburgerSet result(c.getNumDimIds());
   Simplex simplex(c);
@@ -255,7 +263,7 @@ void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);
   if (markedEmpty) {
     // TODO dicuss what we want to print in the empty case
-    // os << ": (1 = 0)";
+    // os << " : (1 = 0)";
     // return;
   }
   os << " : (";
