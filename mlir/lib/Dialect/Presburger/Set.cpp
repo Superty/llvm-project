@@ -263,6 +263,34 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
   return false;
 }
 
+Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
+  if (maybeSample)
+    return maybeSample;
+  if (markedEmpty)
+    return Optional<SmallVector<int64_t, 64>>();
+  if (isUniverse())
+    return SmallVector<int64_t, 64>(nDim, 0);
+
+  for (FlatAffineConstraints &cs : flatAffineConstraints) {
+    if (auto opt = cs.findIntegerSample()) {
+      maybeSample = SmallVector<int64_t, 64>();
+
+      for (int64_t v : opt.getValue())
+        maybeSample->push_back(v);
+
+      return maybeSample;
+    }
+  }
+  return Optional<SmallVector<int64_t, 64>>();
+}
+
+llvm::Optional<SmallVector<int64_t, 64>>
+PresburgerSet::maybeGetCachedSample() const {
+  if (!markedEmpty && isUniverse())
+    return SmallVector<int64_t, 64>(nDim, 0);
+  return maybeSample;
+}
+
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);

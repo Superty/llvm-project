@@ -31,17 +31,10 @@ public:
   static PresburgerSet subtract(FlatAffineConstraints c,
                                 const PresburgerSet &set);
 
-  /*std::optional<std::vector<INT>> findSample();
-  static Set complement(const Set &set);
-  static Set makeEmptySet(unsigned nDim);
-  /// Checks if the two sets are equal. The provided sets must have the same
-  /// dimensionality.
-  static Set subtract(BasicSet B, const Set &S);
-  void subtract(const Set &set);
-  void dump() const;
-  bool containsPoint(const std::vector<INT> &values) const;
-  std::optional<std::vector<INT>> maybeGetCachedSample() const;
-*/
+  llvm::Optional<SmallVector<int64_t, 64>> findIntegerSample();
+  // bool containsPoint(const std::vector<INT> &values) const;
+  llvm::Optional<SmallVector<int64_t, 64>> maybeGetCachedSample() const;
+
 private:
   unsigned nDim;
   unsigned nSym;
@@ -50,7 +43,7 @@ private:
   // If this is set to true, then the set is empty, irrespective of the state
   // of basicSets.
   bool markedEmpty;
-  // std::optional<std::vector<INT>> maybeSample;
+  Optional<SmallVector<int64_t, 64>> maybeSample;
   void printFlatAffineConstraints(raw_ostream &os,
                                   FlatAffineConstraints cs) const;
   void printVariableList(raw_ostream &os) const;
