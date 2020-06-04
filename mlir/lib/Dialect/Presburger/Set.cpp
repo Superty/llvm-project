@@ -25,7 +25,7 @@ PresburgerSet::getFlatAffineConstraints() const {
 }
 
 void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
-  assert(cs.getNumDimIds() == nDim && cs.getNumSymbolIds() == nSym &&
+  assert(cs.getNumDimIds() == nDim &&
          "Cannot add FlatAffineConstraints having different dimensionality");
 
   if (cs.isEmptyByGCDTest())
@@ -36,8 +36,10 @@ void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
 }
 
 void PresburgerSet::unionSet(const PresburgerSet &set) {
-  assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
+  assert(set.getNumDims() == nDim &&
          "Cannot union Presburger sets having different dimensionality");
+  assert(set.getNumSyms() + nSym == 0 &&
+         "operations on sets with symbols are not yet supported");
 
   for (const FlatAffineConstraints &cs : set.flatAffineConstraints)
     addFlatAffineConstraints(std::move(cs));
@@ -50,6 +52,8 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
 void PresburgerSet::intersectSet(const PresburgerSet &set) {
   assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
          "Cannot intersect Presburger sets having different dimensionality");
+  assert(set.getNumSyms() + nSym == 0 &&
+         "operations on sets with symbols are not yet supported");
 
   if (markedEmpty)
     return;
@@ -239,6 +243,8 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
          "Sets to be subtracted have different dimensionality");
+  assert(set.getNumSyms() + nSym == 0 &&
+         "operations on sets with symbols are not yet supported");
   if (markedEmpty)
     return;
   if (set.isMarkedEmpty())
@@ -264,6 +270,7 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
 }
 
 Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
+  assert(nSym == 0 && "operations on sets with symbols are not yet supported");
   if (maybeSample)
     return maybeSample;
   if (markedEmpty)
@@ -286,7 +293,7 @@ Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
 
 llvm::Optional<SmallVector<int64_t, 64>>
 PresburgerSet::maybeGetCachedSample() const {
-  if (!markedEmpty && isUniverse())
+  if (isUniverse())
     return SmallVector<int64_t, 64>(nDim, 0);
   return maybeSample;
 }
@@ -295,7 +302,6 @@ PresburgerSet::maybeGetCachedSample() const {
 void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);
   if (markedEmpty) {
-    // TODO dicuss what we want to print in the empty case
     os << " : (1 = 0)";
     return;
   }
