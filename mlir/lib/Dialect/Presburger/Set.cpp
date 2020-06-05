@@ -116,7 +116,6 @@ SmallVector<int64_t, 64> complementIneq(const ArrayRef<int64_t> &ineq) {
 // We recurse by subtracting U_{j > i} S_j from each of these parts and
 // returning the union of the results.
 //
-// TODO reimplement this heuristic:
 // As a heuristic, we try adding all the constraints and check if simplex
 // says that the intersection is empty. Also, in the process we find out that
 // some constraints are redundant, which we then ignore.
@@ -131,8 +130,7 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
   }
   const FlatAffineConstraints &S_i = S.getFlatAffineConstraints()[i];
   auto initialSnap = simplex.getSnapshot();
-  // unsigned offset = simplex.numberConstraints();
-  // simplex.addBasicSetAsInequalities(set_i);
+  unsigned offset = simplex.numberConstraints();
   simplex.addFlatAffineConstraints(S_i);
 
   if (simplex.isEmpty()) {
@@ -141,11 +139,11 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
     return;
   }
 
-  /*std::vector<bool> isMarkedRedundant;
+  SmallVector<bool, 64> isMarkedRedundant;
   for (size_t j = 0; j < 2 * S_i.getNumEqualities() + S_i.getNumInequalities();
        j++)
     isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
-  */
+
   simplex.rollback(initialSnap);
   // TODO benchmark does it make a lot of difference if we always_inline this?
   auto addInequalityFromEquality = [&](const ArrayRef<int64_t> &eq,
@@ -162,7 +160,6 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
 
     subtractRecursively(B, simplex, S, i + 1, result);
 
-    // TODO check if this removes the right inequality
     B.removeInequality(B.getNumInequalities() - 1);
     simplex.rollback(snap);
   };
@@ -172,20 +169,34 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
   for (size_t j = 0; j < S_i.getNumEqualities(); j++) {
     // The first inequality is positive and the second is negative, of which
     // we need the complements (strict negative and strict positive).
-    // TODO reimplement the heuristics
     const auto &eq = S_i.getEquality(j);
-    recurseWithInequalityFromEquality(eq, true, true);
-    recurseWithInequalityFromEquality(eq, false, true);
+    if (!isMarkedRedundant[2 * j]) {
+      recurseWithInequalityFromEquality(eq, true, true);
+      if (isMarkedRedundant[2 * j + 1]) {
+        addInequalityFromEquality(eq, false, false);
+        addedIneqs++;
+        continue;
+      }
+    }
+    if (!isMarkedRedundant[2 * j + 1]) {
+      recurseWithInequalityFromEquality(eq, false, true);
+      if (isMarkedRedundant[2 * j]) {
+        addInequalityFromEquality(eq, true, false);
+        addedIneqs++;
+        continue;
+      }
+    }
 
+    // NOTE: we could add an equality to B instead.
     addInequalityFromEquality(eq, false, false);
     addInequalityFromEquality(eq, true, false);
     addedIneqs += 2;
   }
 
-  // offset = 2 * S_i.getNumEqualities();
+  offset = 2 * S_i.getNumEqualities();
   for (size_t j = 0; j < S_i.getNumInequalities(); j++) {
-    /*if (isMarkedRedundant[offset + j])
-      continue;*/
+    if (isMarkedRedundant[offset + j])
+      continue;
     const auto &ineq = S_i.getInequality(j);
 
     size_t snap = simplex.getSnapshot();
