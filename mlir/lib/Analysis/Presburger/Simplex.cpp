@@ -18,7 +18,7 @@ const int NULL_INDEX = std::numeric_limits<int>::max();
 
 // Construct a Simplex object with `nVar` variables.
 Simplex::Simplex(unsigned nVar)
-    : nRow(0), nCol(2), tableau(0, 2 + nVar), empty(false) {
+    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
   for (unsigned i = 0; i < nVar; ++i) {
@@ -223,7 +223,8 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // common denominator and negating the pivot row except for the pivot column
 // element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= 2 && "Refusing to pivot invalid column");
+  assert((pivotRow >= nRedundant && pivotCol >= 2) &&
+         "Refusing to pivot redundant row or invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -305,7 +306,7 @@ llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
                                                unsigned col) const {
   llvm::Optional<unsigned> retRow;
   int64_t retElem, retConst;
-  for (unsigned row = 0; row < nRow; ++row) {
+  for (unsigned row = nRedundant; row < nRow; ++row) {
     if (skipRow && row == *skipRow)
       continue;
     auto elem = tableau(row, col);
@@ -352,6 +353,61 @@ void Simplex::markEmpty() {
   empty = true;
 }
 
+// Find out if the constraint is redundant by computing its minimum value in
+// the tableau. If this returns true, the constraint is left in row position
+// upon return.
+//
+// The constraint is redundant if the minimal value of the unknown (while
+// respecting the other non-redundant constraints) is non-negative.
+//
+// If the unknown is in column position, we try to pivot it down to a row. If
+// no pivot is found, this means that the constraint is unbounded below, i.e.
+// it is not redundant, so we return false.
+//
+// Otherwise, the constraint is in row position. We keep trying to pivot
+// downwards until the sample value becomes negative. If the next pivot would
+// move the unknown to column position, then it is unbounded below and we can
+// return false. If no more pivots are possible and the sample value is still
+// non-negative, return true.
+//
+// Otherwise, if the unknown has a negative sample value, then it is
+// not redundant, so we restore the row to a non-negative value and return.
+bool Simplex::constraintIsRedundant(unsigned conIndex) {
+  if (con[conIndex].redundant)
+    return true;
+
+  if (!con[conIndex].ownsRow) {
+    unsigned col = con[conIndex].pos;
+    auto maybeRow = findPivotRow({}, Direction::DOWN, col);
+    if (!maybeRow)
+      return false;
+    pivot(*maybeRow, col);
+  }
+
+  while (tableau(con[conIndex].pos, 1) >= 0) {
+    auto p = findPivot(con[conIndex].pos, Direction::DOWN);
+    if (!p)
+      return true;
+
+    unsigned row = p->first;
+    unsigned col = p->second;
+    if (row == con[conIndex].pos)
+      return false;
+    pivot(row, col);
+  }
+
+  if (tableau(con[conIndex].pos, 1) >= 0)
+    return true;
+
+  bool success = restoreRow(con[conIndex]);
+  assert(success && "Constraint was not restored succesfully!");
+  return false;
+}
+
+bool Simplex::isMarkedRedundant(int conIndex) const {
+  return con[conIndex].redundant;
+}
+
 // Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
 // is the curent number of variables, then the corresponding inequality is
 // c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
@@ -380,6 +436,46 @@ void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   for (auto coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   addInequality(negatedCoeffs);
+}
+
+// Mark the row as being redundant and push an entry to the undo stack.
+//
+// Since all the rows are stored contiguously as the first nRedundant rows,
+// we move our row to the row at position nRedundant.
+bool Simplex::markRedundant(unsigned row) {
+  assert(!unknownFromRow(row).redundant && "Row is already marked redundant");
+  assert(row >= nRedundant &&
+         "Row is not marked redundant but row < nRedundant");
+
+  undoLog.emplace_back(UndoOp::UNMARK_EMPTY, rowVar[row]);
+
+  Unknown &unknown = unknownFromRow(row);
+  unknown.redundant = true;
+  swapRows(row, nRedundant);
+  nRedundant++;
+  return false;
+}
+
+// Check for redundant constraints and mark them as redundant.
+// A constraint is considered redundant if the other non-redundant constraints
+// already force this constraint to be non-negative.
+//
+// Now for each constraint that hasn't already been marked redundant, we check
+// if it is redundant via constraintIsRedundant, and if it is, mark it as such.
+void Simplex::detectRedundant() {
+  if (empty)
+    return;
+  for (int i = con.size() - 1; i >= 0; i--) {
+    if (con[i].redundant)
+      continue;
+    if (constraintIsRedundant(i)) {
+      // constraintIsRedundant must leave the constraint in row position if it
+      // returns true.
+      assert(con[i].ownsRow &&
+             "Constraint to be marked redundant must be a row!");
+      markRedundant(con[i].pos);
+    }
+  }
 }
 
 unsigned Simplex::numberVariables() const { return var.size(); }
@@ -418,7 +514,7 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
         // coefficients for every row. But the unknown is a constraint,
         // so it was added initially as a row. Such a row could never have been
         // pivoted to a column. So a pivot row will always be found.
-        for (unsigned i = 0; i < nRow; ++i) {
+        for (unsigned i = nRedundant; i < nRow; ++i) {
           if (tableau(i, column) != 0) {
             row = i;
             break;
@@ -440,6 +536,17 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
     con.pop_back();
   } else if (op == UndoOp::UNMARK_EMPTY) {
     empty = false;
+  } else if (op == UndoOp::UNMARK_REDUNDANT) {
+    assert(index.hasValue() &&
+           "UNMARK_REDUNDANT undo entry must be accompanied by an index");
+    assert(nRedundant != 0 && "No redundant constraints present.");
+
+    Unknown &unknown = unknownFromIndex(*index);
+    assert(unknown.ownsRow &&
+           "Constraint to be unmarked as redundant must be a row");
+    swapRows(unknown.pos, nRedundant - 1);
+    unknown.redundant = false;
+    nRedundant--;
   }
 }
 
@@ -489,7 +596,7 @@ std::vector<T> concat(const std::vector<T> &v, const std::vector<T> &w) {
 // The product constraints and variables are stored as: first A's, then B's.
 //
 // The product tableau has row layout:
-//   A's rows, B's rows.
+//   A's redundant rows, B's redundant rows, A's other rows, B's other rows.
 //
 // It has column layout:
 //   denominator, constant, A's columns, B's columns.
@@ -498,7 +605,8 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
   unsigned numCon = A.numberConstraints() + B.numberConstraints();
   Simplex result(numVar);
 
-  result.tableau.resize(numCon, 2 + numVar);
+  result.tableau.resize(numCon, numVar);
+  result.nRedundant = A.nRedundant + B.nRedundant;
   result.empty = A.empty || B.empty;
 
   auto indexFromBIndex = [&](int index) {
@@ -541,10 +649,13 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
         result.rowVar.size() - 1;
     result.nRow++;
   };
-
-  for (unsigned row = 0; row < A.nRow; row++)
+  for (unsigned row = 0; row < A.nRedundant; row++)
     appendRowFromA(row);
-  for (unsigned row = 0; row < B.nRow; row++)
+  for (unsigned row = 0; row < B.nRedundant; row++)
+    appendRowFromB(row);
+  for (unsigned row = A.nRedundant; row < A.nRow; row++)
+    appendRowFromA(row);
+  for (unsigned row = B.nRedundant; row < B.nRow; row++)
     appendRowFromB(row);
 
   return result;
@@ -883,11 +994,14 @@ void Simplex::printUnknown(llvm::raw_ostream &os, const Unknown &u) const {
   os << (u.ownsRow ? "r" : "c");
   os << u.pos;
   if (u.restricted)
-    os << " [>=0]";
+    llvm::errs() << " [>=0]";
+  if (u.redundant)
+    llvm::errs() << " [R]";
 }
 
 void Simplex::print(llvm::raw_ostream &os) const {
-  os << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol << "\n";
+  os << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
+     << "\nnRedundant = " << nRedundant << "\n";
   if (empty)
     os << "Simplex marked empty!\n";
   os << "var: ";
