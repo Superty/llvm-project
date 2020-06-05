@@ -18,7 +18,8 @@ const int NULL_INDEX = std::numeric_limits<int>::max();
 
 // Construct a Simplex object with `nVar` variables.
 Simplex::Simplex(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
+    : nRow(0), nCol(2), nRedundant(0), liveColBegin(2), tableau(0, 2 + nVar),
+      empty(false) {
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
   for (unsigned i = 0; i < nVar; ++i) {
@@ -93,7 +94,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = 2; col < nCol; ++col)
+  for (unsigned col = liveColBegin; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
   for (unsigned i = 0; i < var.size(); ++i) {
@@ -162,7 +163,7 @@ Simplex::Direction Simplex::flippedDirection(Direction direction) const {
 llvm::Optional<std::pair<unsigned, unsigned>>
 Simplex::findPivot(int row, Direction direction) const {
   llvm::Optional<unsigned> col;
-  for (unsigned j = 2; j < nCol; ++j) {
+  for (unsigned j = liveColBegin; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
     if (elem == 0)
       continue;
@@ -223,7 +224,7 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // common denominator and negating the pivot row except for the pivot column
 // element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert((pivotRow >= nRedundant && pivotCol >= 2) &&
+  assert((pivotRow >= nRedundant && pivotCol >= liveColBegin) &&
          "Refusing to pivot redundant row or invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
@@ -486,6 +487,7 @@ unsigned Simplex::numberConstraints() const { return con.size(); }
 unsigned Simplex::getSnapshot() const { return undoLog.size(); }
 
 void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
+  // TODO why not switch case?
   if (op == UndoOp::DEALLOCATE) {
     assert(index.hasValue() &&
            "DEALLOCATE undo entry must be accompanied by an index");
@@ -547,6 +549,14 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
     swapRows(unknown.pos, nRedundant - 1);
     unknown.redundant = false;
     nRedundant--;
+  } else if (op == UndoOp::UNMARK_ZERO) {
+    Unknown &unknown = unknownFromIndex(*index);
+    if (!unknown.ownsRow) {
+      assert(unknown.pos == liveColBegin - 1 &&
+             "Column to be revived should be the last dead column");
+      liveColBegin--;
+    }
+    unknown.zero = false;
   }
 }
 
@@ -600,6 +610,11 @@ std::vector<T> concat(const std::vector<T> &v, const std::vector<T> &w) {
 //
 // It has column layout:
 //   denominator, constant, A's columns, B's columns.
+// TODO reconsider the following:
+// TODO we don't need the dead columns or the redundant constraints. The caller
+// only cares about duals of the new constraints that are added after returning
+// from this function, so we can safely drop redundant constraints from the
+// original simplex.
 Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
   unsigned numVar = A.numberVariables() + B.numberVariables();
   unsigned numCon = A.numberConstraints() + B.numberConstraints();
@@ -607,6 +622,7 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
 
   result.tableau.resize(numCon, numVar);
   result.nRedundant = A.nRedundant + B.nRedundant;
+  result.liveColBegin = A.liveColBegin + B.liveColBegin;
   result.empty = A.empty || B.empty;
 
   auto indexFromBIndex = [&](int index) {
@@ -616,20 +632,30 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
 
   result.con = concat(A.con, B.con);
   result.var = concat(A.var, B.var);
-  for (unsigned i = 2; i < A.nCol; i++) {
+  for (unsigned i = 2; i < A.liveColBegin; i++)
+    result.colVar.push_back(A.colVar[i]);
+  for (unsigned i = 2; i < B.liveColBegin; i++) {
+    result.colVar.push_back(indexFromBIndex(B.colVar[i]));
+    result.unknownFromIndex(result.colVar.back()).pos =
+        result.colVar.size() - 1;
+  }
+  for (unsigned i = A.liveColBegin; i < A.nCol; i++) {
     result.colVar.push_back(A.colVar[i]);
     result.unknownFromIndex(result.colVar.back()).pos =
         result.colVar.size() - 1;
   }
-  for (unsigned i = 2; i < B.nCol; i++) {
+  for (unsigned i = B.liveColBegin; i < B.nCol; i++) {
     result.colVar.push_back(indexFromBIndex(B.colVar[i]));
     result.unknownFromIndex(result.colVar.back()).pos =
         result.colVar.size() - 1;
   }
 
   auto appendRowFromA = [&](unsigned row) {
-    for (unsigned col = 0; col < A.nCol; col++)
+    for (unsigned col = 0; col < result.liveColBegin; col++)
       result.tableau(result.nRow, col) = A.tableau(row, col);
+    unsigned offset = B.liveColBegin - 2;
+    for (unsigned col = result.liveColBegin; col < A.nCol; col++)
+      result.tableau(result.nRow, offset + col) = A.tableau(row, col);
     result.rowVar.push_back(A.rowVar[row]);
     result.unknownFromIndex(result.rowVar.back()).pos =
         result.rowVar.size() - 1;
@@ -640,9 +666,12 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
   auto appendRowFromB = [&](unsigned row) {
     result.tableau(result.nRow, 0) = A.tableau(row, 0);
     result.tableau(result.nRow, 1) = A.tableau(row, 1);
+    unsigned offset = A.liveColBegin - 2;
+    for (unsigned col = 2; col < B.liveColBegin; col++)
+      result.tableau(result.nRow, offset + col) = B.tableau(row, col);
 
-    unsigned offset = A.nCol - 2;
-    for (unsigned col = 2; col < B.nCol; col++)
+    offset = A.nCol - 2;
+    for (unsigned col = B.liveColBegin; col < B.nCol; col++)
       result.tableau(result.nRow, offset + col) = B.tableau(row, col);
     result.rowVar.push_back(indexFromBIndex(B.rowVar[row]));
     result.unknownFromIndex(result.rowVar.back()).pos =
@@ -989,6 +1018,80 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
 
   return {};
 }
+
+
+// A row is obviously non integral if all of its non-dead column entries are
+// zero and the constant term denominator is not divisible by the row
+// denominator.
+//
+// If there are non-zero entries then integrality depends on the values of all
+// referenced column variables.
+inline bool Simplex::rowIsObviouslyNonIntegral(unsigned row) const {
+  for (unsigned j = liveColBegin; j < nCol; j++) {
+    if (tableau(row, j) != 0)
+      return false;
+  }
+  return tableau(row, 1) % tableau(row, 0) != 0;
+}
+
+inline void Simplex::swapColumns(unsigned i, unsigned j) {
+  tableau.swapColumns(i, j);
+  std::swap(colVar[i], colVar[j]);
+  unknownFromColumn(i).pos = i;
+  unknownFromColumn(j).pos = j;
+}
+
+inline bool Simplex::killCol(unsigned col) {
+  Unknown &unknown = unknownFromColumn(col);
+  unknown.zero = true;
+  undoLog.emplace_back(UndoOp::UNMARK_ZERO, colVar[col]);
+  if (col != liveColBegin)
+    swapColumns(col, liveColBegin);
+  liveColBegin++;
+  // tableau.checkSparsity();
+  return false;
+}
+
+inline int Simplex::indexFromUnknown(const Unknown &u) const {
+  if (u.ownsRow)
+    return rowVar[u.pos];
+  else
+    return colVar[u.pos];
+}
+
+// If temp_row is set, the last row is a temporary unknown and undo entries
+// should not be written for this row.
+inline void Simplex::closeRow(unsigned row, bool temp_row) {
+  Unknown *u = &unknownFromRow(row);
+  assert(u->restricted && "expected restricted variable\n");
+
+  if (!u->zero && !temp_row) {
+    // pushUndoEntryIfNeeded(UndoOp::UNMARK_ZERO, *u);
+    undoLog.emplace_back(UndoOp::UNMARK_ZERO, indexFromUnknown(*u));
+  }
+  u->zero = true;
+
+  for (unsigned col = liveColBegin; col < nCol; col++) {
+    if (tableau(u->pos, col) == 0)
+      continue;
+    assert(tableau(u->pos, col) <= 0 &&
+           "expecting variable upper bounded by zero; "
+           "row cannot have positive coefficients");
+    if (killCol(col))
+      col--;
+  }
+  if (!temp_row)
+    markRedundant(u->pos);
+
+  if (!empty)
+    // Check if there are any vars that can't attain integral values.
+    for (const Unknown &u : var)
+      if (u.ownsRow && rowIsObviouslyNonIntegral(u.pos)) {
+        markEmpty();
+        break;
+      }
+}
+
 
 void Simplex::printUnknown(llvm::raw_ostream &os, const Unknown &u) const {
   os << (u.ownsRow ? "r" : "c");
