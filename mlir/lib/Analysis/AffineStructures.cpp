@@ -1045,9 +1045,84 @@ bool FlatAffineConstraints::isIntegerEmpty() const {
   return !findIntegerSample().hasValue();
 }
 
-llvm::Optional<std::vector<int64_t>> FlatAffineConstraints::findIntegerSample() const {
+llvm::Optional<std::vector<int64_t>>
+FlatAffineConstraints::findIntegerSample() const {
   Simplex simplex(*this);
   return simplex.findIntegerSample();
+}
+
+// We shift all the constraints to the origin, then construct a simplex and
+// detect implicit equalities. If a direction was intially both upper and lower
+// bounded, then this operation forces it to be equal to zero, and this gets
+// detected by simplex.
+FlatAffineConstraints FlatAffineConstraints::makeRecessionCone() const {
+  FlatAffineConstraints cone = *this;
+
+  // TODO: check this
+  for (unsigned r = 0, e = cone.getNumEqualities(); r < e; r++)
+    cone.atEq(r, getNumCols() - 1) = 0;
+
+  for (unsigned r = 0, e = cone.getNumInequalities(); r < e; r++)
+    cone.atIneq(r, getNumCols() - 1) = 0;
+
+  // NOTE isl does gauss here.
+
+  Simplex simplex(cone);
+  if (simplex.isEmpty()) {
+    // TODO: empty flag for FlatAffineConstraints
+    // cone.maybeIsEmpty = true;
+    return cone;
+  }
+
+  // The call to detectRedundant can be removed if we gauss below.
+  // Otherwise, this is needed to make it so that the number of equalities
+  // accurately represents the number of bounded dimensions.
+  simplex.detectRedundant();
+  simplex.detectImplicitEqualities();
+  cone.updateFromSimplex(simplex);
+
+  // NOTE isl does gauss here.
+
+  return cone;
+}
+
+void FlatAffineConstraints::updateFromSimplex(const Simplex &simplex) {
+  if (simplex.isEmpty()) {
+    // maybeIsEmpty = true;
+    return;
+  }
+
+  unsigned simplexIneqsOffset = getNumEqualities();
+  for (unsigned i = 0; i < getNumEqualities();) {
+    if (simplex.isMarkedRedundant(i)) {
+      equalities.erase(equalities.begin() + i);
+      // We need to test index i again.
+      continue;
+    }
+    i++;
+  }
+  for (unsigned i = simplexIneqsOffset, ineqsIndex = 0;
+       i < simplex.numberConstraints(); i++) {
+    if (simplex.isMarkedRedundant(i)) {
+      inequalities.erase(inequalities.begin() + ineqsIndex);
+      continue;
+    }
+    if (simplex.constraintIsEquality(i)) {
+      equalities.emplace_back(std::move(inequalities[ineqsIndex]));
+      // previously:
+      // Constraint::equalityFromInequality(std::move(ineqs[ineqsIndex]))
+      inequalities.erase(inequalities.begin() + ineqsIndex);
+      continue;
+    }
+    // If nothing was removed, we go to the next index in ineqs.
+    ineqsIndex++;
+  }
+
+  // NOTE isl does gauss here.
+
+  // TODO sample caching
+  // if (!maybeSample)
+  //  maybeSample = simplex.getSamplePointIfIntegral();
 }
 
 /// Tightens inequalities given that we are dealing with integer spaces. This is
