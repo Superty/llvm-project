@@ -1019,6 +1019,69 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   return {};
 }
 
+// The minimum of an unknown is obviously unbounded if it is a column variable
+// and no constraint limits its value from below.
+//
+// The minimum of a row variable is not obvious because it depends on the
+// boundedness of all referenced column variables.
+//
+// A column variable is bounded from below if there a exists a constraint for
+// which the corresponding column coefficient is strictly positive and the row
+// variable is non-negative (restricted).
+inline bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
+  // tableau.checkSparsity();
+  if (unknown.ownsRow)
+    return false;
+
+  for (size_t i = nRedundant; i < nRow; i++) {
+    if (unknownFromRow(i).restricted && tableau(i, unknown.pos) > 0)
+      return false;
+  }
+  return true;
+}
+
+// The maximum of an unknown is obviously unbounded if it is a column variable
+// and no constraint limits its value from above.
+//
+// The maximum of a row variable is not obvious because it depends on the
+// boundedness of all referenced column variables.
+//
+// A column variable is surely unbounded from above if there does not exist a
+// constraint for which the corresponding column coefficient is strictly
+// negative and the row variable is non-negative (restricted).
+inline bool Simplex::maxIsObviouslyUnbounded(Unknown &unknown) const {
+  if (unknown.ownsRow)
+    return false;
+
+  for (unsigned row = nRedundant; row < nRow; row++) {
+    if (tableau(row, unknown.pos) < 0 && unknownFromRow(row).restricted)
+      return false;
+  }
+  return true;
+}
+
+// A row is obviously not constrained to be zero if
+// - the tableau is rational and the constant term is not zero
+// - the tableau is integer and the constant term is at least one (it is also
+//   not zero if the constant term is at most negative one, but this is only
+//   called for restricted rows, so it doesn't cost anything to be imprecise)
+//
+// This is because of the invariant that the sample value is always a valid
+// point in the tableau (assuming the tableau is not empty).
+inline bool Simplex::rowIsObviouslyNotZero(unsigned row) const {
+  return tableau(row, 1) >= tableau(row, 0);
+}
+
+// An unknown is considered to be relevant if it is neither a redundant row nor
+// a dead column
+// TODO currently no support for dead rows.
+inline bool Simplex::unknownIsRelevant(Unknown &unknown) const {
+  if (unknown.ownsRow && unknown.pos < nRedundant)
+    return false;
+  else if (!unknown.ownsRow && unknown.pos < liveColBegin)
+    return false;
+  return true;
+}
 
 // A row is obviously non integral if all of its non-dead column entries are
 // zero and the constant term denominator is not divisible by the row

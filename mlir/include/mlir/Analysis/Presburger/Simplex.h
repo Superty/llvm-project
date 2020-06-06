@@ -187,6 +187,23 @@ private:
   /// \returns the unknown associated with \p row.
   Unknown &unknownFromRow(unsigned row);
 
+  /// Check if there is obviously no lower bound on \p unknown.
+  ///
+  /// \returns True if \p unknown is obviously unbounded from below, False
+  /// otherwise.
+  bool minIsObviouslyUnbounded(Unknown &unknown) const;
+
+  /// Check if there is obviously no upper bound on \p unknown.
+  ///
+  /// \returns True if \p unknown is obviously unbounded from above, False
+  /// otherwise.
+  bool maxIsObviouslyUnbounded(Unknown &unknown) const;
+
+  /// Checks if \p row is not obviously constrained to be zero
+  ///
+  /// \returns True if \p row is obviously not constrained to be zero,
+  /// False otherwise.
+  bool rowIsObviouslyNotZero(unsigned row) const;
 
   /// Check if \p row is obviously non-integral.
   ///
@@ -194,6 +211,12 @@ private:
   bool rowIsObviouslyNonIntegral(unsigned row) const;
 
   int indexFromUnknown(const Unknown &u) const;
+
+  /// Checks that \p unknown is neither a redundant row or a dead column
+  ///
+  /// \returns True if \p unknown is neither a redundant row nor a dead column,
+  /// False otherwise.
+  bool unknownIsRelevant(Unknown &unknown) const;
 
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);
