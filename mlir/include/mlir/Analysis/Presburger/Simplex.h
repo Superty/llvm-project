@@ -136,6 +136,12 @@ public:
 
   void detectImplicitEqualities();
 
+  /// Check whether the constraint is an equality.
+  ///
+  /// \returns True if the constraint is forced to be equal to zero,
+  /// False otherwise.
+  bool constraintIsEquality(int con_index) const;
+
 private:
   friend class GBRSimplex;
 
@@ -224,6 +230,11 @@ private:
   /// \returns True if \p row is obviously not constrained to be zero,
   /// False otherwise.
   bool rowIsObviouslyNotZero(unsigned row) const;
+
+  /// Check if \p row is obviously equal to zero
+  ///
+  /// \returns True if \p row is obviously equal to zero, False otherwise.
+  bool rowIsObviouslyZero(unsigned row) const;
 
   /// Check if \p row is obviously non-integral.
   ///
