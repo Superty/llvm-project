@@ -1097,11 +1097,107 @@ inline bool Simplex::rowIsObviouslyNonIntegral(unsigned row) const {
   return tableau(row, 1) % tableau(row, 0) != 0;
 }
 
+// Pivot the unknown to row position in the specified direction. If no direction
+// is provided, both directions are allowed. The unknown is assumed to be
+// bounded in the specified direction. If no direction is specified, the unknown
+// is assumed to be unbounded in both directions.
+//
+// If the unknown is already in row position we need not do anything. Otherwise,
+// we find a row to pivot to via findPivotRow and pivot to it.
+// TODO currently doesn't support an optional direction
+inline void Simplex::toRow(Unknown &unknown, Direction direction) {
+  if (unknown.ownsRow)
+    return;
+
+  auto row = findPivotRow({}, direction, unknown.pos);
+  if (row)
+    pivot(*row, unknown.pos);
+  else
+    llvm_unreachable("No pivot row found. The unknown must be bounded in the"
+                     "specified directions.");
+}
+
+inline int64_t Simplex::sign(int64_t num, int64_t den, int64_t origin) const {
+  if (num > origin * den)
+    return +1;
+  else if (num < origin * den)
+    return -1;
+  else
+    return 0;
+}
+
+// Compare the maximum value of the unknown to origin. Return +1 if the maximum
+// value is greater than origin, 0 if they are equal, and -1 if it is less
+// than origin.
+//
+// If the unknown is marked zero, then its maximum value is zero and we can
+// return accordingly.
+//
+// If the maximum is obviously unbounded, we can return 1.
+//
+// Otherwise, we move the unknown up to a row and keep trying to find upward
+// pivots until the unknown becomes unbounded or becomes maximised.
+template <int origin>
+int64_t Simplex::signOfMax(Unknown &u) {
+  static_assert(origin >= 0, "");
+  assert(!u.redundant && "signOfMax called for redundant unknown");
+
+  if (maxIsObviouslyUnbounded(u))
+    return 1;
+
+  toRow(u, Direction::UP);
+
+  // The only callsite where origin == 1 only cares whether it's negative or
+  // not, so we can save some pivots by quitting early in this case. This is
+  // needed for pivot-parity with isl.
+  static_assert(origin == 0 || origin == 1, "");
+  auto mustContinueLoop = [this](unsigned row) {
+    return origin == 1 ? tableau(row, 1) < tableau(row, 0)
+                       : tableau(row, 1) <= 0;
+  };
+
+  while (mustContinueLoop(u.pos)) {
+    auto p = findPivot(u.pos, Direction::UP);
+    if (!p) {
+      // u is manifestly maximised
+      return sign(tableau(u.pos, 1) - origin * tableau(u.pos, 0));
+    } else if (p->first == u.pos) { // u is manifestly unbounded
+      // In isl, this pivot is performed only when origin == 0 but not when it's
+      // 1. This is because the two are different functions with very slightly
+      // differing implementations. For pivot-parity with is, we do this too.
+      if (origin == 0)
+        pivot(*p);
+      return 1;
+    }
+    pivot(*p);
+  }
+  return 1;
+}
+
 inline void Simplex::swapColumns(unsigned i, unsigned j) {
   tableau.swapColumns(i, j);
   std::swap(colVar[i], colVar[j]);
   unknownFromColumn(i).pos = i;
   unknownFromColumn(j).pos = j;
+}
+
+// Remove the row from the tableau.
+//
+// If the row is not already the last one, swap it with the last row.
+// Then decrement the row count, remove the constraint entry, and remove the
+// entry in row_var.
+inline void Simplex::dropRow(unsigned row) {
+  // It is unclear why this restriction exists. Perhaps because bmaps outside
+  // keep track of the number of equalities, and hence moving around constraints
+  // would require updating them?
+  assert(~rowVar[row] == int(con.size() - 1) &&
+         "Row to be dropped must be the last constraint");
+
+  if (row != nRow - 1)
+    swapRows(row, nRow - 1);
+  nRow--;
+  rowVar.pop_back();
+  con.pop_back();
 }
 
 inline bool Simplex::killCol(unsigned col) {
@@ -1155,6 +1251,133 @@ inline void Simplex::closeRow(unsigned row, bool temp_row) {
       }
 }
 
+inline void Simplex::extendConstraints(unsigned n_new) {
+  if (con.capacity() < con.size() + n_new)
+    con.reserve(con.size() + n_new);
+  if (tableau.getNumRows() < nRow + n_new) {
+    tableau.resize(nRow + n_new, tableau.getNumColumns());
+    rowVar.reserve(nRow + n_new);
+  }
+}
+
+// Given a constraint con >= 0, add another constraint -con >= 0 so that we cut
+// our polytope to the hyperplane con = 0. Before the function returns the added
+// constraint is removed again, but the effects on the other unknowns remain.
+//
+// If the constraint is in row position, add a new row with all the terms
+// negated. If the constrain is in column position, add a row with a single
+// -1 coefficient for that column and all zeroes in other columns.
+//
+// If our new constraint cannot achieve non-negative values, then the tableau is
+// empty and we marked it as such. Otherwise, we know that its value must always
+// be zero so we close the row and then drop it. Closing the row results in some
+// columns being killed, so the effect of fixing it to be zero remains even
+// after it is dropped.
+inline void Simplex::cutToHyperplane(int con_index) {
+  if (con[con_index].zero)
+    return;
+  assert(!con[con_index].redundant && con[con_index].restricted &&
+         "expecting non-redundant non-negative variable");
+
+  extendConstraints(1);
+  rowVar.push_back(~con.size());
+  con.emplace_back(true, false, nRow);
+  Unknown &unknown = con[con_index];
+  Unknown &temp_var = con.back();
+
+  if (unknown.ownsRow) {
+    tableau(nRow, 0) = tableau(unknown.pos, 0);
+    for (unsigned col = 1; col < nCol; col++)
+      tableau(nRow, col) = -tableau(unknown.pos, col);
+  } else {
+    tableau(nRow, 0) = 1;
+    for (unsigned col = 1; col < nCol; col++)
+      tableau(nRow, col) = 0;
+    tableau(nRow, unknown.pos) = -1;
+  }
+  // tableau.updateRowSparsity(nRow);
+  nRow++;
+
+  int64_t sgn = signOfMax<0>(temp_var);
+  if (sgn < 0) {
+    assert(temp_var.ownsRow && "temp_var is in column position");
+    dropRow(nRow - 1);
+    markEmpty();
+    return;
+  }
+  temp_var.restricted = true;
+  assert(sgn <= 0 && "signOfMax is positive for the negated constraint");
+
+  assert(temp_var.ownsRow && "temp_var is in column position");
+  if (temp_var.pos != nRow - 1)
+    tableau.swapRows(temp_var.pos, nRow - 1);
+
+  closeRow(temp_var.pos, true);
+  dropRow(temp_var.pos);
+}
+
+// Check for constraints that are constrained to be equal to zero. i.e. check
+// for non-negative unknowns whose maximal value is
+// - zero (for rational tableaus)
+// - strictly less than one (for integer tableaus)
+// Close unknowns with maximal value zero. In integer tableaus, if an unknown
+// has a maximal value less than one, add a constraint to fix it to zero.
+//
+// We first mark unknowns which are restricted, not dead, not redundant, and
+// which aren't obviously able to reach non-zero values.
+//
+// We iterate through the marked unknowns. If an unknown's maximal value (found
+// via signOfMax<0>) is zero, then it is an equality, so we close the row. (the
+// unknown is always in row position when signOfMax returns 0)
+//
+// Otherwise, if we have an integer tableau, we check if the unknown's maximal
+// value is at least one. If not, then in an integer tableau it must be zero.
+// We add another constraint fixing it to be zero via cutToHyperplane. Since
+// this might have created new equalities, we call detectImplicitEqualities
+// again to find these.
+//
+// TODO: consider changing the name, something with 'zero' is perhaps more
+// indicative than equality. And 'detect' sounds more passive than what we're
+// doing (adding constraints, closing rows).
+void Simplex::detectImplicitEqualities() {
+  if (empty)
+    return;
+  if (liveColBegin == nCol)
+    return;
+
+  for (size_t row = nRedundant; row < nRow; row++) {
+    Unknown &unknown = unknownFromRow(row);
+    unknown.marked =
+        (unknown.restricted && !rowIsObviouslyNotZero(unknown.pos));
+  }
+  for (size_t col = liveColBegin; col < nCol; col++) {
+    Unknown &unknown = unknownFromColumn(col);
+    unknown.marked = unknown.restricted;
+  }
+
+  for (int i = con.size() - 1; i >= 0; i--) {
+    if (!con[i].marked)
+      continue;
+    con[i].marked = false;
+    if (!unknownIsRelevant(con[i]))
+      continue;
+
+    int64_t sgn = signOfMax<0>(con[i]);
+    if (sgn == 0) {
+      closeRow(con[i].pos, false);
+    } else if (signOfMax<1>(con[i]) < 0) {
+      cutToHyperplane(i);
+      detectImplicitEqualities();
+      return;
+    }
+
+    for (unsigned i = nRedundant; i < nRow; i++) {
+      Unknown &unknown = unknownFromRow(i);
+      if (unknown.marked && rowIsObviouslyNotZero(i))
+        unknown.marked = false;
+    }
+  }
+}
 
 void Simplex::printUnknown(llvm::raw_ostream &os, const Unknown &u) const {
   os << (u.ownsRow ? "r" : "c");
