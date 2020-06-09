@@ -124,4 +124,30 @@ def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
 
     let hasCanonicalizer = 1;
 }
+
+def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect, 
+                                                      SameTypeOperands]> {
+    let summary = "complement of a Presburger set";
+
+    let description = [{
+        The `presburger.equal` operator performs a semantic equality check. 
+        If both Presburger sets contain the examt same points they are considered
+        equal. The result type is i32.
+
+        **Examples:**
+
+
+        ```mlir
+        %0 = presburger.set #presburger<"(d0)[] : (d0 >= 0 and -d0 + 4 >= 0)">
+        %1 = presburger.set #presburger<"(d0)[] : (d0 - 1 >= 0 and -d0 + 3 >= 0)">
+        %2 = presburger.equal %0, %1 : !presburger.set<1,0>, !presburger.set<1,0>
+        ```
+    }];
+
+    let arguments = (ins PresburgerSetType:$set1, PresburgerSetType:$set2);
+
+    let results = (outs BoolLike:$res);
+
+    //let hasCanonicalizer = 1;
+}
 #endif // Presburger_OPS

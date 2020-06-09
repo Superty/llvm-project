@@ -1,4 +1,4 @@
-// RUN: mlir-opt -canonicalize --split-input-file %s | FileCheck %s
+// RUN: mlir-opt -canonicalize %s | FileCheck %s
 
 // CHECK-LABEL: func @simple_union
 func @simple_union() -> !presburger.set<1,0> {
@@ -58,7 +58,7 @@ func @combined() -> !presburger.set<1,0> {
   %set2 = presburger.set #presburger<"(x)[] : (x - 1 >= 0)">
   %set3 = presburger.set #presburger<"(y)[] : (-y + 42 >= 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 - 1 >= 0 or -d0 + 42 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
   // CHECK-NEXT: return %[[S]]
   %iset = presburger.intersect %set1, %set2 : !presburger.set<1,0>
   %uset = presburger.union %iset, %set3 : !presburger.set<1,0>
