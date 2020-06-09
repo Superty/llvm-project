@@ -127,6 +127,8 @@ public:
   /// llvm::Optional otherwise.
   llvm::Optional<std::vector<int64_t>> findIntegerSample();
 
+  std::pair<int64_t, std::vector<int64_t>> findRationalSample() const;
+
   // Print the tableau's internal state.
   void print(llvm::raw_ostream &os) const;
   void dump() const;

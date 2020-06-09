@@ -963,6 +963,31 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
   return findIntegerSampleRecursively(basis, 0);
 }
 
+std::pair<int64_t, std::vector<int64_t>> Simplex::findRationalSample() const {
+  int64_t denom = 1;
+  for (const Unknown &u : var) {
+    if (u.ownsRow)
+      denom = lcm(denom, tableau(u.pos, 0));
+  }
+  std::vector<int64_t> sample;
+  int64_t gcd = denom;
+  for (const Unknown &u : var) {
+    if (!u.ownsRow)
+      sample.push_back(0);
+    else {
+      sample.push_back((tableau(u.pos, 1) * denom) / tableau(u.pos, 0));
+      gcd = llvm::greatestCommonDivisor(std::abs(gcd), std::abs(sample.back()));
+    }
+  }
+  if (gcd != 0) {
+    denom /= gcd;
+    for (int64_t &elem : sample)
+      elem /= gcd;
+  }
+
+  return {denom, std::move(sample)};
+}
+
 // Search for an integer sample point using a branch and bound algorithm.
 //
 // Each row in the basis matrix is a vector, and the set of basis vectors should
