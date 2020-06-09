@@ -276,8 +276,19 @@ void PresburgerSet::subtract(const PresburgerSet &set) {
 }
 
 bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
-  // TODO implemenmt this
-  return false;
+  // TODO we cannot assert here, as equal is used by other functionality that
+  // otherwise breaks here
+  // assert(s.getNumSyms() + t.getNumSyms() == 0 &&
+  //       "operations on sets with symbols are not yet supported");
+  if (s.getNumSyms() + t.getNumSyms() != 0)
+    return false;
+  if (s.getNumDims() != t.getNumDims())
+    return false;
+
+  PresburgerSet sCopy = s, tCopy = t;
+  sCopy.subtract(t);
+  tCopy.subtract(s);
+  return !sCopy.findIntegerSample() && !tCopy.findIntegerSample();
 }
 
 Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
@@ -285,7 +296,7 @@ Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
   if (maybeSample)
     return maybeSample;
   if (markedEmpty)
-    return Optional<SmallVector<int64_t, 64>>();
+    return {};
   if (isUniverse())
     return SmallVector<int64_t, 64>(nDim, 0);
 
@@ -299,7 +310,7 @@ Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
       return maybeSample;
     }
   }
-  return Optional<SmallVector<int64_t, 64>>();
+  return {};
 }
 
 llvm::Optional<SmallVector<int64_t, 64>>
