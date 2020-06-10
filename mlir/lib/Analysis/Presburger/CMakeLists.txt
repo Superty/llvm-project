@@ -3,4 +3,5 @@ add_mlir_library(MLIRPresburger
   Set.cpp
   Matrix.cpp
   LinearTransform.cpp
+  Coalesce.cpp
   )
