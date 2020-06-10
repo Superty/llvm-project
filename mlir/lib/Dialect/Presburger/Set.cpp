@@ -96,9 +96,9 @@ PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
   return result;
 }
 
-SmallVector<int64_t, 64> inequalityFromEquality(const ArrayRef<int64_t> &eq,
-                                                bool negated, bool strict) {
-  SmallVector<int64_t, 64> coeffs;
+SmallVector<int64_t, 8> inequalityFromEquality(const ArrayRef<int64_t> &eq,
+                                               bool negated, bool strict) {
+  SmallVector<int64_t, 8> coeffs;
   for (auto coeff : eq)
     coeffs.emplace_back(negated ? -coeff : coeff);
 
@@ -109,7 +109,7 @@ SmallVector<int64_t, 64> inequalityFromEquality(const ArrayRef<int64_t> &eq,
   return coeffs;
 }
 
-SmallVector<int64_t, 64> complementIneq(const ArrayRef<int64_t> &ineq) {
+SmallVector<int64_t, 8> complementIneq(const ArrayRef<int64_t> &ineq) {
   return inequalityFromEquality(ineq, true, true);
 }
 // Return the set difference B - S and accumulate the result into `result`.
@@ -149,7 +149,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     return;
   }
 
-  SmallVector<bool, 64> isMarkedRedundant;
+  SmallVector<bool, 8> isMarkedRedundant;
   for (unsigned j = 0; j < 2 * sI.getNumEqualities() + sI.getNumInequalities();
        j++)
     isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
@@ -283,18 +283,18 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
   return !sCopy.findIntegerSample() && !tCopy.findIntegerSample();
 }
 
-Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
+Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
   assert(nSym == 0 && "sampling on sets with symbols is not yet supported");
   if (maybeSample)
     return maybeSample;
   if (markedEmpty)
     return {};
   if (isUniverse())
-    return SmallVector<int64_t, 64>(nDim, 0);
+    return SmallVector<int64_t, 8>(nDim, 0);
 
   for (FlatAffineConstraints &cs : flatAffineConstraints) {
     if (auto opt = cs.findIntegerSample()) {
-      maybeSample = SmallVector<int64_t, 64>();
+      maybeSample = SmallVector<int64_t, 8>();
 
       for (int64_t v : opt.getValue())
         maybeSample->push_back(v);
@@ -305,10 +305,10 @@ Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
   return {};
 }
 
-llvm::Optional<SmallVector<int64_t, 64>>
+llvm::Optional<SmallVector<int64_t, 8>>
 PresburgerSet::maybeGetCachedSample() const {
   if (isUniverse())
-    return SmallVector<int64_t, 64>(nDim, 0);
+    return SmallVector<int64_t, 8>(nDim, 0);
   return maybeSample;
 }
 

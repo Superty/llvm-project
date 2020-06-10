@@ -587,9 +587,6 @@ private:
   /// unbounded dimensions occupy the last \p unboundedDims dimensions.
   void projectOutUnboundedDimensions(unsigned unboundedDims);
 
-  bool dropLastNDimensionsOfEq(unsigned eqIndex, unsigned n);
-  bool dropLastNDimensionsOfIneq(unsigned eqIndex, unsigned n);
-
   /// Find a sample point in this basic set, which has unbounded directions.
   ///
   /// \param cone should be the recession cone of this basic set.

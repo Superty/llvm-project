@@ -570,7 +570,7 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 // be zero.
 void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
-  SmallVector<int64_t, 64> negatedCoeffs;
+  SmallVector<int64_t, 8> negatedCoeffs;
   for (auto coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   addInequality(negatedCoeffs);
@@ -991,13 +991,13 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
 
       // Initially u is floor(alpha) and basis reflects this.
       fI[0] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[0],
-                                               uAlphaDenom[0]);
+                                              uAlphaDenom[0]);
 
       // Now try ceil(alpha), i.e. floor(alpha) + 1.
       ++u;
       basis.addToRow(i, i + 1, 1);
       fI[1] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[1],
-                                               uAlphaDenom[1]);
+                                              uAlphaDenom[1]);
 
       int j = fI[0] < fI[1] ? 0 : 1;
       if (j == 0)
