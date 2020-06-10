@@ -32,9 +32,9 @@ public:
   static PresburgerSet subtract(FlatAffineConstraints c,
                                 const PresburgerSet &set);
 
-  llvm::Optional<SmallVector<int64_t, 64>> findIntegerSample();
+  llvm::Optional<SmallVector<int64_t, 8>> findIntegerSample();
   // bool containsPoint(const std::vector<INT> &values) const;
-  llvm::Optional<SmallVector<int64_t, 64>> maybeGetCachedSample() const;
+  llvm::Optional<SmallVector<int64_t, 8>> maybeGetCachedSample() const;
 
 private:
   unsigned nDim;
@@ -44,7 +44,7 @@ private:
   // If this is set to true, then the set is empty, irrespective of the state
   // of basicSets.
   bool markedEmpty;
-  Optional<SmallVector<int64_t, 64>> maybeSample;
+  Optional<SmallVector<int64_t, 8>> maybeSample;
   void printFlatAffineConstraints(raw_ostream &os,
                                   FlatAffineConstraints cs) const;
   void printVariableList(raw_ostream &os) const;
