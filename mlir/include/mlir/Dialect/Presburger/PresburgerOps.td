@@ -148,6 +148,6 @@ def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect,
 
     let results = (outs BoolLike:$res);
 
-    //let hasCanonicalizer = 1;
+    let hasCanonicalizer = 1;
 }
 #endif // Presburger_OPS
