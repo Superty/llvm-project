@@ -32,10 +32,7 @@ Simplex::Simplex(unsigned nVar)
 
 Simplex::Simplex(const FlatAffineConstraints &constraints)
     : Simplex(constraints.getNumIds()) {
-  for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
-    addInequality(constraints.getInequality(i));
-  for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
-    addEquality(constraints.getEquality(i));
+  addFlatAffineConstraints(constraints);
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
@@ -723,7 +720,7 @@ llvm::Optional<std::vector<int64_t>> Simplex::getSamplePointIfIntegral() const {
 }
 
 void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
-  assert(cs.getNumDimIds() + cs.getNumSymbolIds() == numberVariables() &&
+  assert(cs.getNumIds() == numberVariables() &&
          "FlatAffineConstraints must have same dimensionality as simplex");
   for (unsigned i = 0; i < cs.getNumInequalities(); ++i)
     addInequality(cs.getInequality(i));

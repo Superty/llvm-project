@@ -5,6 +5,11 @@
 using namespace mlir;
 using namespace mlir::presburger;
 
+PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
+    : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()), markedEmpty(false) {
+  addFlatAffineConstraints(cs);
+}
+
 unsigned PresburgerSet::getNumBasicSets() const {
   return flatAffineConstraints.size();
 }
@@ -24,22 +29,30 @@ PresburgerSet::getFlatAffineConstraints() const {
   return flatAffineConstraints;
 }
 
-void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
-  assert(cs.getNumDimIds() == nDim &&
-         "Cannot add FlatAffineConstraints having different dimensionality");
+// This is only used to check assertions
+static void assertDimensionsCompatible(FlatAffineConstraints cs,
+                                       PresburgerSet set) {
+  assert(cs.getNumDimIds() == set.getNumDims() &&
+         cs.getNumSymbolIds() == set.getNumSyms() &&
+         "Dimensionalities of FlatAffineConstraints and PresburgerSet do not "
+         "match");
+}
 
-  if (cs.isEmptyByGCDTest())
-    return;
+static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
+  assert(set1.getNumDims() == set2.getNumDims() &&
+         set1.getNumSyms() == set2.getNumSyms() &&
+         "Dimensionalities of PresburgerSets do not match");
+}
+
+void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
+  assertDimensionsCompatible(cs, *this);
 
   markedEmpty = false;
   flatAffineConstraints.push_back(cs);
 }
 
 void PresburgerSet::unionSet(const PresburgerSet &set) {
-  assert(set.getNumDims() == nDim &&
-         "Cannot union Presburger sets having different dimensionality");
-  assert(set.getNumSyms() + nSym == 0 &&
-         "operations on sets with symbols are not yet supported");
+  assertDimensionsCompatible(set, *this);
 
   for (const FlatAffineConstraints &cs : set.flatAffineConstraints)
     addFlatAffineConstraints(std::move(cs));
@@ -50,10 +63,7 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
 // We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
 // as (S_1 and T_1) or (S_1 and T_2) or ...
 void PresburgerSet::intersectSet(const PresburgerSet &set) {
-  assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
-         "Cannot intersect Presburger sets having different dimensionality");
-  assert(set.getNumSyms() + nSym == 0 &&
-         "operations on sets with symbols are not yet supported");
+  assertDimensionsCompatible(set, *this);
 
   if (markedEmpty)
     return;
@@ -94,7 +104,7 @@ SmallVector<int64_t, 64> inequalityFromEquality(const ArrayRef<int64_t> &eq,
 
   // The constant is at the end
   if (strict)
-    --coeffs[eq.size() - 1];
+    --coeffs.back();
 
   return coeffs;
 }
@@ -119,103 +129,90 @@ SmallVector<int64_t, 64> complementIneq(const ArrayRef<int64_t> &ineq) {
 // As a heuristic, we try adding all the constraints and check if simplex
 // says that the intersection is empty. Also, in the process we find out that
 // some constraints are redundant, which we then ignore.
-void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
-                         const PresburgerSet &S, unsigned i,
+void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
+                         const PresburgerSet &s, unsigned i,
                          PresburgerSet &result) {
-  if (i == S.getNumBasicSets()) {
-    FlatAffineConstraints BCopy = B;
+  if (i == s.getNumBasicSets()) {
+    // FlatAffineConstraints BCopy = B;
     // BCopy.simplify();
-    result.addFlatAffineConstraints(std::move(BCopy));
+    result.addFlatAffineConstraints(b);
     return;
   }
-  const FlatAffineConstraints &S_i = S.getFlatAffineConstraints()[i];
+  const FlatAffineConstraints &sI = s.getFlatAffineConstraints()[i];
   auto initialSnap = simplex.getSnapshot();
   unsigned offset = simplex.numberConstraints();
-  simplex.addFlatAffineConstraints(S_i);
+  simplex.addFlatAffineConstraints(sI);
 
   if (simplex.isEmpty()) {
     simplex.rollback(initialSnap);
-    subtractRecursively(B, simplex, S, i + 1, result);
+    subtractRecursively(b, simplex, s, i + 1, result);
     return;
   }
 
   SmallVector<bool, 64> isMarkedRedundant;
-  for (size_t j = 0; j < 2 * S_i.getNumEqualities() + S_i.getNumInequalities();
+  for (unsigned j = 0; j < 2 * sI.getNumEqualities() + sI.getNumInequalities();
        j++)
     isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
 
   simplex.rollback(initialSnap);
   // TODO benchmark does it make a lot of difference if we always_inline this?
-  auto addInequalityFromEquality = [&](const ArrayRef<int64_t> &eq,
-                                       bool negated, bool strict) {
-    SmallVector<int64_t, 64> coeffs =
-        inequalityFromEquality(eq, negated, strict);
-    B.addInequality(coeffs);
-    simplex.addInequality(coeffs);
+  auto addInequality = [&](const ArrayRef<int64_t> &ineq) {
+    b.addInequality(ineq);
+    simplex.addInequality(ineq);
   };
-  auto recurseWithInequalityFromEquality = [&, i](const ArrayRef<int64_t> &eq,
-                                                  bool negated, bool strict) {
+
+  auto recurseWithInequality = [&, i](const ArrayRef<int64_t> &ineq) {
     size_t snap = simplex.getSnapshot();
-    addInequalityFromEquality(eq, negated, strict);
 
-    subtractRecursively(B, simplex, S, i + 1, result);
+    addInequality(ineq);
 
-    B.removeInequality(B.getNumInequalities() - 1);
+    subtractRecursively(b, simplex, s, i + 1, result);
+
+    b.removeInequality(b.getNumInequalities() - 1);
     simplex.rollback(snap);
   };
 
-  size_t addedIneqs = 0;
+  unsigned originalNumIneqs = b.getNumInequalities();
+  unsigned originalNumEqs = b.getNumEqualities();
 
-  for (size_t j = 0; j < S_i.getNumEqualities(); j++) {
+  for (unsigned j = 0, e = sI.getNumEqualities(); j < e; ++j) {
     // The first inequality is positive and the second is negative, of which
     // we need the complements (strict negative and strict positive).
-    const auto &eq = S_i.getEquality(j);
+    const auto &eq = sI.getEquality(j);
     if (!isMarkedRedundant[2 * j]) {
-      recurseWithInequalityFromEquality(eq, true, true);
+      recurseWithInequality(inequalityFromEquality(eq, true, true));
       if (isMarkedRedundant[2 * j + 1]) {
-        addInequalityFromEquality(eq, false, false);
-        addedIneqs++;
+        addInequality(inequalityFromEquality(eq, false, false));
         continue;
       }
     }
     if (!isMarkedRedundant[2 * j + 1]) {
-      recurseWithInequalityFromEquality(eq, false, true);
+      recurseWithInequality(inequalityFromEquality(eq, false, true));
       if (isMarkedRedundant[2 * j]) {
-        addInequalityFromEquality(eq, true, false);
-        addedIneqs++;
+        addInequality(inequalityFromEquality(eq, true, false));
         continue;
       }
     }
 
-    // NOTE: we could add an equality to B instead.
-    addInequalityFromEquality(eq, false, false);
-    addInequalityFromEquality(eq, true, false);
-    addedIneqs += 2;
+    b.addEquality(eq);
+    simplex.addEquality(eq);
   }
 
-  offset = 2 * S_i.getNumEqualities();
-  for (size_t j = 0; j < S_i.getNumInequalities(); j++) {
+  offset = 2 * sI.getNumEqualities();
+  for (unsigned j = 0; j < sI.getNumInequalities(); j++) {
     if (isMarkedRedundant[offset + j])
       continue;
-    const auto &ineq = S_i.getInequality(j);
+    const auto &ineq = sI.getInequality(j);
 
-    size_t snap = simplex.getSnapshot();
-
-    SmallVector<int64_t, 64> complement = complementIneq(ineq);
-
-    B.addInequality(complement);
-    simplex.addInequality(complement);
-    subtractRecursively(B, simplex, S, i + 1, result);
-    B.removeInequality(B.getNumInequalities() - 1);
-    simplex.rollback(snap);
-
-    B.addInequality(ineq);
-    addedIneqs++;
-    simplex.addInequality(ineq);
+    recurseWithInequality(complementIneq(ineq));
+    addInequality(ineq);
   }
 
-  for (size_t i = 0; i < addedIneqs; i++)
-    B.removeInequality(B.getNumInequalities() - 1);
+  for (unsigned i = b.getNumInequalities(); i > originalNumIneqs; --i)
+    b.removeInequality(i - 1);
+
+  for (unsigned i = b.getNumEqualities(); i > originalNumEqs; --i)
+    b.removeEquality(i - 1);
 
   // TODO benchmark technically we can probably drop this as the caller will
   // rollback. See if it makes much of a difference. Only the last rollback
@@ -223,23 +220,21 @@ void subtractRecursively(FlatAffineConstraints &B, Simplex &simplex,
   simplex.rollback(initialSnap);
 }
 
-// Returns the set difference B - S.
-PresburgerSet PresburgerSet::subtract(FlatAffineConstraints c,
+// Returns the set difference c - set.
+PresburgerSet PresburgerSet::subtract(FlatAffineConstraints cs,
                                       const PresburgerSet &set) {
-  assert(set.getNumDims() == c.getNumDimIds() &&
-         set.getNumSyms() == c.getNumSymbolIds() &&
-         "Sets to be subtracted have different dimensionality");
-  if (c.isEmptyByGCDTest())
-    return PresburgerSet::makeEmptySet(c.getNumDimIds(), c.getNumSymbolIds());
+  assertDimensionsCompatible(cs, set);
+  if (cs.isEmptyByGCDTest())
+    return PresburgerSet::makeEmptySet(cs.getNumDimIds(), cs.getNumSymbolIds());
 
   if (set.isUniverse())
     return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
   if (set.isMarkedEmpty())
-    return PresburgerSet(set.getNumDims(), set.getNumSyms());
+    return PresburgerSet(cs);
 
-  PresburgerSet result(c.getNumDimIds());
-  Simplex simplex(c);
-  subtractRecursively(c, simplex, set, 0, result);
+  PresburgerSet result(cs.getNumDimIds(), cs.getNumSymbolIds());
+  Simplex simplex(cs);
+  subtractRecursively(cs, simplex, set, 0, result);
   return result;
 }
 
@@ -252,10 +247,7 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 //
 // We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
 void PresburgerSet::subtract(const PresburgerSet &set) {
-  assert(set.getNumDims() == nDim && set.getNumSyms() == nSym &&
-         "Sets to be subtracted have different dimensionality");
-  assert(set.getNumSyms() + nSym == 0 &&
-         "operations on sets with symbols are not yet supported");
+  assertDimensionsCompatible(set, *this);
   if (markedEmpty)
     return;
   if (set.isMarkedEmpty())
@@ -292,7 +284,7 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
 }
 
 Optional<SmallVector<int64_t, 64>> PresburgerSet::findIntegerSample() {
-  assert(nSym == 0 && "operations on sets with symbols are not yet supported");
+  assert(nSym == 0 && "sampling on sets with symbols is not yet supported");
   if (maybeSample)
     return maybeSample;
   if (markedEmpty)
