@@ -148,6 +148,131 @@ Simplex::Direction Simplex::flippedDirection(Direction direction) const {
   return direction == Direction::UP ? Direction::DOWN : Direction::UP;
 }
 
+// Called by ineqType. Checks for special cases of separate inequalities for
+// integral tableaus. Must only be called for separate inequalities.
+//
+// The special cases we check for are
+// ADJ_EQ      The value of the expression is always -1
+// ADJ_INEQ    The inequality is c(-u - 1) >= 0 where u is an existing
+//             inequality
+//
+// If the tableau is rational then none of the special cases apply and we return
+// SEPARATE.
+//
+// Otherwise, we look for a non-zero coefficient of a live column. If exactly
+// one exists and the coefficient of the column is the same as the constant
+// term, then this is type ADJ_INEQ. (we need not check that the coefficient is
+// negative since we already know that the inequality is separate.)
+//
+// If there are no non-zero coefficients and the constant term is -1, then
+// this is type ADJ_EQ.
+//
+// Otherwise, none of the heuristics match so the type is SEPARATE.
+inline Simplex::IneqType Simplex::separationType(size_t row) {
+  // TODO this can be removed, if below we compare tableau(row, 1) with the
+  // negated denominator instead of -1.
+  normalizeRow(row);
+  if (tableau(row, 0) != 1)
+    return IneqType::SEPARATE;
+
+  bool found = false;
+  for (unsigned col = liveColBegin; col < nCol; col++) {
+    if (tableau(row, col) != 0) {
+      if (!found) {
+        found = true;
+        if (tableau(row, 1) != tableau(row, col))
+          return IneqType::SEPARATE;
+      } else {
+        return IneqType::SEPARATE;
+      }
+    }
+  }
+
+  if (found)
+    return IneqType::ADJ_INEQ;
+  else if (tableau(row, 1) == -1)
+    return IneqType::ADJ_EQ;
+  else
+    return IneqType::SEPARATE;
+}
+
+// Checks the type of the inequality. The inequality is represented as
+// const_term + sum (coeffs[i].first * var(coeffs[i].second]) >= 0.
+//
+// The possible results are:
+// REDUNDANT   The inequality is already satisfied
+// CUT         The inequality is satisfied by some points but not others
+// SEPARATE    The inequality is satisfied by no points
+//
+// Special cases of separate when the tableau is in integer mode:
+// ADJ_EQ      The value of the expression is always -1
+// ADJ_INEQ    The inequality is c(-u - 1) >= 0 where u is an existing
+//             inequality
+//
+// We take a snapshot of the initial state and then temproarily add the row to
+// the tableau. If the sample value is negative and the row cannot reach zero,
+// then the inequality is separate. We check for the special cases for integral
+// tableaus via separationType.
+//
+// Otherwise, we check whether the tableau is redundant. If the tableau is
+// rational, then the sample value of the inequality must be non-negative.
+// If the tableau is integral, it is enough that the sample value is not a
+// negative integer, i.e., it is enough for the sample value to be strictly
+// greater than -1. If this preliminary check passes then we call
+// constraintIsRedundant to check definitively.
+//
+// If the inequality is neither separate nor redundant, then it is a cut.
+//
+// If the tableau is empty the behaviour is exactly that of isl, and is left
+// unspecified for isl-parity.
+Simplex::IneqType Simplex::ineqType(ArrayRef<int64_t> coeffs) {
+  extendConstraints(1);
+  unsigned snap = getSnapshot();
+  unsigned con_index = addRow(coeffs);
+  unsigned row = con[con_index].pos;
+  IneqType type = IneqType::CUT;
+  // rowIsAtLeastZero never moves the unknown passed to it, so we can continue
+  // to use the same row position.
+  if (tableau(row, 1) < 0 && !rowIsAtLeastZero(con[con_index]))
+    type = separationType(row);
+  else {
+    int64_t min_sample_value = -tableau(row, 0) + 1;
+    // The constraint may have been marked redundant in signOfMax above.
+    if (con[con_index].redundant || (tableau(row, 1) >= min_sample_value &&
+                                     constraintIsRedundant(con_index)))
+      type = IneqType::REDUNDANT;
+  }
+
+  rollback(snap);
+  return type;
+}
+
+// Return true if the row can attain non-negative values, false otherwise.
+// On return, the unknown remains at the same row it was initially.
+//
+// The pivoting performed here is slightly different form that in signOfMax,
+// so we require this function for isl parity.
+//
+// We keep looking for upward pivots as long as the sample value of the row is
+// negative. If we cannot find any more pivots, the row cannot attain
+// non-negative values. If the pivot would move the row to a column, then the
+// row is unbounded above.
+bool Simplex::rowIsAtLeastZero(Unknown &unknown) {
+  assert(unknown.ownsRow && "Unknown is in column position!");
+  while (tableau(unknown.pos, 1) < 0) {
+    auto p = findPivot(unknown.pos, Simplex::Direction::UP);
+
+    if (!p)
+      // The sample value of the row is its maximum value, and it is negative.
+      return false;
+    else if (p->first == unknown.pos)
+      // The unknown is unbounded above
+      return true;
+    pivot(*p);
+  }
+  return true;
+}
+
 // Find a pivot to change the sample value of `row` in the specified direction.
 // The returned pivot row will involve `row` if and only if the unknown is
 // unbounded in the specified direction.

@@ -51,6 +51,8 @@ public:
     UNMARK_ZERO,
   };
 
+  enum class IneqType { REDUNDANT, SEPARATE, CUT, ADJ_EQ, ADJ_INEQ };
+
   Simplex() = delete;
   explicit Simplex(unsigned nVar);
   explicit Simplex(const FlatAffineConstraints &constraints);
@@ -98,6 +100,23 @@ public:
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
+
+  /// Checks the type of the inequality. If coeffs is c_0, c_1, ... c_n, where n
+  /// is the current number of variables, then the corresponding equality is
+  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
+  ///
+  /// The possible results are:
+  /// REDUNDANT   The inequality is already satisfied
+  /// CUT         The inequality is satisfied by some points but not others
+  /// SEPARATE    The inequality is satisfied by no points
+  ///
+  /// Special cases of separate when the tableau is in integer mode:
+  /// ADJ_EQ      The value of the expression is always -1
+  /// ADJ_INEQ    The inequality is c(-u - 1) >= 0 where u is an existing
+  ///             inequality
+  ///
+  /// \returns an IneqType, the type of the specified inequality.
+  IneqType ineqType(ArrayRef<int64_t> coeffs);
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// \p direction.
@@ -186,6 +205,12 @@ private:
   /// assumed to be bounded in the allowed directions.
   void toRow(Unknown &unknown, Direction direction);
 
+  /// Check if the row can attain non-negative values.
+  /// On return, the unknown remains at the same row it was initially.
+  ///
+  /// \returns True if the row can attain non-negative values, False otherwise.
+  bool rowIsAtLeastZero(Unknown &unknown);
+
   /// Check if the constraint is redundant by computing its minimum value in
   /// the tableau. If this returns true, the constraint is left in row position
   /// upon return.
@@ -244,6 +269,13 @@ private:
   bool rowIsObviouslyNonIntegral(unsigned row) const;
 
   int indexFromUnknown(const Unknown &u) const;
+
+  /// Called by ineqType. Checks for special cases of separate inequalities for
+  /// integral tableaus. Must only be called for separate inequalities.
+  ///
+  /// \returns the separation type, IneqType::SEPARATE, IneqType::ADJ_EQ, or
+  /// IneqType::ADJ_INEQ.
+  IneqType separationType(size_t row);
 
   /// Checks that \p unknown is neither a redundant row or a dead column
   ///
