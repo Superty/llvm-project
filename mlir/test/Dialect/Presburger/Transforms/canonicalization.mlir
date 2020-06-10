@@ -234,3 +234,56 @@ func @complement_multi_dim() -> !presburger.set<2,0> {
   %uset = presburger.complement %set : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
 }
+
+// equality
+// ----
+
+// CHECK-LABEL: func @equal_simple_pos
+func @equal_simple_pos() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 1 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
+  %set2 = presburger.set #presburger<"(x)[] : (x >= 0)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<1,0>, !presburger.set<1,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_simple_neg
+func @equal_simple_neg() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 0 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
+  %set2 = presburger.set #presburger<"(x)[] : (x <= 0)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<1,0>, !presburger.set<1,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_multidim_pos
+func @equal_multidim_pos() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 1 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x,y)[] : (x >= 0 and x + y = 0 or x = 4 and y = 2)">
+  %set2 = presburger.set #presburger<"(x,y)[] : (y <= 0 and x + y = 0 or x = 4 and y = 2)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<2,0>, !presburger.set<2,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_multidim_neg
+func @equal_multidim_neg() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 0 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x,y)[] : (x >= 0 and x + y = 0 or x = 4 and y = 2)">
+  %set2 = presburger.set #presburger<"(x,y)[] : (y <= 1 and x + y = 0 or x = 4 and y = 2)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<2,0>, !presburger.set<2,0>
+  return %r : i1
+}
