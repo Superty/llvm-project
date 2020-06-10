@@ -11,11 +11,11 @@ LinearTransform::LinearTransform(MatrixType oMatrix)
 // Normalize M(row, targetCol) to the range [0, M(row, sourceCol)) by
 // subtracting from targetCol an appropriate integer multiple of sourceCol.
 // Apply the same operation to otherMatrix. (with the same multiple)
-static void subtractColumns(LinearTransform::MatrixType &M, unsigned row,
+static void subtractColumns(LinearTransform::MatrixType &m, unsigned row,
                             unsigned sourceCol, unsigned targetCol,
                             LinearTransform::MatrixType &otherMatrix) {
-  auto ratio = M(row, targetCol) / M(row, sourceCol);
-  M.addToColumn(sourceCol, targetCol, -ratio);
+  auto ratio = m(row, targetCol) / m(row, sourceCol);
+  m.addToColumn(sourceCol, targetCol, -ratio);
   otherMatrix.addToColumn(sourceCol, targetCol, -ratio);
 }
 
@@ -25,26 +25,26 @@ static void subtractColumns(LinearTransform::MatrixType &M, unsigned row,
 //
 // But at some point we need the pre-multiply version as well, so optimisation
 // doesn't help in that case or only helps 1/3rd of the time (when we need both)
-LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType M) {
+LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType m) {
   // Padding of one is required by the LinearTransform constructor.
-  MatrixType resultMatrix = MatrixType::getIdentityMatrix(M.getNumColumns());
+  MatrixType resultMatrix = MatrixType::getIdentityMatrix(m.getNumColumns());
 
-  for (unsigned row = 0, col = 0; row < M.getNumRows(); ++row) {
+  for (unsigned row = 0, col = 0; row < m.getNumRows(); ++row) {
     bool found = false;
-    for (unsigned i = col; i < M.getNumColumns(); i++) {
+    for (unsigned i = col; i < m.getNumColumns(); i++) {
       // TODO possible optimization: M.elementIsNonZero(...) and use sparsity.
-      if (M(row, i) == 0)
+      if (m(row, i) == 0)
         continue;
       found = true;
 
       if (i != col) {
         // TODO possible optimization: swap only elements from row onwards,
         // since the rest are zero. (isl does this)
-        M.swapColumns(i, col);
+        m.swapColumns(i, col);
         resultMatrix.swapColumns(i, col);
       }
-      if (M(row, i) < 0) {
-        M.negateColumn(i);
+      if (m(row, i) < 0) {
+        m.negateColumn(i);
         resultMatrix.negateColumn(i);
       }
       break;
@@ -55,7 +55,7 @@ LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType M) {
     if (!found)
       continue;
 
-    for (unsigned i = col + 1; i < M.getNumColumns(); ++i) {
+    for (unsigned i = col + 1; i < m.getNumColumns(); ++i) {
       // TODO possible optimization: Would it be better to directly take the gcd
       // of the top elements, multiply and subtract, instead of subtracting
       // entire columns in each step of the euclidean algorithm? Or does it
@@ -65,19 +65,19 @@ LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType M) {
       // of just swapping the indices. It is unclear if there is a special
       // reason for this.
       for (unsigned targetCol = i, sourceCol = col;
-           M(row, targetCol) != 0 && M(row, sourceCol) != 0;
+           m(row, targetCol) != 0 && m(row, sourceCol) != 0;
            std::swap(targetCol, sourceCol)) {
-        subtractColumns(M, row, sourceCol, targetCol, resultMatrix);
+        subtractColumns(m, row, sourceCol, targetCol, resultMatrix);
       }
 
-      if (M(row, col) == 0) {
-        M.swapColumns(i, col);
+      if (m(row, col) == 0) {
+        m.swapColumns(i, col);
         resultMatrix.swapColumns(i, col);
       }
     }
 
     for (unsigned targetCol = 0; targetCol < col; targetCol++)
-      subtractColumns(M, row, targetCol, col, resultMatrix);
+      subtractColumns(m, row, targetCol, col, resultMatrix);
 
     ++col;
   }
