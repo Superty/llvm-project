@@ -185,7 +185,7 @@ void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
 }
 
 TEST(CoalesceTest, contained) {
-  PresburgerSet contained = setFromString("(x0) : (x0 >= 0 and x0 <=  or x0 >= 1 and x0 <= 3)");
+  PresburgerSet contained = setFromString("(x0) : (x0 >= 0 and x0 <= 4 or x0 >= 1 and x0 <= 3)");
   expectCoalesce(1, contained);
 }
 
