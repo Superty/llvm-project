@@ -246,7 +246,6 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
                  info_1->classification->adj_eq.empty() &&
                  info_1->classification->separate.empty() &&
                  !info_2->t) { // adj_ineq complex case 1
-        std::cout << "5" << std::endl;
         SmallVector<int64_t, 8> adj_ineq = info_1->classification->adj_ineq[0];
         if (adjIneqCase(basicSetVector, i, j, info_1->classification->non_adj,
                         info_1->classification->redundant,
@@ -261,7 +260,6 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
                  info_2->classification->adj_eq.empty() &&
                  info_2->classification->separate.empty() &&
                  !info_1->t) { // adj_ineq complex case 2
-        std::cout << "4" << std::endl;
         SmallVector<int64_t, 8> adj_ineq = info_2->classification->adj_ineq[0];
         if (adjIneqCase(basicSetVector, j, i, info_2->classification->non_adj,
                         info_2->classification->redundant,
@@ -280,15 +278,17 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
           i--;
           break;
         }
-      } else if (!info_2->classification->adj_eq
-                      .empty() && // TODO: why is adj_eq always empty?
-                 info_2->classification->cut.empty() &&
+      } else if (info_1->t && info_2->classification->cut.empty() &&
                  info_1->classification->separate
                      .empty()) { // adj_eq Case for one equality
-        std::cout << "2" << std::endl;
-        if (adjEqCaseNoCut(
-                basicSetVector, i, j,
-                info_2->classification->adj_eq[0])) { // adj_eq noCut cas
+        SmallVector<int64_t, 8> adjEq, t;
+        t = info_1->t.getValue();
+        for (size_t k = 0; k < t.size() - 1; k++) {
+          adjEq.push_back(-t[k]);
+        }
+        adjEq.push_back(t[t.size() - 1] + 1);
+        if (adjEqCaseNoCut(basicSetVector, i, j,
+                           adjEq)) { // adj_eq noCut cas
           i--;
           break;
         } else if (info_1->t &&
@@ -302,14 +302,17 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
           i--;
           break;
         }
-      } else if (!info_1->classification->adj_eq.empty() &&
-                 info_1->classification->cut.empty() &&
+      } else if (info_2->t && info_1->classification->cut.empty() &&
                  info_2->classification->separate
                      .empty()) { // adj_eq Case for one equality
-        std::cout << "3" << std::endl;
-        if (adjEqCaseNoCut(
-                basicSetVector, j, i,
-                info_1->classification->adj_eq[0])) { // adj_eq noCut cas
+        SmallVector<int64_t, 8> adjEq, t;
+        t = info_2->t.getValue();
+        for (size_t k = 0; k < t.size() - 1; k++) {
+          adjEq.push_back(-t[k]);
+        }
+        adjEq.push_back(t[t.size() - 1] + 1);
+        if (adjEqCaseNoCut(basicSetVector, j, i,
+                           adjEq)) { // adj_eq noCut cas
           i--;
           break;
         } else if (info_2->t &&
@@ -516,10 +519,11 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
                bool pure) {
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   SmallVector<int64_t, 8> minusT;
-  std::cout << "hello" << std::endl;
+  dump(t);
   for (size_t k = 0; k < t.size(); k++) {
     minusT.push_back(-t[k]);
   }
+  dump(minusT);
   for (size_t k = 0; k < non_redundant_1.size(); k++) {
     if (!sameConstraint(t, non_redundant_1[k])) {
       auto curr = wrapping(b, minusT, non_redundant_1[k]);
@@ -558,12 +562,13 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
     new_set.addInequality(t);
   } else {
     cons = t.pop_back_val();
-    t.push_back(cons - 1);
+    t.push_back(cons - 2);
     SmallVector<int64_t, 8> tComplement;
     for (size_t k = 0; k < t.size() - 1; k++) {
-      tComplement.push_back(t[k]);
+      tComplement.push_back(-t[k]);
     }
-    tComplement.push_back(t[t.size() - 1] - 1);
+    tComplement.push_back(-t[t.size() - 1] - 1);
+    dump(tComplement);
     new_set.addInequality(tComplement);
   }
   addInequalities(new_set, redundant_1);
