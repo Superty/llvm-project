@@ -180,6 +180,8 @@ TEST(CoalesceTest, addAsIneq) {
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
   PresburgerSet new_set = coalesce(set);
+  set.dump();
+  new_set.dump();
   EXPECT_TRUE(PresburgerSet::equal(set, new_set));
   EXPECT_TRUE(expectedNumBasicSets == new_set.getFlatAffineConstraints().size());
 }
