@@ -12,24 +12,26 @@ using namespace mlir::presburger;
 //
 PresburgerSet coalesce(PresburgerSet &set);
 
+void dump(SmallVector<int64_t, 8> &cons);
+
 // compare two constraints and gives true, even if they are multiples of each
 // other
-/*bool sameConstraint(Constraint c1, Constraint c2);
-*/
+bool sameConstraint(SmallVector<int64_t, 8> c1, SmallVector<int64_t, 8> c2);
+
 // add eq as two inequalities to ineq
-void addAsIneq(SmallVector<SmallVector<int64_t, 8>, 8> eq, SmallVector<SmallVector<int64_t, 8>, 8> &target);
-/*
+void addAsIneq(SmallVector<SmallVector<int64_t, 8>, 8> &eq, SmallVector<SmallVector<int64_t, 8>, 8> &target);
+
 // compute wrapping
-std::optional<ArrayRef<int64_t> wrapping(BasicSet bs, Constraint valid,
-                                 Constraint invalid);
+Optional<SmallVector<int64_t, 8>> wrapping(FlatAffineConstraints bs, SmallVector<int64_t, 8> valid,
+                                 SmallVector<int64_t, 8> invalid);
 
 // combine to constraints with the ratio
-Constraint combineConstraint(Constraint c1, Constraint c2, SafeRational ratio);
+SmallVector<int64_t, 8> combineConstraint(SmallVector<int64_t, 8> c1, SmallVector<int64_t, 8> c2, Fraction<int64_t> ratio);
 
 // return whether the facet of ineq, a constraint of bs, is contained within a
 // polytope that has cut constraints cut
-bool containedFacet(Constraint &ineq, BasicSet &bs,
-                  std::vector<ArrayRef<int64_t> &cut);
-*/
+bool containedFacet(SmallVector<int64_t, 8> &ineq, FlatAffineConstraints &bs,
+                  SmallVector<SmallVector<int64_t, 8>, 8> &cut);
+
 } // namespace mlir
 
