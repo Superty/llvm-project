@@ -1,5 +1,6 @@
 add_mlir_library(MLIRPresburger
   Simplex.cpp
+  Set.cpp
   LinearTransform.cpp
   Coalesce.cpp
   )

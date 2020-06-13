@@ -1,7 +1,7 @@
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Dialect/Presburger/Attributes.h"
 #include "mlir/Dialect/Presburger/PresburgerOps.h"
-#include "mlir/Dialect/Presburger/Set.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/PatternMatch.h"

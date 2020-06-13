@@ -149,7 +149,7 @@ public:
   // bound algorithm with general basis reduction.
   //
   // Returns such a point if one exists, or an empty llvm::Optional otherwise.
-  llvm::Optional<std::vector<int64_t>> findIntegerSample() const;
+  Optional<std::vector<int64_t>> findIntegerSample() const;
 
   /// Get a {denominator, sample} pair representing a rational sample point in
   /// this basic set.
@@ -567,7 +567,7 @@ private:
   /// set has no unbounded directions.
   ///
   /// \returns the sample point or an empty llvm::Optional if the set is empty.
-  llvm::Optional<std::vector<int64_t>> findSampleBounded() const;
+  Optional<std::vector<int64_t>> findSampleBounded() const;
 
   /// Find a sample for only the bounded dimensions of this basic set.
   ///
@@ -591,9 +591,9 @@ private:
   ///
   /// \param cone should be the recession cone of this basic set.
   ///
-  /// \returns the sample point or an empty std::optiollvm::Optional if the set
+  /// \returns the sample point or an empty llvm::Optional if the set
   /// is empty.
-  llvm::Optional<std::vector<int64_t>>
+  Optional<std::vector<int64_t>>
   findSampleUnbounded(FlatAffineConstraints &cone) const;
 
   Matrix<int64_t> coefficientMatrixFromEqs() const;

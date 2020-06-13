@@ -14,14 +14,14 @@
 #include <cstdio>
 
 namespace mlir {
-const int nullIndex = std::numeric_limits<int>::max();
+const int NULL_INDEX = std::numeric_limits<int>::max();
 
 // Construct a Simplex object with `nVar` variables.
 Simplex::Simplex(unsigned nVar)
     : nRow(0), nCol(2), nRedundant(0), liveColBegin(2), tableau(0, 2 + nVar),
       empty(false) {
-  colVar.push_back(nullIndex);
-  colVar.push_back(nullIndex);
+  colVar.push_back(NULL_INDEX);
+  colVar.push_back(NULL_INDEX);
   for (unsigned i = 0; i < nVar; ++i) {
     var.push_back(
         Unknown(/*ownsRow=*/false, /*restricted=*/false, /*pos=*/nCol));
@@ -36,7 +36,7 @@ Simplex::Simplex(const FlatAffineConstraints &constraints)
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
-  assert(index != nullIndex && "NULL_INDEX passed to unknownFromIndex");
+  assert(index != NULL_INDEX && "NULL_INDEX passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 
@@ -51,7 +51,7 @@ const Simplex::Unknown &Simplex::unknownFromRow(unsigned row) const {
 }
 
 Simplex::Unknown &Simplex::unknownFromIndex(int index) {
-  assert(index != nullIndex && "NULL_INDEX passed to unknownFromIndex");
+  assert(index != NULL_INDEX && "NULL_INDEX passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 

@@ -22,8 +22,8 @@ public:
   static LinearTransform makeTransformToColumnEchelon(MatrixType M);
 
   FlatAffineConstraints postMultiplyBasicSet(const FlatAffineConstraints &bs);
-  SmallVector<int64_t, 64> postMultiplyRow(ArrayRef<int64_t> row);
-  SmallVector<int64_t, 64> preMultiplyColumn(ArrayRef<int64_t> col);
+  SmallVector<int64_t, 8> postMultiplyRow(ArrayRef<int64_t> row);
+  SmallVector<int64_t, 8> preMultiplyColumn(ArrayRef<int64_t> col);
 
 private:
   explicit LinearTransform(MatrixType oMatrix);

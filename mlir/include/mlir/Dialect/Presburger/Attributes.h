@@ -1,7 +1,7 @@
 #ifndef PRESBURGER_ATTRIBUTES_H
 #define PRESBURGER_ATTRIBUTES_H
 
-#include "mlir/Dialect/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Dialect/Presburger/Types.h"
 #include "mlir/IR/Attributes.h"
 

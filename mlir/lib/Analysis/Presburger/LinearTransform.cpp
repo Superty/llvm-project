@@ -85,12 +85,12 @@ LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType m) {
   return LinearTransform(std::move(resultMatrix));
 }
 
-SmallVector<int64_t, 64>
+SmallVector<int64_t, 8>
 LinearTransform::postMultiplyRow(ArrayRef<int64_t> row) {
   assert(row.size() == matrix.getNumRows() &&
          "row vector dimension should be matrix output dimension");
 
-  SmallVector<int64_t, 64> result;
+  SmallVector<int64_t, 8> result;
   for (unsigned col = 0, e = matrix.getNumColumns(); col < e; col++) {
     int64_t elem = 0;
     for (unsigned i = 0, e = matrix.getNumRows(); i < e; i++)
@@ -100,12 +100,12 @@ LinearTransform::postMultiplyRow(ArrayRef<int64_t> row) {
   return result;
 }
 
-SmallVector<int64_t, 64>
+SmallVector<int64_t, 8>
 LinearTransform::preMultiplyColumn(ArrayRef<int64_t> col) {
   assert(matrix.getNumColumns() == col.size() &&
          "row vector dimension should be matrix output dimension");
 
-  SmallVector<int64_t, 64> result;
+  SmallVector<int64_t, 8> result;
   for (unsigned row = 0, e = matrix.getNumRows(); row < e; row++) {
     int64_t elem = 0;
     for (unsigned i = 0, e = matrix.getNumColumns(); i < e; i++)
@@ -124,7 +124,7 @@ LinearTransform::postMultiplyBasicSet(const FlatAffineConstraints &bs) {
 
     int64_t c = eq.back();
 
-    SmallVector<int64_t, 64> newEq = postMultiplyRow(eq.drop_back());
+    SmallVector<int64_t, 8> newEq = postMultiplyRow(eq.drop_back());
     newEq.push_back(c);
     result.addEquality(newEq);
   }
@@ -134,7 +134,7 @@ LinearTransform::postMultiplyBasicSet(const FlatAffineConstraints &bs) {
 
     int64_t c = ineq.back();
 
-    SmallVector<int64_t, 64> newIneq = postMultiplyRow(ineq.drop_back());
+    SmallVector<int64_t, 8> newIneq = postMultiplyRow(ineq.drop_back());
     newIneq.push_back(c);
     result.addInequality(newIneq);
   }
