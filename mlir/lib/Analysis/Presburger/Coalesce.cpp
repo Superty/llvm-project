@@ -343,8 +343,8 @@ bool stickingOut(SmallVector<SmallVector<int64_t, 8>, 8> cut,
   return true;
 }
 
-bool mlir::sameConstraint(SmallVectorImpl<int64_t> &c1,
-                          SmallVectorImpl<int64_t> &c2) {
+bool mlir::sameConstraint(ArrayRef<int64_t> c1,
+                          ArrayRef<int64_t> c2) {
   int64_t ratio = 0;
   bool worked = (c1.size() == c1.size());
   for (size_t i = 0; i < c1.size(); i++) {
@@ -467,8 +467,8 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
   return true;
 }
 
-SmallVector<int64_t, 8> mlir::combineConstraint(SmallVectorImpl<int64_t> &c1,
-                                                SmallVectorImpl<int64_t> &c2,
+SmallVector<int64_t, 8> mlir::combineConstraint(ArrayRef<int64_t> c1,
+                                                ArrayRef<int64_t> c2,
                                                 Fraction<int64_t> ratio) {
   int64_t n = ratio.num;
   int64_t d = ratio.den;
@@ -536,7 +536,7 @@ bool classify(Simplex &simp,
       break;
     case Simplex::IneqType::ADJ_INEQ:
       if (info->adj_ineq)
-        return false; // this town is too small for tow adj_ineq
+        return false; // this town is too small for two adj_ineq
       info->adj_ineq = current_constraint;
       info->t = current_constraint;
       break;
@@ -564,7 +564,7 @@ bool classify_ineq(Simplex &simp,
       break;
     case Simplex::IneqType::ADJ_INEQ:
       if (info->adj_ineq)
-        return false; // this town is too small for tow adj_ineq
+        return false; // this town is too small for two adj_ineq
       info->adj_ineq = current_constraint;
       break;
     case Simplex::IneqType::ADJ_EQ:
@@ -624,7 +624,7 @@ bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
   return true;
 }
 
-bool mlir::containedFacet(SmallVectorImpl<int64_t> &ineq,
+bool mlir::containedFacet(ArrayRef<int64_t> ineq,
                           FlatAffineConstraints &bs,
                           SmallVector<SmallVector<int64_t, 8>, 8> &cut) {
   Simplex simp(bs);
@@ -637,8 +637,8 @@ bool mlir::containedFacet(SmallVectorImpl<int64_t> &ineq,
   return true;
 }
 
-void mlir::addAsIneq(SmallVector<SmallVector<int64_t, 8>, 8> &eq,
-                     SmallVector<SmallVector<int64_t, 8>, 8> &target) {
+void mlir::addAsIneq(ArrayRef<SmallVector<int64_t, 8>> eq,
+                     SmallVectorImpl<SmallVector<int64_t, 8>> &target) {
   for (size_t i = 0; i < eq.size(); i++) {
     SmallVector<int64_t, 8> curr = eq[i];
     target.push_back(curr);
