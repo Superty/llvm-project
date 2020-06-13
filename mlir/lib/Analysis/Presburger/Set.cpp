@@ -1,9 +1,8 @@
-#include "mlir/Dialect/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 
 // TODO should we change this to a storage type?
 using namespace mlir;
-using namespace mlir::presburger;
 
 PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
     : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()), markedEmpty(false) {

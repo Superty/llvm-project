@@ -1,10 +1,9 @@
-#ifndef PRESBURGER_SET_H
-#define PRESBURGER_SET_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_SET_H
+#define MLIR_ANALYSIS_PRESBURGER_SET_H
 
 #include "mlir/Analysis/AffineStructures.h"
 
 namespace mlir {
-namespace presburger {
 
 class PresburgerSet {
 public:
@@ -52,7 +51,6 @@ private:
                 unsigned &countNonZero) const;
 };
 
-} // namespace presburger
 } // namespace mlir
 
-#endif // PRESBURGER_SET_H
+#endif // MLIR_ANALYSIS_PRESBURGER_SET_H
