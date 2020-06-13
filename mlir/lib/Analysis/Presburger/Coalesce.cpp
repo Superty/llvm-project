@@ -23,9 +23,7 @@ void addEqualities(FlatAffineConstraints &bs,
 void addInequalities(FlatAffineConstraints &bs,
                      SmallVector<SmallVector<int64_t, 8>, 8> inequalities);
 
-// classify of all constraints into redundant, cut, adj_ineq, adj_eq, separate,
-// non_cut, non_adj, where non_cut and non_adj are everything but cut or
-// adj_ineq respectively
+// classify of all constraints
 // returns true if it has not encountered a separate constraints
 bool classify_ineq(Simplex &simp,
                    SmallVector<SmallVector<int64_t, 8>, 8> &constraints,
@@ -552,10 +550,6 @@ bool classify(Simplex &simp,
   return true;
 }
 
-/* This function returns the classifcation of all constraints divided into
- * redundant, cut, adj_ineq, adj_eq, separate, non_cut, non_adj, where non_cut
- * and non_adj are everything but cut or adj_ineq respectively
- */
 bool classify_ineq(Simplex &simp,
                    SmallVector<SmallVector<int64_t, 8>, 8> &constraints,
                    Info *info) {
