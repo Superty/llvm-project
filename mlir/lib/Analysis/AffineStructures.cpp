@@ -1046,7 +1046,7 @@ bool FlatAffineConstraints::isIntegerEmpty() const {
   return !findIntegerSample().hasValue();
 }
 
-llvm::Optional<std::vector<int64_t>>
+Optional<std::vector<int64_t>>
 FlatAffineConstraints::findIntegerSample() const {
   FlatAffineConstraints cone = makeRecessionCone();
   if (cone.getNumEqualities() < getNumDimIds())
@@ -1096,7 +1096,7 @@ Matrix<int64_t> FlatAffineConstraints::coefficientMatrixFromEqs() const {
 // Let the initial transform be U. Let the constraints matrix be M. We have
 // found a sample x satisfying the transformed constraint matrix MU. Therefore,
 // Ux is a sample that satisfies M.
-llvm::Optional<std::vector<int64_t>>
+Optional<std::vector<int64_t>>
 FlatAffineConstraints::findSampleUnbounded(FlatAffineConstraints &cone) const {
   auto coeffMatrix = cone.coefficientMatrixFromEqs();
   auto U =
@@ -1186,7 +1186,7 @@ void FlatAffineConstraints::projectOutUnboundedDimensions(
     unsigned unboundedDims) {
   unsigned remainingDims = getNumDimIds() - unboundedDims;
 
-  // TODO: suport for symbols
+  // TODO: support for symbols
 
   for (unsigned i = 0; i < getNumEqualities();) {
     bool nonZero = false;
@@ -1235,7 +1235,7 @@ FlatAffineConstraints::findBoundedDimensionsSample(
   return boundedSet.findSampleBounded();
 }
 
-llvm::Optional<std::vector<int64_t>>
+Optional<std::vector<int64_t>>
 FlatAffineConstraints::findSampleBounded() const {
   if (getNumDimIds() == 0)
     return std::vector<int64_t>();
