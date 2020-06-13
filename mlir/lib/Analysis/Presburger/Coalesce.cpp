@@ -10,14 +10,11 @@ using namespace mlir::presburger;
 struct Info {
   SmallVector<SmallVector<int64_t, 8>, 8> redundant;
   SmallVector<SmallVector<int64_t, 8>, 8> cut;
-  SmallVector<SmallVector<int64_t, 8>, 8> adj_ineq;
-  SmallVector<SmallVector<int64_t, 8>, 8> adj_eq;
-  SmallVector<SmallVector<int64_t, 8>, 8> separate;
-  SmallVector<SmallVector<int64_t, 8>, 8> non_cut;
-  SmallVector<SmallVector<int64_t, 8>, 8> non_adj;
-  SmallVector<SmallVector<int64_t, 8>, 8> non_redundant;
+  Optional<SmallVector<int64_t, 8>> adj_ineq;
   Optional<SmallVector<int64_t, 8>> t;
 };
+
+void dumpInfo(Info *info);
 
 // adds all Constraints to bs
 void addEqualities(FlatAffineConstraints &bs,
@@ -29,21 +26,22 @@ void addInequalities(FlatAffineConstraints &bs,
 // classify of all constraints into redundant, cut, adj_ineq, adj_eq, separate,
 // non_cut, non_adj, where non_cut and non_adj are everything but cut or
 // adj_ineq respectively
-void classify_ineq(Simplex &simp,
+// returns true if it has not encountered a separate constraints
+bool classify_ineq(Simplex &simp,
                    SmallVector<SmallVector<int64_t, 8>, 8> &constraints,
                    Info *info);
 
 // same thing as classify_ineq, but also return if there is an equality
 // constraint adjacent to a the other polytope
-void classify(Simplex &simp,
+// returns true if it has not encountered a separate constraints
+bool classify(Simplex &simp,
               SmallVector<SmallVector<int64_t, 8>, 8> inequalities,
               SmallVector<SmallVector<int64_t, 8>, 8> equalities, Info *info);
 
 // compute the protrusionCase and return whether it has worked
 bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
-                    Info *info_a, Info *info_b,
-                    FlatAffineConstraints &a, FlatAffineConstraints &b, int i,
-                    int j);
+                    Info *info_a, Info *info_b, FlatAffineConstraints &a,
+                    FlatAffineConstraints &b, int i, int j);
 
 // compute, whether a constraint of cut sticks out of bs by more than 2
 bool stickingOut(SmallVector<SmallVector<int64_t, 8>, 8> cut,
@@ -68,9 +66,8 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
 
 // compute the adj_eqCase and return whether it has worked
 bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
-               int j, Info *info_a, Info *info_b, 
-               FlatAffineConstraints a, FlatAffineConstraints b,
-               bool pure);
+               int j, Info *info_a, Info *info_b, FlatAffineConstraints a,
+               FlatAffineConstraints b, bool pure);
 
 // compute the adj_eq Case for no CUT constraints
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
@@ -83,16 +80,18 @@ static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   return res;
 }
 
-void getBasicSetEqualities(FlatAffineConstraints &bs, SmallVector<SmallVector<int64_t, 8>, 8> &eqs) {
-      for (size_t k = 0; k < bs.getNumEqualities(); k++) {
-        eqs.push_back(arrayRefToSmallVector(bs.getEquality(k)));
-      }
+void getBasicSetEqualities(FlatAffineConstraints &bs,
+                           SmallVector<SmallVector<int64_t, 8>, 8> &eqs) {
+  for (size_t k = 0; k < bs.getNumEqualities(); k++) {
+    eqs.push_back(arrayRefToSmallVector(bs.getEquality(k)));
+  }
 }
 
-void getBasicSetInequalities(FlatAffineConstraints &bs, SmallVector<SmallVector<int64_t, 8>, 8> &ineqs) {
-      for (size_t k = 0; k < bs.getNumInequalities(); k++) {
-        ineqs.push_back(arrayRefToSmallVector(bs.getInequality(k)));
-      }
+void getBasicSetInequalities(FlatAffineConstraints &bs,
+                             SmallVector<SmallVector<int64_t, 8>, 8> &ineqs) {
+  for (size_t k = 0; k < bs.getNumInequalities(); k++) {
+    ineqs.push_back(arrayRefToSmallVector(bs.getInequality(k)));
+  }
 }
 
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
@@ -118,144 +117,101 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       getBasicSetInequalities(bs2, inequalities2);
       Info *info_1 = new Info();
       Info *info_2 = new Info();
-      classify(simplex_2, inequalities1, equalities1, info_1);
-      classify(simplex_1, inequalities2, equalities2, info_2);
-
-      std::cout << "red:" << std::endl;
-      for (size_t k = 0; k < info_1->redundant.size(); k++) {
-        dump(info_1->redundant[k]);
-      }
-      std::cout << "cut:" << std::endl;
-      for (size_t k = 0; k < info_1->cut.size(); k++) {
-        dump(info_1->cut[k]);
-      }
-      std::cout << "adj_ineq:" << std::endl;
-      for (size_t k = 0; k < info_1->adj_ineq.size(); k++) {
-        dump(info_1->adj_ineq[k]);
-      }
-      std::cout << "adj_eq:" << std::endl;
-      for (size_t k = 0; k < info_1->adj_eq.size(); k++) {
-        dump(info_1->adj_eq[k]);
-      }
-      std::cout << "separate:" << std::endl;
-      for (size_t k = 0; k < info_1->separate.size(); k++) {
-        dump(info_1->separate[k]);
-      }
-      if (info_1->t) {
-        std::cout << "t:" << std::endl;
-        dump(info_1->t.getValue());
-      }
-      if (!info_1->redundant.empty() &&
-          info_1->cut.empty() &&
-          info_1->adj_ineq.empty() &&
-          info_1->adj_eq.empty() &&
-          info_1->separate.empty()) { // contained 2 in 1
+      if (!classify(simplex_2, inequalities1, equalities1, info_1))
+        continue;
+      if (!classify(simplex_1, inequalities2, equalities2, info_2))
+        continue;
+      dumpInfo(info_1);
+      dumpInfo(info_2);
+      if (!info_1->redundant.empty() && info_1->cut.empty() &&
+          !info_1->adj_ineq && !info_2->t) { // contained 2 in 1
+        std::cout << "1" << std::endl;
         basicSetVector.erase(basicSetVector.begin() + j);
         if (j < i) {
           i--;
         }
         j--;
-      } else if (!info_2->redundant.empty() &&
-                 info_2->cut.empty() &&
-                 info_2->adj_ineq.empty() &&
-                 info_2->adj_eq.empty() &&
-                 info_2->separate.empty()) { // contained 1 in 2
+      } else if (!info_2->redundant.empty() && info_2->cut.empty() &&
+                 !info_2->adj_ineq && !info_1->t) { // contained 1 in 2
+        std::cout << "2" << std::endl;
         basicSetVector.erase(basicSetVector.begin() + i);
         i--;
         break;
-      } else if (!info_1->redundant.empty() &&
-                 !info_1->cut.empty() &&
-                 info_1->adj_ineq.empty() &&
-                 info_1->adj_eq.empty() &&
-                 info_1->separate
-                     .empty()) { // cut or protrusion
+      } else if (!info_1->redundant.empty() && !info_1->cut.empty() &&
+                 !info_1->adj_ineq && !info_2->t) { // cut or protrusion
+        std::cout << "3" << std::endl;
         if (cutCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         } else if (stickingOut(info_1->cut, bs2) &&
-                   protrusionCase(basicSetVector, info_1, info_2,  bs1, bs2,
-                                  i, j)) { // protrusion
+                   protrusionCase(basicSetVector, info_1, info_2, bs1, bs2, i,
+                                  j)) { // protrusion
           i--;
           break;
         }
-      } else if (!info_2->redundant.empty() &&
-                 !info_2->cut.empty() &&
-                 info_2->adj_ineq.empty() &&
-                 info_2->adj_eq.empty() &&
-                 info_2->separate
-                     .empty()) { // cut or protrusion
+      } else if (!info_2->redundant.empty() && !info_2->cut.empty() &&
+                 !info_2->adj_ineq && !info_1->t) { // cut or protrusion
+        std::cout << "4" << std::endl;
         if (cutCase(basicSetVector, j, i, info_2, info_1)) {
           i--;
           break;
         } else if (stickingOut(info_2->cut, bs1) &&
-                   protrusionCase(basicSetVector, info_2, info_1, bs2, bs1,
-                                  j,
+                   protrusionCase(basicSetVector, info_2, info_1, bs2, bs1, j,
                                   i)) { // protrusion
           i--;
           break;
         }
-      } else if (!info_1->redundant.empty() &&
-                 info_1->adj_ineq.size() == 1 &&
-                 info_1->cut.empty() &&
-                 info_1->adj_eq.empty() &&
-                 info_1->separate.empty() &&
-                 !info_2->redundant.empty() &&
-                 info_2->adj_ineq.size() == 1 &&
-                 info_2->cut.empty() &&
-                 info_2->adj_eq.empty() &&
-                 info_2->separate
-                     .empty()) { // adj_ineq, pure case
-        if (adjIneqPureCase(basicSetVector, i, j,
-                            info_1, info_2)) {
+      } else if (!info_1->redundant.empty() && info_1->adj_ineq &&
+                 info_1->cut.empty() && !info_2->t &&
+                 !info_2->redundant.empty() && info_2->adj_ineq &&
+                 info_2->cut.empty() && !info_1->t) { // adj_ineq, pure case
+        std::cout << "5" << std::endl;
+        if (adjIneqPureCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         }
-      } else if (!info_1->redundant.empty() &&
-                 info_1->adj_ineq.size() == 1 &&
-                 info_1->cut.empty() &&
-                 info_1->adj_eq.empty() &&
-                 info_1->separate.empty() &&
+      } else if (!info_1->redundant.empty() && info_1->adj_ineq &&
+                 info_1->cut.empty() && !info_1->t &&
                  !info_2->t) { // adj_ineq complex case 1
+        std::cout << "6" << std::endl;
         if (adjIneqCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         }
-      } else if (!info_2->redundant.empty() &&
-                 info_2->adj_ineq.size() == 1 &&
-                 info_2->cut.empty() &&
-                 info_2->adj_eq.empty() &&
-                 info_2->separate.empty() &&
+      } else if (!info_2->redundant.empty() && info_2->adj_ineq &&
+                 info_2->cut.empty() && !info_2->t &&
                  !info_1->t) { // adj_ineq complex case 2
+        std::cout << "7" << std::endl;
         if (adjIneqCase(basicSetVector, j, i, info_2, info_1)) {
           i--;
           break;
         }
       } else if (info_1->t && info_2->t) { // adj_eq for two equalities
+        std::cout << "8" << std::endl;
         if (adjEqCase(basicSetVector, i, j, info_1, info_2, bs1, bs2, true)) {
           i--;
           break;
         }
-      } else if (info_1->t && info_2->cut.empty() &&
-                 info_1->separate
-                     .empty()) { // adj_eq Case for one equality
+      } else if (info_1->t &&
+                 info_2->cut.empty()) { // adj_eq Case for one equality
+        std::cout << "9" << std::endl;
         SmallVector<int64_t, 8> adjEq, t;
         t = info_1->t.getValue();
         for (size_t k = 0; k < t.size() - 1; k++) {
           adjEq.push_back(-t[k]);
         }
         adjEq.push_back(t[t.size() - 1] + 1);
-        if (adjEqCaseNoCut(basicSetVector, i, j,
-                           adjEq)) { // adj_eq noCut cas
+        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq)) { // adj_eq noCut cas
           i--;
           break;
-        } else if (info_1->t &&
-                   adjEqCase(basicSetVector, i, j, info_1, info_2, bs1, bs2, false)) { // adjEq case
+        } else if (info_1->t && adjEqCase(basicSetVector, i, j, info_1, info_2,
+                                          bs1, bs2, false)) { // adjEq case
           i--;
           break;
         }
-      } else if (info_2->t && info_1->cut.empty() &&
-                 info_2->separate
-                     .empty()) { // adj_eq Case for one equality
+      } else if (info_2->t &&
+                 info_1->cut.empty()) { // adj_eq Case for one equality
+        std::cout << "10" << std::endl;
         SmallVector<int64_t, 8> adjEq, t;
         t = info_2->t.getValue();
         for (size_t k = 0; k < t.size() - 1; k++) {
@@ -266,8 +222,8 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
                            adjEq)) { // adj_eq noCut cas
           i--;
           break;
-        } else if (info_2->t &&
-                   adjEqCase(basicSetVector, j, i, info_2, info_1, bs2, bs1, false)) { // adjEq case
+        } else if (info_2->t && adjEqCase(basicSetVector, j, i, info_2, info_1,
+                                          bs2, bs1, false)) { // adjEq case
           i--;
           break;
         }
@@ -300,8 +256,10 @@ bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                      int i, int j, Info *info_a, Info *info_b) {
   size_t n = basicSetVector[0].getNumDimIds();
   FlatAffineConstraints newSet(n);
-  addInequalities(newSet, info_a->non_adj);
-  addInequalities(newSet, info_b->non_adj);
+  addInequalities(newSet, info_a->redundant);
+  addInequalities(newSet, info_a->cut);
+  addInequalities(newSet, info_b->redundant);
+  addInequalities(newSet, info_b->cut);
   addNewBasicSet(basicSetVector, i, j, newSet);
   return true;
 }
@@ -319,9 +277,8 @@ void addNewBasicSet(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 }
 
 bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
-                    Info *info_a, Info *info_b,
-                    FlatAffineConstraints &a, FlatAffineConstraints &b, int i,
-                    int j) {
+                    Info *info_a, Info *info_b, FlatAffineConstraints &a,
+                    FlatAffineConstraints &b, int i, int j) {
   SmallVector<SmallVector<int64_t, 8>, 8> inequalities_b, equalities_b;
   getBasicSetEqualities(b, equalities_b);
   getBasicSetInequalities(b, inequalities_b);
@@ -344,8 +301,8 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
     } else {
       int64_t cons = curr.pop_back_val();
       curr.push_back(cons + 1);
-      for (size_t k = 0; k < info_b->non_redundant.size(); k++) {
-        SmallVector<int64_t, 8> curr1 = info_b->non_redundant[k];
+      for (size_t k = 0; k < info_b->cut.size(); k++) {
+        SmallVector<int64_t, 8> curr1 = info_b->cut[k];
         Simplex simp2(bPrime);
         simp2.addEquality(curr1);
         if (!simp2.isEmpty()) { // This can be not sufficient!
@@ -409,9 +366,10 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     int i, int j, SmallVector<int64_t, 8> t) {
   FlatAffineConstraints A = basicSetVector[j];
   FlatAffineConstraints B = basicSetVector[i];
+  std::cout << "hello" << std::endl;
   SmallVector<SmallVector<int64_t, 8>, 8> new_set_inequalities;
   for (size_t k = 0; k < A.getNumInequalities(); k++) {
-     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(A.getInequality(k));
+    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(A.getInequality(k));
     if (!sameConstraint(t, curr)) {
       new_set_inequalities.push_back(arrayRefToSmallVector(A.getInequality(k)));
     }
@@ -446,18 +404,20 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 }
 
 bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
-               int j, Info *info_a, Info *info_b, FlatAffineConstraints a, FlatAffineConstraints b, bool pure) {
+               int j, Info *info_a, Info *info_b, FlatAffineConstraints a,
+               FlatAffineConstraints b, bool pure) {
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   SmallVector<int64_t, 8> minusT;
   SmallVector<int64_t, 8> t = info_a->t.getValue();
-  dump(t);
+  dumpInfo(info_a);
+  dumpInfo(info_b);
   for (size_t k = 0; k < t.size(); k++) {
     minusT.push_back(-t[k]);
   }
-  dump(minusT);
-  for (size_t k = 0; k < info_a->non_redundant.size(); k++) {
-    if (!sameConstraint(t, info_a->non_redundant[k])) {
-      auto curr = wrapping(b, minusT, info_a->non_redundant[k]);
+  for (size_t k = 0; k < info_a->cut.size();
+       k++) { // TODO: can only cut be non_redundant?
+    if (!sameConstraint(t, info_a->cut[k])) {
+      auto curr = wrapping(b, minusT, info_a->cut[k]);
       if (curr) {
         wrapped.push_back(curr.getValue());
       } else {
@@ -477,11 +437,10 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
   t.push_back(cons + 1);
   cons = minusT.pop_back_val();
   minusT.push_back(cons - 1);
-  dump(t);
-  dump(minusT);
-  for (size_t k = 0; k < info_b->non_redundant.size(); k++) {
-    if (!sameConstraint(minusT, info_b->non_redundant[k])) {
-      auto curr = wrapping(a, t, info_b->non_redundant[k]);
+  for (size_t k = 0; k < info_b->cut.size();
+       k++) { // TODO: can only cut be non_redundant?
+    if (!sameConstraint(minusT, info_b->cut[k])) {
+      auto curr = wrapping(a, t, info_b->cut[k]);
       if (curr) {
         wrapped.push_back(curr.getValue());
       } else {
@@ -501,7 +460,6 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector, int i,
       tComplement.push_back(-t[k]);
     }
     tComplement.push_back(-t[t.size() - 1] - 1);
-    dump(tComplement);
     new_set.addInequality(tComplement);
   }
   addInequalities(new_set, info_a->redundant);
@@ -561,11 +519,12 @@ mlir::wrapping(FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
   return combineConstraint(valid, invalid, result.getValue());
 }
 
-void classify(Simplex &simp,
+bool classify(Simplex &simp,
               SmallVector<SmallVector<int64_t, 8>, 8> inequalities,
               SmallVector<SmallVector<int64_t, 8>, 8> equalities, Info *info) {
   Optional<SmallVector<int64_t, 8>> dummy = {};
-  classify_ineq(simp, inequalities, info);
+  if (!classify_ineq(simp, inequalities, info))
+    return false;
   SmallVector<SmallVector<int64_t, 8>, 8> eqAsIneq;
   addAsIneq(equalities, eqAsIneq);
   for (SmallVector<int64_t, 8> current_constraint : eqAsIneq) {
@@ -573,41 +532,31 @@ void classify(Simplex &simp,
     switch (ty) {
     case Simplex::IneqType::REDUNDANT:
       info->redundant.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
       break;
     case Simplex::IneqType::CUT:
       info->cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
       break;
     case Simplex::IneqType::ADJ_INEQ:
-      info->adj_ineq.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
+      if (info->adj_ineq)
+        return false; // this town is too small for tow adj_ineq
+      info->adj_ineq = current_constraint;
       info->t = current_constraint;
       break;
     case Simplex::IneqType::ADJ_EQ:
-      info->adj_eq.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
       info->t = current_constraint;
       break;
     case Simplex::IneqType::SEPARATE:
-      info->separate.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
-      break;
+      return false; // coalescing failed
     }
   }
+  return true;
 }
 
 /* This function returns the classifcation of all constraints divided into
  * redundant, cut, adj_ineq, adj_eq, separate, non_cut, non_adj, where non_cut
  * and non_adj are everything but cut or adj_ineq respectively
  */
-void classify_ineq(Simplex &simp,
+bool classify_ineq(Simplex &simp,
                    SmallVector<SmallVector<int64_t, 8>, 8> &constraints,
                    Info *info) {
   for (SmallVector<int64_t, 8> current_constraint : constraints) {
@@ -615,40 +564,31 @@ void classify_ineq(Simplex &simp,
     switch (ty) {
     case Simplex::IneqType::REDUNDANT:
       info->redundant.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
       break;
     case Simplex::IneqType::CUT:
       info->cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
       break;
     case Simplex::IneqType::ADJ_INEQ:
-      info->adj_ineq.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
+      if (info->adj_ineq)
+        return false; // this town is too small for tow adj_ineq
+      info->adj_ineq = current_constraint;
       break;
     case Simplex::IneqType::ADJ_EQ:
-      info->adj_eq.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
       break;
     case Simplex::IneqType::SEPARATE:
-      info->separate.push_back(current_constraint);
-      info->non_cut.push_back(current_constraint);
-      info->non_adj.push_back(current_constraint);
-      info->non_redundant.push_back(current_constraint);
-      break;
+      return false; // coalescing failed
     }
   }
+  return true;
 }
 
 bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
                  int j, Info *info_a, Info *info_b) {
-  SmallVector<int64_t, 8> t = info_a->adj_ineq[0];
+  SmallVector<int64_t, 8> t = info_a->adj_ineq.getValue();
   size_t n = basicSetVector[i].getNumDimIds();
   FlatAffineConstraints bs(n);
-  addInequalities(bs, info_a->non_adj);
+  addInequalities(bs, info_a->redundant);
+  addInequalities(bs, info_a->cut);
   addInequalities(bs, info_b->redundant);
   Simplex complement(bs);
   SmallVector<int64_t, 8> tComplement;
@@ -657,8 +597,14 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
   }
   tComplement.push_back(t[t.size() - 1] - 1);
   complement.addInequality(tComplement);
-  for (size_t k = 0; k < info_b->non_redundant.size(); k++) {
-    if (complement.ineqType(info_b->non_redundant[k]) != Simplex::IneqType::REDUNDANT) {
+  for (size_t k = 0; k < info_b->cut.size(); k++) {
+    if (complement.ineqType(info_b->cut[k]) != Simplex::IneqType::REDUNDANT) {
+      return false;
+    }
+  }
+  if (info_b->adj_ineq) {
+    if (complement.ineqType(info_b->adj_ineq.getValue()) !=
+        Simplex::IneqType::REDUNDANT) {
       return false;
     }
   }
@@ -670,7 +616,7 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
 }
 
 bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
-             int j, Info* info_a, Info *info_b) {
+             int j, Info *info_a, Info *info_b) {
   for (size_t k = 0; k < info_a->cut.size(); k++) {
     if (!containedFacet(info_a->cut[k], basicSetVector[i], info_b->cut)) {
       return false;
@@ -678,8 +624,8 @@ bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, int i,
   }
   size_t n = basicSetVector[i].getNumDimIds();
   FlatAffineConstraints new_set(n);
-  addInequalities(new_set, info_a->non_cut);
-  addInequalities(new_set, info_b->non_cut);
+  addInequalities(new_set, info_a->redundant);
+  addInequalities(new_set, info_b->redundant);
   addNewBasicSet(basicSetVector, i, j, new_set);
   return true;
 }
@@ -707,6 +653,25 @@ void mlir::addAsIneq(SmallVector<SmallVector<int64_t, 8>, 8> &eq,
       complement.push_back(-curr[j]);
     }
     target.push_back(complement);
+  }
+}
+
+void dumpInfo(Info *info) {
+  std::cout << "red:" << std::endl;
+  for (size_t k = 0; k < info->redundant.size(); k++) {
+    dump(info->redundant[k]);
+  }
+  std::cout << "cut:" << std::endl;
+  for (size_t k = 0; k < info->cut.size(); k++) {
+    dump(info->cut[k]);
+  }
+  if (info->adj_ineq) {
+    std::cout << "adj_ineq:" << std::endl;
+    dump(info->adj_ineq.getValue());
+  }
+  if (info->t) {
+    std::cout << "t:" << std::endl;
+    dump(info->t.getValue());
   }
 }
 
