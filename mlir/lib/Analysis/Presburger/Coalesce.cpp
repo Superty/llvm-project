@@ -1,11 +1,10 @@
 #include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
-#include "mlir/Dialect/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include <iostream>
 
 using namespace mlir;
-using namespace mlir::presburger;
 // struct for classified constraints
 struct Info {
   SmallVector<SmallVector<int64_t, 8>, 8> redundant;

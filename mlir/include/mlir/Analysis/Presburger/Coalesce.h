@@ -1,12 +1,11 @@
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
-#include "mlir/Dialect/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 
 namespace mlir {
-using namespace mlir::presburger;
 
 // coalesce a set according to the paper.
 //
