@@ -11,7 +11,7 @@ namespace mlir {
 //
 PresburgerSet coalesce(PresburgerSet &set);
 
-void dump(ArrayRef<int64_t> &cons);
+void dump(const ArrayRef<int64_t> &cons);
 
 // compare two constraints and gives true, even if they are multiples of each
 // other
