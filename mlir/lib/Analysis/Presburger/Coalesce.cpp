@@ -20,7 +20,7 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t);
 void shift(SmallVectorImpl<int64_t> &t, int amount);
 
 // dumps an Info struct
-void dumpInfo(Info &info);
+void dumpInfo(const Info &info);
 
 // add eq as two inequalities to ineq
 void addAsIneq(const ArrayRef<ArrayRef<int64_t>> eq,
@@ -651,7 +651,7 @@ void addAsIneq(ArrayRef<ArrayRef<int64_t>> eq,
   }
 }
 
-void dumpInfo(Info &info) {
+void dumpInfo(const Info &info) {
   std::cout << "red:" << std::endl;
   for (size_t k = 0; k < info.redundant.size(); k++) {
     dump(info.redundant[k]);
@@ -670,7 +670,7 @@ void dumpInfo(Info &info) {
   }
 }
 
-void mlir::dump(ArrayRef<int64_t> &cons) {
+void mlir::dump(const ArrayRef<int64_t> &cons) {
   std::cout << cons[cons.size() - 1] << " + ";
   for (size_t i = 1; i < cons.size(); i++) {
     std::cout << cons[i - 1] << "x" << i - 1;
