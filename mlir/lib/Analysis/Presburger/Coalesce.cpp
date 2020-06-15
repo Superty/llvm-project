@@ -370,7 +370,7 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   shift(t, 1);
   new_set_inequalities.push_back(t);
 
-  FlatAffineConstraints new_set(A.getNumDimIds());
+  FlatAffineConstraints new_set(A.getNumDimIds(), A.getNumSymbolIds());
   for (size_t k = 0; k < A.getNumEqualities(); k++) {
     new_set.addEquality(A.getEquality(k));
   }
