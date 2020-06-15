@@ -373,7 +373,7 @@ private:
   ///
   /// \returns the separation type, IneqType::SEPARATE, IneqType::ADJ_EQ, or
   /// IneqType::ADJ_INEQ.
-  IneqType separationType(size_t row);
+  IneqType separationType(unsigned row);
 
   /// Checks that \p unknown is neither a redundant row or a dead column
   ///
