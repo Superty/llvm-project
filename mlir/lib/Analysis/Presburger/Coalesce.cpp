@@ -306,8 +306,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   addInequalities(new_set, wrapped);
   for (size_t k = 0; k < info_a.cut.size(); k++) {
     SmallVector<int64_t, 8> curr = info_a.cut[k];
-    int64_t cons = curr.pop_back_val();
-    curr.push_back(cons + 1);
+    shift(curr, 1);
     new_set.addInequality(curr);
   }
   addCoalescedBasicSet(basicSetVector, i, j, new_set);
@@ -623,11 +622,11 @@ void mlir::addAsIneq(ArrayRef<SmallVector<int64_t, 8>> eq,
   for (size_t i = 0; i < eq.size(); i++) {
     SmallVector<int64_t, 8> curr = eq[i];
     target.push_back(curr);
-    SmallVector<int64_t, 8> complement;
+    SmallVector<int64_t, 8> inverted;
     for (size_t j = 0; j < curr.size(); j++) {
-      complement.push_back(-curr[j]);
+      inverted.push_back(-curr[j]);
     }
-    target.push_back(complement);
+    target.push_back(inverted);
   }
 }
 
