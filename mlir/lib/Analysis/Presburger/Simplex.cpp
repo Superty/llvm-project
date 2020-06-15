@@ -158,7 +158,7 @@ Direction flippedDirection(Direction direction) {
 /// this is type ADJ_EQ.
 ///
 /// Otherwise, none of the heuristics match so the type is SEPARATE.
-inline Simplex::IneqType Simplex::separationType(size_t row) {
+inline Simplex::IneqType Simplex::separationType(unsigned row) {
   // TODO this can be removed, if below we compare tableau(row, 1) with the
   // negated denominator instead of -1.
   normalizeRow(row);

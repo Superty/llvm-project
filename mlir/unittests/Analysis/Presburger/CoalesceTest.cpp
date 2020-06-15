@@ -8,6 +8,7 @@ using namespace mlir::presburger;
 
 PresburgerSet setFromString(StringRef string) {
   ErrorCallback callback = [](SMLoc loc, const Twine &message) {
+    // This is a hack to make the Parser compile
     llvm_unreachable("Parser Callback");
     MLIRContext context;
     return mlir::emitError(UnknownLoc::get(&context), message);
