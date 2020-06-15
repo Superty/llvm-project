@@ -481,10 +481,7 @@ mlir::wrapping(FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
     simplex.addInequality(curr);
   }
 
-  SmallVector<int64_t, 8> lambda;
-  for (size_t k = 0; k < n; k++) {
-    lambda.push_back(0);
-  }
+  SmallVector<int64_t, 8> lambda(n,0);
   lambda.push_back(1);
   lambda.push_back(0); // Is this needed?
   simplex.addInequality(lambda);
@@ -571,20 +568,17 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   addInequalities(bs, info_a.redundant);
   addInequalities(bs, info_a.cut);
   addInequalities(bs, info_b.redundant);
-  Simplex complement(bs);
+  Simplex comp(bs);
   SmallVector<int64_t, 8> tComplement;
-  for (size_t k = 0; k < t.size() - 1; k++) {
-    tComplement.push_back(-t[k]);
-  }
-  tComplement.push_back(t[t.size() - 1] - 1);
-  complement.addInequality(tComplement);
+  complement(t, tComplement);
+  comp.addInequality(tComplement);
   for (size_t k = 0; k < info_b.cut.size(); k++) {
-    if (complement.ineqType(info_b.cut[k]) != Simplex::IneqType::REDUNDANT) {
+    if (comp.ineqType(info_b.cut[k]) != Simplex::IneqType::REDUNDANT) {
       return false;
     }
   }
   if (info_b.adj_ineq) {
-    if (complement.ineqType(info_b.adj_ineq.getValue()) !=
+    if (comp.ineqType(info_b.adj_ineq.getValue()) !=
         Simplex::IneqType::REDUNDANT) {
       return false;
     }
