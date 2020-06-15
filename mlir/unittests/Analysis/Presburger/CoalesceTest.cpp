@@ -21,7 +21,7 @@ PresburgerSet setFromString(StringRef string) {
 
 void expectContainedFacet(bool expected, SmallVector<int64_t, 8> &ineq,
                           FlatAffineConstraints &bs,
-                          SmallVector<SmallVector<int64_t, 8>, 8> &cut) {
+                          SmallVector<ArrayRef<int64_t>, 8> &cut) {
   EXPECT_TRUE(expected == containedFacet(ineq, bs, cut));
 }
 
@@ -37,7 +37,7 @@ TEST(CoalesceTest, containedFacet1) {
   cutConstraint1.push_back(1);
   cutConstraint1.push_back(0);
   cutConstraint1.push_back(2);
-  SmallVector<SmallVector<int64_t, 8>, 8> cutting = {cutConstraint1};
+  SmallVector<ArrayRef<int64_t>, 8> cutting = {cutConstraint1};
   expectContainedFacet(true, ineq, bs, cutting);
 }
 
@@ -57,8 +57,7 @@ TEST(CoalesceTest, containedFacet2) {
   cutConstraint2.push_back(1);
   cutConstraint2.push_back(0);
   cutConstraint2.push_back(1);
-  SmallVector<SmallVector<int64_t, 8>, 8> cutting = {cutConstraint1,
-                                                     cutConstraint2};
+  SmallVector<ArrayRef<int64_t>, 8> cutting = {cutConstraint1, cutConstraint2};
   expectContainedFacet(true, ineq, bs, cutting);
 }
 
@@ -74,7 +73,7 @@ TEST(CoalesceTest, containedFacet3) {
   cutConstraint1.push_back(1);
   cutConstraint1.push_back(0);
   cutConstraint1.push_back(-5);
-  SmallVector<SmallVector<int64_t, 8>, 8> cutting = {cutConstraint1};
+  SmallVector<ArrayRef<int64_t>, 8> cutting = {cutConstraint1};
   expectContainedFacet(false, ineq, bs, cutting);
 }
 
@@ -94,8 +93,7 @@ TEST(CoalesceTest, containedFacet4) {
   cutConstraint2.push_back(1);
   cutConstraint2.push_back(0);
   cutConstraint2.push_back(-5);
-  SmallVector<SmallVector<int64_t, 8>, 8> cutting = {cutConstraint1,
-                                                     cutConstraint2};
+  SmallVector<ArrayRef<int64_t>, 8> cutting = {cutConstraint1, cutConstraint2};
   expectContainedFacet(false, ineq, bs, cutting);
 }
 
@@ -166,24 +164,6 @@ TEST(CoalesceTest, combineConstraint) {
   expected.push_back(-1);
   expected.push_back(7);
   expectCombineConstraint(expected, c1, c2, ratio2);
-}
-
-TEST(CoalesceTest, addAsIneq) {
-  SmallVector<SmallVector<int64_t, 8>, 8> vec_1;
-  SmallVector<SmallVector<int64_t, 8>, 8> vec_2;
-  SmallVector<int64_t, 8> const_1;
-  const_1.push_back(1);
-  const_1.push_back(-3);
-  vec_1.push_back(const_1);
-  addAsIneq(vec_1, vec_2);
-  EXPECT_TRUE(vec_1.size() == 1);
-  EXPECT_TRUE(vec_2.size() == 2);
-  auto ineq_1 = vec_2[0];
-  auto ineq_2 = vec_2[1];
-  EXPECT_TRUE(ineq_1[0] == 1);
-  EXPECT_TRUE(ineq_1[1] == -3);
-  EXPECT_TRUE(ineq_2[0] == -1);
-  EXPECT_TRUE(ineq_2[1] == 3);
 }
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {

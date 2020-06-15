@@ -11,18 +11,14 @@ namespace mlir {
 //
 PresburgerSet coalesce(PresburgerSet &set);
 
-void dump(SmallVectorImpl<int64_t> &cons);
+void dump(ArrayRef<int64_t> &cons);
 
 // compare two constraints and gives true, even if they are multiples of each
 // other
 bool sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2);
 
-// add eq as two inequalities to ineq
-void addAsIneq(ArrayRef<SmallVector<int64_t, 8>> eq,
-               SmallVectorImpl<SmallVector<int64_t, 8>> &target);
-
 // compute wrapping
-Optional<SmallVector<int64_t, 8>> wrapping(FlatAffineConstraints &bs,
+Optional<SmallVector<int64_t, 8>> wrapping(const FlatAffineConstraints &bs,
                                            SmallVectorImpl<int64_t> &valid,
                                            SmallVectorImpl<int64_t> &invalid);
 
@@ -32,7 +28,7 @@ combineConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2, Fraction &ratio);
 
 // return whether the facet of ineq, a constraint of bs, is contained within a
 // polytope that has cut constraints cut
-bool containedFacet(ArrayRef<int64_t> ineq, FlatAffineConstraints &bs,
-                    SmallVector<SmallVector<int64_t, 8>, 8> &cut);
+bool containedFacet(ArrayRef<int64_t> ineq, const FlatAffineConstraints &bs,
+                    const SmallVector<ArrayRef<int64_t>, 8> &cut);
 
 } // namespace mlir
