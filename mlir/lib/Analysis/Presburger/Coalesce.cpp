@@ -64,6 +64,13 @@ bool classify(Simplex &simp,
               const SmallVector<ArrayRef<int64_t>, 8> &equalities, Info &info);
 
 // compute the protrusionCase and return whether it has worked
+//      _____          _____
+//    _|___  |        /     |
+//   | |   | |   ==> |      |
+//   | |   | |       |      |
+//   |_|___|_|       |______|
+//
+//
 bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     Info &info_a, const Info &info_b, unsigned i, unsigned j);
 
@@ -71,32 +78,75 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
                  const FlatAffineConstraints &bs);
 
-// add a FlatAffineConstraints and removes the sets at i and j.
+// adds a FlatAffineConstraints and removes the sets at i and j.
 void addCoalescedBasicSet(
     SmallVectorImpl<FlatAffineConstraints> &basicSetVector, unsigned i,
     unsigned j, const FlatAffineConstraints &bs);
 
 // compute the cut case and return whether it has worked.
+// _________          _________
+// \ \  |  /          \       /
+//  \ \ | /    ==>     \     /
+//   \_\|/              \___/
+//
+//
 bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &info_a, const Info &info_b);
 
 // compute adj_ineq pure Case and return whether it has worked.
+//  ________ ____            ______________
+// |       //    |          |              |
+// |      //     |          |              |
+// |     //      |    ==>   |              |
+// |    //       |          |              |
+// |___//________|          |______________|
+//
 bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                      unsigned i, unsigned j, const Info &info_a,
                      const Info &info_b);
 
 // compute the non-pure adj_ineq case and return whether it has worked.
 // Constraint t is the adj_ineq.
+//
+//   ____          ____
+//  |    \        |    \
+//  |     \   ==> |     \
+//  |_____|_      |______\
+//
 bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                  unsigned i, unsigned j, const Info &info_a,
                  const Info &info_b);
 
 // compute the adj_eqCase and return whether it has worked.
+//
+// pure:
+//                _
+//    / /        / /
+//   / /   ==>  / /
+//  / /        /_/
+//
+// non-pure:
+//
+//     ________           ________
+//    |        |         |        \
+//    |        | |  ==>  |         |
+//    |        |         |        /
+//    |        /         |       /
+//    |_______/          |______/
+//
+//
+//
 bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                unsigned i, unsigned j, const Info &info_a, const Info &info_b,
                bool pure);
 
 // compute the adj_eq Case for no CUT constraints.
+//   ______           _______
+//  |      ||        |       |
+//  |      ||        |       |
+//  |      ||   ==>  |       |
+//  |______||        |_______|
+//
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     unsigned i, unsigned j, SmallVector<int64_t, 8> t);
 
