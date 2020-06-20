@@ -54,7 +54,7 @@ bool classify_ineq(Simplex &simp,
                    const SmallVector<ArrayRef<int64_t>, 8> &constraints,
                    Info &info);
 
-// classifeis all constraints into redundant, cut, adj_ineq or t, where t stands
+// classifies all constraints into redundant, cut, adj_ineq or t, where t stands
 // for a constraint adjacent to a the other polytope
 //
 // returns true if it has not encountered a separate constraint or more than one
@@ -64,6 +64,13 @@ bool classify(Simplex &simp,
               const SmallVector<ArrayRef<int64_t>, 8> &equalities, Info &info);
 
 // compute the protrusionCase and return whether it has worked
+//
+// In the protusionCase, only CUT constraints and REDUNDANT constraints can
+// exist. This case differs from the CutCase in that it can still coalesce
+// polytopes, as long as they are not sticking out of each other by too much
+// (i.e. by less than 2). As we are considering an integer setting, the convex
+// hull of the union of those two polytopes actually is the same thing as the
+// union of the two polytope.
 //      _____          _____
 //    _|___  |        /     |
 //   | |   | |   ==> |      |
@@ -84,6 +91,11 @@ void addCoalescedBasicSet(
     unsigned j, const FlatAffineConstraints &bs);
 
 // compute the cut case and return whether it has worked.
+//
+// The cut case is the case, for which a polytope only has REDUNDANT and CUT
+// constraints. If all the facets of such cut constraints are contained within
+// the other polytope, the polytopes can be combined to a polytope only
+// consisting of all the REDUNDANT constraints.
 // _________          _________
 // \ \  |  /          \       /
 //  \ \ | /    ==>     \     /
@@ -94,6 +106,10 @@ bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &info_a, const Info &info_b);
 
 // compute adj_ineq pure Case and return whether it has worked.
+//
+// The adj_ineq pure case can be viewed as a single polytope originally (below:
+// on the right), that was cut into two parts by a strip with width 1.
+// This is computed by just using all the REDUNDANT constraints.
 //  ________ ____            ______________
 // |       //    |          |              |
 // |      //     |          |              |
@@ -108,6 +124,9 @@ bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
 // compute the non-pure adj_ineq case and return whether it has worked.
 // Constraint t is the adj_ineq.
 //
+// In the non-pueq adj_ineq case, one of the polytopes is like an extension of
+// the other one. This can be computed, by inverting the adj_ineq and checking
+// whether all constraints are stll valid for this new polytope.
 //   ____          ____
 //  |    \        |    \
 //  |     \   ==> |     \
@@ -120,13 +139,21 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
 // compute the adj_eqCase and return whether it has worked.
 //
 // pure:
-//                _
+//
+// The pure case consists of two equalities, that are adjacent. Such equalities
+// can always be coalesced by finding the two constraints, that make them become
+// a trapezoid. This is done by wrapping the limiting constraints of the
+// equalities around each other to include the other one.
+//
 //    / /        / /
 //   / /   ==>  / /
 //  / /        /_/
 //
 // non-pure:
 //
+// The non-pure case has cut constraints such that it is not a simple extension
+// like the no cut case. It is computed by wrapping those cut constraints and
+// checking, whether everything stilly holds.
 //     ________           ________
 //    |        |         |        \
 //    |        | |  ==>  |         |
@@ -141,6 +168,10 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                bool pure);
 
 // compute the adj_eq Case for no CUT constraints.
+//
+// The adj_eq no cut case is simply an extension case, where the constraint,
+// that is adjacent to the equality, can be relaxed by 1 to include the other
+// polytope.
 //   ______           _______
 //  |      ||        |       |
 //  |      ||        |       |
