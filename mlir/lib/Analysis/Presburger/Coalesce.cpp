@@ -5,7 +5,15 @@
 #include <iostream>
 
 using namespace mlir;
+
 // struct for classified constraints
+// redundant and cut are for constraints that are typed as REDUNDANT or CUT
+// respectively. adj_ineq is for any constraint, that is adjacent to the other
+// polytope t is for any constraint, that is part of an equality constraint and
+// adjacent to the other polytope
+// TODO: find better name than t
+// TODO: possibly change up structure of Info, if simplex manages to classify
+// adjacent to equality
 struct Info {
   SmallVector<ArrayRef<int64_t>, 8> redundant;
   SmallVector<ArrayRef<int64_t>, 8> cut;
@@ -14,36 +22,43 @@ struct Info {
 };
 
 // computes the complement of t
+// i.e. for a given constraint t(x) >= 0 returns -t(x) -1 >= 0
 SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t);
 
-// computes t(x) + amount
+// shifts t by amount
+// i.e. for a given constraint t(x) >= 0 return t(x) + amount >= 0
 void shift(SmallVectorImpl<int64_t> &t, int amount);
 
 // dumps an Info struct
 void dumpInfo(const Info &info);
 
-// add eq as two inequalities to ineq
+// add eq as two inequalities to target
 void addAsIneq(const ArrayRef<ArrayRef<int64_t>> eq,
                SmallVectorImpl<ArrayRef<int64_t>> &target);
 
-// adds all Constraints to bs
+// adds all Equalities to bs
 void addEqualities(FlatAffineConstraints &bs,
                    const SmallVector<ArrayRef<int64_t>, 8> &equalities);
 
+// adds all Inequalities to bs
 void addInequalities(FlatAffineConstraints &bs,
                      const SmallVector<ArrayRef<int64_t>, 8> &inequalities);
 
 // only gets called by classify
-// classify of all constraints
+// classifies all constraints into redundant, cut or adj_ineq according to the
+// ineqType that the simplex returns
 //
-// returns true if it has not encountered a separate constraints
+// returns true if it has neither encountered a separate constraint nor more
+// than one adjacent inequality
 bool classify_ineq(Simplex &simp,
                    const SmallVector<ArrayRef<int64_t>, 8> &constraints,
                    Info &info);
 
-// same thing as classify_ineq, but also return if there is an equality
-// constraint adjacent to a the other polytope
-// returns true if it has not encountered a separate constraints
+// classifeis all constraints into redundant, cut, adj_ineq or t, where t stands
+// for a constraint adjacent to a the other polytope
+//
+// returns true if it has not encountered a separate constraint or more than one
+// adjcacent constraint
 bool classify(Simplex &simp,
               const SmallVector<ArrayRef<int64_t>, 8> &inequalities,
               const SmallVector<ArrayRef<int64_t>, 8> &equalities, Info &info);
@@ -56,7 +71,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
                  const FlatAffineConstraints &bs);
 
-// add a FlatAffineConstraints and removes the sets at i and j
+// add a FlatAffineConstraints and removes the sets at i and j.
 void addCoalescedBasicSet(
     SmallVectorImpl<FlatAffineConstraints> &basicSetVector, unsigned i,
     unsigned j, const FlatAffineConstraints &bs);
@@ -65,28 +80,28 @@ void addCoalescedBasicSet(
 bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &info_a, const Info &info_b);
 
-// compute adj_ineq pure Case and return whether it has worked
+// compute adj_ineq pure Case and return whether it has worked.
 bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                      unsigned i, unsigned j, const Info &info_a,
                      const Info &info_b);
 
 // compute the non-pure adj_ineq case and return whether it has worked.
-// Constraint t is the adj_ineq
+// Constraint t is the adj_ineq.
 bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                  unsigned i, unsigned j, const Info &info_a,
                  const Info &info_b);
 
-// compute the adj_eqCase and return whether it has worked
+// compute the adj_eqCase and return whether it has worked.
 bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                unsigned i, unsigned j, const Info &info_a, const Info &info_b,
                bool pure);
 
-// compute the adj_eq Case for no CUT constraints
+// compute the adj_eq Case for no CUT constraints.
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     unsigned i, unsigned j, SmallVector<int64_t, 8> t);
 
 void shift(SmallVectorImpl<int64_t> &t, int amount) {
-  t.push_back(t.pop_back_val() + 1);
+  t.push_back(t.pop_back_val() + amount);
 }
 
 SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t) {
@@ -94,10 +109,11 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t) {
   for (size_t k = 0; k < t.size() - 1; k++) {
     complement.push_back(-t[k]);
   }
-  complement.push_back(t.back() + 1);
+  complement.push_back(-t.back() - 1);
   return complement;
 }
 
+// helperfuncton to convert arrayRefs to SmallVectors
 static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   SmallVector<int64_t, 8> res;
   for (const int64_t &curr : ref)
@@ -105,6 +121,7 @@ static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   return res;
 }
 
+// returns all Equalities of a BasicSet as a SmallVector of ArrayRefs
 void getBasicSetEqualities(const FlatAffineConstraints &bs,
                            SmallVector<ArrayRef<int64_t>, 8> &eqs) {
   for (unsigned k = 0; k < bs.getNumEqualities(); k++) {
@@ -112,6 +129,7 @@ void getBasicSetEqualities(const FlatAffineConstraints &bs,
   }
 }
 
+// returns all Inequalities of a BasicSet as a SmallVector of ArrayRefs
 void getBasicSetInequalities(const FlatAffineConstraints &bs,
                              SmallVector<ArrayRef<int64_t>, 8> &ineqs) {
   for (unsigned k = 0; k < bs.getNumInequalities(); k++) {
@@ -416,6 +434,7 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                unsigned i, unsigned j, const Info &info_a, const Info &info_b,
                bool pure) {
+  // TODO: maybe separate pure adJEq case from non-pure
   FlatAffineConstraints a = basicSetVector[i];
   FlatAffineConstraints b = basicSetVector[j];
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
@@ -458,7 +477,7 @@ bool adjEqCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   if (pure) {
     new_set.addInequality(t);
   } else {
-    shift(t, -2);
+    shift(t, -3);
     SmallVector<int64_t, 8> tComplement = complement(t);
     new_set.addInequality(tComplement);
   }
@@ -670,7 +689,7 @@ void dumpInfo(const Info &info) {
   }
 }
 
-void mlir::dump(const ArrayRef<int64_t> &cons) {
+void mlir::dump(const ArrayRef<int64_t> cons) {
   std::cout << cons[cons.size() - 1] << " + ";
   for (size_t i = 1; i < cons.size(); i++) {
     std::cout << cons[i - 1] << "x" << i - 1;
