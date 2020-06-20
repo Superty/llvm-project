@@ -7,27 +7,29 @@
 
 namespace mlir {
 
-// coalesce a set according to the paper.
-//
+// coalesces a set according to the "integer set coalescing" by sven
+// verdoolaege.
 PresburgerSet coalesce(PresburgerSet &set);
 
-void dump(const ArrayRef<int64_t> &cons);
+void dump(const ArrayRef<int64_t> cons);
 
-// compare two constraints and gives true, even if they are multiples of each
-// other
+// compare two constraints and gives true, even if they are stretched
 bool sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2);
 
-// compute wrapping
+// tries to find a constraint, that is a linear combination of valid and
+// invalid, and is touches bs/is REDUNDANT in the most limited way possible
 Optional<SmallVector<int64_t, 8>> wrapping(const FlatAffineConstraints &bs,
                                            SmallVectorImpl<int64_t> &valid,
                                            SmallVectorImpl<int64_t> &invalid);
 
-// combine to constraints with the ratio
+// combine two constraints c1 >= 0 and c2 >= 0 with the ratio n/d as -n c1 + d
+// c2 >= 0
 SmallVector<int64_t, 8>
 combineConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2, Fraction &ratio);
 
-// return whether the facet of ineq, a constraint of bs, is contained within a
-// polytope that has cut constraints cut
+// takes a BasicSet bs, a constraint ineq of that basicSet and the vector cut of
+// constraints, that were typed as cutting bs. Computes wether the part of ineq,
+// that lies within bs, is redundant for all constraints of cut
 bool containedFacet(ArrayRef<int64_t> ineq, const FlatAffineConstraints &bs,
                     const SmallVector<ArrayRef<int64_t>, 8> &cut);
 
