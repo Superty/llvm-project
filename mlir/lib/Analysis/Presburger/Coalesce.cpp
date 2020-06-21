@@ -144,7 +144,7 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
 // can always be coalesced by finding the two constraints, that make them become
 // a trapezoid. This is done by wrapping the limiting constraints of the
 // equalities around each other to include the other one.
-//
+//                _
 //    / /        / /
 //   / /   ==>  / /
 //  / /        /_/
@@ -248,83 +248,95 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       // TODO: find better strategy than i--; break;
       // change indices when changing vector?
       if (!info_1.redundant.empty() && info_1.cut.empty() && !info_1.adj_ineq &&
-          !info_2.t) { // contained 2 in 1
+          !info_2.t) {
+        // contained 2 in 1
         basicSetVector.erase(basicSetVector.begin() + j);
         j--;
       } else if (!info_2.redundant.empty() && info_2.cut.empty() &&
-                 !info_2.adj_ineq && !info_1.t) { // contained 1 in 2
+                 !info_2.adj_ineq && !info_1.t) {
+        // contained 1 in 2
         basicSetVector.erase(basicSetVector.begin() + i);
         i--;
         break;
       } else if (!info_1.redundant.empty() && !info_1.cut.empty() &&
-                 !info_1.adj_ineq && !info_2.t) { // cut or protrusion
+                 !info_1.adj_ineq && !info_2.t) {
+        // cut or protrusion case 1
         if (cutCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         } else if (stickingOut(info_1.cut, bs2) &&
-                   protrusionCase(basicSetVector, info_1, info_2, i,
-                                  j)) { // protrusion
+                   protrusionCase(basicSetVector, info_1, info_2, i, j)) {
+          // protrusion
           i--;
           break;
         }
       } else if (!info_2.redundant.empty() && !info_2.cut.empty() &&
-                 !info_2.adj_ineq && !info_1.t) { // cut or protrusion
+                 !info_2.adj_ineq && !info_1.t) {
+        // cut or protrusion case 2
         if (cutCase(basicSetVector, j, i, info_2, info_1)) {
           i--;
           break;
         } else if (stickingOut(info_2.cut, bs1) &&
-                   protrusionCase(basicSetVector, info_2, info_1, j,
-                                  i)) { // protrusion
+                   protrusionCase(basicSetVector, info_2, info_1, j, i)) {
+          // protrusion case
           i--;
           break;
         }
       } else if (!info_1.redundant.empty() && info_1.adj_ineq &&
                  info_1.cut.empty() && !info_2.t && !info_2.redundant.empty() &&
-                 info_2.adj_ineq && info_2.cut.empty() &&
-                 !info_1.t) { // adj_ineq, pure case
+                 info_2.adj_ineq && info_2.cut.empty() && !info_1.t) {
+        // adj_ineq, pure case
         if (adjIneqPureCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         }
       } else if (!info_1.redundant.empty() && info_1.adj_ineq &&
-                 info_1.cut.empty() && !info_1.t &&
-                 !info_2.t) { // adj_ineq complex case 1
+                 info_1.cut.empty() && !info_1.t && !info_2.t) {
+        // adj_ineq complex case 1
         if (adjIneqCase(basicSetVector, i, j, info_1, info_2)) {
           i--;
           break;
         }
       } else if (!info_2.redundant.empty() && info_2.adj_ineq &&
-                 info_2.cut.empty() && !info_2.t &&
-                 !info_1.t) { // adj_ineq complex case 2
+                 info_2.cut.empty() && !info_2.t && !info_1.t) {
+        // adj_ineq complex case 2
         if (adjIneqCase(basicSetVector, j, i, info_2, info_1)) {
           i--;
           break;
         }
-      } else if (info_1.t && info_2.t) { // adj_eq for two equalities
+      } else if (info_1.t && info_2.t) {
+        // adj_eq for two equalities
         if (adjEqCase(basicSetVector, i, j, info_1, info_2, true)) {
           i--;
           break;
         }
-      } else if (info_1.t &&
-                 info_2.cut.empty()) { // adj_eq Case for one equality
+      } else if (info_1.t && info_2.cut.empty()) {
+        // adj_eq Case for one equality 1
+        // compute the inequality, that is adjacent to an equality by computing
+        // the complement of the inequality part of an equality
         SmallVector<int64_t, 8> adjEq = complement(info_1.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq)) { // adj_eq noCut cas
+        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq)) {
+          // adj_eq noCut case
           i--;
           break;
-        } else if (info_1.t && adjEqCase(basicSetVector, i, j, info_1, info_2,
-                                         false)) { // adjEq case
+        } else if (info_1.t &&
+                   adjEqCase(basicSetVector, i, j, info_1, info_2, false)) {
+          // adjEq case
           i--;
           break;
         }
-      } else if (info_2.t &&
-                 info_1.cut.empty()) { // adj_eq Case for one equality
+      } else if (info_2.t && info_1.cut.empty()) {
+        // adj_eq Case for one equality 2
+        // compute the inequality, that is adjacent to an equality by computing
+        // the complement of the inequality part of an equality
         SmallVector<int64_t, 8> adjEq = complement(info_2.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, j, i,
-                           adjEq)) { // adj_eq noCut cas
+        if (adjEqCaseNoCut(basicSetVector, j, i, adjEq)) {
+          // adj_eq noCut case
           i--;
           break;
-        } else if (info_2.t && adjEqCase(basicSetVector, j, i, info_2, info_1,
-                                         false)) { // adjEq case
+        } else if (info_2.t &&
+                   adjEqCase(basicSetVector, j, i, info_2, info_1, false)) {
+          // adjEq case
           i--;
           break;
         }
@@ -357,13 +369,14 @@ bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   FlatAffineConstraints newSet(basicSetVector[i].getNumIds(),
                                basicSetVector[i].getNumSymbolIds());
   addInequalities(newSet, info_a.redundant);
-  addInequalities(newSet, info_a.cut);
   addInequalities(newSet, info_b.redundant);
-  addInequalities(newSet, info_b.cut);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
   return true;
 }
 
+// Currently erases both i and j and the pushes the new BasicSet to the back of
+// the vector.
+// TODO: probably change when changing looping strategy
 void addCoalescedBasicSet(
     SmallVectorImpl<FlatAffineConstraints> &basicSetVector, unsigned i,
     unsigned j, const FlatAffineConstraints &bs) {
@@ -381,17 +394,19 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     Info &info_a, const Info &info_b, unsigned i, unsigned j) {
   FlatAffineConstraints &a = basicSetVector[i];
   FlatAffineConstraints &b = basicSetVector[j];
-  SmallVector<ArrayRef<int64_t>, 8> inequalities_b, equalities_b;
+  SmallVector<ArrayRef<int64_t>, 8> constraints_b, equalities_b;
   getBasicSetEqualities(b, equalities_b);
-  getBasicSetInequalities(b, inequalities_b);
-  addAsIneq(equalities_b, inequalities_b);
+  getBasicSetInequalities(b, constraints_b);
+  addAsIneq(equalities_b, constraints_b);
 
+  // For every constraint t, it gets added to the other polytope as an equality.
+  // TODO: add more documentation
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   for (size_t l = 0; l < info_a.cut.size(); l++) {
     SmallVector<int64_t, 8> t = arrayRefToSmallVector(info_a.cut[l]);
     FlatAffineConstraints bPrime =
         FlatAffineConstraints(b.getNumDimIds(), b.getNumSymbolIds());
-    addInequalities(bPrime, inequalities_b);
+    addInequalities(bPrime, constraints_b);
     shift(t, 1);
     Simplex simp(bPrime);
     simp.addEquality(t);
@@ -433,6 +448,9 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
                  const FlatAffineConstraints &bs) {
   Simplex simp(bs);
+  // for every cut constraint t, compute the optimum in the direction of cut. If
+  // the optimum is < -2, the polytopee doesn't stick too much out of the other
+  // one.
   for (size_t k = 0; k < cut.size(); k++) {
     ArrayRef<int64_t> curr = cut[k];
     auto result = simp.computeOptimum(Simplex::Direction::Down, curr);
@@ -452,7 +470,11 @@ bool mlir::sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2) {
   if (c1.size() != c1.size()) {
     return false;
   }
+  // if c1 = a*c2, this iterates over the vector trying to find a as soon as
+  // possible and then comparing with a.
   for (size_t i = 0; i < c1.size(); i++) {
+    // TODO: is ratio.num == 0 really sufficient for checking whether fraction
+    // was set yet
     if (c2[i] != 0 && ratio.num == 0) {
       ratio.num = c1[i];
       ratio.den = c2[i];
@@ -476,6 +498,9 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     unsigned i, unsigned j, SmallVector<int64_t, 8> t) {
   FlatAffineConstraints &A = basicSetVector[j];
   FlatAffineConstraints &B = basicSetVector[i];
+  // relax t by 1 and add all other constraints of A to new_set.
+  // TODO: is looping only over the inequalities sufficient here?
+  // Reasoning: if A had an equality, we would be in a different case.
   SmallVector<SmallVector<int64_t, 8>, 8> new_set_inequalities;
   for (size_t k = 0; k < A.getNumInequalities(); k++) {
     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(A.getInequality(k));
@@ -485,26 +510,26 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   }
   shift(t, 1);
   new_set_inequalities.push_back(t);
-
   FlatAffineConstraints new_set(A.getNumDimIds(), A.getNumSymbolIds());
-  for (size_t k = 0; k < A.getNumEqualities(); k++) {
-    new_set.addEquality(A.getEquality(k));
-  }
   for (size_t k = 0; k < new_set_inequalities.size(); k++) {
     new_set.addInequality(new_set_inequalities[k]);
   }
+
+  // for every constraint c of B, check if it is redundant for the new_set with
+  // t added as an equality. This makes sure, that B actually is a simple
+  // extension of A.
   Simplex simp(new_set);
   simp.addEquality(t);
-  SmallVector<ArrayRef<int64_t>, 8> inequalities_b, equalities_b;
+  SmallVector<ArrayRef<int64_t>, 8> constraints_b, equalities_b;
   for (size_t k = 0; k < B.getNumEqualities(); k++) {
     equalities_b.push_back(B.getEquality(k));
   }
   for (size_t k = 0; k < B.getNumInequalities(); k++) {
-    inequalities_b.push_back(B.getInequality(k));
+    constraints_b.push_back(B.getInequality(k));
   }
-  addAsIneq(equalities_b, inequalities_b);
-  for (size_t k = 0; k < inequalities_b.size(); k++) {
-    if (simp.ineqType(inequalities_b[k]) != Simplex::IneqType::REDUNDANT) {
+  addAsIneq(equalities_b, constraints_b);
+  for (size_t k = 0; k < constraints_b.size(); k++) {
+    if (simp.ineqType(constraints_b[k]) != Simplex::IneqType::REDUNDANT) {
       return false;
     }
   }
@@ -588,6 +613,8 @@ mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
                SmallVectorImpl<int64_t> &invalid) {
   size_t n = bs.getNumDimIds();
   Simplex simplex(n + 1);
+
+  // for every constraint t(x) + c of bs, make it become t(x) + c*lambda
   for (size_t k = 0; k < bs.getNumEqualities(); k++) {
     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(bs.getEquality(k));
     curr.push_back(0);
@@ -599,14 +626,19 @@ mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
     simplex.addInequality(curr);
   }
 
+  // add lambda >= 0
+  // TODO: why does it work with n here? Isn't this constraint actually n+2
+  // long?
   SmallVector<int64_t, 8> lambda(n, 0);
   lambda.push_back(1);
-  lambda.push_back(0); // Is this needed?
+  lambda.push_back(0);
   simplex.addInequality(lambda);
 
+  // make the valid constraint be equal to 1 and add it as an equality
   valid.push_back(-1);
   simplex.addEquality(valid);
 
+  // transform the invalid constraint into lambda space
   invalid.push_back(0);
   Optional<Fraction> result =
       simplex.computeOptimum(Simplex::Direction::Down, invalid);
@@ -637,11 +669,14 @@ bool classify(Simplex &simp,
       break;
     case Simplex::IneqType::ADJ_INEQ:
       if (info.adj_ineq)
+        // if two adjacent constraints are found, we can surely not coalesce
         return false; // this town is too small for two adj_ineq
       info.adj_ineq = current_constraint;
       info.t = current_constraint;
       break;
     case Simplex::IneqType::ADJ_EQ:
+      // TODO: possibly needs to change if simplex can handle adjacent to
+      // equality
       info.t = current_constraint;
       break;
     case Simplex::IneqType::SEPARATE:
@@ -665,10 +700,13 @@ bool classify_ineq(Simplex &simp,
       break;
     case Simplex::IneqType::ADJ_INEQ:
       if (info.adj_ineq)
+        // if two adjacent constraints are found, we can surely not coalesce
         return false; // this town is too small for two adj_ineq
       info.adj_ineq = current_constraint;
       break;
     case Simplex::IneqType::ADJ_EQ:
+      // TODO: possibly needs to change if simplex can handle adjacent to
+      // equality
       break;
     case Simplex::IneqType::SEPARATE:
       return false; // coalescing failed
@@ -686,9 +724,13 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   addInequalities(bs, info_a.redundant);
   addInequalities(bs, info_a.cut);
   addInequalities(bs, info_b.redundant);
+
+  // If all constraints of a are added but the adjacent one and all the
+  // REDUNDANT ones from b, are all cut constraint of b now REDUNDANT?
+  // If so, all REDUNDANT constraints of a and b together define the new
+  // polytope
   Simplex comp(bs);
-  SmallVector<int64_t, 8> tComplement = complement(t);
-  comp.addInequality(tComplement);
+  comp.addInequality(complement(t));
   for (size_t k = 0; k < info_b.cut.size(); k++) {
     if (comp.ineqType(info_b.cut[k]) != Simplex::IneqType::REDUNDANT) {
       return false;
@@ -710,6 +752,8 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
 
 bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &info_a, const Info &info_b) {
+  // if all facets are contained, the redundant constraints of both a and b
+  // define the new polytope
   for (size_t k = 0; k < info_a.cut.size(); k++) {
     if (!containedFacet(info_a.cut[k], basicSetVector[i], info_b.cut)) {
       return false;
