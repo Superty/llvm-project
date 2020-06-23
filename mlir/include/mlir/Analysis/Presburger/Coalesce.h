@@ -22,7 +22,7 @@ void dump(const ArrayRef<int64_t> cons);
 bool sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2);
 
 // tries to find a constraint, that is a linear combination of valid and
-// invalid, and is touches bs/is REDUNDANT in the most limited way possible
+// invalid, and touches bs/is REDUNDANT in the most limited way possible
 Optional<SmallVector<int64_t, 8>> wrapping(const FlatAffineConstraints &bs,
                                            SmallVectorImpl<int64_t> &valid,
                                            SmallVectorImpl<int64_t> &invalid);
