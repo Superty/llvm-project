@@ -1,6 +1,8 @@
 add_mlir_library(MLIRPresburger
   Simplex.cpp
   Set.cpp
+  ParamLexSimplex.cpp
+  PresburgerBasicSet.cpp
   Matrix.cpp
   LinearTransform.cpp
   )

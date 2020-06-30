@@ -72,7 +72,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   ++nRow;
   // If the tableau is not big enough to accomodate the extra row, we extend it.
   if (nRow >= tableau.getNumRows())
-    tableau.resizeVertically(nRow);
+    tableau.resize(nRow, nCol);
   rowUnknown.push_back(~con.size());
   con.emplace_back(Orientation::Row, false, nRow - 1);
 
@@ -486,12 +486,30 @@ void Simplex::detectRedundant() {
   }
 }
 
+void Simplex::addVariable() {
+  undoLog.emplace_back(UndoLogEntry::RemoveLastVariable, Optional<int>());
+  nCol++;
+  tableau.resize(nRow, nCol);
+  var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol - 1);
+  colUnknown.push_back(var.size() - 1);
+}
+
 unsigned Simplex::numVariables() const { return var.size(); }
 unsigned Simplex::numConstraints() const { return con.size(); }
 
 /// Return a snapshot of the curent state. This is just the current size of the
 /// undo log.
 unsigned Simplex::getSnapshot() const { return undoLog.size(); }
+unsigned Simplex::getSnapshotBasis() {
+  SmallVector<int, 8> basis;
+  for (int index : colUnknown) {
+    if (index != nullIndex)
+      basis.push_back(index);
+  }
+  savedBases.push_back(std::move(basis));
+  
+  return getSnapshot();
+}
 
 void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
@@ -535,7 +553,7 @@ void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
     swapRows(constraint.pos, nRow - 1);
     // It is not strictly necessary to shrink the tableau, but for now we
     // maintain the invariant that the tableau has exactly nRow rows.
-    tableau.resizeVertically(nRow - 1);
+    tableau.resize(nRow - 1, nCol);
     nRow--;
     rowUnknown.pop_back();
     con.pop_back();
@@ -560,6 +578,35 @@ void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
       liveColBegin--;
     }
     unknown.zero = false;
+  } else if (entry == UndoLogEntry::RemoveLastVariable) {
+    assert(var.back().orientation == Orientation::Column && "Variable was moved to row position!");
+    tableau.resize(nRow, nCol - 1);
+    var.pop_back();
+    colUnknown.pop_back();
+    nCol--;
+  } else if (entry == UndoLogEntry::RestoreBasis) {
+    assert(!savedBases.empty() && "No bases saved!");
+
+    auto basis = std::move(savedBases.back());
+    savedBases.pop_back();
+
+    for (int index : basis) {
+      Unknown &u = unknownFromIndex(index);
+      if (u.orientation == Orientation::Column)
+        continue;
+      for (unsigned col = 0; col < nCol; col++) {
+        if (colUnknown[col] == nullIndex)
+          continue;
+        if (std::count(basis.begin(), basis.end(), colUnknown[col]) == 0)
+          continue;
+        if (tableau(u.pos, col) == 0)
+          continue;
+        pivot(u.pos, col);
+        break;
+      }
+
+      assert(u.orientation == Orientation::Column && "Basis unknown is still a row!");
+    }
   }
 }
 
@@ -646,7 +693,7 @@ Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
   unsigned numCon = a.numConstraints() + b.numConstraints();
   Simplex result(numVar);
 
-  result.tableau.resizeVertically(numCon);
+  result.tableau.resize(numCon, result.tableau.getNumColumns());
   result.nRedundant = a.nRedundant + b.nRedundant;
   result.liveColBegin = a.liveColBegin + b.liveColBegin - 2;
   result.empty = a.empty || b.empty;
@@ -728,25 +775,21 @@ Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
   return result;
 }
 
-Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
+SmallVector<Fraction, 8> Simplex::getSamplePoint() const {
   // The tableau is empty, so no sample point exists.
-  if (empty)
-    return {};
+  assert(!empty && "Simplex should not be empty!");
 
-  SmallVector<int64_t, 8> sample;
+  SmallVector<Fraction, 8> sample;
   // Push the sample value for each variable into the vector.
   for (const Unknown &u : var) {
     if (u.orientation == Orientation::Column) {
       // If the variable is in column position, its sample value is zero.
-      sample.push_back(0);
+      sample.emplace_back(0, 1);
     } else {
       // If the variable is in row position, its sample value is the entry in
       // the constant column divided by the entry in the common denominator
-      // column. If this is not an integer, then the sample point is not
-      // integral so we return None.
-      if (tableau(u.pos, 1) % tableau(u.pos, 0) != 0)
-        return {};
-      sample.push_back(tableau(u.pos, 1) / tableau(u.pos, 0));
+      // column.
+      sample.emplace_back(tableau(u.pos, 1), tableau(u.pos, 0));
     }
   }
   return sample;
@@ -761,11 +804,27 @@ void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
     addEquality(cs.getEquality(i));
 }
 
-/// Given a simplex for a polytope, construct a new simplex whose variables
-/// are identified with a pair of points (x, y) in the original polytope.
-/// Supports some operations needed for generalized basis reduction. In what
-/// follows, dotProduct(x, y) = x_1 * y_1 + x_2 * y_2 + ... x_n * y_n where n
-/// is the dimension of the original polytope.
+Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
+  // The tableau is empty, so no sample point exists.
+  if (empty)
+    return {};
+
+  SmallVector<Fraction, 8> sample = getSamplePoint();
+
+  SmallVector<int64_t, 8> integralSample;
+  for (Fraction f : sample) {
+    if (f.num % f.den != 0)
+      return {};
+    integralSample.push_back(f.num / f.den);
+  }
+  return integralSample;
+}
+
+/// Given a simplex for a polytope, construct a new simplex whose variables are
+/// identified with a pair of points (x, y) in the original polytope. Supports
+/// some operations needed for generalized basis reduction. In what follows,
+/// dotProduct(x, y) = x_1 * y_1 + x_2 * y_2 + ... x_n * y_n where n is the
+/// dimension of the original polytope.
 ///
 /// This supports adding equality constraints dotProduct(dir, x - y) == 0. It
 /// also supports rolling back this addition, by maintaining a snapshot stack
@@ -1482,7 +1541,7 @@ inline void Simplex::extendConstraints(unsigned nNew) {
   if (con.capacity() < con.size() + nNew)
     con.reserve(con.size() + nNew);
   if (tableau.getNumRows() < nRow + nNew) {
-    tableau.resizeVertically(nRow + nNew);
+    tableau.resize(nRow + nNew, tableau.getNumColumns());
     rowUnknown.reserve(nRow + nNew);
   }
 }

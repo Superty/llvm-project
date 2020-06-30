@@ -165,11 +165,14 @@ public:
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
   void addEquality(ArrayRef<int64_t> coeffs);
 
+  void addVariable();
+
   /// Mark the tableau as being empty.
   void markEmpty();
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() const;
+  unsigned getSnapshotBasis();
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
@@ -201,7 +204,11 @@ public:
   /// tableau A and one in B.
   static Simplex makeProduct(const Simplex &a, const Simplex &b);
 
-  /// Returns the current sample point if it is integral. Otherwise, returns an
+  /// Returns the current (possibly fractional) sample point. This should not
+  /// be called when the simplex is empty.
+  SmallVector<Fraction, 8> getSamplePoint() const;
+
+  /// Returns the current sample point if it is integral. Otherwise, returns
   /// None.
   Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
 
@@ -227,7 +234,7 @@ public:
   /// False otherwise.
   bool constraintIsEquality(int con_index) const;
 
-private:
+protected:
   friend class GBRSimplex;
 
   enum class Orientation { Row, Column };
@@ -390,7 +397,9 @@ private:
     RemoveLastConstraint,
     UnmarkEmpty,
     UnmarkRedundant,
-    UnmarkZero
+    UnmarkZero,
+    RestoreBasis,
+    RemoveLastVariable
   };
 
   /// Undo the operation represented by the log entry.
@@ -435,6 +444,7 @@ private:
 
   /// Holds a log of operations, used for rolling back to a previous state.
   SmallVector<std::pair<UndoLogEntry, Optional<int>>, 8> undoLog;
+  SmallVector<SmallVector<int, 8>, 8> savedBases;
 
   /// These hold the indexes of the unknown at a given row or column position.
   /// We keep these as signed integers since that makes it convenient to check
