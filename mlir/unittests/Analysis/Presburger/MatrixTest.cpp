@@ -68,7 +68,7 @@ TEST(MatrixTest, SwapRows) {
       EXPECT_EQ(mat(row, col), row == 0 ? 1 : 0);
 }
 
-TEST(MatrixTest, resizeVertically) {
+TEST(MatrixTest, resize) {
   Matrix mat(5, 5);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
@@ -76,19 +76,19 @@ TEST(MatrixTest, resizeVertically) {
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = 10 * row + col;
 
-  mat.resizeVertically(3);
+  mat.resize(3, 3);
   EXPECT_EQ(mat.getNumRows(), 3u);
-  EXPECT_EQ(mat.getNumColumns(), 5u);
+  EXPECT_EQ(mat.getNumColumns(), 3u);
   for (unsigned row = 0; row < 3; ++row)
-    for (unsigned col = 0; col < 5; ++col)
+    for (unsigned col = 0; col < 3; ++col)
       EXPECT_EQ(mat(row, col), int(10 * row + col));
 
-  mat.resizeVertically(5);
+  mat.resize(5, 5);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
-      EXPECT_EQ(mat(row, col), row >= 3 ? 0 : int(10 * row + col));
+      EXPECT_EQ(mat(row, col), row < 3 && col < 3 ? int(10 * row + col) : 0);
 }
 
 } // namespace presburger

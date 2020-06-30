@@ -226,7 +226,7 @@ TEST(SimplexTest, addEquality_separate) {
   simplex.addEquality({1, 0}); // x == 0.
   EXPECT_TRUE(simplex.isEmpty());
 }
-
+namespace {
 void expectInequalityMakesSetEmpty(Simplex &simplex, ArrayRef<int64_t> coeffs,
                                    bool expect) {
   ASSERT_FALSE(simplex.isEmpty());
@@ -234,6 +234,7 @@ void expectInequalityMakesSetEmpty(Simplex &simplex, ArrayRef<int64_t> coeffs,
   simplex.addInequality(coeffs);
   EXPECT_EQ(simplex.isEmpty(), expect);
   simplex.rollback(snapshot);
+}
 }
 
 TEST(SimplexTest, addInequality_rollback) {
@@ -267,6 +268,7 @@ TEST(SimplexTest, addInequality_rollback) {
   }
 }
 
+namespace {
 Simplex simplexFromConstraints(unsigned nDim,
                                SmallVector<SmallVector<int64_t, 8>, 8> ineqs,
                                SmallVector<SmallVector<int64_t, 8>, 8> eqs) {
@@ -276,6 +278,7 @@ Simplex simplexFromConstraints(unsigned nDim,
   for (const auto &eq : eqs)
     simplex.addEquality(eq);
   return simplex;
+}
 }
 
 TEST(SimplexTest, isUnbounded) {

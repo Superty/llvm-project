@@ -45,9 +45,22 @@ unsigned Matrix::getNumRows() const { return nRows; }
 
 unsigned Matrix::getNumColumns() const { return nColumns; }
 
-void Matrix::resizeVertically(unsigned newNRows) {
-  nRows = newNRows;
-  data.resize(nRows * nColumns);
+void Matrix::resize(unsigned newNRows, unsigned newNColumns) {
+  if (newNColumns == nColumns) {
+    nRows = newNRows;
+    data.resize(nRows * nColumns);
+  } else {
+    SmallVector<int64_t, 8> newData;
+    newData.reserve(newNRows * newNColumns);
+    for (unsigned row = 0; row < newNRows; row++) {
+      for (unsigned col = 0; col < newNColumns; col++) {
+        newData.push_back(row < nRows && col < nColumns ? at(row, col) : 0);
+      }
+    }
+    data = std::move(newData);
+    nRows = newNRows;
+    nColumns = newNColumns;
+  }
 }
 
 void Matrix::swapRows(unsigned row, unsigned otherRow) {

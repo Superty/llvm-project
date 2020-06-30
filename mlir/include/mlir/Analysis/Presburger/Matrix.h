@@ -70,7 +70,7 @@ public:
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
   /// initialized.
-  void resizeVertically(unsigned newNRows);
+  void resize(unsigned newNRows, unsigned newNColumns);
 
   /// Print the matrix.
   void print(raw_ostream &os) const;
