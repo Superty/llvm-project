@@ -19,6 +19,24 @@ struct Info {
   SmallVector<ArrayRef<int64_t>, 8> cut;
   Optional<ArrayRef<int64_t>> adj_ineq;
   Optional<ArrayRef<int64_t>> t;
+  void dump() {
+    std::cout << "red:" << std::endl;
+    for (size_t k = 0; k < this->redundant.size(); k++) {
+      mlir::dump(this->redundant[k]);
+    }
+    std::cout << "cut:" << std::endl;
+    for (size_t k = 0; k < this->cut.size(); k++) {
+      mlir::dump(this->cut[k]);
+    }
+    if (this->adj_ineq) {
+      std::cout << "adj_ineq:" << std::endl;
+      mlir::dump(this->adj_ineq.getValue());
+    }
+    if (this->t) {
+      std::cout << "t:" << std::endl;
+      mlir::dump(this->t.getValue());
+    }
+  }
 };
 
 // computes the complement of t
@@ -28,9 +46,6 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t);
 // shifts t by amount
 // i.e. for a given constraint t(x) >= 0 return t(x) + amount >= 0
 void shift(SmallVectorImpl<int64_t> &t, int amount);
-
-// dumps an Info struct
-void dumpInfo(const Info &info);
 
 // add eq as two inequalities to target
 void addAsIneq(const ArrayRef<ArrayRef<int64_t>> eq,
@@ -873,25 +888,6 @@ void addAsIneq(ArrayRef<ArrayRef<int64_t>> eq,
     }
     ArrayRef<int64_t> inverted_ref(*inverted);
     target.push_back(inverted_ref);
-  }
-}
-
-void dumpInfo(const Info &info) {
-  std::cout << "red:" << std::endl;
-  for (size_t k = 0; k < info.redundant.size(); k++) {
-    dump(info.redundant[k]);
-  }
-  std::cout << "cut:" << std::endl;
-  for (size_t k = 0; k < info.cut.size(); k++) {
-    dump(info.cut[k]);
-  }
-  if (info.adj_ineq) {
-    std::cout << "adj_ineq:" << std::endl;
-    dump(info.adj_ineq.getValue());
-  }
-  if (info.t) {
-    std::cout << "t:" << std::endl;
-    dump(info.t.getValue());
   }
 }
 
