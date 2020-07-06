@@ -1,5 +1,7 @@
 add_mlir_library(MLIRPresburger
   Simplex.cpp
+  Set.cpp
+  LinearTransform.cpp
   )
 
 target_link_libraries(MLIRPresburger

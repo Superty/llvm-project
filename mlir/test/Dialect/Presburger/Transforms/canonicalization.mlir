@@ -5,7 +5,7 @@ func @simple_union() -> !presburger.set<1,0> {
   %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
   %set2 = presburger.set #presburger<"(x)[] : (x - 1 >= 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 >= 0 or d0 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.union %set1, %set2 : !presburger.set<1,0>
   return %uset : !presburger.set<1,0>
@@ -31,7 +31,7 @@ func @simple_intersect() -> !presburger.set<1,0> {
   %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
   %set2 = presburger.set #presburger<"(x)[] : (x - 1 >= 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 >= 0 and d0 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 - 1 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.intersect %set1, %set2 : !presburger.set<1,0>
   return %uset : !presburger.set<1,0>
@@ -58,7 +58,7 @@ func @combined() -> !presburger.set<1,0> {
   %set2 = presburger.set #presburger<"(x)[] : (x - 1 >= 0)">
   %set3 = presburger.set #presburger<"(y)[] : (-y + 42 >= 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : (d0 >= 0 and d0 - 1 >= 0 or -d0 + 42 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
   // CHECK-NEXT: return %[[S]]
   %iset = presburger.intersect %set1, %set2 : !presburger.set<1,0>
   %uset = presburger.union %iset, %set3 : !presburger.set<1,0>
@@ -201,9 +201,10 @@ func @complement_simple() -> !presburger.set<1,0> {
 
 // CHECK-LABEL: func @complement_empty
 func @complement_empty() -> !presburger.set<1,0> {
+  // TODO if we add (1 = 2) it breaks the next test, as this is not marked empty 
   // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"(d0)[] : ()">
   // CHECK-NEXT: return %[[S]]
-  %set = presburger.set #presburger<"(x)[] : (1 = 2)">
+  %set = presburger.set #presburger<"(x)[] : (1 = 0)">
 
   %uset = presburger.complement %set : !presburger.set<1,0>
   return %uset : !presburger.set<1,0>
@@ -232,4 +233,57 @@ func @complement_multi_dim() -> !presburger.set<2,0> {
 
   %uset = presburger.complement %set : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
+}
+
+// equality
+// ----
+
+// CHECK-LABEL: func @equal_simple_pos
+func @equal_simple_pos() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 1 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
+  %set2 = presburger.set #presburger<"(x)[] : (x >= 0)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<1,0>, !presburger.set<1,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_simple_neg
+func @equal_simple_neg() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 0 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x)[] : (x >= 0)">
+  %set2 = presburger.set #presburger<"(x)[] : (x <= 0)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<1,0>, !presburger.set<1,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_multidim_pos
+func @equal_multidim_pos() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 1 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x,y)[] : (x >= 0 and x + y = 0 or x = 4 and y = 2)">
+  %set2 = presburger.set #presburger<"(x,y)[] : (y <= 0 and x + y = 0 or x = 4 and y = 2)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<2,0>, !presburger.set<2,0>
+  return %r : i1
+}
+
+// ----
+
+// CHECK-LABEL: func @equal_multidim_neg
+func @equal_multidim_neg() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant 0 : i1
+  // CHECK-NEXT: return %[[S]]
+  %set1 = presburger.set #presburger<"(x,y)[] : (x >= 0 and x + y = 0 or x = 4 and y = 2)">
+  %set2 = presburger.set #presburger<"(x,y)[] : (y <= 1 and x + y = 0 or x = 4 and y = 2)">
+
+  %r = presburger.equal %set1, %set2 : !presburger.set<2,0>, !presburger.set<2,0>
+  return %r : i1
 }

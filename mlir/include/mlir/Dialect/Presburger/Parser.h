@@ -6,8 +6,8 @@
 #ifndef PRESBURGER_PARSER_H
 #define PRESBURGER_PARSER_H
 
-#include "mlir/Dialect/Presburger/Set.h"
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/SmallVector.h"

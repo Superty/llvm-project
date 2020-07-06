@@ -24,7 +24,8 @@ namespace mlir {
 /// This is a simple class to represent a resizable matrix.
 ///
 /// The data is stored in the form of a vector of vectors.
-template <typename INT> class Matrix {
+template <typename INT>
+class Matrix {
 public:
   Matrix() = delete;
 
@@ -44,6 +45,11 @@ public:
   /// Swap the given rows.
   void swapRows(unsigned row, unsigned otherRow);
 
+  /// Negate the column.
+  ///
+  /// \returns True if overflow occurs, False otherwise.
+  void negateColumn(unsigned column);
+
   unsigned getNumRows() const;
 
   unsigned getNumColumns() const;
@@ -51,6 +57,8 @@ public:
   const std::vector<INT> getRow(unsigned row) const;
 
   void addToRow(unsigned sourceRow, unsigned targetRow, INT scale);
+
+  void addToColumn(unsigned sourceColumn, unsigned targetColumn, INT scale);
 
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are default
@@ -91,11 +99,13 @@ INT Matrix<INT>::operator()(unsigned row, unsigned column) const {
   return data[row][column];
 }
 
-template <typename INT> unsigned Matrix<INT>::getNumRows() const {
+template <typename INT>
+unsigned Matrix<INT>::getNumRows() const {
   return data.size();
 }
 
-template <typename INT> unsigned Matrix<INT>::getNumColumns() const {
+template <typename INT>
+unsigned Matrix<INT>::getNumColumns() const {
   return nColumns;
 }
 
@@ -127,6 +137,15 @@ void Matrix<INT>::swapColumns(unsigned column, unsigned otherColumn) {
 }
 
 template <typename INT>
+void Matrix<INT>::negateColumn(unsigned column) {
+  assert(column < getNumColumns() && "Given column out of bounds");
+  for (unsigned row = 0, e = getNumRows(); row < e; ++row) {
+    // TODO not overflow safe
+    data[row][column] = -data[row][column];
+  }
+}
+
+template <typename INT>
 const std::vector<INT> Matrix<INT>::getRow(unsigned row) const {
   return data[row];
 }
@@ -140,9 +159,20 @@ void Matrix<INT>::addToRow(unsigned sourceRow, unsigned targetRow, INT scale) {
   return;
 }
 
-template <typename INT> void Matrix<INT>::print(llvm::raw_ostream &os) const {
+template <typename INT>
+void Matrix<INT>::addToColumn(unsigned sourceColumn, unsigned targetColumn,
+                              INT scale) {
+  if (scale == 0)
+    return;
+  for (unsigned row = 0, e = getNumRows(); row < e; ++row)
+    data[row][targetColumn] += scale * data[row][sourceColumn];
+  return;
+}
+
+template <typename INT>
+void Matrix<INT>::print(llvm::raw_ostream &os) const {
   os << "Dumping matrix, rows = " << getNumRows()
-               << ", columns: " << getNumColumns() << '\n';
+     << ", columns: " << getNumColumns() << '\n';
   os << "r/c  ";
   for (unsigned column = 0; column < getNumColumns(); ++column)
     os << "| " << column << " ";
@@ -156,7 +186,8 @@ template <typename INT> void Matrix<INT>::print(llvm::raw_ostream &os) const {
   }
 }
 
-template <typename INT> void Matrix<INT>::dump() const {
+template <typename INT>
+void Matrix<INT>::dump() const {
   print(llvm::errs());
 }
 

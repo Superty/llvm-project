@@ -130,6 +130,42 @@ static void print(OpAsmPrinter &printer, ComplementOp op) {
   printer.printType(op.getType());
 }
 
+// equal
+
+static ParseResult parseEqualOp(OpAsmParser &parser, OperationState &result) {
+  SmallVector<OpAsmParser::OperandType, 2> obsOperands;
+
+  if (parser.parseOperandList(obsOperands, OpAsmParser::Delimiter::None))
+    return failure();
+
+  Type outType = parser.getBuilder().getI1Type();
+  parser.addTypeToList(outType, result.types);
+
+  SmallVector<Type, 2> types;
+
+  if (parser.parseColonTypeList(types))
+    return failure();
+
+  if (parser.resolveOperands(obsOperands, types, parser.getCurrentLocation(),
+                             result.operands))
+    return failure();
+
+  return success();
+}
+
+// TODO discuss if we want to print this in that fashion. Especialy discuss the
+// type stuff
+static void print(OpAsmPrinter &printer, EqualOp op) {
+  printer << "presburger.equal ";
+  printer.printOperand(op.set1());
+  printer << ", ";
+  printer.printOperand(op.set2());
+  printer << " : ";
+  printer.printType(op.set1().getType());
+  printer << ", ";
+  printer.printType(op.set2().getType());
+}
+
 namespace mlir {
 namespace presburger {
 #define GET_OP_CLASSES

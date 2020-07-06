@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/IR/AffineValueMap.h"
@@ -1045,9 +1046,283 @@ bool FlatAffineConstraints::isIntegerEmpty() const {
   return !findIntegerSample().hasValue();
 }
 
-llvm::Optional<std::vector<int64_t>> FlatAffineConstraints::findIntegerSample() const {
+Optional<std::vector<int64_t>>
+FlatAffineConstraints::findIntegerSample() const {
+  FlatAffineConstraints cone = makeRecessionCone();
+  if (cone.getNumEqualities() < getNumDimIds())
+    return findSampleUnbounded(cone);
+  else
+    return findSampleBounded();
+}
+
+Optional<std::pair<int64_t, std::vector<int64_t>>>
+FlatAffineConstraints::findRationalSample() const {
   Simplex simplex(*this);
+  if (simplex.isEmpty())
+    return {};
+  return simplex.findRationalSample();
+}
+
+// Returns a matrix of the constraint coefficients in the specified vector.
+//
+// This only makes a matrix of the coefficients! The constant terms are
+// omitted.
+Matrix<int64_t> FlatAffineConstraints::coefficientMatrixFromEqs() const {
+  // TODO check if this works because of missing symbols
+  Matrix<int64_t> result(getNumEqualities(), getNumDimIds());
+  for (unsigned i = 0; i < getNumEqualities(); ++i) {
+    for (unsigned j = 0; j < getNumDimIds(); ++j)
+      result(i, j) = atEq(i, j);
+  }
+  return result;
+}
+
+// Find a sample in the basic set, which has some unbounded dimensions and whose
+// recession cone is `cone`.
+//
+// We first change basis to one where the bounded directions are the first
+// directions. To do this, observe that each of the equalities in the cone
+// represent a bounded direction. Now, consider the matrix where every row is
+// an equality and every column is a coordinate (and constant terms are
+// omitted). Note that the transform that puts this matrix in column echelon
+// form can be viewed as a transform that performs our required rotation.
+//
+// After rotating, we find a sample for the bounded dimensions and substitute
+// this into the transformed set, producing a full-dimensional cone (not
+// necessarily centred at origin). We obtain a sample from this using
+// findSampleFullCone. The sample for the whole transformed set is the
+// concatanation of the two samples.
+//
+// Let the initial transform be U. Let the constraints matrix be M. We have
+// found a sample x satisfying the transformed constraint matrix MU. Therefore,
+// Ux is a sample that satisfies M.
+Optional<std::vector<int64_t>>
+FlatAffineConstraints::findSampleUnbounded(FlatAffineConstraints &cone) const {
+  auto coeffMatrix = cone.coefficientMatrixFromEqs();
+  auto U =
+      LinearTransform::makeTransformToColumnEchelon(std::move(coeffMatrix));
+  FlatAffineConstraints transformedSet = U.postMultiplyBasicSet(*this);
+
+  auto maybeBoundedSample = transformedSet.findBoundedDimensionsSample(cone);
+  if (!maybeBoundedSample)
+    return {};
+
+  // transformedSet.substitute(*maybeBoundedSample);
+  for (unsigned i = 0, e = maybeBoundedSample->size(); i < e; ++i)
+    transformedSet.setAndEliminate(i, maybeBoundedSample.getValue()[i]);
+
+  auto maybeUnboundedSample = transformedSet.findSampleFullCone();
+  if (!maybeUnboundedSample)
+    return {};
+
+  // TODO change to SmallVector!
+
+  std::vector<int64_t> sample(*maybeBoundedSample);
+  sample.insert(sample.end(), maybeUnboundedSample->begin(),
+                maybeUnboundedSample->end());
+  SmallVector<int64_t, 8> smallVecSample =
+      U.preMultiplyColumn(std::move(sample));
+
+  std::vector<int64_t> realSample;
+  for (int64_t coef : smallVecSample)
+    realSample.push_back(coef);
+
+  return realSample;
+}
+
+// Find a sample in this basic set, which must be a full-dimensional cone
+// (not necessarily centred at origin).
+//
+// We are going to shift the cone such that any rational point in it can be
+// rounded up to obtain a valid integer point.
+//
+// Let each constraint of the cone be of the form <a, x> >= c. For every x that
+// satisfies this, we want x rounded up to also satisfy this. It is enough to
+// ensure that x + e also satisfies this for any e such that every coordinate is
+// in [0, 1). So we want <a, x> + <a, e> >= c. This is satisfied if we satisfy
+// the single constraint <a, x> + sum_{a_i < 0} a_i >= c.
+Optional<std::vector<int64_t>> FlatAffineConstraints::findSampleFullCone() {
+  // NOTE isl instead makes a recession cone, shifts the cone to some rational
+  // point in the initial set, and then does the following on the shifted cone.
+  // It is unclear why we need to do all that since the current basic set is
+  // already the required shifted cone.
+  for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
+    int64_t shift = 0;
+    for (unsigned j = 0, e = getNumDimAndSymbolIds(); j < e; ++j) {
+      int64_t coeff = atIneq(i, j);
+      if (coeff < 0)
+        shift += coeff;
+    }
+    // adapt the constant
+    atIneq(i, numIds) += shift;
+  }
+
+  auto sample = findRationalSample();
+  if (!sample)
+    return {};
+  // TODO: This is only guaranteed if simplify is present
+  // assert(sample && "Shifted set became empty!");
+  for (auto &value : sample->second)
+    value = ceilDiv(value, sample->first);
+
+  return sample->second;
+}
+
+// Project this basic set to its bounded dimensions. It is assumed that the
+// unbounded dimensions occupy the last \p unboundedDims dimensions.
+//
+// We can simply drop the constraints which involve the unbounded dimensions.
+// This is because no combination of constraints involving unbounded
+// dimensions can produce a bound on a bounded dimension.
+//
+// Proof sketch: suppose we are able to obtain a combination of constraints
+// involving unbounded constraints which is of the form <a, x> + c >= y,
+// where y is a bounded direction and x are the remaining directions. If this
+// gave us an upper bound u on y, then we have u >= <a, x> + c - y >= 0, which
+// means that a linear combination of the unbounded dimensions was bounded
+// which is impossible since we are working in a basis where all bounded
+// directions lie in the span of the first `nDim - unboundedDims` directions.
+void FlatAffineConstraints::projectOutUnboundedDimensions(
+    unsigned unboundedDims) {
+  unsigned remainingDims = getNumDimIds() - unboundedDims;
+
+  // TODO: support for symbols
+
+  for (unsigned i = 0; i < getNumEqualities();) {
+    bool nonZero = false;
+    for (unsigned j = remainingDims, e = getNumDimIds(); j < e; j++) {
+      if (atEq(i, j) != 0) {
+        nonZero = true;
+        break;
+      }
+    }
+
+    if (nonZero) {
+      removeEquality(i);
+      // We need to test the index i again.
+      continue;
+    }
+
+    i++;
+  }
+  for (unsigned i = 0; i < getNumInequalities();) {
+    bool nonZero = false;
+    for (unsigned j = remainingDims, e = getNumDimIds(); j < e; j++) {
+      if (atIneq(i, j) != 0) {
+        nonZero = true;
+        break;
+      }
+    }
+
+    if (nonZero) {
+      removeInequality(i);
+      // We need to test the index i again.
+      continue;
+    }
+
+    i++;
+  }
+  for (unsigned j = 0; j < unboundedDims; j++)
+    removeId(remainingDims);
+}
+
+Optional<std::vector<int64_t>>
+FlatAffineConstraints::findBoundedDimensionsSample(
+    const FlatAffineConstraints &cone) const {
+  FlatAffineConstraints boundedSet = *this;
+  boundedSet.projectOutUnboundedDimensions(getNumDimIds() -
+                                           cone.getNumEqualities());
+  return boundedSet.findSampleBounded();
+}
+
+Optional<std::vector<int64_t>>
+FlatAffineConstraints::findSampleBounded() const {
+  if (getNumDimIds() == 0)
+    return std::vector<int64_t>();
+
+  Simplex simplex(*this);
+  if (simplex.isEmpty())
+    return {};
+
+  // NOTE possible optimization for equalities. We could transform the basis
+  // into one where the equalities appear as the first directions, so that
+  // in the basis search recursion these immediately get assigned their
+  // values.
   return simplex.findIntegerSample();
+}
+
+// We shift all the constraints to the origin, then construct a simplex and
+// detect implicit equalities. If a direction was intially both upper and lower
+// bounded, then this operation forces it to be equal to zero, and this gets
+// detected by simplex.
+FlatAffineConstraints FlatAffineConstraints::makeRecessionCone() const {
+  FlatAffineConstraints cone = *this;
+
+  // TODO: check this
+  for (unsigned r = 0, e = cone.getNumEqualities(); r < e; r++)
+    cone.atEq(r, getNumCols() - 1) = 0;
+
+  for (unsigned r = 0, e = cone.getNumInequalities(); r < e; r++)
+    cone.atIneq(r, getNumCols() - 1) = 0;
+
+  // NOTE isl does gauss here.
+
+  Simplex simplex(cone);
+  if (simplex.isEmpty()) {
+    // TODO: empty flag for FlatAffineConstraints
+    // cone.maybeIsEmpty = true;
+    return cone;
+  }
+
+  // The call to detectRedundant can be removed if we gauss below.
+  // Otherwise, this is needed to make it so that the number of equalities
+  // accurately represents the number of bounded dimensions.
+  simplex.detectRedundant();
+  simplex.detectImplicitEqualities();
+  cone.updateFromSimplex(simplex);
+
+  // NOTE isl does gauss here.
+
+  return cone;
+}
+
+void FlatAffineConstraints::updateFromSimplex(const Simplex &simplex) {
+  if (simplex.isEmpty()) {
+    // maybeIsEmpty = true;
+    return;
+  }
+
+  unsigned simplexEqsOffset = getNumInequalities();
+  for (unsigned i = 0, ineqsIndex = 0; i < simplexEqsOffset; ++i) {
+    if (simplex.isMarkedRedundant(i)) {
+      removeInequality(ineqsIndex);
+      continue;
+    }
+    if (simplex.constraintIsEquality(i)) {
+      addEquality(getInequality(ineqsIndex));
+      removeInequality(ineqsIndex);
+      continue;
+    }
+    ++ineqsIndex;
+  }
+
+  assert((simplex.numberConstraints() - simplexEqsOffset) % 2 == 0 &&
+         "expecting simplex to contain two ineqs for each eq");
+
+  for (unsigned i = simplexEqsOffset, eqsIndex = 0;
+       i < simplex.numberConstraints(); i += 2) {
+    if (simplex.isMarkedRedundant(i) && simplex.isMarkedRedundant(i + 1)) {
+      removeEquality(eqsIndex);
+      continue;
+    }
+    ++eqsIndex;
+  }
+
+  // NOTE isl does gauss here.
+
+  // TODO sample caching
+  // if (!maybeSample)
+  //  maybeSample = simplex.getSamplePointIfIntegral();
 }
 
 /// Tightens inequalities given that we are dealing with integer spaces. This is
@@ -1400,6 +1675,43 @@ void FlatAffineConstraints::removeRedundantInequalities() {
       copyRow(r, pos++);
   }
   inequalities.resize(numReservedCols * pos);
+}
+
+// A more complex check to eliminate redundant inequalities. Uses Simplex
+// to check if a constraint is redundant.
+void FlatAffineConstraints::removeRedundantConstraints() {
+  Simplex simplex(*this);
+  simplex.detectRedundant();
+
+  // Scan to get rid of all inequalities marked redundant, in-place.
+  auto copyInequality = [&](unsigned src, unsigned dest) {
+    if (src == dest)
+      return;
+    for (unsigned c = 0, e = getNumCols(); c < e; c++)
+      atIneq(dest, c) = atIneq(src, c);
+  };
+  unsigned pos = 0;
+  unsigned numIneqs = getNumInequalities();
+  for (unsigned r = 0; r < numIneqs; r++) {
+    if (!simplex.isMarkedRedundant(r))
+      copyInequality(r, pos++);
+  }
+  inequalities.resize(numReservedCols * pos);
+
+  // Scan to get rid of all inequalities marked redundant, in-place.
+  auto copyEquality = [&](unsigned src, unsigned dest) {
+    if (src == dest)
+      return;
+    for (unsigned c = 0, e = getNumCols(); c < e; c++)
+      atEq(dest, c) = atEq(src, c);
+  };
+  pos = 0;
+  for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {
+    if (!simplex.isMarkedRedundant(numIneqs + 2 * r) ||
+        !simplex.isMarkedRedundant(numIneqs + 2 * r + 1))
+      copyEquality(r, pos++);
+  }
+  equalities.resize(numReservedCols * pos);
 }
 
 std::pair<AffineMap, AffineMap> FlatAffineConstraints::getLowerAndUpperBound(

@@ -18,7 +18,8 @@ const int NULL_INDEX = std::numeric_limits<int>::max();
 
 // Construct a Simplex object with `nVar` variables.
 Simplex::Simplex(unsigned nVar)
-    : nRow(0), nCol(2), tableau(0, 2 + nVar), empty(false) {
+    : nRow(0), nCol(2), nRedundant(0), liveColBegin(2), tableau(0, 2 + nVar),
+      empty(false) {
   colVar.push_back(NULL_INDEX);
   colVar.push_back(NULL_INDEX);
   for (unsigned i = 0; i < nVar; ++i) {
@@ -31,10 +32,7 @@ Simplex::Simplex(unsigned nVar)
 
 Simplex::Simplex(const FlatAffineConstraints &constraints)
     : Simplex(constraints.getNumIds()) {
-  for (unsigned i = 0; i < constraints.getNumInequalities(); ++i)
-    addInequality(constraints.getInequality(i));
-  for (unsigned i = 0; i < constraints.getNumEqualities(); ++i)
-    addEquality(constraints.getEquality(i));
+  addFlatAffineConstraints(constraints);
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
@@ -93,7 +91,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = 2; col < nCol; ++col)
+  for (unsigned col = liveColBegin; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
   for (unsigned i = 0; i < var.size(); ++i) {
@@ -162,7 +160,7 @@ Simplex::Direction Simplex::flippedDirection(Direction direction) const {
 llvm::Optional<std::pair<unsigned, unsigned>>
 Simplex::findPivot(int row, Direction direction) const {
   llvm::Optional<unsigned> col;
-  for (unsigned j = 2; j < nCol; ++j) {
+  for (unsigned j = liveColBegin; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
     if (elem == 0)
       continue;
@@ -223,7 +221,8 @@ void Simplex::pivot(const std::pair<unsigned, unsigned> &p) {
 // common denominator and negating the pivot row except for the pivot column
 // element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= 2 && "Refusing to pivot invalid column");
+  assert((pivotRow >= nRedundant && pivotCol >= liveColBegin) &&
+         "Refusing to pivot redundant row or invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -305,7 +304,7 @@ llvm::Optional<unsigned> Simplex::findPivotRow(llvm::Optional<unsigned> skipRow,
                                                unsigned col) const {
   llvm::Optional<unsigned> retRow;
   int64_t retElem, retConst;
-  for (unsigned row = 0; row < nRow; ++row) {
+  for (unsigned row = nRedundant; row < nRow; ++row) {
     if (skipRow && row == *skipRow)
       continue;
     auto elem = tableau(row, col);
@@ -352,6 +351,76 @@ void Simplex::markEmpty() {
   empty = true;
 }
 
+// Find out if the constraint is redundant by computing its minimum value in
+// the tableau. If this returns true, the constraint is left in row position
+// upon return.
+//
+// The constraint is redundant if the minimal value of the unknown (while
+// respecting the other non-redundant constraints) is non-negative.
+//
+// If the unknown is in column position, we try to pivot it down to a row. If
+// no pivot is found, this means that the constraint is unbounded below, i.e.
+// it is not redundant, so we return false.
+//
+// Otherwise, the constraint is in row position. We keep trying to pivot
+// downwards until the sample value becomes negative. If the next pivot would
+// move the unknown to column position, then it is unbounded below and we can
+// return false. If no more pivots are possible and the sample value is still
+// non-negative, return true.
+//
+// Otherwise, if the unknown has a negative sample value, then it is
+// not redundant, so we restore the row to a non-negative value and return.
+bool Simplex::constraintIsRedundant(unsigned conIndex) {
+  if (con[conIndex].redundant)
+    return true;
+
+  if (!con[conIndex].ownsRow) {
+    unsigned col = con[conIndex].pos;
+    auto maybeRow = findPivotRow({}, Direction::DOWN, col);
+    if (!maybeRow)
+      return false;
+    pivot(*maybeRow, col);
+  }
+
+  while (tableau(con[conIndex].pos, 1) >= 0) {
+    auto p = findPivot(con[conIndex].pos, Direction::DOWN);
+    if (!p)
+      return true;
+
+    unsigned row = p->first;
+    unsigned col = p->second;
+    if (row == con[conIndex].pos)
+      return false;
+    pivot(row, col);
+  }
+
+  if (tableau(con[conIndex].pos, 1) >= 0)
+    return true;
+
+  bool success = restoreRow(con[conIndex]);
+  assert(success && "Constraint was not restored succesfully!");
+  return false;
+}
+
+bool Simplex::isMarkedRedundant(int conIndex) const {
+  return con[conIndex].redundant;
+}
+
+// Check whether the constraint is an equality.
+//
+// The constraint is an equality if it has been marked zero, if it is a dead
+// column, or if the row is obviously equal to zero.
+bool Simplex::constraintIsEquality(int conIndex) const {
+  const Unknown &u = con[conIndex];
+  if (u.zero)
+    return true;
+  if (u.redundant)
+    return false;
+  if (!u.ownsRow)
+    return u.pos < liveColBegin;
+  return rowIsObviouslyZero(u.pos);
+}
+
 // Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
 // is the curent number of variables, then the corresponding inequality is
 // c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
@@ -376,10 +445,50 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 // be zero.
 void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
-  SmallVector<int64_t, 64> negatedCoeffs;
+  SmallVector<int64_t, 8> negatedCoeffs;
   for (auto coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   addInequality(negatedCoeffs);
+}
+
+// Mark the row as being redundant and push an entry to the undo stack.
+//
+// Since all the rows are stored contiguously as the first nRedundant rows,
+// we move our row to the row at position nRedundant.
+bool Simplex::markRedundant(unsigned row) {
+  assert(!unknownFromRow(row).redundant && "Row is already marked redundant");
+  assert(row >= nRedundant &&
+         "Row is not marked redundant but row < nRedundant");
+
+  undoLog.emplace_back(UndoOp::UNMARK_EMPTY, rowVar[row]);
+
+  Unknown &unknown = unknownFromRow(row);
+  unknown.redundant = true;
+  swapRows(row, nRedundant);
+  nRedundant++;
+  return false;
+}
+
+// Check for redundant constraints and mark them as redundant.
+// A constraint is considered redundant if the other non-redundant constraints
+// already force this constraint to be non-negative.
+//
+// Now for each constraint that hasn't already been marked redundant, we check
+// if it is redundant via constraintIsRedundant, and if it is, mark it as such.
+void Simplex::detectRedundant() {
+  if (empty)
+    return;
+  for (int i = con.size() - 1; i >= 0; i--) {
+    if (con[i].redundant)
+      continue;
+    if (constraintIsRedundant(i)) {
+      // constraintIsRedundant must leave the constraint in row position if it
+      // returns true.
+      assert(con[i].ownsRow &&
+             "Constraint to be marked redundant must be a row!");
+      markRedundant(con[i].pos);
+    }
+  }
 }
 
 unsigned Simplex::numberVariables() const { return var.size(); }
@@ -390,6 +499,7 @@ unsigned Simplex::numberConstraints() const { return con.size(); }
 unsigned Simplex::getSnapshot() const { return undoLog.size(); }
 
 void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
+  // TODO why not switch case?
   if (op == UndoOp::DEALLOCATE) {
     assert(index.hasValue() &&
            "DEALLOCATE undo entry must be accompanied by an index");
@@ -418,7 +528,7 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
         // coefficients for every row. But the unknown is a constraint,
         // so it was added initially as a row. Such a row could never have been
         // pivoted to a column. So a pivot row will always be found.
-        for (unsigned i = 0; i < nRow; ++i) {
+        for (unsigned i = nRedundant; i < nRow; ++i) {
           if (tableau(i, column) != 0) {
             row = i;
             break;
@@ -440,6 +550,25 @@ void Simplex::undoOp(UndoOp op, llvm::Optional<int> index) {
     con.pop_back();
   } else if (op == UndoOp::UNMARK_EMPTY) {
     empty = false;
+  } else if (op == UndoOp::UNMARK_REDUNDANT) {
+    assert(index.hasValue() &&
+           "UNMARK_REDUNDANT undo entry must be accompanied by an index");
+    assert(nRedundant != 0 && "No redundant constraints present.");
+
+    Unknown &unknown = unknownFromIndex(*index);
+    assert(unknown.ownsRow &&
+           "Constraint to be unmarked as redundant must be a row");
+    swapRows(unknown.pos, nRedundant - 1);
+    unknown.redundant = false;
+    nRedundant--;
+  } else if (op == UndoOp::UNMARK_ZERO) {
+    Unknown &unknown = unknownFromIndex(*index);
+    if (!unknown.ownsRow) {
+      assert(unknown.pos == liveColBegin - 1 &&
+             "Column to be revived should be the last dead column");
+      liveColBegin--;
+    }
+    unknown.zero = false;
   }
 }
 
@@ -489,40 +618,57 @@ std::vector<T> concat(const std::vector<T> &v, const std::vector<T> &w) {
 // The product constraints and variables are stored as: first A's, then B's.
 //
 // The product tableau has row layout:
-//   A's rows, B's rows.
+//   A's redundant rows, B's redundant rows, A's other rows, B's other rows.
 //
 // It has column layout:
 //   denominator, constant, A's columns, B's columns.
-Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
-  unsigned numVar = A.numberVariables() + B.numberVariables();
-  unsigned numCon = A.numberConstraints() + B.numberConstraints();
+// TODO reconsider the following:
+// TODO we don't need the dead columns or the redundant constraints. The caller
+// only cares about duals of the new constraints that are added after returning
+// from this function, so we can safely drop redundant constraints from the
+// original simplex.
+Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
+  unsigned numVar = a.numberVariables() + b.numberVariables();
+  unsigned numCon = a.numberConstraints() + b.numberConstraints();
   Simplex result(numVar);
 
-  result.tableau.resize(numCon, 2 + numVar);
-  result.empty = A.empty || B.empty;
+  result.tableau.resize(numCon, numVar);
+  result.nRedundant = a.nRedundant + b.nRedundant;
+  result.liveColBegin = a.liveColBegin + b.liveColBegin;
+  result.empty = a.empty || b.empty;
 
   auto indexFromBIndex = [&](int index) {
-    return index >= 0 ? A.numberVariables() + index
-                      : ~(A.numberConstraints() + ~index);
+    return index >= 0 ? a.numberVariables() + index
+                      : ~(a.numberConstraints() + ~index);
   };
 
-  result.con = concat(A.con, B.con);
-  result.var = concat(A.var, B.var);
-  for (unsigned i = 2; i < A.nCol; i++) {
-    result.colVar.push_back(A.colVar[i]);
+  result.con = concat(a.con, b.con);
+  result.var = concat(a.var, b.var);
+  for (unsigned i = 2; i < a.liveColBegin; i++)
+    result.colVar.push_back(a.colVar[i]);
+  for (unsigned i = 2; i < b.liveColBegin; i++) {
+    result.colVar.push_back(indexFromBIndex(b.colVar[i]));
     result.unknownFromIndex(result.colVar.back()).pos =
         result.colVar.size() - 1;
   }
-  for (unsigned i = 2; i < B.nCol; i++) {
-    result.colVar.push_back(indexFromBIndex(B.colVar[i]));
+  for (unsigned i = a.liveColBegin; i < a.nCol; i++) {
+    result.colVar.push_back(a.colVar[i]);
+    result.unknownFromIndex(result.colVar.back()).pos =
+        result.colVar.size() - 1;
+  }
+  for (unsigned i = b.liveColBegin; i < b.nCol; i++) {
+    result.colVar.push_back(indexFromBIndex(b.colVar[i]));
     result.unknownFromIndex(result.colVar.back()).pos =
         result.colVar.size() - 1;
   }
 
   auto appendRowFromA = [&](unsigned row) {
-    for (unsigned col = 0; col < A.nCol; col++)
-      result.tableau(result.nRow, col) = A.tableau(row, col);
-    result.rowVar.push_back(A.rowVar[row]);
+    for (unsigned col = 0; col < result.liveColBegin; col++)
+      result.tableau(result.nRow, col) = a.tableau(row, col);
+    unsigned offset = b.liveColBegin - 2;
+    for (unsigned col = result.liveColBegin; col < a.nCol; col++)
+      result.tableau(result.nRow, offset + col) = a.tableau(row, col);
+    result.rowVar.push_back(a.rowVar[row]);
     result.unknownFromIndex(result.rowVar.back()).pos =
         result.rowVar.size() - 1;
     result.nRow++;
@@ -530,21 +676,27 @@ Simplex Simplex::makeProduct(const Simplex &A, const Simplex &B) {
 
   // Also fixes the corresponding entry in rowVar and var/con.
   auto appendRowFromB = [&](unsigned row) {
-    result.tableau(result.nRow, 0) = A.tableau(row, 0);
-    result.tableau(result.nRow, 1) = A.tableau(row, 1);
+    result.tableau(result.nRow, 0) = a.tableau(row, 0);
+    result.tableau(result.nRow, 1) = a.tableau(row, 1);
+    unsigned offset = a.liveColBegin - 2;
+    for (unsigned col = 2; col < b.liveColBegin; col++)
+      result.tableau(result.nRow, offset + col) = b.tableau(row, col);
 
-    unsigned offset = A.nCol - 2;
-    for (unsigned col = 2; col < B.nCol; col++)
-      result.tableau(result.nRow, offset + col) = B.tableau(row, col);
-    result.rowVar.push_back(indexFromBIndex(B.rowVar[row]));
+    offset = a.nCol - 2;
+    for (unsigned col = b.liveColBegin; col < b.nCol; col++)
+      result.tableau(result.nRow, offset + col) = b.tableau(row, col);
+    result.rowVar.push_back(indexFromBIndex(b.rowVar[row]));
     result.unknownFromIndex(result.rowVar.back()).pos =
         result.rowVar.size() - 1;
     result.nRow++;
   };
-
-  for (unsigned row = 0; row < A.nRow; row++)
+  for (unsigned row = 0; row < a.nRedundant; row++)
     appendRowFromA(row);
-  for (unsigned row = 0; row < B.nRow; row++)
+  for (unsigned row = 0; row < b.nRedundant; row++)
+    appendRowFromB(row);
+  for (unsigned row = a.nRedundant; row < a.nRow; row++)
+    appendRowFromA(row);
+  for (unsigned row = b.nRedundant; row < b.nRow; row++)
     appendRowFromB(row);
 
   return result;
@@ -568,7 +720,7 @@ llvm::Optional<std::vector<int64_t>> Simplex::getSamplePointIfIntegral() const {
 }
 
 void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
-  assert(cs.getNumDimIds() + cs.getNumSymbolIds() == numberVariables() &&
+  assert(cs.getNumIds() == numberVariables() &&
          "FlatAffineConstraints must have same dimensionality as simplex");
   for (unsigned i = 0; i < cs.getNumInequalities(); ++i)
     addInequality(cs.getInequality(i));
@@ -699,7 +851,7 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
     return;
 
   GBRSimplex gbrSimplex(*this);
-  std::vector<Fraction<int64_t>> F;
+  std::vector<Fraction<int64_t>> f;
   std::vector<int64_t> alpha;
   int64_t alphaDenom;
   auto findUAndGetFCandidate = [&](unsigned i) -> Fraction<int64_t> {
@@ -710,72 +862,72 @@ void Simplex::reduceBasis(Matrix<int64_t> &basis, unsigned level) {
     if (alpha[i - level] % alphaDenom != 0) {
       std::vector<int64_t> uAlpha[2];
       int64_t uAlphaDenom[2];
-      Fraction<int64_t> F_i[2];
+      Fraction<int64_t> fI[2];
 
       // Initially u is floor(alpha) and basis reflects this.
-      F_i[0] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[0],
-                                               uAlphaDenom[0]);
+      fI[0] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[0],
+                                              uAlphaDenom[0]);
 
       // Now try ceil(alpha), i.e. floor(alpha) + 1.
       ++u;
       basis.addToRow(i, i + 1, 1);
-      F_i[1] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[1],
-                                               uAlphaDenom[1]);
+      fI[1] = gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), uAlpha[1],
+                                              uAlphaDenom[1]);
 
-      int j = F_i[0] < F_i[1] ? 0 : 1;
+      int j = fI[0] < fI[1] ? 0 : 1;
       if (j == 0)
         // Subtract 1 to go from u = ceil(alpha) back to floor(alpha).
         basis.addToRow(i, i + 1, -1);
 
       alpha = std::move(uAlpha[j]);
       alphaDenom = uAlphaDenom[j];
-      return F_i[j];
+      return fI[j];
     }
-    assert(i + 1 - level < F.size() && "F_{i+1} wasn't saved");
+    assert(i + 1 - level < f.size() && "F_{i+1} wasn't saved");
     // When alpha minimizes F_i(b_{i+1} + alpha*b_i), this is equal to
     // F_{i+1}(b_{i+1}).
-    return F[i + 1 - level];
+    return f[i + 1 - level];
   };
 
   // In the ith iteration of the loop, gbrSimplex has constraints for directions
   // from `level` to i - 1.
   unsigned i = level;
   while (i < basis.getNumRows() - 1) {
-    Fraction<int64_t> F_i_candidate; // F_i(b_{i+1} + u*b_i)
-    if (i >= level + F.size()) {
+    Fraction<int64_t> fICandidate; // F_i(b_{i+1} + u*b_i)
+    if (i >= level + f.size()) {
       // We don't even know the value of F_i(b_i), so let's find that first.
       // We have to do this first since later we assume that F already contains
       // values up to and including i.
 
-      assert((i == 0 || i - 1 < level + F.size()) &&
+      assert((i == 0 || i - 1 < level + f.size()) &&
              "We are at level i but we don't know the value of F_{i-1}");
 
       // We don't actually use these duals at all, but it doesn't matter
       // because this case should only occur when i is level, and there are no
       // duals in that case anyway.
       assert(i == level && "This case should only occur when i == level");
-      F.push_back(
+      f.push_back(
           gbrSimplex.computeWidthAndDuals(basis.getRow(i), alpha, alphaDenom));
     }
 
     if (i >= level + alpha.size()) {
-      assert(i + 1 >= level + F.size() && "We don't know alpha_i but we know "
+      assert(i + 1 >= level + f.size() && "We don't know alpha_i but we know "
                                           "F_{i+1}, this should never happen");
       // We don't know alpha for our level, so let's find it.
       gbrSimplex.addEqualityForDirection(basis.getRow(i));
-      F.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), alpha,
+      f.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), alpha,
                                                   alphaDenom));
       gbrSimplex.removeLastEquality();
     }
 
-    F_i_candidate = findUAndGetFCandidate(i);
+    fICandidate = findUAndGetFCandidate(i);
 
-    if (F_i_candidate < epsilon * F[i - level]) {
+    if (fICandidate < epsilon * f[i - level]) {
       basis.swapRows(i, i + 1);
-      F[i - level] = F_i_candidate;
+      f[i - level] = fICandidate;
       // The values of F_{i+1}(b_{i+1}) and higher may change after the swap,
       // so we remove the cached values here.
-      F.resize(i - level + 1);
+      f.resize(i - level + 1);
       if (i == level) {
         // TODO (performance) isl seems to assume alpha is 0 in this case. Look
         // into this. For now we assume that alpha is not known and must be
@@ -806,6 +958,31 @@ llvm::Optional<std::vector<int64_t>> Simplex::findIntegerSample() {
   unsigned nDims = var.size();
   Matrix<int64_t> basis = Matrix<int64_t>::getIdentityMatrix(nDims);
   return findIntegerSampleRecursively(basis, 0);
+}
+
+std::pair<int64_t, std::vector<int64_t>> Simplex::findRationalSample() const {
+  int64_t denom = 1;
+  for (const Unknown &u : var) {
+    if (u.ownsRow)
+      denom = lcm(denom, tableau(u.pos, 0));
+  }
+  std::vector<int64_t> sample;
+  int64_t gcd = denom;
+  for (const Unknown &u : var) {
+    if (!u.ownsRow)
+      sample.push_back(0);
+    else {
+      sample.push_back((tableau(u.pos, 1) * denom) / tableau(u.pos, 0));
+      gcd = llvm::greatestCommonDivisor(std::abs(gcd), std::abs(sample.back()));
+    }
+  }
+  if (gcd != 0) {
+    denom /= gcd;
+    for (int64_t &elem : sample)
+      elem /= gcd;
+  }
+
+  return {denom, std::move(sample)};
 }
 
 // Search for an integer sample point using a branch and bound algorithm.
@@ -839,34 +1016,34 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   basisCoeffVector.emplace_back(0); // constant term
 
   auto getBounds = [&]() -> std::pair<int64_t, int64_t> {
-    int64_t min_rounded_up;
+    int64_t minRoundedUp;
     if (auto opt = computeOptimum(Direction::DOWN, basisCoeffVector))
-      min_rounded_up = ceil(*opt);
+      minRoundedUp = ceil(*opt);
     else
       llvm_unreachable("Tableau should not be unbounded");
 
-    int64_t max_rounded_down;
+    int64_t maxRoundedDown;
     if (auto opt = computeOptimum(Direction::UP, basisCoeffVector))
-      max_rounded_down = floor(*opt);
+      maxRoundedDown = floor(*opt);
     else
       llvm_unreachable("Tableau should not be unbounded");
 
-    return {min_rounded_up, max_rounded_down};
+    return {minRoundedUp, maxRoundedDown};
   };
 
-  int64_t min_rounded_up, max_rounded_down;
-  std::tie(min_rounded_up, max_rounded_down) = getBounds();
+  int64_t minRoundedUp, maxRoundedDown;
+  std::tie(minRoundedUp, maxRoundedDown) = getBounds();
 
   // Heuristic: if the sample point is integral at this point, just return it.
   if (auto opt = getSamplePointIfIntegral())
     return *opt;
 
-  if (min_rounded_up < max_rounded_down) {
+  if (minRoundedUp < maxRoundedDown) {
     reduceBasis(basis, level);
-    std::tie(min_rounded_up, max_rounded_down) = getBounds();
+    std::tie(minRoundedUp, maxRoundedDown) = getBounds();
   }
 
-  for (int64_t i = min_rounded_up; i <= max_rounded_down; ++i) {
+  for (int64_t i = minRoundedUp; i <= maxRoundedDown; ++i) {
     auto snapshot = getSnapshot();
     basisCoeffVector.back() = -i;
     // Add the constraint `basisCoeffVector = i`.
@@ -879,15 +1056,389 @@ Simplex::findIntegerSampleRecursively(Matrix<int64_t> &basis, unsigned level) {
   return {};
 }
 
+// The minimum of an unknown is obviously unbounded if it is a column variable
+// and no constraint limits its value from below.
+//
+// The minimum of a row variable is not obvious because it depends on the
+// boundedness of all referenced column variables.
+//
+// A column variable is bounded from below if there a exists a constraint for
+// which the corresponding column coefficient is strictly positive and the row
+// variable is non-negative (restricted).
+inline bool Simplex::minIsObviouslyUnbounded(Unknown &unknown) const {
+  // tableau.checkSparsity();
+  if (unknown.ownsRow)
+    return false;
+
+  for (size_t i = nRedundant; i < nRow; i++) {
+    if (unknownFromRow(i).restricted && tableau(i, unknown.pos) > 0)
+      return false;
+  }
+  return true;
+}
+
+// The maximum of an unknown is obviously unbounded if it is a column variable
+// and no constraint limits its value from above.
+//
+// The maximum of a row variable is not obvious because it depends on the
+// boundedness of all referenced column variables.
+//
+// A column variable is surely unbounded from above if there does not exist a
+// constraint for which the corresponding column coefficient is strictly
+// negative and the row variable is non-negative (restricted).
+inline bool Simplex::maxIsObviouslyUnbounded(Unknown &unknown) const {
+  if (unknown.ownsRow)
+    return false;
+
+  for (unsigned row = nRedundant; row < nRow; row++) {
+    if (tableau(row, unknown.pos) < 0 && unknownFromRow(row).restricted)
+      return false;
+  }
+  return true;
+}
+
+// A row is obviously not constrained to be zero if
+// - the tableau is rational and the constant term is not zero
+// - the tableau is integer and the constant term is at least one (it is also
+//   not zero if the constant term is at most negative one, but this is only
+//   called for restricted rows, so it doesn't cost anything to be imprecise)
+//
+// This is because of the invariant that the sample value is always a valid
+// point in the tableau (assuming the tableau is not empty).
+inline bool Simplex::rowIsObviouslyNotZero(unsigned row) const {
+  return tableau(row, 1) >= tableau(row, 0);
+}
+
+// A row is equal to zero if its constant term and all coefficients for live
+// columns are equal to zero.
+inline bool Simplex::rowIsObviouslyZero(unsigned row) const {
+  if (tableau(row, 1) != 0)
+    return false;
+  for (unsigned col = liveColBegin; col < nCol; col++) {
+    if (tableau(row, col) != 0)
+      return false;
+  }
+  return true;
+}
+
+// An unknown is considered to be relevant if it is neither a redundant row nor
+// a dead column
+inline bool Simplex::unknownIsRelevant(Unknown &unknown) const {
+  if (unknown.ownsRow && unknown.pos < nRedundant)
+    return false;
+  else if (!unknown.ownsRow && unknown.pos < liveColBegin)
+    return false;
+  return true;
+}
+
+// A row is obviously non integral if all of its non-dead column entries are
+// zero and the constant term denominator is not divisible by the row
+// denominator.
+//
+// If there are non-zero entries then integrality depends on the values of all
+// referenced column variables.
+inline bool Simplex::rowIsObviouslyNonIntegral(unsigned row) const {
+  for (unsigned j = liveColBegin; j < nCol; j++) {
+    if (tableau(row, j) != 0)
+      return false;
+  }
+  return tableau(row, 1) % tableau(row, 0) != 0;
+}
+
+// Pivot the unknown to row position in the specified direction. If no direction
+// is provided, both directions are allowed. The unknown is assumed to be
+// bounded in the specified direction. If no direction is specified, the unknown
+// is assumed to be unbounded in both directions.
+//
+// If the unknown is already in row position we need not do anything. Otherwise,
+// we find a row to pivot to via findPivotRow and pivot to it.
+// TODO currently doesn't support an optional direction
+inline void Simplex::toRow(Unknown &unknown, Direction direction) {
+  if (unknown.ownsRow)
+    return;
+
+  auto row = findPivotRow({}, direction, unknown.pos);
+  if (row)
+    pivot(*row, unknown.pos);
+  else
+    llvm_unreachable("No pivot row found. The unknown must be bounded in the"
+                     "specified directions.");
+}
+
+inline int64_t Simplex::sign(int64_t num, int64_t den, int64_t origin) const {
+  if (num > origin * den)
+    return +1;
+  else if (num < origin * den)
+    return -1;
+  else
+    return 0;
+}
+
+// Compare the maximum value of the unknown to origin. Return +1 if the maximum
+// value is greater than origin, 0 if they are equal, and -1 if it is less
+// than origin.
+//
+// If the unknown is marked zero, then its maximum value is zero and we can
+// return accordingly.
+//
+// If the maximum is obviously unbounded, we can return 1.
+//
+// Otherwise, we move the unknown up to a row and keep trying to find upward
+// pivots until the unknown becomes unbounded or becomes maximised.
+template <int origin>
+int64_t Simplex::signOfMax(Unknown &u) {
+  static_assert(origin >= 0, "");
+  assert(!u.redundant && "signOfMax called for redundant unknown");
+
+  if (maxIsObviouslyUnbounded(u))
+    return 1;
+
+  toRow(u, Direction::UP);
+
+  // The only callsite where origin == 1 only cares whether it's negative or
+  // not, so we can save some pivots by quitting early in this case. This is
+  // needed for pivot-parity with isl.
+  static_assert(origin == 0 || origin == 1, "");
+  auto mustContinueLoop = [this](unsigned row) {
+    return origin == 1 ? tableau(row, 1) < tableau(row, 0)
+                       : tableau(row, 1) <= 0;
+  };
+
+  while (mustContinueLoop(u.pos)) {
+    auto p = findPivot(u.pos, Direction::UP);
+    if (!p) {
+      // u is manifestly maximised
+      return sign(tableau(u.pos, 1) - origin * tableau(u.pos, 0));
+    } else if (p->first == u.pos) { // u is manifestly unbounded
+      // In isl, this pivot is performed only when origin == 0 but not when it's
+      // 1. This is because the two are different functions with very slightly
+      // differing implementations. For pivot-parity with is, we do this too.
+      if (origin == 0)
+        pivot(*p);
+      return 1;
+    }
+    pivot(*p);
+  }
+  return 1;
+}
+
+inline void Simplex::swapColumns(unsigned i, unsigned j) {
+  tableau.swapColumns(i, j);
+  std::swap(colVar[i], colVar[j]);
+  unknownFromColumn(i).pos = i;
+  unknownFromColumn(j).pos = j;
+}
+
+// Remove the row from the tableau.
+//
+// If the row is not already the last one, swap it with the last row.
+// Then decrement the row count, remove the constraint entry, and remove the
+// entry in row_var.
+inline void Simplex::dropRow(unsigned row) {
+  // It is unclear why this restriction exists. Perhaps because bmaps outside
+  // keep track of the number of equalities, and hence moving around constraints
+  // would require updating them?
+  assert(~rowVar[row] == int(con.size() - 1) &&
+         "Row to be dropped must be the last constraint");
+
+  if (row != nRow - 1)
+    swapRows(row, nRow - 1);
+  nRow--;
+  rowVar.pop_back();
+  con.pop_back();
+}
+
+inline bool Simplex::killCol(unsigned col) {
+  Unknown &unknown = unknownFromColumn(col);
+  unknown.zero = true;
+  undoLog.emplace_back(UndoOp::UNMARK_ZERO, colVar[col]);
+  if (col != liveColBegin)
+    swapColumns(col, liveColBegin);
+  liveColBegin++;
+  // tableau.checkSparsity();
+  return false;
+}
+
+inline int Simplex::indexFromUnknown(const Unknown &u) const {
+  if (u.ownsRow)
+    return rowVar[u.pos];
+  else
+    return colVar[u.pos];
+}
+
+// If temp_row is set, the last row is a temporary unknown and undo entries
+// should not be written for this row.
+inline void Simplex::closeRow(unsigned row, bool tempRow) {
+  Unknown *u = &unknownFromRow(row);
+  assert(u->restricted && "expected restricted variable\n");
+
+  if (!u->zero && !tempRow) {
+    // pushUndoEntryIfNeeded(UndoOp::UNMARK_ZERO, *u);
+    undoLog.emplace_back(UndoOp::UNMARK_ZERO, indexFromUnknown(*u));
+  }
+  u->zero = true;
+
+  for (unsigned col = liveColBegin; col < nCol; col++) {
+    if (tableau(u->pos, col) == 0)
+      continue;
+    assert(tableau(u->pos, col) <= 0 &&
+           "expecting variable upper bounded by zero; "
+           "row cannot have positive coefficients");
+    if (killCol(col))
+      col--;
+  }
+  if (!tempRow)
+    markRedundant(u->pos);
+
+  if (!empty)
+    // Check if there are any vars that can't attain integral values.
+    for (const Unknown &u : var)
+      if (u.ownsRow && rowIsObviouslyNonIntegral(u.pos)) {
+        markEmpty();
+        break;
+      }
+}
+
+inline void Simplex::extendConstraints(unsigned nNew) {
+  if (con.capacity() < con.size() + nNew)
+    con.reserve(con.size() + nNew);
+  if (tableau.getNumRows() < nRow + nNew) {
+    tableau.resize(nRow + nNew, tableau.getNumColumns());
+    rowVar.reserve(nRow + nNew);
+  }
+}
+
+// Given a constraint con >= 0, add another constraint -con >= 0 so that we cut
+// our polytope to the hyperplane con = 0. Before the function returns the added
+// constraint is removed again, but the effects on the other unknowns remain.
+//
+// If the constraint is in row position, add a new row with all the terms
+// negated. If the constrain is in column position, add a row with a single
+// -1 coefficient for that column and all zeroes in other columns.
+//
+// If our new constraint cannot achieve non-negative values, then the tableau is
+// empty and we marked it as such. Otherwise, we know that its value must always
+// be zero so we close the row and then drop it. Closing the row results in some
+// columns being killed, so the effect of fixing it to be zero remains even
+// after it is dropped.
+inline void Simplex::cutToHyperplane(int conIndex) {
+  if (con[conIndex].zero)
+    return;
+  assert(!con[conIndex].redundant && con[conIndex].restricted &&
+         "expecting non-redundant non-negative variable");
+
+  extendConstraints(1);
+  rowVar.push_back(~con.size());
+  con.emplace_back(true, false, nRow);
+  Unknown &unknown = con[conIndex];
+  Unknown &tempVar = con.back();
+
+  if (unknown.ownsRow) {
+    tableau(nRow, 0) = tableau(unknown.pos, 0);
+    for (unsigned col = 1; col < nCol; col++)
+      tableau(nRow, col) = -tableau(unknown.pos, col);
+  } else {
+    tableau(nRow, 0) = 1;
+    for (unsigned col = 1; col < nCol; col++)
+      tableau(nRow, col) = 0;
+    tableau(nRow, unknown.pos) = -1;
+  }
+  // tableau.updateRowSparsity(nRow);
+  nRow++;
+
+  int64_t sgn = signOfMax<0>(tempVar);
+  if (sgn < 0) {
+    assert(tempVar.ownsRow && "temp_var is in column position");
+    dropRow(nRow - 1);
+    markEmpty();
+    return;
+  }
+  tempVar.restricted = true;
+  assert(sgn <= 0 && "signOfMax is positive for the negated constraint");
+
+  assert(tempVar.ownsRow && "temp_var is in column position");
+  if (tempVar.pos != nRow - 1)
+    tableau.swapRows(tempVar.pos, nRow - 1);
+
+  closeRow(tempVar.pos, true);
+  dropRow(tempVar.pos);
+}
+
+// Check for constraints that are constrained to be equal to zero. i.e. check
+// for non-negative unknowns whose maximal value is
+// - zero (for rational tableaus)
+// - strictly less than one (for integer tableaus)
+// Close unknowns with maximal value zero. In integer tableaus, if an unknown
+// has a maximal value less than one, add a constraint to fix it to zero.
+//
+// We first mark unknowns which are restricted, not dead, not redundant, and
+// which aren't obviously able to reach non-zero values.
+//
+// We iterate through the marked unknowns. If an unknown's maximal value (found
+// via signOfMax<0>) is zero, then it is an equality, so we close the row. (the
+// unknown is always in row position when signOfMax returns 0)
+//
+// Otherwise, if we have an integer tableau, we check if the unknown's maximal
+// value is at least one. If not, then in an integer tableau it must be zero.
+// We add another constraint fixing it to be zero via cutToHyperplane. Since
+// this might have created new equalities, we call detectImplicitEqualities
+// again to find these.
+//
+// TODO: consider changing the name, something with 'zero' is perhaps more
+// indicative than equality. And 'detect' sounds more passive than what we're
+// doing (adding constraints, closing rows).
+void Simplex::detectImplicitEqualities() {
+  if (empty)
+    return;
+  if (liveColBegin == nCol)
+    return;
+
+  for (size_t row = nRedundant; row < nRow; row++) {
+    Unknown &unknown = unknownFromRow(row);
+    unknown.marked =
+        (unknown.restricted && !rowIsObviouslyNotZero(unknown.pos));
+  }
+  for (size_t col = liveColBegin; col < nCol; col++) {
+    Unknown &unknown = unknownFromColumn(col);
+    unknown.marked = unknown.restricted;
+  }
+
+  for (int i = con.size() - 1; i >= 0; i--) {
+    if (!con[i].marked)
+      continue;
+    con[i].marked = false;
+    if (!unknownIsRelevant(con[i]))
+      continue;
+
+    int64_t sgn = signOfMax<0>(con[i]);
+    if (sgn == 0) {
+      closeRow(con[i].pos, false);
+    } else if (signOfMax<1>(con[i]) < 0) {
+      cutToHyperplane(i);
+      detectImplicitEqualities();
+      return;
+    }
+
+    for (unsigned i = nRedundant; i < nRow; i++) {
+      Unknown &unknown = unknownFromRow(i);
+      if (unknown.marked && rowIsObviouslyNotZero(i))
+        unknown.marked = false;
+    }
+  }
+}
+
 void Simplex::printUnknown(llvm::raw_ostream &os, const Unknown &u) const {
   os << (u.ownsRow ? "r" : "c");
   os << u.pos;
   if (u.restricted)
-    os << " [>=0]";
+    llvm::errs() << " [>=0]";
+  if (u.redundant)
+    llvm::errs() << " [R]";
 }
 
 void Simplex::print(llvm::raw_ostream &os) const {
-  os << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol << "\n";
+  os << "Dumping Simplex, rows = " << nRow << ", columns = " << nCol
+     << "\nnRedundant = " << nRedundant << "\n";
   if (empty)
     os << "Simplex marked empty!\n";
   os << "var: ";

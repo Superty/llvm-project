@@ -7,7 +7,8 @@
 //===----------------------------------------------------------------------===//
 //
 // This class can perform analysis on FlatAffineConstraints. In particular,
-// it can be used to perform emptiness checks.
+// it can be used to simplify the constraint set by detecting constraints
+// which are redundant.
 //
 //===----------------------------------------------------------------------===//
 
@@ -27,24 +28,27 @@ namespace mlir {
 class GBRSimplex;
 
 /// This class implements the Simplex algorithm. It supports adding affine
-/// equalities and inequalities, and can perform emptiness checks, i.e., it can
-/// find a solution to the set of constraints if one exists, or say that the
-/// set is empty if no solution exists.
+/// equalities and inequalities, and can find a subset of these that are
+/// redundant, i.e. a subset of constraints that doesn't constrain the affine
+/// set further after adding the non-redundant constraints.
 ///
 /// An unknown is addressed by its index. If the index i is non-negative, then
 /// the ith variable is the Unknown being addressed. If the index is negative,
 /// then a constraint is being addressed, having index ~i.
 ///
 /// The unknown corresponding to each row r (resp. column c) has index rowVar[r]
-/// (resp. colVar[c]). If at some point it is detected that the set of
-/// constraints are mutually contradictory and have no solution, then empty will
-/// be set to true.
+/// (resp. colVar[c]). The first nRedundant rows of the tableau correspond to
+/// rows which have been marked redundant. If at some point it is detected that
+/// the set of constraints are mutually contradictory and have no solution,
+/// then empty will be set to true.
 class Simplex {
 public:
   enum class Direction { UP, DOWN };
   enum class UndoOp {
     DEALLOCATE,
     UNMARK_EMPTY,
+    UNMARK_REDUNDANT,
+    UNMARK_ZERO,
   };
 
   Simplex() = delete;
@@ -56,6 +60,19 @@ public:
   /// \returns True if the tableau is empty (has conflicting constraints),
   /// False otherwise.
   bool isEmpty() const;
+
+  /// Given a constraint con >= 0, add another constraint to force con = 0.
+  /// Before the function returns the added constraint is removed again, but the
+  /// effects on the other unknowns remain.
+  void cutToHyperplane(int con_index);
+
+  /// Check for redundant constraints and mark them as redundant.
+  void detectRedundant();
+
+  /// Check whether the constraint has been marked redundant.
+  bool isMarkedRedundant(int conIndex) const;
+
+  void extendConstraints(unsigned n_new);
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
@@ -110,6 +127,8 @@ public:
   /// llvm::Optional otherwise.
   llvm::Optional<std::vector<int64_t>> findIntegerSample();
 
+  std::pair<int64_t, std::vector<int64_t>> findRationalSample() const;
+
   // Print the tableau's internal state.
   void print(llvm::raw_ostream &os) const;
   void dump() const;
@@ -117,16 +136,28 @@ public:
   void addFlatAffineConstraints(const FlatAffineConstraints &cs);
   // void addFlatAffineConstraintsAsIneqs(const FlatAffineConstraints &cs);
 
+  void detectImplicitEqualities();
+
+  /// Check whether the constraint is an equality.
+  ///
+  /// \returns True if the constraint is forced to be equal to zero,
+  /// False otherwise.
+  bool constraintIsEquality(int con_index) const;
+
 private:
   friend class GBRSimplex;
 
   struct Unknown {
     Unknown(bool oOwnsRow, bool oRestricted, unsigned oPos)
-        : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos) {}
+        : ownsRow(oOwnsRow), restricted(oRestricted), pos(oPos),
+          redundant(false), marked(false), zero(false) {}
     Unknown() : Unknown(false, false, -1) {}
     bool ownsRow;
     bool restricted;
     unsigned pos;
+    bool redundant;
+    bool marked;
+    bool zero;
   };
 
   // Dump the internal state of the unknown.
@@ -149,6 +180,28 @@ private:
   void pivot(unsigned row, unsigned col);
   void pivot(const std::pair<unsigned, unsigned> &p);
 
+  /// Pivot \p unknown down or up to row position depending on \p direction.
+  ///
+  /// If \p direction is empty, both directions are allowed. \p unknown is
+  /// assumed to be bounded in the allowed directions.
+  void toRow(Unknown &unknown, Direction direction);
+
+  /// Check if the constraint is redundant by computing its minimum value in
+  /// the tableau. If this returns true, the constraint is left in row position
+  /// upon return.
+  ///
+  /// \param conIndex must be a constraint that is not a dead column
+  ///
+  /// \returns True if the constraint is redundant, False otherwise.
+  bool constraintIsRedundant(unsigned conIndex);
+
+  /// Compare the maximum value of \p u with \p origin.
+  ///
+  /// \returns +1 if the maximum value is greater than \p origin, 0 if they are
+  // equal, and -1 if it is less than \p origin.
+  template <int origin>
+  int64_t signOfMax(Unknown &u);
+
   /// \returns the unknown associated with \p index.
   const Unknown &unknownFromIndex(int index) const;
   /// \returns the unknown associated with \p col.
@@ -162,6 +215,42 @@ private:
   /// \returns the unknown associated with \p row.
   Unknown &unknownFromRow(unsigned row);
 
+  /// Check if there is obviously no lower bound on \p unknown.
+  ///
+  /// \returns True if \p unknown is obviously unbounded from below, False
+  /// otherwise.
+  bool minIsObviouslyUnbounded(Unknown &unknown) const;
+
+  /// Check if there is obviously no upper bound on \p unknown.
+  ///
+  /// \returns True if \p unknown is obviously unbounded from above, False
+  /// otherwise.
+  bool maxIsObviouslyUnbounded(Unknown &unknown) const;
+
+  /// Checks if \p row is not obviously constrained to be zero
+  ///
+  /// \returns True if \p row is obviously not constrained to be zero,
+  /// False otherwise.
+  bool rowIsObviouslyNotZero(unsigned row) const;
+
+  /// Check if \p row is obviously equal to zero
+  ///
+  /// \returns True if \p row is obviously equal to zero, False otherwise.
+  bool rowIsObviouslyZero(unsigned row) const;
+
+  /// Check if \p row is obviously non-integral.
+  ///
+  /// \returns True if \p unknown is obviously non-integral, False otherwise.
+  bool rowIsObviouslyNonIntegral(unsigned row) const;
+
+  int indexFromUnknown(const Unknown &u) const;
+
+  /// Checks that \p unknown is neither a redundant row or a dead column
+  ///
+  /// \returns True if \p unknown is neither a redundant row nor a dead column,
+  /// False otherwise.
+  bool unknownIsRelevant(Unknown &unknown) const;
+
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);
 
@@ -169,8 +258,29 @@ private:
   /// and the denominator.
   void normalizeRow(unsigned row);
 
+  /// Mark the column as zero.
+  ///
+  /// \returns True if the column is interchanged with a later column, False
+  /// otherwise. This is used when iterating through the columns; if the return
+  /// is true, the same column index must be processed again.
+  bool killCol(unsigned col);
+  void closeRow(unsigned row, bool temp_row);
+
+  /// Mark the row as being redundant.
+  ///
+  /// \returns True if the row is interchanged with a later row, False
+  /// otherwise. This is used when iterating through the rows; if the return is
+  /// true, the same row index must be processed again.
+  bool markRedundant(unsigned row);
+
+  /// Drop row \p row from the tableau.
+  void dropRow(unsigned row);
+
   /// Swap the two rows in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
+
+  /// Swap the two cols in the tableau and associated data structures.
+  void swapColumns(unsigned i, unsigned j);
 
   /// Restore the unknown to a non-negative sample value.
   ///
@@ -191,6 +301,8 @@ private:
   llvm::Optional<unsigned> findPivotRow(llvm::Optional<unsigned> skipRow,
                                         Direction direction,
                                         unsigned col) const;
+
+  int64_t sign(int64_t num, int64_t den = 1, int64_t origin = 0) const;
 
   /// \returns True \p value is positive and direction is Direction::UP, or if
   /// \p value is negative and direction is Direction::DOWN. Returns False
@@ -215,6 +327,12 @@ private:
   /// The number of columns in the tableau, including the common denominator
   /// and the constant column.
   unsigned nCol;
+
+  /// The number of constraints marked redundant.
+  unsigned nRedundant;
+
+  /// The index of the first live column.
+  unsigned liveColBegin;
 
   /// The matrix representing the tableau.
   Matrix<int64_t> tableau;

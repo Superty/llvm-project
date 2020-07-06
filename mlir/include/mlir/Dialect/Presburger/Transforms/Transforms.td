@@ -30,4 +30,10 @@ def ComplementSet : NativeCodeCall<
 def FoldComplementPattern : Pat<
   (Presburger_ComplementOp:$op (Presburger_SetOp $set)),
   (ComplementSet $op, $set)>;
+
+def EqualSets : NativeCodeCall<
+    "areEqualSets($_builder, $0.getDefiningOp(), $1, $2)">;
+def FoldEqualPattern : Pat<
+  (Presburger_EqualOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
+  (EqualSets $op, $set1, $set2)>;
 #endif // PRESBURGER_TRANSFORMS

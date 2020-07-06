@@ -10,7 +10,7 @@
 using namespace mlir;
 using namespace mlir::presburger;
 
-bool Token::isa(Kind may_kind) { return kind == may_kind; }
+bool Token::isa(Kind mayKind) { return kind == mayKind; }
 
 StringRef Token::string() { return content; }
 
@@ -419,18 +419,18 @@ LogicalResult Parser::parseSum(std::unique_ptr<Expr> &expr) {
 }
 
 LogicalResult Parser::parseTerm(std::unique_ptr<TermExpr> &term,
-                                bool is_negated) {
+                                bool isNegated) {
   std::unique_ptr<IntegerExpr> integer;
   if (lexer.peek().isa(Token::Kind::Minus)) {
-    is_negated = !is_negated;
+    isNegated = !isNegated;
     lexer.next();
   }
 
   if (lexer.peek().isa(Token::Kind::Integer)) {
-    if (failed(parseInteger(integer, is_negated)))
+    if (failed(parseInteger(integer, isNegated)))
       return failure();
     lexer.consume(Token::Kind::Times);
-  } else if (is_negated)
+  } else if (isNegated)
     integer = std::make_unique<IntegerExpr>(-1);
 
   std::unique_ptr<VariableExpr> identifier;
@@ -454,8 +454,8 @@ LogicalResult Parser::parseVariable(std::unique_ptr<VariableExpr> &vExpr) {
 }
 
 LogicalResult Parser::parseInteger(std::unique_ptr<IntegerExpr> &iExpr,
-                                   bool is_negated) {
-  bool negativ = is_negated ^ lexer.peek().isa(Token::Kind::Minus);
+                                   bool isNegated) {
+  bool negativ = isNegated ^ lexer.peek().isa(Token::Kind::Minus);
   lexer.consume(Token::Kind::Minus);
 
   Token integerToken;
@@ -576,22 +576,22 @@ PresburgerSetParser::parseConstraint(ConstraintExpr *constraint,
       failed(parseSum(constraint->getRightSum(), right)))
     return failure();
 
-  auto left_const = left.first;
-  auto left_coeffs = left.second;
-  auto right_const = right.first;
-  auto right_coeffs = right.second;
+  auto leftConst = left.first;
+  auto leftCoeffs = left.second;
+  auto rightConst = right.first;
+  auto rightCoeffs = right.second;
 
   int64_t constant;
   SmallVector<int64_t, 8> coeffs;
   if (constraint->getKind() == ConstraintExpr::Kind::LE) {
-    constant = right_const - left_const;
-    for (size_t i = 0; i < left_coeffs.size(); i++)
-      coeffs.push_back(right_coeffs[i] - left_coeffs[i]);
+    constant = rightConst - leftConst;
+    for (size_t i = 0; i < leftCoeffs.size(); i++)
+      coeffs.push_back(rightCoeffs[i] - leftCoeffs[i]);
   } else if (constraint->getKind() == ConstraintExpr::Kind::GE ||
              constraint->getKind() == ConstraintExpr::Kind::EQ) {
-    constant = left_const - right_const;
-    for (size_t i = 0; i < left_coeffs.size(); i++)
-      coeffs.push_back(left_coeffs[i] - right_coeffs[i]);
+    constant = leftConst - rightConst;
+    for (size_t i = 0; i < leftCoeffs.size(); i++)
+      coeffs.push_back(leftCoeffs[i] - rightCoeffs[i]);
   } else {
     llvm_unreachable("invalid constraint kind");
   }
