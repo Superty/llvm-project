@@ -196,6 +196,42 @@ static void print(OpAsmPrinter &printer, EqualOp op) {
   printer.printType(op.set2().getType());
 }
 
+static ParseResult parseContainsOp(OpAsmParser &parser,
+                                   OperationState &result) {
+  unsigned numDims;
+  if (parseDimAndSymbolList(parser, result.operands, numDims) ||
+      parser.parseOptionalAttrDict(result.attributes))
+    return failure();
+
+  unsigned numSyms = result.operands.size() - numDims;
+
+  OpAsmParser::OperandType setOp;
+  if (parser.parseOperand(setOp))
+    return failure();
+
+  PresburgerSetType setType = PresburgerSetType::get(
+      parser.getBuilder().getContext(), numDims, numSyms);
+
+  if (parser.resolveOperand(setOp, setType, result.operands))
+    return failure();
+
+  Type outType = parser.getBuilder().getI1Type();
+  parser.addTypeToList(outType, result.types);
+
+  return success();
+}
+
+static void print(OpAsmPrinter &printer, ContainsOp op) {
+  PresburgerSetType setType = op.set().getType().cast<PresburgerSetType>();
+  printer << "presburger.contains ";
+  printDimAndSymbolList(op.operand_begin(),
+                        op.operand_begin() + setType.getDimCount() +
+                            setType.getSymbolCount(),
+                        setType.getDimCount(), printer);
+  printer << " ";
+  printer.printOperand(op.set());
+}
+
 namespace mlir {
 namespace presburger {
 #define GET_OP_CLASSES

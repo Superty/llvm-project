@@ -131,7 +131,7 @@ def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
 
 def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect, 
                                                       SameTypeOperands]> {
-    let summary = "complement of a Presburger set";
+    let summary = "checks set equality";
 
     let description = [{
         The `presburger.equal` operator performs a semantic equality check. 
@@ -155,4 +155,30 @@ def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect,
 
     let hasCanonicalizer = 1;
 }
+
+def Presburger_ContainsOp : Presburger_Op<"contains", [NoSideEffect]> {
+    let summary = "checks if a certain point is inside the set";
+
+    let description = [{
+        The presburger.contains operation checks if the provided point is 
+        contained in the set. If the set has symbols, they need to be bound 
+        as well. All the provided SSA values - except the Presburger set - 
+        must all have `index` type.
+
+        Example:
+
+        ```mlir
+        %set = presburger.set #presburger<"(x)[s] : (x >= 0 and -x + 4 >= s)">
+        ...
+
+        %contained = presburger.contains (%d1)[%s1] %set 
+        ```
+    }];
+
+    let arguments = (ins Variadic<Index>:$dimAndSyms, PresburgerSetType:$set);
+
+    let results = (outs BoolLike:$res);
+
+}
+
 #endif // Presburger_OPS
