@@ -149,6 +149,7 @@ public:
   void addEquality(ArrayRef<int64_t> coeffs);
 
   void addVariable();
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
   /// Mark the tableau as being empty.
   void markEmpty();
@@ -262,6 +263,11 @@ protected:
   Unknown &unknownFromColumn(unsigned col);
   /// Returns the unknown associated with row.
   Unknown &unknownFromRow(unsigned row);
+
+
+  /// Add a new zero constraint to the tableau and the associated data
+  /// structures.
+  void addZeroConstraint();
 
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);

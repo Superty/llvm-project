@@ -17,7 +17,15 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned oNParam)
-    : Simplex(nVar), nParam(oNParam) {
+    : Simplex(nVar), nParam(oNParam), nDiv(0) {
+  for (unsigned i = 0; i < nParam; ++i) {
+    colUnknown[nCol - nParam + i] = i;
+    var[i].pos = nCol - nParam + i;
+  }
+  for (unsigned i = nParam; i < var.size(); ++i) {
+    colUnknown[i - nParam + 2] = i;
+    var[i].pos = i - nParam + 2; 
+  }
 }
 
 ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
@@ -38,10 +46,11 @@ ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
 void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
+  originalCoeffs.emplace_back(llvm::to_vector<8>(coeffs));
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
-  restoreConsistency();
+  // restoreConsistency();
 }
 
 /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
@@ -72,16 +81,18 @@ void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
 void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
   addVariable();
   nParam++;
+  nDiv++;
   
-  SmallVector<int64_t, 8> ineq1(coeffs.begin(), coeffs.end());
-  ineq1.push_back(-denom);
-  addInequality(ineq1);
+  SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
+  int64_t constTerm = ineq.back();
+  ineq.back() = -denom;
+  ineq.push_back(constTerm);
+  addInequality(ineq);
 
-  SmallVector<int64_t, 8> ineq2;
-  for (int64_t coeff : coeffs)
-    ineq2.push_back(-coeff);
-  ineq2.push_back(denom - 1);
-  addInequality(ineq2);
+  for (int64_t &coeff : ineq)
+    coeff = -coeff;
+  ineq.back() += denom - 1;
+  addInequality(ineq);
 }
 
 // Find the pivot column for the given pivot row which would result in the
@@ -101,7 +112,7 @@ void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t deno
 // A change is lexicographically positive if it is not all zeros, and the
 // first non-zero value is positive.
 Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
-  assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
+  // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
 
   auto getLexChange = [this, row](unsigned col)
                 -> SmallVector<Fraction, 8> {
@@ -140,7 +151,7 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
   return maybeColumn;
 }
 
-LogicalResult ParamLexSimplex::restoreRow(unsigned row) {
+LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn = findPivot(row);
   if (!maybeColumn)
     return LogicalResult::Failure;
@@ -158,7 +169,7 @@ void ParamLexSimplex::restoreConsistency() {
   };
 
   while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
-    LogicalResult status = restoreRow(*maybeViolatedRow);
+    LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
     if (failed(status)) {
       markEmpty();
       return;
@@ -168,53 +179,99 @@ void ParamLexSimplex::restoreConsistency() {
 
 pwaFunction ParamLexSimplex::findParamLexmin() {
   pwaFunction result;
-  PresburgerBasicSet domainSet(var.size(), nParam, 0);
-  ParamLexSimplex domainSimplex(var.size(), nParam);
+  PresburgerBasicSet domainSet(nParam, 0, 0);
+  Simplex domainSimplex(nParam);
   findParamLexminRecursively(domainSimplex, domainSet, result);
   return result;
 }
 
-ArrayRef<int64_t> ParamLexSimplex::getRowParamSample(unsigned row) {
-  return ArrayRef<int64_t>{&tableau(row, nCol - nParam), &tableau(row, nCol)};
+SmallVector<int64_t, 8> ParamLexSimplex::getRowParamSample(unsigned row) {
+  SmallVector<int64_t, 8> sample;
+  sample.reserve(nParam + 1);
+  for (unsigned col = nCol - nParam; col < nCol; ++col)
+    sample.push_back(tableau(row, col));
+  sample.push_back(tableau(row, 1));
+  return sample;
 }
 
-void ParamLexSimplex::findParamLexminRecursively(ParamLexSimplex &domainSimplex, PresburgerBasicSet &domainSet, pwaFunction &result) {
+// SmallVector<int64_t, 8> ParamLexSimplex::varCoeffsFromRowCoeffs(ArrayRef<int64_t> rowCoeffs) const {
+//   SmallVector<int64_t, 8> varCoeffs(var.size() + 1, 0);
+
+//   // Copy the constant term.
+//   varCoeffs.back() = rowCoeffs.back();
+//   for (unsigned i = 0; i < rowCoeffs.size() - 1; ++i) {
+//     if (colUnknown[i] >= 0) {
+//       varCoeffs[colUnknown[i]] += rowCoeffs[i];
+//       continue;
+//     }
+
+//     // Include the constant term of the row.
+//     for (unsigned j = 0; j < rowCoeffs.size(); ++j)
+//       varCoeffs[j] += rowCoeffs[i] * originalCoeffs[~colUnknown[i]][j];
+//   }
+//   return varCoeffs;
+// }
+
+unsigned ParamLexSimplex::getSnapshot() {
+  return getSnapshotBasis();
+}
+
+void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, PresburgerBasicSet &domainSet, pwaFunction &result) {
+  // dump();
+  // domainSet.dump();
+  // llvm::errs() << "nParam = " << nParam << '\n';
   if (empty || domainSimplex.isEmpty())
     return;
 
   for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+
     auto paramSample = getRowParamSample(row);
     auto maybeMin = domainSimplex.computeOptimum(Direction::Down, paramSample);
-    bool nonNegative = maybeMin.hasValue() && *maybeMin >= Fraction(0, 0);
+    bool nonNegative = maybeMin.hasValue() && *maybeMin >= Fraction(0, 1);
     if (nonNegative)
       continue;
 
     auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
-    bool nonPositive = maybeMax.hasValue() && *maybeMax <= Fraction(0, 0);
+    bool negative = maybeMax.hasValue() && *maybeMax < Fraction(0, 1);
 
-    if (nonPositive) {
-      restoreRow(row);
-      continue;
+    if (negative) {
+      auto status = moveRowUnknownToColumn(row);
+      if (failed(status))
+        return;
+      findParamLexminRecursively(domainSimplex, domainSet, result);
+      return;
     }
 
-    unsigned snapshot = getSnapshotBasis();
+    unsigned snapshot = getSnapshot();
+    unsigned domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(paramSample);
     domainSet.addInequality(paramSample);
+
     findParamLexminRecursively(domainSimplex, domainSet, result);
+
     domainSet.removeLastInequality();
-    domainSimplex.rollback(snapshot);
+    domainSimplex.rollback(domainSnapshot);
+    rollback(snapshot);
 
     SmallVector<int64_t, 8> complementIneq;
     for (int64_t coeff : paramSample)
       complementIneq.push_back(-coeff);
     complementIneq.back()--;
 
-    snapshot = getSnapshotBasis();
+    snapshot = getSnapshot();
+    domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(complementIneq);
     domainSet.addInequality(complementIneq);
+
     findParamLexminRecursively(domainSimplex, domainSet, result);
+
     domainSet.removeLastInequality();
-    domainSimplex.rollback(snapshot);
+    domainSimplex.rollback(domainSnapshot);
+    rollback(snapshot);
+
+    return;
   }
 
   auto rowHasIntegerCoeffs = [this](unsigned row) {
@@ -225,31 +282,61 @@ void ParamLexSimplex::findParamLexminRecursively(ParamLexSimplex &domainSimplex,
     return true;
   };
 
-  for (unsigned row = 0; row < nRow; ++row) {
+  for (const auto &u : var) {
+    if (u.orientation == Orientation::Column)
+      continue;
+
+    unsigned row = u.pos;
     if (rowHasIntegerCoeffs(row))
       continue;
 
-    SmallVector<int64_t, 8> divCoeffs;
+    llvm_unreachable("Not yet implemented");
+
+    SmallVector<int64_t, 8> domainDivCoeffs;
     int64_t denom = tableau(row, 0);
-    for (unsigned col = nCol - nParam; col < nCol; ++col) {
-      divCoeffs.push_back(mod(-tableau(row, col), denom));
-    }
-    unsigned snapshot = getSnapshotBasis();
-    domainSimplex.addDivisionVariable(divCoeffs, denom);
-    domainSet.appendDivisionVariable(divCoeffs, denom);
+    for (unsigned col = nCol - nParam; col < nCol; ++col)
+      domainDivCoeffs.push_back(mod(-tableau(row, col), denom));
+    domainDivCoeffs.push_back(mod(-tableau(row, 1), denom));
+
+    unsigned snapshot = getSnapshot();
+    unsigned domainSnapshot = domainSimplex.getSnapshot();
+    domainSimplex.addDivisionVariable(domainDivCoeffs, denom);
+    domainSet.appendDivisionVariable(domainDivCoeffs, denom);
+
+    // SmallVector<int64_t, 8> divCoeffs = domainDivCoeffs;
+    // divCoeffs.insert(divCoeffs.end(),
+    //   domainDivCoeffs.begin(), domainDivCoeffs.end());
+    domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv, var.size() - nParam, 0);
+    addDivisionVariable(domainDivCoeffs, denom);
+
+    addZeroConstraint();
+    tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
+    for (unsigned col = 2; col < nCol - nParam; ++col)
+      tableau(nRow - 1, col) = mod(tableau(row, col), denom);
+    for (unsigned col = nCol - nParam; col < nCol - 1; ++col)
+      tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
+    tableau(nRow - 1, nCol - 1) = denom;
+    // restoreConsistency();
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
-    domainSimplex.rollback(snapshot);
+    domainSimplex.rollback(domainSnapshot);
     domainSet.removeLastDivision();
+    nParam--;
+    nDiv--;
+    rollback(snapshot);
 
     return;
   }
 
   result.domain.push_back(domainSet);
   SmallVector<SmallVector<int64_t, 8>, 8> lexmin;
-  for (unsigned i = 0; i < var.size() - nParam; ++i) {
-    assert(var[i].orientation == Orientation::Row && "lexmin is unbounded!");
+  for (unsigned i = nParam; i < var.size(); ++i) {
+    if (var[i].orientation == Orientation::Column) {
+      lexmin.push_back(SmallVector<int64_t, 8>(nParam + 1, 0));
+      continue;
+    }
+
     unsigned row = var[i].pos;
     auto coeffs = getRowParamSample(var[i].pos);
     int64_t denom = tableau(row, 0);
