@@ -30,6 +30,23 @@ namespace mlir {
 struct pwaFunction {
   SmallVector<PresburgerBasicSet, 8> domain;
   SmallVector<SmallVector<SmallVector<int64_t, 8>, 8>, 8> value;
+
+  void dump() {
+    for (unsigned i = 0; i < value.size(); ++i) {
+      domain[i].dump();
+      llvm::errs() << "\n";
+      for (unsigned j = 0; j < value[i].size(); ++j) {
+        llvm::errs() << "a" << j << " = ";
+        for (unsigned k = 0; k < value[i][j].size() - 1; ++k) {
+          if (value[i][j][k] == 0)
+            continue;
+          llvm::errs() << value[i][j][k] << "x" << k << " + ";
+        }
+        llvm::errs() << value[i][j].back() << '\n';
+      }
+      llvm::errs() << '\n';
+    }
+  }
 };
 
 class ParamLexSimplex : public Simplex {
@@ -44,16 +61,18 @@ public:
 
 
   pwaFunction findParamLexmin();
-  void findParamLexminRecursively(ParamLexSimplex &domainSimplex, PresburgerBasicSet &domainSet, pwaFunction &result);
+  void findParamLexminRecursively(Simplex &domainSimplex, PresburgerBasicSet &domainSet, pwaFunction &result);
 
 private:
-  ArrayRef<int64_t> getRowParamSample(unsigned row);
-  LogicalResult restoreRow(unsigned row);
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row);
+  LogicalResult moveRowUnknownToColumn(unsigned row);
   void restoreConsistency();
-
+  unsigned getSnapshot();
+  // SmallVector<int64_t, 8> varCoeffsFromRowCoeffs(ArrayRef<int64_t> rowCoeffs) const;
   Optional<unsigned> findPivot(unsigned row) const;
 
-  unsigned nParam;
+  unsigned nParam, nDiv;
+  SmallVector<SmallVector<int64_t, 8>, 8> originalCoeffs;
 };
 } // namespace mlir
 

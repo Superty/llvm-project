@@ -62,13 +62,22 @@ Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
   return unknownFromIndex(rowUnknown[row]);
 }
 
-/// Add a new row to the tableau corresponding to the given constant term and
-/// list of coefficients. The coefficients are specified as a vector of
-/// (variable index, coefficient) pairs.
-unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == 1 + var.size() &&
-         "Incorrect number of coefficients!");
+void Simplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+  addVariable();
+  
+  SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
+  int64_t constTerm = ineq.back();
+  ineq.back() = -denom;
+  ineq.push_back(constTerm);
+  addInequality(ineq);
 
+  for (int64_t &coeff : ineq)
+    coeff = -coeff;
+  ineq.back() += denom - 1;
+  addInequality(ineq);
+}
+
+void Simplex::addZeroConstraint() {
   ++nRow;
   // If the tableau is not big enough to accomodate the extra row, we extend it.
   if (nRow >= tableau.getNumRows())
@@ -77,10 +86,24 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   con.emplace_back(Orientation::Row, false, nRow - 1);
 
   tableau(nRow - 1, 0) = 1;
-  tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = liveColBegin; col < nCol; ++col)
+  tableau(nRow - 1, 1) = 0;
+  for (unsigned col = 2; col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
+  // Push to undo log along with the index of the new constraint.
+  undoLog.emplace_back(UndoLogEntry::RemoveLastConstraint, Optional<int>());
+}
+
+/// Add a new row to the tableau corresponding to the given constant term and
+/// list of coefficients. The coefficients are specified as a vector of
+/// (variable index, coefficient) pairs.
+unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
+  assert(coeffs.size() == 1 + var.size() &&
+         "Incorrect number of coefficients!");
+  
+  addZeroConstraint();
+
+  tableau(nRow - 1, 1) = coeffs.back();
   // Process each given variable coefficient.
   for (unsigned i = 0; i < var.size(); ++i) {
     unsigned pos = var[i].pos;
@@ -109,8 +132,6 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   }
 
   normalizeRow(nRow - 1);
-  // Push to undo log along with the index of the new constraint.
-  undoLog.emplace_back(UndoLogEntry::RemoveLastConstraint, Optional<int>());
   return con.size() - 1;
 }
 
