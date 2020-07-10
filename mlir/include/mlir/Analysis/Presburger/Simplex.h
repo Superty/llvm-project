@@ -168,6 +168,7 @@ public:
   void addEquality(ArrayRef<int64_t> coeffs);
 
   void addVariable();
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
   /// Mark the tableau as being empty.
   void markEmpty();
@@ -357,6 +358,10 @@ protected:
   /// \returns True if \p unknown is neither a redundant row nor a dead column,
   /// False otherwise.
   bool unknownIsRelevant(Unknown &unknown) const;
+
+  /// Add a new zero constraint to the tableau and the associated data
+  /// structures.
+  void addZeroConstraint();
 
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);

@@ -287,6 +287,19 @@ TEST(FlatAffineConstraintsTest, FindSampleTest) {
   // x + y + z - 1 >= 0 and x + y + z <= 0
   checkSample(false,
               makeFACFromConstraints(3, {{1, 1, 1, -1}, {-1, -1, -1, 0}}, {}));
+  // expectSample(false, "{[x,y,z,q] : 2x - 3y = 0 and y = x - 1 + 6z and x + y = 6q + 2 and 0 <= x and x <= 100 and 0 <= y and y <= 100}"); 
+  checkSample(false, makeFACFromConstraints(4,
+    {
+      {1, 0, 0, 0, 0},    // x >= 0.
+      {-1, 0, 0, 0, 100}, // x <= 100.
+      {0, 1, 0, 0, 0},    // y >= 0.
+      {0, -1, 0, 0, 100}  // y <= 100.
+    },
+    {
+      {2, -3, 0, 0, 0},  // 2x - 3y = 0.
+      {1, -1, 6, 0, -1}, // x - y + 6z - 1 = 0.
+      {1, 1, 0, -6, -2}  // x + y - 6q - 2 = 0.
+    }));
 }
 
 TEST(FlatAffineConstraintsTest, IsIntegerEmptyTest) {

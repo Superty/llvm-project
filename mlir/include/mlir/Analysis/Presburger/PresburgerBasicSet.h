@@ -33,6 +33,8 @@ public:
   void removeLastInequality();
   void removeLastDivision();
 
+  void dump() const;
+
   struct DivisionVariable {
     SmallVector<int64_t, 8> num;
     int64_t den;
