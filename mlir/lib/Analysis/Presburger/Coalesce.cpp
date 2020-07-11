@@ -223,7 +223,7 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t) {
 // helperfuncton to convert arrayRefs to SmallVectors
 static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   SmallVector<int64_t, 8> res;
-  for (const int64_t &curr : ref)
+  for (const int64_t curr : ref)
     res.push_back(curr);
   return res;
 }
@@ -371,7 +371,7 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       }
     }
   }
-  for (const FlatAffineConstraints curr : basicSetVector) {
+  for (const FlatAffineConstraints &curr : basicSetVector) {
     newSet.addFlatAffineConstraints(curr);
   }
   return newSet;
@@ -474,7 +474,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // constraints.
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
-  for (const SmallVector<int64_t, 8> curr : wrapped) {
+  for (const SmallVector<int64_t, 8> &curr : wrapped) {
     newSet.addInequality(curr);
   }
   // Additionally for every remaining cut constraint t of a, t + 1 >= 0 is
@@ -548,8 +548,8 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   shift(t, 1);
   newSetInequalities.push_back(t);
   FlatAffineConstraints newSet(A.getNumDimIds(), A.getNumSymbolIds());
-  for (size_t k = 0; k < newSetInequalities.size(); k++) {
-    newSet.addInequality(newSetInequalities[k]);
+  for (const SmallVector<int64_t, 8> &curr : newSetInequalities) {
+    newSet.addInequality(curr);
   }
 
   // for every constraint c of B, check if it is redundant for the newSet with
@@ -565,8 +565,8 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
     constraintsB.push_back(B.getInequality(k));
   }
   AddEqualitiesAsInequalities(equalitiesB, constraintsB);
-  for (size_t k = 0; k < constraintsB.size(); k++) {
-    if (simp.ineqType(constraintsB[k]) != Simplex::IneqType::Redundant) {
+  for (ArrayRef<int64_t> curr : constraintsB) {
+    if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -585,15 +585,15 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // constraint f b, that is part of an equality and adjacent to an inequality.
   SmallVector<int64_t, 8> t =
       complement(arrayRefToSmallVector(infoB.t.getValue()));
-  for (size_t k = 0; k < t.size(); k++) {
-    minusT.push_back(-t[k]);
+  for (const int64_t n : t) {
+    minusT.push_back(-n);
   }
 
   // TODO: can only cut be non-redundant?
   // The cut constraints of a are wrapped around -t to include B.
-  for (size_t k = 0; k < infoA.cut.size(); k++) {
+  for (ArrayRef<int64_t> currRef : infoA.cut) {
     // TODO: why does the pure case differ here in that it doesn't wrap t?
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(infoA.cut[k]);
+    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
     auto result = wrapping(b, minusT, curr);
     if (!result)
       return false;
@@ -602,8 +602,8 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 
   // Some of the wrapped constraints can now be non redudant.
   Simplex simp(b);
-  for (size_t k = 0; k < wrapped.size(); k++) {
-    if (simp.ineqType(wrapped[k]) != Simplex::IneqType::Redundant) {
+  for (const SmallVector<int64_t, 8> &curr : wrapped) {
+    if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -613,9 +613,9 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // TODO: can only cut be non-redundant?
   // the cut constraints of b (except -t - 1) are wrapped around t + 1 to
   // include a.
-  for (size_t k = 0; k < infoB.cut.size(); k++) {
-    if (!sameConstraint(minusT, infoB.cut[k])) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(infoB.cut[k]);
+  for (ArrayRef<int64_t> currRef : infoB.cut) {
+    if (!sameConstraint(minusT, currRef)) {
+      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
       auto result = wrapping(a, t, curr);
       if (!result)
         return false;
@@ -626,8 +626,8 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   FlatAffineConstraints newSet(b.getNumIds(), b.getNumSymbolIds());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
-  for (size_t k = 0; k < wrapped.size(); k++) {
-    newSet.addInequality(wrapped[k]);
+  for (const SmallVector<int64_t, 8> &curr : wrapped) {
+    newSet.addInequality(curr);
   }
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
@@ -646,15 +646,15 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   SmallVector<int64_t, 8> minusT;
   SmallVector<int64_t, 8> t = arrayRefToSmallVector(infoA.t.getValue());
-  for (size_t k = 0; k < t.size(); k++) {
-    minusT.push_back(-t[k]);
+  for (const int64_t n : t) {
+    minusT.push_back(-n);
   }
 
   // TODO: can only cut be non-redundant?
   // The cut constraints of a (except t) are wrapped around -t to include B.
-  for (size_t k = 0; k < infoA.cut.size(); k++) {
-    if (!sameConstraint(t, infoA.cut[k])) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(infoA.cut[k]);
+  for (ArrayRef<int64_t> currRef : infoA.cut) {
+    if (!sameConstraint(t, currRef)) {
+      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
       auto result = wrapping(b, minusT, curr);
       if (!result)
         return false;
@@ -667,9 +667,9 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // TODO: can only cut be non-redundant?
   // the cut constraints of b (except -t -1) are wrapped around t+1 to include
   // a.
-  for (size_t k = 0; k < infoB.cut.size(); k++) {
-    if (!sameConstraint(minusT, infoB.cut[k])) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(infoB.cut[k]);
+  for (ArrayRef<int64_t> currRef : infoB.cut) {
+    if (!sameConstraint(minusT, currRef)) {
+      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
       auto result = wrapping(a, t, curr);
       if (!result)
         return false;
@@ -680,8 +680,8 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   FlatAffineConstraints newSet(b.getNumIds(), b.getNumSymbolIds());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
-  for (size_t k = 0; k < wrapped.size(); k++) {
-    newSet.addInequality(wrapped[k]);
+  for (const SmallVector<int64_t, 8> &curr : wrapped) {
+    newSet.addInequality(curr);
   }
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
@@ -831,8 +831,8 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   // polytope
   Simplex comp(bs);
   comp.addInequality(complement(t));
-  for (size_t k = 0; k < infoB.cut.size(); k++) {
-    if (comp.ineqType(infoB.cut[k]) != Simplex::IneqType::Redundant) {
+  for (ArrayRef<int64_t> curr : infoB.cut) {
+    if (comp.ineqType(curr) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -854,8 +854,8 @@ bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &infoA, const Info &infoB) {
   // if all facets are contained, the redundant constraints of both a and b
   // define the new polytope
-  for (size_t k = 0; k < infoA.cut.size(); k++) {
-    if (!containedFacet(infoA.cut[k], basicSetVector[i], infoB.cut)) {
+  for (ArrayRef<int64_t> curr : infoA.cut) {
+    if (!containedFacet(curr, basicSetVector[i], infoB.cut)) {
       return false;
     }
   }
@@ -886,7 +886,7 @@ void AddEqualitiesAsInequalities(ArrayRef<ArrayRef<int64_t>> eq,
     target.push_back(curr);
     // TODO: fix this memory leak
     SmallVector<int64_t, 8> *inverted = new SmallVector<int64_t, 8>();
-    for (int64_t n : curr) {
+    for (const int64_t n : curr) {
       inverted->push_back(-n);
     }
     ArrayRef<int64_t> invertedRef(*inverted);
