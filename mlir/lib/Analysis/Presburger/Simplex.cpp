@@ -147,7 +147,7 @@ Direction flippedDirection(Direction direction) {
 ///             inequality
 ///
 /// If the tableau is rational then none of the special cases apply and we
-/// return SEPARATE.
+/// return Separate.
 ///
 /// Otherwise, we look for a non-zero coefficient of a live column. If exactly
 /// one exists and the coefficient of the column is the same as the constant
@@ -157,13 +157,13 @@ Direction flippedDirection(Direction direction) {
 /// If there are no non-zero coefficients and the constant term is -1, then
 /// this is type AdjEq.
 ///
-/// Otherwise, none of the heuristics match so the type is SEPARATE.
+/// Otherwise, none of the heuristics match so the type is Separate.
 inline Simplex::IneqType Simplex::separationType(unsigned row) {
   // TODO this can be removed, if below we compare tableau(row, 1) with the
   // negated denominator instead of -1.
   normalizeRow(row);
   if (tableau(row, 0) != 1)
-    return IneqType::SEPARATE;
+    return IneqType::Separate;
 
   bool found = false;
   for (unsigned col = liveColBegin; col < nCol; col++) {
@@ -171,9 +171,9 @@ inline Simplex::IneqType Simplex::separationType(unsigned row) {
       if (!found) {
         found = true;
         if (tableau(row, 1) != tableau(row, col))
-          return IneqType::SEPARATE;
+          return IneqType::Separate;
       } else {
-        return IneqType::SEPARATE;
+        return IneqType::Separate;
       }
     }
   }
@@ -183,16 +183,16 @@ inline Simplex::IneqType Simplex::separationType(unsigned row) {
   else if (tableau(row, 1) == -1)
     return IneqType::AdjEq;
   else
-    return IneqType::SEPARATE;
+    return IneqType::Separate;
 }
 
 /// Checks the type of the inequality. The inequality is represented as
 /// const_term + sum (coeffs[i].first * var(coeffs[i].second]) >= 0.
 ///
 /// The possible results are:
-/// REDUNDANT   The inequality is already satisfied
-/// CUT         The inequality is satisfied by some points but not others
-/// SEPARATE    The inequality is satisfied by no points
+/// Redundant   The inequality is already satisfied
+/// Cut         The inequality is satisfied by some points but not others
+/// Separate    The inequality is satisfied by no points
 ///
 /// Special cases of separate when the tableau is in integer mode:
 /// AdjEq      The value of the expression is always -1
@@ -220,7 +220,7 @@ Simplex::IneqType Simplex::ineqType(ArrayRef<int64_t> coeffs) {
   unsigned snap = getSnapshot();
   unsigned con_index = addRow(coeffs);
   unsigned row = con[con_index].pos;
-  IneqType type = IneqType::CUT;
+  IneqType type = IneqType::Cut;
   // rowIsAtLeastZero never moves the unknown passed to it, so we can continue
   // to use the same row position.
   if (tableau(row, 1) < 0 && !rowIsAtLeastZero(con[con_index]))
@@ -230,7 +230,7 @@ Simplex::IneqType Simplex::ineqType(ArrayRef<int64_t> coeffs) {
     // The constraint may have been marked redundant in signOfMax above.
     if (con[con_index].redundant || (tableau(row, 1) >= min_sample_value &&
                                      constraintIsRedundant(con_index)))
-      type = IneqType::REDUNDANT;
+      type = IneqType::Redundant;
   }
 
   rollback(snap);

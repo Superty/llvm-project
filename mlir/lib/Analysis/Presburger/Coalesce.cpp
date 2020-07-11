@@ -9,7 +9,7 @@ using namespace mlir;
 // TODO: look at MutableArrayRef
 
 // struct for classified constraints
-// redundant and cut are for constraints that are typed as REDUNDANT or CUT
+// redundant and cut are for constraints that are typed as Redundant or Cut
 // respectively. adjIneq is for any constraint, that is adjacent to the other
 // polytope. t is for any constraint, that is part of an equality constraint and
 // adjacent to the other polytope.
@@ -88,7 +88,7 @@ bool classify(Simplex &simp,
 
 // compute the protrusionCase and return whether it has worked
 //
-// In the protusionCase, only CUT constraints and REDUNDANT constraints can
+// In the protusionCase, only Cut constraints and Redundant constraints can
 // exist. This case differs from the CutCase in that it can still coalesce
 // polytopes, as long as they are not sticking out of each other by too much
 // (i.e. by less than 2). As we are considering an integer setting, the convex
@@ -115,10 +115,10 @@ void addCoalescedBasicSet(
 
 // compute the cut case and return whether it has worked.
 //
-// The cut case is the case, for which a polytope only has REDUNDANT and CUT
+// The cut case is the case, for which a polytope only has Redundant and Cut
 // constraints. If all the facets of such cut constraints are contained within
 // the other polytope, the polytopes can be combined to a polytope only
-// limited by all the REDUNDANT constraints.
+// limited by all the Redundant constraints.
 //    ___________        ___________
 //   /   /  |   /       /          /
 //   \   \  |  /   ==>  \         /
@@ -133,7 +133,7 @@ bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
 //
 // The adjIneq pure case can be viewed as a single polytope originally (below:
 // on the right), that was cut into two parts by a strip with width 1.
-// This is computed by just using all the REDUNDANT constraints.
+// This is computed by just using all the Redundant constraints.
 //  ________ ____            ______________
 // |       //    |          |              |
 // |      //     |          |              |
@@ -177,7 +177,7 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                    unsigned i, unsigned j, const Info &infoA,
                    const Info &infoB);
 
-// compute the adjEq Case for no CUT constraints.
+// compute the adjEq Case for no Cut constraints.
 //
 // The adjEq no cut case is simply an extension case, where the constraint,
 // that is adjacent to the equality, can be relaxed by 1 to include the other
@@ -566,7 +566,7 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   }
   AddEqualitiesAsInequalities(equalitiesB, constraintsB);
   for (size_t k = 0; k < constraintsB.size(); k++) {
-    if (simp.ineqType(constraintsB[k]) != Simplex::IneqType::REDUNDANT) {
+    if (simp.ineqType(constraintsB[k]) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -603,7 +603,7 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // Some of the wrapped constraints can now be non redudant.
   Simplex simp(b);
   for (size_t k = 0; k < wrapped.size(); k++) {
-    if (simp.ineqType(wrapped[k]) != Simplex::IneqType::REDUNDANT) {
+    if (simp.ineqType(wrapped[k]) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -758,10 +758,10 @@ bool classify(Simplex &simp,
   for (ArrayRef<int64_t> currentConstraint : eqAsIneq) {
     Simplex::IneqType ty = simp.ineqType(currentConstraint);
     switch (ty) {
-    case Simplex::IneqType::REDUNDANT:
+    case Simplex::IneqType::Redundant:
       info.redundant.push_back(currentConstraint);
       break;
-    case Simplex::IneqType::CUT:
+    case Simplex::IneqType::Cut:
       info.cut.push_back(currentConstraint);
       break;
     case Simplex::IneqType::AdjIneq:
@@ -777,7 +777,7 @@ bool classify(Simplex &simp,
       // equality
       info.t = currentConstraint;
       break;
-    case Simplex::IneqType::SEPARATE:
+    case Simplex::IneqType::Separate:
       // coalescing always failes when a separate constraint is encountered.
       return false;
     }
@@ -791,10 +791,10 @@ bool classifyIneq(Simplex &simp,
   for (ArrayRef<int64_t> currentConstraint : constraints) {
     Simplex::IneqType ty = simp.ineqType(currentConstraint);
     switch (ty) {
-    case Simplex::IneqType::REDUNDANT:
+    case Simplex::IneqType::Redundant:
       info.redundant.push_back(currentConstraint);
       break;
-    case Simplex::IneqType::CUT:
+    case Simplex::IneqType::Cut:
       info.cut.push_back(currentConstraint);
       break;
     case Simplex::IneqType::AdjIneq:
@@ -808,7 +808,7 @@ bool classifyIneq(Simplex &simp,
       // TODO: possibly needs to change if simplex can handle adjacent to
       // equality
       break;
-    case Simplex::IneqType::SEPARATE:
+    case Simplex::IneqType::Separate:
       // coalescing always failes when a separate constraint is encountered.
       return false;
     }
@@ -826,19 +826,19 @@ bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   addInequalities(bs, infoB.redundant);
 
   // If all constraints of a are added but the adjacent one and all the
-  // REDUNDANT ones from b, are all cut constraints of b now REDUNDANT?
-  // If so, all REDUNDANT constraints of a and b together define the new
+  // Redundant ones from b, are all cut constraints of b now Redundant?
+  // If so, all Redundant constraints of a and b together define the new
   // polytope
   Simplex comp(bs);
   comp.addInequality(complement(t));
   for (size_t k = 0; k < infoB.cut.size(); k++) {
-    if (comp.ineqType(infoB.cut[k]) != Simplex::IneqType::REDUNDANT) {
+    if (comp.ineqType(infoB.cut[k]) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
   if (infoB.adjIneq) {
     if (comp.ineqType(infoB.adjIneq.getValue()) !=
-        Simplex::IneqType::REDUNDANT) {
+        Simplex::IneqType::Redundant) {
       return false;
     }
   }
@@ -873,7 +873,7 @@ bool mlir::containedFacet(ArrayRef<int64_t> ineq,
   Simplex simp(bs);
   simp.addEquality(ineq);
   for (ArrayRef<int64_t> curr : cut) {
-    if (simp.ineqType(curr) != Simplex::IneqType::REDUNDANT) {
+    if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
       return false;
     }
   }
