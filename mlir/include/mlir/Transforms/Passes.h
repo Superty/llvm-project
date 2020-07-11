@@ -24,7 +24,8 @@ class AffineForOp;
 class FuncOp;
 class ModuleOp;
 class Pass;
-template <typename T> class OperationPass;
+template <typename T>
+class OperationPass;
 
 /// Creates an instance of the BufferPlacement pass.
 std::unique_ptr<Pass> createBufferPlacementPass();
@@ -58,6 +59,9 @@ std::unique_ptr<OperationPass<FuncOp>> createPipelineDataTransferPass();
 /// to equivalent lower-level constructs (flow of basic blocks and arithmetic
 /// primitives).
 std::unique_ptr<OperationPass<FuncOp>> createLowerAffinePass();
+
+/// Lowers Presburger operations to Standard dialect operations
+std::unique_ptr<Pass> createPresburgerToStandardPass();
 
 /// Creates a pass that transforms perfectly nested loops with independent
 /// bounds into a single loop.

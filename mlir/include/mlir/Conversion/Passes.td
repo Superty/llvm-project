@@ -177,6 +177,15 @@ def ConvertLinalgToSPIRV : Pass<"convert-linalg-to-spirv", "ModuleOp"> {
 }
 
 //===----------------------------------------------------------------------===//
+// PresburgerToStandard
+//===----------------------------------------------------------------------===//
+
+def ConvertPresburgerToStandard : Pass<"convert-presburger-to-std"> {
+  let summary = "Convert the Presburger dialect to Standard dialect";
+  let constructor = "mlir::createPresburgerToStandardPass()";
+}
+
+//===----------------------------------------------------------------------===//
 // SCFToStandard
 //===----------------------------------------------------------------------===//
 
