@@ -142,8 +142,8 @@ Direction flippedDirection(Direction direction) {
 /// integral tableaus. Must only be called for separate inequalities.
 ///
 /// The special cases we check for are
-/// ADJEQ      The value of the expression is always -1
-/// ADJINEQ    The inequality is c(-u - 1) >= 0 where u is an existing
+/// AdjEq      The value of the expression is always -1
+/// AdjIneq    The inequality is c(-u - 1) >= 0 where u is an existing
 ///             inequality
 ///
 /// If the tableau is rational then none of the special cases apply and we
@@ -151,11 +151,11 @@ Direction flippedDirection(Direction direction) {
 ///
 /// Otherwise, we look for a non-zero coefficient of a live column. If exactly
 /// one exists and the coefficient of the column is the same as the constant
-/// term, then this is type ADJINEQ. (we need not check that the coefficient is
+/// term, then this is type AdjIneq. (we need not check that the coefficient is
 /// negative since we already know that the inequality is separate.)
 ///
 /// If there are no non-zero coefficients and the constant term is -1, then
-/// this is type ADJEQ.
+/// this is type AdjEq.
 ///
 /// Otherwise, none of the heuristics match so the type is SEPARATE.
 inline Simplex::IneqType Simplex::separationType(unsigned row) {
@@ -179,9 +179,9 @@ inline Simplex::IneqType Simplex::separationType(unsigned row) {
   }
 
   if (found)
-    return IneqType::ADJINEQ;
+    return IneqType::AdjIneq;
   else if (tableau(row, 1) == -1)
-    return IneqType::ADJEQ;
+    return IneqType::AdjEq;
   else
     return IneqType::SEPARATE;
 }
@@ -195,8 +195,8 @@ inline Simplex::IneqType Simplex::separationType(unsigned row) {
 /// SEPARATE    The inequality is satisfied by no points
 ///
 /// Special cases of separate when the tableau is in integer mode:
-/// ADJEQ      The value of the expression is always -1
-/// ADJINEQ    The inequality is c(-u - 1) >= 0 where u is an existing
+/// AdjEq      The value of the expression is always -1
+/// AdjIneq    The inequality is c(-u - 1) >= 0 where u is an existing
 ///             inequality
 ///
 /// We take a snapshot of the initial state and then temproarily add the row to

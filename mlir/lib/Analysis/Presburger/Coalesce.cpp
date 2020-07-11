@@ -764,7 +764,7 @@ bool classify(Simplex &simp,
     case Simplex::IneqType::CUT:
       info.cut.push_back(currentConstraint);
       break;
-    case Simplex::IneqType::ADJINEQ:
+    case Simplex::IneqType::AdjIneq:
       if (info.adjIneq)
         // if two adjacent constraints are found, we can surely not coalesce
         // this town is too small for two adjIneq
@@ -772,7 +772,7 @@ bool classify(Simplex &simp,
       info.adjIneq = currentConstraint;
       info.t = currentConstraint;
       break;
-    case Simplex::IneqType::ADJEQ:
+    case Simplex::IneqType::AdjEq:
       // TODO: possibly needs to change if simplex can handle adjacent to
       // equality
       info.t = currentConstraint;
@@ -797,14 +797,14 @@ bool classifyIneq(Simplex &simp,
     case Simplex::IneqType::CUT:
       info.cut.push_back(currentConstraint);
       break;
-    case Simplex::IneqType::ADJINEQ:
+    case Simplex::IneqType::AdjIneq:
       if (info.adjIneq)
         // if two adjacent constraints are found, we can surely not coalesce
         // this town is too small for two adjIneq
         return false;
       info.adjIneq = currentConstraint;
       break;
-    case Simplex::IneqType::ADJEQ:
+    case Simplex::IneqType::AdjEq:
       // TODO: possibly needs to change if simplex can handle adjacent to
       // equality
       break;
