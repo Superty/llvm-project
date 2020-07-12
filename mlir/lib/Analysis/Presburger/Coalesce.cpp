@@ -6,16 +6,15 @@
 
 using namespace mlir;
 
-// TODO: look at MutableArrayRef
-
-// struct for classified constraints
-// redundant and cut are for constraints that are typed as Redundant or Cut
-// respectively. adjIneq is for any constraint, that is adjacent to the other
-// polytope. t is for any constraint, that is part of an equality constraint and
-// adjacent to the other polytope.
-// TODO: find better name than t
-// TODO: possibly change up structure of Info, if simplex manages to classify
-// adjacent to equality
+/// TODO: look at MutableArrayRef
+/// struct for classified constraints
+/// redundant and cut are for constraints that are typed as Redundant or Cut
+/// respectively. adjIneq is for any constraint, that is adjacent to the other
+/// polytope. t is for any constraint, that is part of an equality constraint
+/// and adjacent to the other polytope.
+/// TODO: find better name than t
+/// TODO: possibly change up structure of Info, if simplex manages to classify
+/// adjacent to equality
 struct Info {
   SmallVector<ArrayRef<int64_t>, 8> redundant;
   SmallVector<ArrayRef<int64_t>, 8> cut;
@@ -41,168 +40,168 @@ struct Info {
   }
 };
 
-// computes the complement of t
-// i.e. for a given constraint t(x) >= 0 returns -t(x) -1 >= 0
+/// computes the complement of t
+/// i.e. for a given constraint t(x) >= 0 returns -t(x) -1 >= 0
 SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t);
 
-// shifts t by amount
-// i.e. for a given constraint t(x) >= 0 return t(x) + amount >= 0
+/// shifts t by amount
+/// i.e. for a given constraint t(x) >= 0 return t(x) + amount >= 0
 void shift(SmallVectorImpl<int64_t> &t, int amount);
 
-// add eq as two inequalities to target
+/// add eq as two inequalities to target
 void AddEqualitiesAsInequalities(const ArrayRef<ArrayRef<int64_t>> eq,
                                  SmallVectorImpl<ArrayRef<int64_t>> &target);
 
-// adds all Equalities to bs
+/// adds all Equalities to bs
 void addEqualities(FlatAffineConstraints &bs,
                    const SmallVector<ArrayRef<int64_t>, 8> &equalities);
 
-// adds all Inequalities to bs
+/// adds all Inequalities to bs
 void addInequalities(FlatAffineConstraints &bs,
                      const SmallVector<ArrayRef<int64_t>, 8> &inequalities);
 
-// only gets called by classify
-// classifies all constraints into redundant, cut or adjIneq according to the
-// ineqType that the simplex returns.
-//
-// returns true if it has neither encountered a separate constraint nor more
-// than one adjacent inequality. This has a similar idea as short-circuiting
-// behind it. The moment either a separate or two adjacent constraints are
-// encountered, the polytope cannot be coalesced anymore, so we can move to the
-// next tuple.
+/// only gets called by classify
+/// classifies all constraints into redundant, cut or adjIneq according to the
+/// ineqType that the simplex returns.
+///
+/// returns true if it has neither encountered a separate constraint nor more
+/// than one adjacent inequality. This has a similar idea as short-circuiting
+/// behind it. The moment either a separate or two adjacent constraints are
+/// encountered, the polytope cannot be coalesced anymore, so we can move to the
+/// next tuple.
 bool classifyIneq(Simplex &simp,
                   const SmallVector<ArrayRef<int64_t>, 8> &constraints,
                   Info &info);
 
-// classifies all constraints into redundant, cut, adjIneq or t, where t stands
-// for a constraint adjacent to a the other polytope
-//
-// returns true if it has neither encountered a separate constraint nor more
-// than one adjacent inequality. This has a similar idea as short-circuiting
-// behind it. The moment either a separate or two adjacent constraints are
-// encountered, the polytope cannot be coalesced anymore, so we can move to the
-// next tuple.
+/// classifies all constraints into redundant, cut, adjIneq or t, where t stands
+/// for a constraint adjacent to a the other polytope
+///
+/// returns true if it has neither encountered a separate constraint nor more
+/// than one adjacent inequality. This has a similar idea as short-circuiting
+/// behind it. The moment either a separate or two adjacent constraints are
+/// encountered, the polytope cannot be coalesced anymore, so we can move to the
+/// next tuple.
 bool classify(Simplex &simp,
               const SmallVector<ArrayRef<int64_t>, 8> &inequalities,
               const SmallVector<ArrayRef<int64_t>, 8> &equalities, Info &info);
 
-// compute the protrusionCase and return whether it has worked
-//
-// In the protusionCase, only Cut constraints and Redundant constraints can
-// exist. This case differs from the CutCase in that it can still coalesce
-// polytopes, as long as they are not sticking out of each other by too much
-// (i.e. by less than 2). As we are considering an integer setting, the convex
-// hull of the union of those two polytopes actually is the same thing as the
-// union of the two polytope.
-//      _____          _____
-//    _|___  |        /     |
-//   | |   | |   ==> |      |
-//   | |   | |       |      |
-//   |_|___|_|       |______|
-//
-// TODO: find better example
+/// compute the protrusionCase and return whether it has worked
+///
+/// In the protusionCase, only Cut constraints and Redundant constraints can
+/// exist. This case differs from the CutCase in that it can still coalesce
+/// polytopes, as long as they are not sticking out of each other by too much
+/// (i.e. by less than 2). As we are considering an integer setting, the convex
+/// hull of the union of those two polytopes actually is the same thing as the
+/// union of the two polytope.
+///      _____          _____
+///    _|___  |        /     |
+///   | |   | |   ==> |      |
+///   | |   | |       |      |
+///   |_|___|_|       |______|
+///
+/// TODO: find better example
 bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     Info &infoA, const Info &infoB, unsigned i, unsigned j);
 
-// compute, whether a constraint of cut sticks out of bs by more than 2
+/// compute, whether a constraint of cut sticks out of bs by more than 2
 bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
                  const FlatAffineConstraints &bs);
 
-// adds a FlatAffineConstraints and removes the sets at i and j.
+/// adds a FlatAffineConstraints and removes the sets at i and j.
 void addCoalescedBasicSet(
     SmallVectorImpl<FlatAffineConstraints> &basicSetVector, unsigned i,
     unsigned j, const FlatAffineConstraints &bs);
 
-// compute the cut case and return whether it has worked.
-//
-// The cut case is the case, for which a polytope only has Redundant and Cut
-// constraints. If all the facets of such cut constraints are contained within
-// the other polytope, the polytopes can be combined to a polytope only
-// limited by all the Redundant constraints.
-//    ___________        ___________
-//   /   /  |   /       /          /
-//   \   \  |  /   ==>  \         /
-//    \   \ | /          \       /
-//     \___\|/            \_____/
-//
-//
+/// compute the cut case and return whether it has worked.
+///
+/// The cut case is the case, for which a polytope only has Redundant and Cut
+/// constraints. If all the facets of such cut constraints are contained within
+/// the other polytope, the polytopes can be combined to a polytope only
+/// limited by all the Redundant constraints.
+///    ___________        ___________
+///   /   /  |   /       /          /
+///   \   \  |  /   ==>  \         /
+///    \   \ | /          \       /
+///     \___\|/            \_____/
+///
+///
 bool cutCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector, unsigned i,
              unsigned j, const Info &infoA, const Info &infoB);
 
-// compute adjIneq pure Case and return whether it has worked.
-//
-// The adjIneq pure case can be viewed as a single polytope originally (below:
-// on the right), that was cut into two parts by a strip with width 1.
-// This is computed by just using all the Redundant constraints.
-//  ________ ____            ______________
-// |       //    |          |              |
-// |      //     |          |              |
-// |     //      |    ==>   |              |
-// |    //       |          |              |
-// |___//________|          |______________|
-//
+/// compute adjIneq pure Case and return whether it has worked.
+///
+/// The adjIneq pure case can be viewed as a single polytope originally (below:
+/// on the right), that was cut into two parts by a strip with width 1.
+/// This is computed by just using all the Redundant constraints.
+///  ________ ____            ______________
+/// |       //    |          |              |
+/// |      //     |          |              |
+/// |     //      |    ==>   |              |
+/// |    //       |          |              |
+/// |___//________|          |______________|
+///
 bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                      unsigned i, unsigned j, const Info &infoA,
                      const Info &infoB);
 
-// compute the non-pure adjIneq case and return whether it has worked.
-// Constraint t is the adjIneq.
-//
-// In the non-pure adjIneq case, one of the polytopes is like an extension of
-// the other one. This can be computed, by inverting the adjIneq and checking
-// whether all constraints are stll valid for this new polytope.
-//
-// In the example below, Polytope A is the big one on the left, Polytope B is
-// the small line at the right side. that gets included after coalescing.
-//   ____          ____
-//  |    \        |    \
-//  |     \   ==> |     \
-//  |_____|_      |______\
-//
+/// compute the non-pure adjIneq case and return whether it has worked.
+/// Constraint t is the adjIneq.
+///
+/// In the non-pure adjIneq case, one of the polytopes is like an extension of
+/// the other one. This can be computed, by inverting the adjIneq and checking
+/// whether all constraints are stll valid for this new polytope.
+///
+/// In the example below, Polytope A is the big one on the left, Polytope B is
+/// the small line at the right side. that gets included after coalescing.
+///   ____          ____
+///  |    \        |    \
+///  |     \   ==> |     \
+///  |_____|_      |______\
+///
 bool adjIneqCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
                  unsigned i, unsigned j, const Info &infoA, const Info &infoB);
 
-// compute the pure adjEqCase and return whether it has worked.
-//
-// The pure case consists of two equalities, that are adjacent. Such equalities
-// can always be coalesced by finding the two constraints, that make them become
-// a trapezoid. This is done by wrapping the limiting constraints of the
-// equalities around each other to include the other one.
-//                _
-//    / /        / /
-//   / /   ==>  / /
-//  / /        /_/
-//
+/// compute the pure adjEqCase and return whether it has worked.
+///
+/// The pure case consists of two equalities, that are adjacent. Such equalities
+/// can always be coalesced by finding the two constraints, that make them
+/// become a trapezoid. This is done by wrapping the limiting constraints of the
+/// equalities around each other to include the other one.
+///                _
+///    / /        / /
+///   / /   ==>  / /
+///  / /        /_/
+///
 bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                    unsigned i, unsigned j, const Info &infoA,
                    const Info &infoB);
 
-// compute the adjEq Case for no Cut constraints.
-//
-// The adjEq no cut case is simply an extension case, where the constraint,
-// that is adjacent to the equality, can be relaxed by 1 to include the other
-// polytope.
-//   ______           _______
-//  |      ||        |       |
-//  |      ||        |       |
-//  |      ||   ==>  |       |
-//  |______||        |_______|
-//
+/// compute the adjEq Case for no Cut constraints.
+///
+/// The adjEq no cut case is simply an extension case, where the constraint,
+/// that is adjacent to the equality, can be relaxed by 1 to include the other
+/// polytope.
+///   ______           _______
+///  |      ||        |       |
+///  |      ||        |       |
+///  |      ||   ==>  |       |
+///  |______||        |_______|
+///
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                     unsigned i, unsigned j, SmallVector<int64_t, 8> t);
 
-// compute the non-pure adjEqCase and return whether it has worked.
-//
-// The non-pure case has cut constraints such that it is not a simple extension
-// like the no cut case. It is computed by wrapping those cut constraints and
-// checking, whether everything stilly holds.
-//     ________           ________
-//    |        |         |        \
-//    |        | |  ==>  |         |
-//    |        |         |        /
-//    |        /         |       /
-//    |_______/          |______/
-//
+/// compute the non-pure adjEqCase and return whether it has worked.
+///
+/// The non-pure case has cut constraints such that it is not a simple extension
+/// like the no cut case. It is computed by wrapping those cut constraints and
+/// checking, whether everything stilly holds.
+///     ________           ________
+///    |        |         |        \
+///    |        | |  ==>  |         |
+///    |        |         |        /
+///    |        /         |       /
+///    |_______/          |______/
+///
 bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
                       unsigned i, unsigned j, const Info &infoA,
                       const Info &infoB);
@@ -213,14 +212,14 @@ void shift(SmallVectorImpl<int64_t> &t, int amount) {
 
 SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t) {
   SmallVector<int64_t, 8> complement;
-  for (size_t k = 0; k < t.size() - 1; k++) {
+  for (unsigned k = 0; k < t.size() - 1; k++) {
     complement.push_back(-t[k]);
   }
   complement.push_back(-t.back() - 1);
   return complement;
 }
 
-// helperfuncton to convert arrayRefs to SmallVectors
+/// helperfuncton to convert arrayRefs to SmallVectors
 static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   SmallVector<int64_t, 8> res;
   for (const int64_t curr : ref)
@@ -228,7 +227,7 @@ static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
   return res;
 }
 
-// returns all Equalities of a BasicSet as a SmallVector of ArrayRefs
+/// returns all Equalities of a BasicSet as a SmallVector of ArrayRefs
 void getBasicSetEqualities(const FlatAffineConstraints &bs,
                            SmallVector<ArrayRef<int64_t>, 8> &eqs) {
   for (unsigned k = 0; k < bs.getNumEqualities(); k++) {
@@ -236,7 +235,7 @@ void getBasicSetEqualities(const FlatAffineConstraints &bs,
   }
 }
 
-// returns all Inequalities of a BasicSet as a SmallVector of ArrayRefs
+/// returns all Inequalities of a BasicSet as a SmallVector of ArrayRefs
 void getBasicSetInequalities(const FlatAffineConstraints &bs,
                              SmallVector<ArrayRef<int64_t>, 8> &ineqs) {
   for (unsigned k = 0; k < bs.getNumInequalities(); k++) {
@@ -251,8 +250,8 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
   // TODO: find better looping strategy
   // redefine coalescing function on two BasicSets, return a BasicSet and do the
   // looping strategy in a different function?
-  for (size_t i = 0; i < basicSetVector.size(); i++) {
-    for (size_t j = 0; j < basicSetVector.size(); j++) {
+  for (unsigned i = 0; i < basicSetVector.size(); i++) {
+    for (unsigned j = 0; j < basicSetVector.size(); j++) {
       if (j == i)
         continue;
       FlatAffineConstraints bs1 = basicSetVector[i];
@@ -379,14 +378,14 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
 
 void addInequalities(FlatAffineConstraints &bs,
                      const SmallVector<ArrayRef<int64_t>, 8> &inequalities) {
-  for (size_t k = 0; k < inequalities.size(); k++) {
+  for (unsigned k = 0; k < inequalities.size(); k++) {
     bs.addInequality(inequalities[k]);
   }
 }
 
 void addEqualities(FlatAffineConstraints &bs,
                    const SmallVector<ArrayRef<int64_t>, 8> &equalities) {
-  for (size_t k = 0; k < equalities.size(); k++) {
+  for (unsigned k = 0; k < equalities.size(); k++) {
     bs.addEquality(equalities[k]);
   }
 }
@@ -402,9 +401,9 @@ bool adjIneqPureCase(SmallVector<FlatAffineConstraints, 4> &basicSetVector,
   return true;
 }
 
-// Currently erases both i and j and the pushes the new BasicSet to the back of
-// the vector.
-// TODO: probably change when changing looping strategy
+/// Currently erases both i and j and the pushes the new BasicSet to the back of
+/// the vector.
+/// TODO: probably change when changing looping strategy
 void addCoalescedBasicSet(
     SmallVectorImpl<FlatAffineConstraints> &basicSetVector, unsigned i,
     unsigned j, const FlatAffineConstraints &bs) {
@@ -430,7 +429,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // For every cut constraint t of a, bPrime is computed as b intersected with
   // t(x) + 1 = 0. For this, t is shifted by 1.
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
-  for (size_t l = 0; l < infoA.cut.size(); l++) {
+  for (unsigned l = 0; l < infoA.cut.size(); l++) {
     SmallVector<int64_t, 8> t = arrayRefToSmallVector(infoA.cut[l]);
     FlatAffineConstraints bPrime =
         FlatAffineConstraints(b.getNumDimIds(), b.getNumSymbolIds());
@@ -512,7 +511,7 @@ bool mlir::sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2) {
   assert(c1.size() == c1.size() && "the constraints have different dimensions");
   // if c1 = a*c2, this iterates over the vector trying to find a as soon as
   // possible and then comparing with a.
-  for (size_t i = 0; i < c1.size(); i++) {
+  for (unsigned i = 0; i < c1.size(); i++) {
     // TODO: is ratio.num == 0 really sufficient for checking whether fraction
     // was set yet
     if (c2[i] != 0 && ratio.num == 0) {
@@ -539,7 +538,7 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // TODO: is looping only over the inequalities sufficient here?
   // Reasoning: if A had an equality, we would be in a different case.
   SmallVector<SmallVector<int64_t, 8>, 8> newSetInequalities;
-  for (size_t k = 0; k < A.getNumInequalities(); k++) {
+  for (unsigned k = 0; k < A.getNumInequalities(); k++) {
     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(A.getInequality(k));
     if (!sameConstraint(t, curr)) {
       newSetInequalities.push_back(arrayRefToSmallVector(A.getInequality(k)));
@@ -558,10 +557,10 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   Simplex simp(newSet);
   simp.addEquality(t);
   SmallVector<ArrayRef<int64_t>, 8> constraintsB, equalitiesB;
-  for (size_t k = 0; k < B.getNumEqualities(); k++) {
+  for (unsigned k = 0; k < B.getNumEqualities(); k++) {
     equalitiesB.push_back(B.getEquality(k));
   }
-  for (size_t k = 0; k < B.getNumInequalities(); k++) {
+  for (unsigned k = 0; k < B.getNumInequalities(); k++) {
     constraintsB.push_back(B.getInequality(k));
   }
   AddEqualitiesAsInequalities(equalitiesB, constraintsB);
@@ -697,7 +696,7 @@ SmallVector<int64_t, 8> mlir::combineConstraint(ArrayRef<int64_t> c1,
   int64_t n = ratio.num;
   int64_t d = ratio.den;
   SmallVector<int64_t, 8> result;
-  for (size_t i = 0; i < c1.size(); i++) {
+  for (unsigned i = 0; i < c1.size(); i++) {
     result.push_back(-n * c1[i] + d * c2[i]);
   }
   return result;
@@ -706,16 +705,16 @@ SmallVector<int64_t, 8> mlir::combineConstraint(ArrayRef<int64_t> c1,
 Optional<SmallVector<int64_t, 8>>
 mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
                SmallVectorImpl<int64_t> &invalid) {
-  size_t n = bs.getNumDimIds();
+  unsigned n = bs.getNumDimIds();
   Simplex simplex(n + 1);
 
   // for every constraint t(x) + c of bs, make it become t(x) + c*lambda
-  for (size_t k = 0; k < bs.getNumEqualities(); k++) {
+  for (unsigned k = 0; k < bs.getNumEqualities(); k++) {
     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(bs.getEquality(k));
     curr.push_back(0);
     simplex.addEquality(curr);
   }
-  for (size_t k = 0; k < bs.getNumInequalities(); k++) {
+  for (unsigned k = 0; k < bs.getNumInequalities(); k++) {
     SmallVector<int64_t, 8> curr = arrayRefToSmallVector(bs.getInequality(k));
     curr.push_back(0);
     simplex.addInequality(curr);
@@ -896,7 +895,7 @@ void AddEqualitiesAsInequalities(ArrayRef<ArrayRef<int64_t>> eq,
 
 void mlir::dump(const ArrayRef<int64_t> cons) {
   std::cout << cons[cons.size() - 1] << " + ";
-  for (size_t i = 1; i < cons.size(); i++) {
+  for (unsigned i = 1; i < cons.size(); i++) {
     std::cout << cons[i - 1] << "x" << i - 1;
     if (i == cons.size() - 1) {
       break;
@@ -905,8 +904,3 @@ void mlir::dump(const ArrayRef<int64_t> cons) {
   }
   std::cout << " >= 0" << std::endl;
 }
-/*This function removes the BasicSet at position pos
- */
-/*template <typename T> void removeElement(int pos, std::vector<T> &vec) {
-  vec.erase(vec.begin() + pos);
-}*/
