@@ -41,6 +41,7 @@ class Presburger_Op<string mnemonic, list<OpTrait> traits = []> :
     // PresburgerOps.cpp:
     let parser = [{ return ::parse$cppClass(parser, result); }];
     let printer = [{ ::print(p, *this); }];
+    let verifier = [{ return ::verify(*this); }];
 }
 
 class Presburger_BinSetOp<string mnemonic, list<OpTrait> traits = [
@@ -52,6 +53,7 @@ class Presburger_BinSetOp<string mnemonic, list<OpTrait> traits = [
     let results = (outs PresburgerSetType:$res);
 
     let parser = [{ return ::parseBinSetOp(parser, result); }];
+    let verifier = [{ return ::verifyBinSetOp(*this); }];
 }
 
 

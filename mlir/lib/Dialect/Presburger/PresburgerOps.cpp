@@ -71,6 +71,24 @@ static ParseResult parseBinSetOp(OpAsmParser &parser, OperationState &result) {
   return success();
 }
 
+/// verifies that the sets definition is actually reachable
+template <typename OpTy>
+static LogicalResult verifyLocality(Value set, OpTy op) {
+  if (!set.getDefiningOp())
+    return op.emitError("expect local set definitions");
+
+  return success();
+}
+
+/// Verifies that both set operands are defined locally
+template <typename OpTy>
+static LogicalResult verifyBinSetOp(OpTy op) {
+  if (failed(verifyLocality(op.set1(), op)) ||
+      failed(verifyLocality(op.set2(), op)))
+    return failure();
+  return success();
+}
+
 // TODO  Discuss if we want the types or not.
 
 static void print(OpAsmPrinter &printer, UnionOp op) {
@@ -92,6 +110,8 @@ static void print(OpAsmPrinter &printer, IntersectOp op) {
   printer << " : ";
   printer.printType(op.getType());
 }
+
+// subtract
 
 static void print(OpAsmPrinter &printer, SubtractOp op) {
   printer << "presburger.subtract ";
@@ -130,6 +150,10 @@ static void print(OpAsmPrinter &printer, ComplementOp op) {
   printer.printType(op.getType());
 }
 
+static LogicalResult verify(ComplementOp op) {
+  return verifyLocality(op.set(), op);
+}
+
 // equal
 
 static ParseResult parseEqualOp(OpAsmParser &parser, OperationState &result) {
@@ -152,6 +176,8 @@ static ParseResult parseEqualOp(OpAsmParser &parser, OperationState &result) {
 
   return success();
 }
+
+// Equal
 
 // TODO discuss if we want to print this in that fashion. Especialy discuss the
 // type stuff

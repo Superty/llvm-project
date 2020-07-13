@@ -29,7 +29,6 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect]> {
     let arguments = (ins PresburgerSetAttr:$set);
 
     let results = (outs PresburgerSetType:$res);
-    let verifier = [{ return ::verify(*this); }];
 }
 
 
@@ -41,6 +40,7 @@ def Presburger_UnionOp : Presburger_BinSetOp<"union"> {
         Presburger sets.
         It requires two operands of type `!presburger.set<dimC, symC>` that have
         matching `dimC` and `symC`.
+        The sets need to be defined locally, otherwise this operation is invalid. 
 
         **Examples:**
 
@@ -59,10 +59,11 @@ def Presburger_IntersectOp : Presburger_BinSetOp<"intersect"> {
     let summary = "intersection of two presburger sets";
 
     let description = [{
-        The `presburger.intersect` operator allows us to perfom an intersection of two
-        Presburger sets.
+        The `presburger.intersect` operator allows us to perfom an intersection 
+        of two Presburger sets.
         It requires two operands of type `!presburger.set<dimC, symC>` that have
         matching `dimC` and `symC`.
+        The sets need to be defined locally, otherwise this operation is invalid. 
 
         **Examples:**
 
@@ -84,7 +85,9 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
         The `presburger.subtract` operator allows us to perfom a subtraction of two
         Presburger sets.
         It requires two operands of type `!presburger.set<dimC, symC>` that have
-        matching `dimC` and `symC`.
+        matching `dimC` and `symC`. 
+        The sets need to be defined locally, otherwise this operation is invalid. 
+
 
         **Examples:**
         // TODO change example
@@ -106,7 +109,8 @@ def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
 
     let description = [{
         The `presburger.complement` operator allows us to compute the complement 
-        of a given Presburger set
+        of a given Presburger set. The set need to be defined locally, otherwise 
+        this operation is invalid. 
 
         **Examples:**
 
@@ -132,7 +136,7 @@ def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect,
     let description = [{
         The `presburger.equal` operator performs a semantic equality check. 
         If both Presburger sets contain the examt same points they are considered
-        equal. The result type is i32.
+        equal. The result type is i1.
 
         **Examples:**
 
@@ -147,6 +151,7 @@ def Presburger_EqualOp : Presburger_Op<"equal", [NoSideEffect,
     let arguments = (ins PresburgerSetType:$set1, PresburgerSetType:$set2);
 
     let results = (outs BoolLike:$res);
+    let verifier = [{ return ::verifyBinSetOp(*this); }];
 
     let hasCanonicalizer = 1;
 }
