@@ -1,7 +1,10 @@
 #include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Dialect/Presburger/Parser.h"
+#include <fstream>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <iostream>
+#include <string>
 
 using namespace mlir;
 using namespace mlir::presburger;
@@ -116,13 +119,38 @@ TEST(CoalesceTest, combineConstraint) {
 }
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
-  PresburgerSet new_set = coalesce(set);
+  PresburgerSet newSet = coalesce(set);
   set.dump();
-  new_set.dump();
-  EXPECT_TRUE(PresburgerSet::equal(set, new_set));
-  EXPECT_TRUE(expectedNumBasicSets ==
-              new_set.getFlatAffineConstraints().size());
+  newSet.dump();
+  EXPECT_TRUE(PresburgerSet::equal(set, newSet));
+  EXPECT_TRUE(expectedNumBasicSets == newSet.getFlatAffineConstraints().size());
 }
+
+/*TEST(CoalesceTest, failing) {
+  PresburgerSet curr =
+      setFromString("(d0, d1)[] : (-d0 + -2147483650 >= 0  or d0 + -2499 >= 0  "
+                    "or d0  >= 0 and -d0 + 2498 >= 0 and d1  >= 0 )");
+  PresburgerSet newSet = coalesce(curr);
+  EXPECT_TRUE(PresburgerSet::equal(newSet, curr));
+}
+
+TEST(CoalesceTest, performance) {
+  std::ifstream newfile("new_tests.txt");
+  std::string curr;
+  int i = 0;
+  while (std::getline(newfile, curr)) {
+    i++;
+    std::cout << i << std::endl;
+    PresburgerSet currentSet = setFromString(curr);
+    PresburgerSet newSet = coalesce(currentSet);
+    if (!PresburgerSet::equal(newSet, currentSet)) {
+      newSet.dump();
+      currentSet.dump();
+      EXPECT_TRUE(false);
+    }
+  }
+  newfile.close();
+}*/
 
 TEST(CoalesceTest, contained) {
   PresburgerSet contained =
@@ -136,10 +164,10 @@ TEST(CoalesceTest, cut) {
   expectCoalesce(1, cut);
 }
 
-TEST(CoalesceTest, adj_ineq) {
-  PresburgerSet adj_ineq =
+TEST(CoalesceTest, adjIneq) {
+  PresburgerSet adjIneq =
       setFromString("(x0) : (x0 >= 0 and x0 <= 1 or x0 >= 2 and x0 <= 3)");
-  expectCoalesce(1, adj_ineq);
+  expectCoalesce(1, adjIneq);
 }
 
 TEST(CoalesceTest, separate) {
@@ -148,125 +176,124 @@ TEST(CoalesceTest, separate) {
   expectCoalesce(2, separate);
 }
 
-TEST(CoalesceTest, adj_eq) {
-  PresburgerSet adj_eq =
-      setFromString("(x0) : (x0 = 1 or x0 >= 2 and x0 <= 3)");
-  expectCoalesce(1, adj_eq);
+TEST(CoalesceTest, adjEq) {
+  PresburgerSet adjEq = setFromString("(x0) : (x0 = 1 or x0 >= 2 and x0 <= 3)");
+  expectCoalesce(1, adjEq);
 }
 
-TEST(CoalesceTest, adj_eqs) {
-  PresburgerSet adj_eq = setFromString("(x0) : (x0 = 1 or x0 = 2)");
-  expectCoalesce(1, adj_eq);
+TEST(CoalesceTest, adjEqs) {
+  PresburgerSet adjEqs = setFromString("(x0) : (x0 = 1 or x0 = 2)");
+  expectCoalesce(1, adjEqs);
 }
 
-TEST(CoalesceTest, eq_separate) {
-  PresburgerSet eq_separate =
+TEST(CoalesceTest, eqSeparate) {
+  PresburgerSet eqSeparate =
       setFromString(" (x0) : (x0 = 0 or x0 >= 2 and x0 <= 3)");
-  expectCoalesce(2, eq_separate);
+  expectCoalesce(2, eqSeparate);
 }
 
-TEST(CoalesceTest, eq_as_ineq_contained) {
-  PresburgerSet eq_as_ineq =
+TEST(CoalesceTest, eqAsIneqContained) {
+  PresburgerSet eqAsIneqContained =
       setFromString(" (x0) : (x0 <= 3 and x0 >= 3 or x0 >=2 and x0 <= 3)");
-  expectCoalesce(1, eq_as_ineq);
+  expectCoalesce(1, eqAsIneqContained);
 }
 
-TEST(CoalesceTest, eq_contained) {
-  PresburgerSet eq_contained =
+TEST(CoalesceTest, eqContained) {
+  PresburgerSet eqContained =
       setFromString(" (x0) : (x0 = 3 or x0 >= 2 and x0 <= 3)");
-  expectCoalesce(1, eq_contained);
+  expectCoalesce(1, eqContained);
 }
 
-TEST(CoalesceTest, multi_dim_contained) {
-  PresburgerSet multi_dim_contained =
+TEST(CoalesceTest, multiDimContained) {
+  PresburgerSet multiDimContained =
       setFromString(" (x0, x1) : (x0 >= 0 and x0 <= 4 and x1 >= 0 and x1 <= 4 "
                     "or x0 >= 2 and x0 <= 3 and x1 >= 2 and x1 <= 3)");
-  expectCoalesce(1, multi_dim_contained);
+  expectCoalesce(1, multiDimContained);
 }
 
-TEST(CoalesceTest, multi_dim_adj_ineq) {
-  PresburgerSet multi_dim_adj_ineq = setFromString(
+TEST(CoalesceTest, multiDimAdjIneq) {
+  PresburgerSet multiDimAdjIneq = setFromString(
       " (x0, x1) : (x0 >= 0 and x0 <= 3 and x1 >= 0 and x1 <= 1 or x0 >= 0 and "
       "x0 <= 3 and x1 <= 2 and x1 <= 3)");
-  expectCoalesce(1, multi_dim_adj_ineq);
+  expectCoalesce(1, multiDimAdjIneq);
 }
 
-TEST(CoalesceTest, multi_dim_separate) {
-  PresburgerSet multi_dim_separate = setFromString(
+TEST(CoalesceTest, multiDimSeparate) {
+  PresburgerSet multiDimSeparate = setFromString(
       "(x0, x1) : (x0 >= 0 and x0 <= 1 and x1 >= 0 and x1 <= 1 or x0 >= 2 and "
       "x0 <= 3 and x1 >= 2 and x1 <= 3)");
-  expectCoalesce(2, multi_dim_separate);
+  expectCoalesce(2, multiDimSeparate);
 }
 
-TEST(CoalesceTest, multi_dim_cut) {
-  PresburgerSet multi_dim_cut = setFromString(
+TEST(CoalesceTest, multiDimCut) {
+  PresburgerSet multiDimCut = setFromString(
       "(x,y) : (4x -5y <= 0 and y <= 4 and 3x + 4y >= 0 and x - y + 7 >= 0 or "
       "y >= 0 and x <= 0 and y <= 4 and x - y + 9 >= 0 and 2x + 5y + 4 >= 0)");
-  expectCoalesce(1, multi_dim_cut);
+  expectCoalesce(1, multiDimCut);
 }
 
-TEST(CoalesceTest, multi_dim_non_cut) {
-  PresburgerSet multi_dim_non_cut =
+TEST(CoalesceTest, multiDimNonCut) {
+  PresburgerSet multiDimNonCut =
       setFromString("(x,y) :  (y >= 0 and x <= 0 and y <= 4 and x - y + 9 "
                     ">= 0 and 2x + 5y + 4 >= 0 or 4x -5y <= 0 and 3x + 4y "
                     ">= 0 and x - y + 7 >= 0 and x + y - 10 <= 0)");
-  expectCoalesce(2, multi_dim_non_cut);
+  expectCoalesce(2, multiDimNonCut);
 }
 
-TEST(CoalesceTest, multi_dim_adj_eqs) {
-  PresburgerSet multi_dim_adj_eqs =
+TEST(CoalesceTest, multiDimAdjEqs) {
+  PresburgerSet multiDimAdjEqs =
       setFromString("(x,y) :  (y = x and y >= 0 and y <= 4 or x - 1 = y "
                     "and y >= 0 and y <= 3)");
-  expectCoalesce(1, multi_dim_adj_eqs);
+  expectCoalesce(1, multiDimAdjEqs);
 }
 
-TEST(CoalesceTest, multi_dim_adj_eqs2) {
-  PresburgerSet multi_dim_adj_eqs2 =
+TEST(CoalesceTest, multiDimAdjEqs2) {
+  PresburgerSet multiDimAdjEqs2 =
       setFromString("(x,y) :  (y = x and y >= 0 and y <= 4 or x - 1 = y "
                     "and y >= 1 and y <= 3)");
-  expectCoalesce(1, multi_dim_adj_eqs2);
+  expectCoalesce(1, multiDimAdjEqs2);
 }
 
-TEST(CoalesceTest, multi_dim_adj_eqs3) {
-  PresburgerSet multi_dim_adj_eqs2 =
+TEST(CoalesceTest, multiDimAdjEqs3) {
+  PresburgerSet multiDimAdjEqs3 =
       setFromString("(x,y) : ( 2x = 3y and y >= 0 and x <= 6 or 2x = 3y+1 "
                     "and y >= 2 and y <= 5)");
-  expectCoalesce(1, multi_dim_adj_eqs2);
+  expectCoalesce(1, multiDimAdjEqs3);
 }
 
-TEST(CoalesceTest, multi_dim_adj_eq_to_poly) {
-  PresburgerSet multi_dim_adj_eq_to_poly = setFromString(
+TEST(CoalesceTest, multiDimAdjEqToPoly) {
+  PresburgerSet multiDimAdjEqToPoly = setFromString(
       "(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x <= -y + 3 or x "
       "= 1 and y >= 0 and y <= 2)");
-  expectCoalesce(1, multi_dim_adj_eq_to_poly);
+  expectCoalesce(1, multiDimAdjEqToPoly);
 }
 
-TEST(CoalesceTest, multi_dim_adj_eq_to_poly_complex) {
-  PresburgerSet multi_dim_adj_eq_to_poly = setFromString(
+TEST(CoalesceTest, multiDimAdjEqToPolyComplex) {
+  PresburgerSet multiDimAdjEqToPolyComplex = setFromString(
       "(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x <= -y + 3 or x "
       "= 1 and y >= 1 and y <= 2)");
-  expectCoalesce(1, multi_dim_adj_eq_to_poly);
+  expectCoalesce(1, multiDimAdjEqToPolyComplex);
 }
 
-TEST(CoalesceTest, multi_sets_all_contained) {
-  PresburgerSet multi_sets_all_contained =
+TEST(CoalesceTest, multiSetsAllContained) {
+  PresburgerSet multiSetsAllContained =
       setFromString("(x0) : (x0 >= 0 and x0 <= 5 or x0 >= 2 and x0 "
                     "<= 3 or x0 >= 4 and x0 <= 5)");
-  expectCoalesce(1, multi_sets_all_contained);
+  expectCoalesce(1, multiSetsAllContained);
 }
 
-TEST(CoalesceTest, multi_sets_one_contained) {
-  PresburgerSet multi_sets_one_contained =
+TEST(CoalesceTest, multiSetsOneContained) {
+  PresburgerSet multiSetsOneContained =
       setFromString("(x0) : (x0 >= 0 and x0 <= 3 or x0 >= 2 and x0 "
                     "<= 3 or x0 >= 2 and x0 <= 5)");
-  expectCoalesce(1, multi_sets_one_contained);
+  expectCoalesce(1, multiSetsOneContained);
 }
 
-TEST(CoalesceTest, multi_set_not_contained) {
-  PresburgerSet multi_sets_not_contained =
+TEST(CoalesceTest, multiSetsNotContained) {
+  PresburgerSet multiSetsNotContained =
       setFromString("(x0) : (x0 >= 0 and x0 <= 1 or x0 >= 2 and x0 "
                     "<= 3 or x0 >= 4 and x0 <= 5)");
-  expectCoalesce(1, multi_sets_not_contained);
+  expectCoalesce(1, multiSetsNotContained);
 }
 
 TEST(CoalesceTest, protrusion) {
@@ -276,10 +303,17 @@ TEST(CoalesceTest, protrusion) {
   expectCoalesce(1, protrusion);
 }
 
-TEST(CoalesceTest, nearly_protrusion) {
-  PresburgerSet protrusion = setFromString(
+TEST(CoalesceTest, nearlyProtrusion) {
+  PresburgerSet nearlyProtrusion = setFromString(
       "(x,y) : (x >= 0 and y >= 0 and y <= 3 and x <= 9 or y >= 1 "
       "and y <= 5 and y <= x - 1 and x + y - 11 <= 0)");
-  expectCoalesce(2, protrusion);
+  expectCoalesce(2, nearlyProtrusion);
 }
 
+/*TEST(CoalesceTest, twoAdj) {
+  PresburgerSet twoAdj = setFromString(
+      "(x,y) : (x = 1 and y >= 0 and y <= 2 or x = 2 and y >= 3 and y <= 5)");
+  // The result should be something like: "(x,y) : ( x >= 1 and x <= 2 and 3x -y
+  // -3 <= 0 and 3x -y-1 >= 0)");
+  expectCoalesce(1, twoAdj);
+}*/

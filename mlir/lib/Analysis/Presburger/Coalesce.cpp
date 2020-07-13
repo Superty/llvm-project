@@ -15,6 +15,9 @@ using namespace mlir;
 /// TODO: find better name than t
 /// TODO: possibly change up structure of Info, if simplex manages to classify
 /// adjacent to equality
+/// TODO: rebuild the struct as soon as adjEq can be typed. Two sets can be
+/// coalescable as long as the number of adjEqs isn't greater than the number of
+/// dimensions.
 struct Info {
   SmallVector<ArrayRef<int64_t>, 8> redundant;
   SmallVector<ArrayRef<int64_t>, 8> cut;
@@ -271,7 +274,6 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
         continue;
       if (!classify(simplex1, inequalities2, equalities2, info2))
         continue;
-
       // TODO: find better strategy than i--; break;
       // change indices when changing vector?
       if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
@@ -749,7 +751,6 @@ mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
 bool classify(Simplex &simp,
               const SmallVector<ArrayRef<int64_t>, 8> &inequalities,
               const SmallVector<ArrayRef<int64_t>, 8> &equalities, Info &info) {
-  Optional<SmallVector<int64_t, 8>> dummy = {};
   if (!classifyIneq(simp, inequalities, info))
     return false;
   SmallVector<ArrayRef<int64_t>, 8> eqAsIneq;
