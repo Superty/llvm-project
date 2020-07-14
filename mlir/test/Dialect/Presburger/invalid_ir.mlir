@@ -119,3 +119,16 @@ func @complement_non_local_sets(%set : !presburger.set<1,0>) {
   // expected-error @+1 {{expect local set definitions}}
   %uset = presburger.complement %set : !presburger.set<1,0>
 }
+
+// -----
+
+func @f() -> !presburger.set<1,0>
+
+func @subtract_non_local_sets() {
+  %set1 = call @f() : () -> !presburger.set<1,0>
+  %set2 = presburger.set #presburger<"(x)[] : (x - 1 >= 0 and -x + 3 >= 0)">
+
+  // expected-error @+1 {{expect operand to have trait ProducesPresburgerSet}}
+  %uset = presburger.subtract %set1, %set2 : !presburger.set<1,0>
+  return
+}

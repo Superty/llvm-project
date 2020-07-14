@@ -30,6 +30,12 @@ def PresburgerSetAttr : Attr<CPred<"$_self.isa<PresburgerSetAttr>()">, "Presburg
     let returnType = [{ PresburgerSet }];
 }
 //===----------------------------------------------------------------------===//
+// Presburger trait definition
+//===----------------------------------------------------------------------===//
+
+def ProducesPresburgerSet : NativeOpTrait<"ProducesPresburgerSet">;
+
+//===----------------------------------------------------------------------===//
 // Presburger op definition
 //===----------------------------------------------------------------------===//
 
@@ -45,7 +51,7 @@ class Presburger_Op<string mnemonic, list<OpTrait> traits = []> :
 }
 
 class Presburger_BinSetOp<string mnemonic, list<OpTrait> traits = [
-        NoSideEffect, SameOperandsAndResultType]> :
+        NoSideEffect, SameOperandsAndResultType, ProducesPresburgerSet]> :
     Presburger_Op<mnemonic, traits> {
 
     let arguments = (ins PresburgerSetType:$set1, PresburgerSetType:$set2);

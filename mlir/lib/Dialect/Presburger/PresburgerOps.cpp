@@ -74,8 +74,12 @@ static ParseResult parseBinSetOp(OpAsmParser &parser, OperationState &result) {
 /// verifies that the sets definition is actually reachable
 template <typename OpTy>
 static LogicalResult verifyLocality(Value set, OpTy op) {
-  if (!set.getDefiningOp())
+  Operation *defOp = set.getDefiningOp();
+  if (!defOp)
     return op.emitError("expect local set definitions");
+
+  if (!defOp->hasTrait<OpTrait::ProducesPresburgerSet>())
+    return op.emitError("expect operand to have trait ProducesPresburgerSet");
 
   return success();
 }

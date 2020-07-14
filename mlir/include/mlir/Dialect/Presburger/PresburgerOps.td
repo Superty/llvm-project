@@ -5,7 +5,7 @@ include "PresburgerDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 
-def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect]> {
+def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet]> {
     let summary = "presburger set";
 
     let description = [{
@@ -104,7 +104,7 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
 
 
 def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
-                                                    SameOperandsAndResultType]> {
+                              SameOperandsAndResultType, ProducesPresburgerSet]> {
     let summary = "complement of a Presburger set";
 
     let description = [{
