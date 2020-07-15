@@ -25,6 +25,12 @@ def FoldSubtractPattern : Pat<
   (Presburger_SubtractOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
   (SubtractSets $op, $set1, $set2)>;
 
+def CoalesceSet : NativeCodeCall<
+    "coalesceSet($_builder, $0.getDefiningOp(), $1)">;
+def FoldCoalescePattern : Pat<
+  (Presburger_CoalesceOp:$op (Presburger_SetOp $set)),
+  (CoalesceSet $op, $set)>;
+
 def ComplementSet : NativeCodeCall<
     "complementSet($_builder, $0.getDefiningOp(), $1)">;
 def FoldComplementPattern : Pat<

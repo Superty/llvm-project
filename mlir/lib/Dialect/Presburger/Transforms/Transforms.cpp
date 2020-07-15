@@ -1,4 +1,5 @@
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Dialect/Presburger/Attributes.h"
 #include "mlir/Dialect/Presburger/PresburgerOps.h"
@@ -37,6 +38,19 @@ static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
                           PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
   ps.subtract(attr2.getValue());
+
+  PresburgerSetType type = PresburgerSetType::get(
+      rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
+
+  PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
+}
+
+static SetOp coalesceSet(PatternRewriter &rewriter, Operation *op,
+                         PresburgerSetAttr attr) {
+  // TODO: change Namespace of coalesce
+  PresburgerSet in = attr.getValue();
+  PresburgerSet ps = coalesce(in);
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
@@ -89,6 +103,10 @@ void SubtractOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
   results.insert<FoldSubtractPattern>(context);
 }
 
+void CoalesceOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
+                                             MLIRContext *context) {
+  results.insert<FoldCoalescePattern>(context);
+}
 void ComplementOp::getCanonicalizationPatterns(
     OwningRewritePatternList &results, MLIRContext *context) {
   results.insert<FoldComplementPattern>(context);

@@ -132,7 +132,7 @@ void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
                     "or d0  >= 0 and -d0 + 2498 >= 0 and d1  >= 0 )");
   PresburgerSet newSet = coalesce(curr);
   EXPECT_TRUE(PresburgerSet::equal(newSet, curr));
-}
+}*/
 
 TEST(CoalesceTest, performance) {
   std::ifstream newfile("new_tests.txt");
@@ -150,7 +150,7 @@ TEST(CoalesceTest, performance) {
     }
   }
   newfile.close();
-}*/
+}
 
 TEST(CoalesceTest, contained) {
   PresburgerSet contained =

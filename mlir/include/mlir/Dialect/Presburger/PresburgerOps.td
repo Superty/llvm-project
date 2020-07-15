@@ -102,6 +102,29 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
     let hasCanonicalizer = 1;
 }
 
+def Presburger_CoalesceOp : Presburger_Op<"coalesce", [NoSideEffect,
+                                                    SameOperandsAndResultType]> {
+    let summary = "coalesce a Presburger set";
+
+    let description = [{
+        The `presburger.coalesce` operator optimizes a set by coalescing it's basicSets
+
+        **Examples:**
+
+        TODO
+
+        ```mlir
+        %0 = presburger.set #presburger<"(d0) : (d0 >= 0 and -d0 + 2 >= 0 or d0 -3 >= 0 and -d0 + 4 >= 0)">
+        %1 = presburger.coalesce %0 : !presburger<1,0>
+        ```
+    }];
+
+    let arguments = (ins PresburgerSetType:$set);
+
+    let results = (outs PresburgerSetType:$res);
+
+    let hasCanonicalizer = 1;
+}
 
 def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
                               SameOperandsAndResultType, ProducesPresburgerSet]> {
