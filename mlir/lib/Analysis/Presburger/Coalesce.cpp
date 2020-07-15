@@ -19,10 +19,13 @@ using namespace mlir;
 /// coalescable as long as the number of adjEqs isn't greater than the number of
 /// dimensions.
 struct Info {
+  // This is a hack to fix the memory leak
+  SmallVector<SmallVector<int64_t, 8>, 8> hack;
   SmallVector<ArrayRef<int64_t>, 8> redundant;
   SmallVector<ArrayRef<int64_t>, 8> cut;
   Optional<ArrayRef<int64_t>> adjIneq;
   Optional<ArrayRef<int64_t>> t;
+
   void dump() {
     std::cout << "red:" << std::endl;
     for (ArrayRef<int64_t> curr : this->redundant) {
@@ -52,8 +55,9 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t);
 void shift(SmallVectorImpl<int64_t> &t, int amount);
 
 /// add eq as two inequalities to target
-void AddEqualitiesAsInequalities(const ArrayRef<ArrayRef<int64_t>> eq,
-                                 SmallVectorImpl<ArrayRef<int64_t>> &target);
+void addEqualitiesAsInequalities(const ArrayRef<ArrayRef<int64_t>> eq,
+                                 SmallVectorImpl<ArrayRef<int64_t>> &target,
+                                 Info &info);
 
 /// adds all Equalities to bs
 void addEqualities(FlatAffineConstraints &bs,
@@ -191,7 +195,8 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 ///  |______||        |_______|
 ///
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
-                    unsigned i, unsigned j, SmallVector<int64_t, 8> t);
+                    unsigned i, unsigned j, SmallVector<int64_t, 8> t,
+                    Info &infoB);
 
 /// compute the non-pure adjEqCase and return whether it has worked.
 ///
@@ -344,7 +349,7 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
         // compute the inequality, that is adjacent to an equality by computing
         // the complement of the inequality part of an equality
         SmallVector<int64_t, 8> adjEq = complement(info1.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq)) {
+        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq, info2)) {
           // adjEq noCut case
           i--;
           break;
@@ -359,7 +364,7 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
         // compute the inequality, that is adjacent to an equality by computing
         // the complement of the inequality part of an equality
         SmallVector<int64_t, 8> adjEq = complement(info2.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, j, i, adjEq)) {
+        if (adjEqCaseNoCut(basicSetVector, j, i, adjEq, info1)) {
           // adjEq noCut case
           i--;
           break;
@@ -426,7 +431,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   SmallVector<ArrayRef<int64_t>, 8> constraintsB, equalitiesB;
   getBasicSetEqualities(b, equalitiesB);
   getBasicSetInequalities(b, constraintsB);
-  AddEqualitiesAsInequalities(equalitiesB, constraintsB);
+  addEqualitiesAsInequalities(equalitiesB, constraintsB, infoA);
 
   // For every cut constraint t of a, bPrime is computed as b intersected with
   // t(x) + 1 = 0. For this, t is shifted by 1.
@@ -533,7 +538,8 @@ bool mlir::sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2) {
 }
 
 bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
-                    unsigned i, unsigned j, SmallVector<int64_t, 8> t) {
+                    unsigned i, unsigned j, SmallVector<int64_t, 8> t,
+                    Info &infoB) {
   FlatAffineConstraints &A = basicSetVector[j];
   FlatAffineConstraints &B = basicSetVector[i];
   // relax t by 1 and add all other constraints of A to newSet.
@@ -565,7 +571,7 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   for (unsigned k = 0; k < B.getNumInequalities(); k++) {
     constraintsB.push_back(B.getInequality(k));
   }
-  AddEqualitiesAsInequalities(equalitiesB, constraintsB);
+  addEqualitiesAsInequalities(equalitiesB, constraintsB, infoB);
   for (ArrayRef<int64_t> curr : constraintsB) {
     if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
       return false;
@@ -754,7 +760,7 @@ bool classify(Simplex &simp,
   if (!classifyIneq(simp, inequalities, info))
     return false;
   SmallVector<ArrayRef<int64_t>, 8> eqAsIneq;
-  AddEqualitiesAsInequalities(equalities, eqAsIneq);
+  addEqualitiesAsInequalities(equalities, eqAsIneq, info);
   for (ArrayRef<int64_t> currentConstraint : eqAsIneq) {
     Simplex::IneqType ty = simp.ineqType(currentConstraint);
     switch (ty) {
@@ -880,16 +886,18 @@ bool mlir::containedFacet(ArrayRef<int64_t> ineq,
   return true;
 }
 
-void AddEqualitiesAsInequalities(ArrayRef<ArrayRef<int64_t>> eq,
-                                 SmallVectorImpl<ArrayRef<int64_t>> &target) {
+void addEqualitiesAsInequalities(ArrayRef<ArrayRef<int64_t>> eq,
+                                 SmallVectorImpl<ArrayRef<int64_t>> &target,
+                                 Info &info) {
   for (ArrayRef<int64_t> curr : eq) {
     target.push_back(curr);
     // TODO: fix this memory leak
-    SmallVector<int64_t, 8> *inverted = new SmallVector<int64_t, 8>();
+    SmallVector<int64_t, 8> inverted;
     for (const int64_t n : curr) {
-      inverted->push_back(-n);
+      inverted.push_back(-n);
     }
-    ArrayRef<int64_t> invertedRef(*inverted);
+    info.hack.push_back(inverted);
+    ArrayRef<int64_t> invertedRef(info.hack.back());
     target.push_back(invertedRef);
   }
 }
