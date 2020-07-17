@@ -227,14 +227,6 @@ SmallVector<int64_t, 8> complement(ArrayRef<int64_t> t) {
   return complement;
 }
 
-/// helperfuncton to convert arrayRefs to SmallVectors
-static SmallVector<int64_t, 8> arrayRefToSmallVector(ArrayRef<int64_t> ref) {
-  SmallVector<int64_t, 8> res;
-  for (const int64_t curr : ref)
-    res.push_back(curr);
-  return res;
-}
-
 /// returns all Equalities of a BasicSet as a SmallVector of ArrayRefs
 void getBasicSetEqualities(const FlatAffineConstraints &bs,
                            SmallVector<ArrayRef<int64_t>, 8> &eqs) {
@@ -437,7 +429,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // t(x) + 1 = 0. For this, t is shifted by 1.
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   for (unsigned l = 0; l < infoA.cut.size(); l++) {
-    SmallVector<int64_t, 8> t = arrayRefToSmallVector(infoA.cut[l]);
+    auto t = llvm::to_vector<8>(infoA.cut[l]);
     FlatAffineConstraints bPrime =
         FlatAffineConstraints(b.getNumDimIds(), b.getNumSymbolIds());
     addInequalities(bPrime, constraintsB);
@@ -455,7 +447,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
       // actually "touche" the polytope bPrime. Those are wrapped around t(x) +
       // 1 to include a.
       for (ArrayRef<int64_t> currCut : infoB.cut) {
-        SmallVector<int64_t, 8> curr1 = arrayRefToSmallVector(currCut);
+        auto curr1 = llvm::to_vector<8>(currCut);
         Simplex simp2(bPrime);
         simp2.addEquality(curr1);
         // TODO: "touching" the polytope is currently defined by adding the
@@ -486,7 +478,7 @@ bool protrusionCase(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // Additionally for every remaining cut constraint t of a, t + 1 >= 0 is
   // added.
   for (ArrayRef<int64_t> currRef : infoA.cut) {
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
+    auto curr = llvm::to_vector<8>(currRef);
     shift(curr, 1);
     newSet.addInequality(curr);
   }
@@ -547,9 +539,9 @@ bool adjEqCaseNoCut(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // Reasoning: if A had an equality, we would be in a different case.
   SmallVector<SmallVector<int64_t, 8>, 8> newSetInequalities;
   for (unsigned k = 0; k < A.getNumInequalities(); k++) {
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(A.getInequality(k));
+    auto curr = llvm::to_vector<8>(A.getInequality(k));
     if (!sameConstraint(t, curr)) {
-      newSetInequalities.push_back(arrayRefToSmallVector(A.getInequality(k)));
+      newSetInequalities.push_back(llvm::to_vector<8>(A.getInequality(k)));
     }
   }
   shift(t, 1);
@@ -591,7 +583,7 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // the constraint of a adjacent to an equality, it the complement of the
   // constraint f b, that is part of an equality and adjacent to an inequality.
   SmallVector<int64_t, 8> t =
-      complement(arrayRefToSmallVector(infoB.t.getValue()));
+      complement(llvm::to_vector<8>(infoB.t.getValue()));
   for (const int64_t n : t) {
     minusT.push_back(-n);
   }
@@ -600,7 +592,7 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // The cut constraints of a are wrapped around -t to include B.
   for (ArrayRef<int64_t> currRef : infoA.cut) {
     // TODO: why does the pure case differ here in that it doesn't wrap t?
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
+    auto curr = llvm::to_vector<8>(currRef);
     auto result = wrapping(b, minusT, curr);
     if (!result)
       return false;
@@ -622,7 +614,7 @@ bool adjEqCaseNonPure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // include a.
   for (ArrayRef<int64_t> currRef : infoB.cut) {
     if (!sameConstraint(minusT, currRef)) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
+      auto curr = llvm::to_vector<8>(currRef);
       auto result = wrapping(a, t, curr);
       if (!result)
         return false;
@@ -652,7 +644,7 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   FlatAffineConstraints &b = basicSetVector[j];
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   SmallVector<int64_t, 8> minusT;
-  SmallVector<int64_t, 8> t = arrayRefToSmallVector(infoA.t.getValue());
+  auto t = llvm::to_vector<8>(infoA.t.getValue());
   for (const int64_t n : t) {
     minusT.push_back(-n);
   }
@@ -661,7 +653,7 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // The cut constraints of a (except t) are wrapped around -t to include B.
   for (ArrayRef<int64_t> currRef : infoA.cut) {
     if (!sameConstraint(t, currRef)) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
+      auto curr = llvm::to_vector<8>(currRef);
       auto result = wrapping(b, minusT, curr);
       if (!result)
         return false;
@@ -676,7 +668,7 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
   // a.
   for (ArrayRef<int64_t> currRef : infoB.cut) {
     if (!sameConstraint(minusT, currRef)) {
-      SmallVector<int64_t, 8> curr = arrayRefToSmallVector(currRef);
+      auto curr = llvm::to_vector<8>(currRef);
       auto result = wrapping(a, t, curr);
       if (!result)
         return false;
@@ -718,12 +710,12 @@ mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
 
   // for every constraint t(x) + c of bs, make it become t(x) + c*lambda
   for (unsigned k = 0; k < bs.getNumEqualities(); k++) {
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(bs.getEquality(k));
+    auto curr = llvm::to_vector<8>(bs.getEquality(k));
     curr.push_back(0);
     simplex.addEquality(curr);
   }
   for (unsigned k = 0; k < bs.getNumInequalities(); k++) {
-    SmallVector<int64_t, 8> curr = arrayRefToSmallVector(bs.getInequality(k));
+    auto curr = llvm::to_vector<8>(bs.getInequality(k));
     curr.push_back(0);
     simplex.addInequality(curr);
   }

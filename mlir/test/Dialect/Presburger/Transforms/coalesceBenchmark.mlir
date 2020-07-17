@@ -12,3 +12,14 @@ func @contained() -> i1 {
 }
 
 // ----
+
+// CHECK-LABEL: func @performance0
+func @performance0() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant true
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(d0, d1, d2, d3, d4, d5, d6, d7)[] : (-d1 + d6  = 0 and d5  = 0 and d4 + -2 = 0 and d2 + -5 = 0 and d0 + -11 = 0 and d1  >= 0 and -d1 + 4095 >= 0 and d3 + 2159 >= 0 and -d3  >= 0 and d3 + 16d7 + 15 >= 0 and -d3 + -16d7  >= 0  or -d1 + d6  = 0 and d5  = 0 and d4 + -1 = 0 and d2 + -4 = 0 and d0 + -9 = 0 and d1  >= 0 and -d1 + 4095 >= 0 and d3  >= 0 and -d3 + 2159 >= 0 and -d3 + 16d7 + 15 >= 0 and d3 + -16d7  >= 0  or -d1 + d6  = 0 and d5  = 0 and d4  = 0 and d2 + -4 = 0 and d0 + -9 = 0 and d1  >= 0 and -d1 + 4095 >= 0 and d3  >= 0 and -d3 + 2159 >= 0 and -d3 + 16d7 + 15 >= 0 and d3 + -16d7  >= 0 )">
+
+  %r = presburger.coalesce %set : !presburger.set<8,0>
+  %e = presburger.equal %set, %r : !presburger.set<8,0>, !presburger.set<8,0>
+  return %e : i1
+}
