@@ -13,8 +13,6 @@
 namespace mlir {
 using Direction = Simplex::Direction;
 
-const int nullIndex = std::numeric_limits<int>::max();
-
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned oNParam)
     : Simplex(nVar), nParam(oNParam), nDiv(0) {
