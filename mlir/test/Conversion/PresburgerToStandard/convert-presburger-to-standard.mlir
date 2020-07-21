@@ -49,8 +49,8 @@
 // CHECK-NEXT:   return %25 : i1
 // CHECK-NEXT: }
 func @contains_runtime(%x0 : index, %x1 : index, %s0 : index) -> i1 {
-  %set1 = presburger.set #presburger<"(x, y)[s] : (x + y >= 0 and -x + 4 >= s and x - y >= 0)">
+  %set1 = presburger.set #presburger<"set(x, y)[s] : (x + y >= 0 and -x + 4 >= s and x - y >= 0)">
 
-  %c = presburger.contains (%x0, %x1)[%s0] %set1 
+  %c = presburger.contains (%x0, %x1)[%s0] %set1
   return %c : i1
 }

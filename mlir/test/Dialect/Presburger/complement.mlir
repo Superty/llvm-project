@@ -3,7 +3,7 @@
 func @simple_complement() {
 
   // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
-  %set1 = presburger.set #presburger<"(x)[] : (x >= 0 and -x + 4>= 0)">
+  %set1 = presburger.set #presburger<"set(x)[] : (x >= 0 and -x + 4>= 0)">
 
   // CHECK: %{{.*}} = presburger.complement %[[S1]] : !presburger.set<1,0>
   %uset = presburger.complement %set1 : !presburger.set<1,0>
@@ -15,7 +15,7 @@ func @simple_complement() {
 func @complement_with_syms() {
 
   // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
-  %set1 = presburger.set #presburger<"(x)[N] : (x >= 0 and -x + 2N>= 0)">
+  %set1 = presburger.set #presburger<"set(x)[N] : (x >= 0 and -x + 2N>= 0)">
 
   // CHECK: %{{.*}} = presburger.complement %[[S1]] : !presburger.set<1,1>
   %uset = presburger.complement %set1 : !presburger.set<1,1>

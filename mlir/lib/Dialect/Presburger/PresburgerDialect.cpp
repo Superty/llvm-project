@@ -28,27 +28,40 @@ PresburgerDialect::PresburgerDialect(mlir::MLIRContext *context)
 
 Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
                                             Type attrT) const {
+
   auto callback = [&parser](SMLoc loc, const Twine &msg) {
     return parser.emitError(loc, msg);
   };
 
-  PresburgerSetParser p(parser.getFullSymbolSpec(), callback);
-  PresburgerSet set;
+  Parser p(parser.getFullSymbolSpec(), callback);
 
-  if (failed(p.parsePresburgerSet(set))) {
-    return Attribute();
+  // Parse the kind keyword first.
+  std::unique_ptr<VariableExpr> attrKind;
+  if (failed(p.parseVariable(attrKind)))
+    return {};
+
+  if (attrKind->getName() == PresburgerSetAttr::getKindName()) {
+    PresburgerSetParser setParser(p);
+    PresburgerSet set;
+
+    if (failed(setParser.parsePresburgerSet(set))) {
+      return Attribute();
+    }
+
+    PresburgerSetType type = PresburgerSetType::get(
+        getContext(), set.getNumDims(), set.getNumSyms());
+
+    return PresburgerSetAttr::get(type, set);
+  } else {
+    return {};
   }
-
-  PresburgerSetType type =
-      PresburgerSetType::get(getContext(), set.getNumDims(), set.getNumSyms());
-
-  return PresburgerSetAttr::get(type, set);
 }
 
 void PresburgerDialect::printAttribute(Attribute attr,
                                        DialectAsmPrinter &printer) const {
   switch (attr.getKind()) {
   case PresburgerAttributes::PresburgerSet:
+    printer << PresburgerSetAttr::getKindName();
     attr.cast<PresburgerSetAttr>().getValue().print(printer.getStream());
     break;
   default:

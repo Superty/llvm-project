@@ -12,6 +12,8 @@ struct PresburgerSetAttributeStorage : public AttributeStorage {
       : AttributeStorage(t), value(value) {}
 
   bool operator==(const KeyTy &key) const {
+    // TODO is this a good idea? it might be too expensive for the amount of
+    // memory we can save with it
     return PresburgerSet::equal(key.second, value);
   }
 
@@ -41,6 +43,8 @@ PresburgerSetAttr PresburgerSetAttr::get(PresburgerSetType t,
 }
 
 PresburgerSet PresburgerSetAttr::getValue() const { return getImpl()->value; }
+
+StringRef PresburgerSetAttr::getKindName() { return "set"; }
 
 } // namespace presburger
 } // namespace mlir

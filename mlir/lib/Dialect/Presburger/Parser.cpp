@@ -216,6 +216,14 @@ InFlightDiagnostic Lexer::emitError(const char *loc, const Twine &message) {
   return callback(SMLoc::getFromPointer(loc), message);
 }
 
+InFlightDiagnostic Lexer::emitError(SMLoc loc, const Twine &message) {
+  return callback(loc, message);
+}
+
+InFlightDiagnostic Lexer::emitErrorAtStart(const Twine &message) {
+  return emitError(SMLoc::getFromPointer(buffer.begin()), message);
+}
+
 InFlightDiagnostic Lexer::emitError(const Twine &message) {
   assert(!reachedEOF() &&
          "curPtr is out of range, you have to specify a location");
@@ -483,12 +491,19 @@ InFlightDiagnostic Parser::emitErrorForToken(Token token,
   return lexer.emitError(token.string().begin(), message);
 }
 
+InFlightDiagnostic Parser::emitError(const Twine &message) {
+  return lexer.emitErrorAtStart(message);
+}
+
+InFlightDiagnostic Parser::emitError(SMLoc loc, const Twine &message) {
+  return lexer.emitError(loc, message);
+}
+
 //===----------------------------------------------------------------------===//
 // PresburgerSetParser
 //===----------------------------------------------------------------------===//
 
-PresburgerSetParser::PresburgerSetParser(StringRef str, ErrorCallback callback)
-    : str(str), callback(callback) {}
+PresburgerSetParser::PresburgerSetParser(Parser parser) : parser(parser) {}
 
 LogicalResult
 PresburgerSetParser::initVariables(const SmallVector<StringRef, 8> &vars,
@@ -507,7 +522,6 @@ PresburgerSetParser::initVariables(const SmallVector<StringRef, 8> &vars,
 
 LogicalResult PresburgerSetParser::parsePresburgerSet(PresburgerSet &set) {
 
-  Parser parser(str, callback);
   std::unique_ptr<SetExpr> setExpr;
   if (failed(parser.parseSet(setExpr)))
     return failure();
@@ -672,10 +686,10 @@ void PresburgerSetParser::addConstraint(
 }
 
 InFlightDiagnostic PresburgerSetParser::emitError(const Twine &message) {
-  return emitError(SMLoc::getFromPointer(str.begin()), message);
+  return parser.emitError(message);
 }
 
 InFlightDiagnostic PresburgerSetParser::emitError(SMLoc loc,
                                                   const Twine &message) {
-  return callback(loc, message);
+  return parser.emitError(loc, message);
 }

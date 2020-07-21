@@ -3,7 +3,7 @@
 func @simple_contains() {
 
   // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
-  %set1 = presburger.set #presburger<"(x)[] : (x >= 0 and -x + 4 >= 0)">
+  %set1 = presburger.set #presburger<"set(x)[] : (x >= 0 and -x + 4 >= 0)">
 
   // CHECK: %[[D1:.*]] = constant 0 : index
   %d1 = constant 0 : index
@@ -21,7 +21,7 @@ func @simple_contains() {
 func @simple_contains_with_syms() {
 
   // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
-  %set1 = presburger.set #presburger<"(x)[s] : (x >= 0 and -x + 4 >= s)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 and -x + 4 >= s)">
 
   // CHECK: %[[D1:.*]] = constant 0 : index
   %d1 = constant 0 : index

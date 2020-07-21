@@ -31,6 +31,8 @@ public:
 
   PresburgerSet getValue() const;
 
+  static StringRef getKindName();
+
   static bool kindof(unsigned kind) {
     return kind == PresburgerAttributes::PresburgerSet;
   }

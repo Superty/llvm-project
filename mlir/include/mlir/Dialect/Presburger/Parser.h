@@ -78,7 +78,9 @@ public:
   bool reachedEOF();
 
   InFlightDiagnostic emitError(const char *loc, const Twine &message = {});
+  InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
   InFlightDiagnostic emitError(const Twine &message = {});
+  InFlightDiagnostic emitErrorAtStart(const Twine &message = {});
 
 private:
   bool isSpace(char c);
@@ -283,9 +285,11 @@ public:
                              bool is_negated = false);
   LogicalResult parseVariable(std::unique_ptr<VariableExpr> &vExpr);
 
-private:
+  InFlightDiagnostic emitError(const Twine &message = {});
+  InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
   InFlightDiagnostic emitErrorForToken(Token token, const Twine &message = {});
 
+private:
   Lexer lexer;
 };
 
@@ -294,7 +298,7 @@ public:
   enum class Kind { Equality, Inequality };
   using Constraint = std::pair<SmallVector<int64_t, 8>, Kind>;
 
-  PresburgerSetParser(StringRef str, ErrorCallback callback);
+  PresburgerSetParser(Parser parser);
 
   LogicalResult parsePresburgerSet(PresburgerSet &set);
 
@@ -315,8 +319,7 @@ private:
 
   StringMap<size_t> dimNameToIndex;
   StringMap<size_t> symNameToIndex;
-  StringRef str;
-  ErrorCallback callback;
+  Parser parser;
 };
 
 }; // namespace presburger
