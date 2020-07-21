@@ -196,6 +196,8 @@ static void print(OpAsmPrinter &printer, EqualOp op) {
   printer.printType(op.set2().getType());
 }
 
+// Contains
+
 static ParseResult parseContainsOp(OpAsmParser &parser,
                                    OperationState &result) {
   unsigned numDims;
@@ -230,6 +232,10 @@ static void print(OpAsmPrinter &printer, ContainsOp op) {
                         setType.getDimCount(), printer);
   printer << " ";
   printer.printOperand(op.set());
+}
+
+static LogicalResult verify(ContainsOp op) {
+  return verifyLocality(op.set(), op);
 }
 
 namespace mlir {
