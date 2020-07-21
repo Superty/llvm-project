@@ -1,0 +1,14 @@
+// RUN: mlir-opt -canonicalize %s | FileCheck %s
+
+// CHECK-LABEL: func @performance9072
+func @performance9072() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant true
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(d0, d1, d2, d3, d4, d5, d6, d7)[] : (d0  >= 0 and d4  >= 0 and -32d0 + -d4 + 499 >= 0 and -d4 + 31 >= 0 and -64d0 + 32d1 + -2d4 + d5 + -1 >= 0 and d5  >= 0 and -d5 + 31 >= 0 and 64d0 + -32d1 + 2d4 + -d5 + 118 >= 0 and -64d0 + 32d2 + -2d4 + d6 + -1 >= 0 and d6  >= 0 and -d6 + 31 >= 0 and 64d0 + -32d2 + 2d4 + -d6 + 118 >= 0 and -64d0 + 32d3 + -2d4 + d7 + -1 >= 0 and d7  >= 0 and -d7 + 31 >= 0 and 64d0 + -32d3 + 2d4 + -d7 + 118 >= 0  or d0  >= 0 and d4  >= 0 and -32d0 + -d4 + 499 >= 0 and -d4 + 31 >= 0 and -64d0 + 32d1 + -2d4 + d5  >= 0 and d5  >= 0 and -d5 + 31 >= 0 and 64d0 + -32d1 + 2d4 + -d5 + 117 >= 0 and -64d0 + 32d2 + -2d4 + d6  >= 0 and d6  >= 0 and -d6 + 31 >= 0 and 64d0 + -32d2 + 2d4 + -d6 + 117 >= 0 and -64d0 + 32d3 + -2d4 + d7  >= 0 and d7  >= 0 and -d7 + 31 >= 0 and 64d0 + -32d3 + 2d4 + -d7 + 117 >= 0 )">
+
+  %r = presburger.coalesce %set : !presburger.set<8,0>
+  %e = presburger.equal %set, %r : !presburger.set<8,0>, !presburger.set<8,0>
+  return %e : i1
+}
+
+// ----

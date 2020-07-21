@@ -1,0 +1,14 @@
+// RUN: mlir-opt -canonicalize %s | FileCheck %s
+
+// CHECK-LABEL: func @performance5926
+func @performance5926() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant true
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(d0, d1, d2, d3, d4, d5, d6, d7, d8, d9)[] : (d9 + -1099 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and d2 + -6 >= 0  or d9 + -1099 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and d2 + -5 = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and -d0 + d3 + -1 >= 0  or d9 + -1099 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and -d0 + d3  = 0 and d2 + -5 = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and -d1 + d4 + -1 >= 0  or d9 + -1099 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and -d1 + d4  = 0 and -d0 + d3  = 0 and d2 + -5 = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and d5 + -3 >= 0  or d9 + -1099 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and d5 + -2 = 0 and -d1 + d4  = 0 and -d0 + d3  = 0 and d2 + -5 = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and d6 + -1100 >= 0  or -d6 + d9 + 1 = 0 and -d1 + d8  = 0 and -d0 + d7  = 0 and d5 + -2 = 0 and -d1 + d4  = 0 and -d0 + d3  = 0 and d2 + -5 = 0 and d0  >= 0 and -d0 + 799 >= 0 and d1  >= 0 and -d1 + 899 >= 0 and d6 + -1 >= 0 and -d6 + 1099 >= 0 )">
+
+  %r = presburger.coalesce %set : !presburger.set<10,0>
+  %e = presburger.equal %set, %r : !presburger.set<10,0>, !presburger.set<10,0>
+  return %e : i1
+}
+
+// ----

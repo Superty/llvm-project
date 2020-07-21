@@ -1,0 +1,14 @@
+// RUN: mlir-opt -canonicalize %s | FileCheck %s
+
+// CHECK-LABEL: func @performance1415
+func @performance1415() -> i1 {
+  // CHECK-NEXT: %[[S:.*]] = constant true
+  // CHECK-NEXT: return %[[S]]
+  %set = presburger.set #presburger<"(d0, d1, d2, d3)[] : (d3  = 0 and d1  = 0 and -d0 + 2000 >= 0 and d2 + -1 >= 0 and d0 + -d2 + -1 >= 0  or d3  = 0 and -d0 + d2  = 0 and d1  = 0 and d0 + -1 >= 0 and -d0 + 2000 >= 0 )">
+
+  %r = presburger.coalesce %set : !presburger.set<4,0>
+  %e = presburger.equal %set, %r : !presburger.set<4,0>, !presburger.set<4,0>
+  return %e : i1
+}
+
+// ----
