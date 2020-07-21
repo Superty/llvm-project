@@ -103,7 +103,7 @@ def Presburger_SubtractOp : Presburger_BinSetOp<"subtract"> {
 }
 
 def Presburger_CoalesceOp : Presburger_Op<"coalesce", [NoSideEffect,
-                                                    SameOperandsAndResultType]> {
+                            SameOperandsAndResultType, ProducesPresburgerSet]> {
     let summary = "coalesce a Presburger set";
 
     let description = [{

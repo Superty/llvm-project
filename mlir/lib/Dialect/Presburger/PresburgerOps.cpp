@@ -154,6 +154,10 @@ static void print(OpAsmPrinter &printer, CoalesceOp op) {
   printer.printType(op.getType());
 }
 
+static LogicalResult verify(CoalesceOp op) {
+  return verifyLocality(op.set(), op);
+}
+
 // complement
 
 static ParseResult parseComplementOp(OpAsmParser &parser,
