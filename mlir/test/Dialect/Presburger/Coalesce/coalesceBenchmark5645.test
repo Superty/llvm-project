@@ -4,7 +4,7 @@
 func @performance5645() -> i1 {
   // CHECK-NEXT: %[[S:.*]] = constant true
   // CHECK-NEXT: return %[[S]]
-  %set = presburger.set #presburger<"(d0, d1)[p0] : (-p0 d1  = 0 and d0 + -1 >= 0 and -d0 + 999 >= 0  or -p0 d1  = 0 and -p0 1198 >= 0 and d0 + -1 >= 0 and -d0 + 999 >= 0  or -p0 d1  = 0 and -p0 1198 >= 0 and d0  >= 0 and -d0 + 999 >= 0  or -p0 1200d0 + d1  = 0 and -p0 1198 >= 0 and -p0 1200d0 + 1199 >= 0 and p0 -1200d0  >= 0 )">
+  %set = presburger.set #presburger<"(d0, d1)[p0] : (-p0 d1  = 0 and d0  + -1 >= 0 and -d0  + 999 >= 0  or -p0 d1  = 0 and -p + 1198 >= 0 and d0  + -1 >= 0 and -d0  + 999 >= 0  or -p0 d1  = 0 and -p + 1198 >= 0 and d0  >= 0 and -d0  + 999 >= 0  or -p0 1200d0 + d1  = 0 and -p + 1198 >= 0 and -p0 1200d0  + 1199 >= 0 and p0 -1200d0  >= 0 )">
 
   %r = presburger.coalesce %set : !presburger.set<2,1>
   %e = presburger.equal %set, %r : !presburger.set<2,1>, !presburger.set<2,1>

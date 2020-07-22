@@ -4,7 +4,7 @@
 func @performance8426() -> i1 {
   // CHECK-NEXT: %[[S:.*]] = constant true
   // CHECK-NEXT: return %[[S]]
-  %set = presburger.set #presburger<"(d0, d1, d2, d3)[] : (d0 + d2 + -2500 = 0 and -d0 + 2499 >= 0 and d1  >= 0 and d0 + -d1 + -1 >= 0 and d0 + -d1 + d3 + -2500 >= 0 and -d0 + d1 + -d3 + 2503 >= 0  or d0 + d2 + -2499 = 0 and -d0 + 2499 >= 0 and d1  >= 0 and d0 + -d1 + -1 >= 0 and d0 + -d1 + d3 + -2500 >= 0 and -d0 + d1 + -d3 + 2503 >= 0  or d0 + d2 + -2499 = 0 and -d0 + 2499 >= 0 and d1  >= 0 and d0 + -d1 + -1 >= 0 and d0 + -d1 + d3 + -2499 >= 0 and -d0 + d1 + -d3 + 2502 >= 0 )">
+  %set = presburger.set #presburger<"(d0, d1, d2, d3)[] : (d0 + d2  + -2500 = 0 and -d0  + 2499 >= 0 and d1  >= 0 and d0 + -d1  + -1 >= 0 and d0 + -d1 + d3  + -2500 >= 0 and -d0 + d1 + -d3  + 2503 >= 0  or d0 + d2  + -2499 = 0 and -d0  + 2499 >= 0 and d1  >= 0 and d0 + -d1  + -1 >= 0 and d0 + -d1 + d3  + -2500 >= 0 and -d0 + d1 + -d3  + 2503 >= 0  or d0 + d2  + -2499 = 0 and -d0  + 2499 >= 0 and d1  >= 0 and d0 + -d1  + -1 >= 0 and d0 + -d1 + d3  + -2499 >= 0 and -d0 + d1 + -d3  + 2502 >= 0 )">
 
   %r = presburger.coalesce %set : !presburger.set<4,0>
   %e = presburger.equal %set, %r : !presburger.set<4,0>, !presburger.set<4,0>

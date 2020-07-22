@@ -4,9 +4,9 @@ i = 0
 for line in testFile:
     print(i)
     # used to only get a subset of the tests.
-    # if (i < 4191 or i > 4201):
-    #    i += 1
-    #    continue
+    # if (i < 10000 or i > 12000):
+    #     i += 1
+    #     continue
     string = "coalesceBenchmark" + str(i) + ".test"
     writeFile = open(string, "w")
     line_arr = line.split(":")
