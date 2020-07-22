@@ -314,11 +314,16 @@ PresburgerSet::maybeGetCachedSample() const {
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
   printVariableList(os);
+  os << " : ";
+  printConstraints(os);
+}
+
+void PresburgerSet::printConstraints(raw_ostream &os) const {
   if (markedEmpty) {
-    os << " : (1 = 0)";
+    os << "(1 = 0)";
     return;
   }
-  os << " : (";
+  os << "(";
   bool fst = true;
   for (auto &c : flatAffineConstraints) {
     if (fst)

@@ -7,6 +7,7 @@
 #define PRESBURGER_PARSER_H
 
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/PwExpr.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/Support/LogicalResult.h"
@@ -51,6 +52,8 @@ public:
     Comma,
     And,
     Or,
+    Arrow,
+    SemiColon,
     Unknown
   };
   Token() : kind(Kind::Unknown) {}
@@ -109,6 +112,8 @@ public:
     Or,
     Constraint,
     Set,
+    Piece,
+    PwExpr,
     None
   };
 
@@ -262,12 +267,51 @@ private:
   std::unique_ptr<Expr> constraints;
 };
 
+class PieceExpr : public Expr {
+public:
+  PieceExpr(std::unique_ptr<Expr> expr, std::unique_ptr<Expr> constraints)
+      : expr(std::move(expr)), constraints(std::move(constraints)) {}
+
+  Expr *getExpr() { return expr.get(); }
+  Expr *getConstraints() { return constraints.get(); }
+
+  static Type getStaticType() { return Type::Piece; }
+  virtual Type getType() { return Type::Piece; }
+
+private:
+  std::unique_ptr<Expr> expr;
+  std::unique_ptr<Expr> constraints;
+};
+
+class PwExprExpr : public Expr {
+public:
+  PwExprExpr(SmallVector<StringRef, 8> dims, SmallVector<StringRef, 8> syms)
+      : dims(std::move(dims)), syms(std::move(syms)) {}
+
+  SmallVector<StringRef, 8> &getDims() { return dims; }
+  SmallVector<StringRef, 8> &getSyms() { return syms; }
+  SmallVector<std::unique_ptr<PieceExpr>, 4> &getPieces() { return pieces; }
+  PieceExpr *getPieceAt(unsigned i) {
+    assert(i < pieces.size() && "out of bounds access");
+    return pieces[i].get();
+  }
+
+  static Type getStaticType() { return Type::PwExpr; }
+  virtual Type getType() { return Type::PwExpr; }
+
+private:
+  SmallVector<StringRef, 8> dims;
+  SmallVector<StringRef, 8> syms;
+  SmallVector<std::unique_ptr<PieceExpr>, 4> pieces;
+};
+
 class Parser {
 public:
   Parser(StringRef buffer, ErrorCallback callback) : lexer(buffer, callback) {}
 
   LogicalResult parse(std::unique_ptr<Expr> &expr);
   LogicalResult parseSet(std::unique_ptr<SetExpr> &setExpr);
+  LogicalResult parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr);
   LogicalResult parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
                                              Token::Kind rightToken,
                                              bool allowEmpty);
@@ -278,6 +322,7 @@ public:
   LogicalResult parseOr(std::unique_ptr<Expr> &expr);
   LogicalResult parseAnd(std::unique_ptr<Expr> &expr);
   LogicalResult parseConstraint(std::unique_ptr<ConstraintExpr> &constraint);
+  LogicalResult parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces);
   LogicalResult parseSum(std::unique_ptr<Expr> &expr);
   LogicalResult parseTerm(std::unique_ptr<TermExpr> &term,
                           bool is_negated = false);
@@ -293,21 +338,23 @@ private:
   Lexer lexer;
 };
 
-class PresburgerSetParser {
+class PresburgerParser {
 public:
   enum class Kind { Equality, Inequality };
   using Constraint = std::pair<SmallVector<int64_t, 8>, Kind>;
 
-  PresburgerSetParser(Parser parser);
+  PresburgerParser(Parser parser);
 
+  LogicalResult parsePresburgerPwExpr(PresburgerPwExpr &pwExpr);
   LogicalResult parsePresburgerSet(PresburgerSet &set);
 
-private:
-  LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,
-                              StringMap<size_t> &map);
+protected:
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
+  LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerPwExpr &pwExpr);
   LogicalResult parseFlatAffineConstraints(Expr *constraints,
                                            FlatAffineConstraints &cs);
+  LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,
+                              StringMap<size_t> &map);
   LogicalResult parseConstraint(ConstraintExpr *constraint, Constraint &c);
   LogicalResult parseSum(Expr *expr,
                          std::pair<int64_t, SmallVector<int64_t, 8>> &r);

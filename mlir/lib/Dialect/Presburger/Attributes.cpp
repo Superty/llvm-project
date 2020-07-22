@@ -30,6 +30,31 @@ struct PresburgerSetAttributeStorage : public AttributeStorage {
   PresburgerSet value;
 };
 
+struct PresburgerPwExprAttributeStorage : public AttributeStorage {
+  using KeyTy = std::pair<PresburgerPwExprType, PresburgerPwExpr>;
+
+  PresburgerPwExprAttributeStorage(Type t, PresburgerPwExpr value)
+      : AttributeStorage(t), value(value) {}
+
+  bool operator==(const KeyTy &key) const {
+    return false;
+    // TODO
+    // PresburgerSet::equal(key.second, value);
+  }
+
+  static llvm::hash_code hashKey(const KeyTy &key) {
+    return key.second.hash_value();
+  }
+
+  static PresburgerPwExprAttributeStorage *
+  construct(AttributeStorageAllocator &allocator, KeyTy key) {
+    return new (allocator.allocate<PresburgerPwExprAttributeStorage>())
+        PresburgerPwExprAttributeStorage(std::get<0>(key), std::get<1>(key));
+  }
+
+  PresburgerPwExpr value;
+};
+
 } // namespace detail
 
 //===----------------------------------------------------------------------===//
@@ -45,6 +70,22 @@ PresburgerSetAttr PresburgerSetAttr::get(PresburgerSetType t,
 PresburgerSet PresburgerSetAttr::getValue() const { return getImpl()->value; }
 
 StringRef PresburgerSetAttr::getKindName() { return "set"; }
+
+//===----------------------------------------------------------------------===//
+// PresburgerPwExprAttr
+//===----------------------------------------------------------------------===//
+
+PresburgerPwExprAttr PresburgerPwExprAttr::get(PresburgerPwExprType t,
+                                               PresburgerPwExpr value) {
+  return Base::get(t.getContext(), PresburgerAttributes::PresburgerPwExpr, t,
+                   value);
+}
+
+PresburgerPwExpr PresburgerPwExprAttr::getValue() const {
+  return getImpl()->value;
+}
+
+StringRef PresburgerPwExprAttr::getKindName() { return "pwExpr"; }
 
 } // namespace presburger
 } // namespace mlir

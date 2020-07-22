@@ -63,6 +63,10 @@ std::string Token::name(Token::Kind kind) {
     return "\"and\"";
   case Token::Kind::Or:
     return "\"or\"";
+  case Token::Kind::Arrow:
+    return "\"->\"";
+  case Token::Kind::SemiColon:
+    return "';'";
   case Token::Kind::Unknown:
     return "unknown";
   }
@@ -145,6 +149,10 @@ Token Lexer::nextToken() {
   case '+':
     return atom(Token::Kind::Plus, tokStart);
   case '-':
+    if (*(curPtr + 1) == '>') {
+      curPtr++;
+      return atom(Token::Kind::Arrow, tokStart);
+    }
     return atom(Token::Kind::Minus, tokStart);
   case '*':
     return atom(Token::Kind::Times, tokStart);
@@ -176,6 +184,8 @@ Token Lexer::nextToken() {
     return atom(Token::Kind::Colon, tokStart);
   case ',':
     return atom(Token::Kind::Comma, tokStart);
+  case ';':
+    return atom(Token::Kind::SemiColon, tokStart);
   default:
     return atom(Token::Kind::Unknown, tokStart);
   }
@@ -231,7 +241,7 @@ InFlightDiagnostic Lexer::emitError(const Twine &message) {
 }
 
 //===----------------------------------------------------------------------===//
-// Parser (from libint)
+// Parser (partly from libint)
 //===----------------------------------------------------------------------===//
 
 LogicalResult Parser::parse(std::unique_ptr<Expr> &expr) {
@@ -273,6 +283,26 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
                                       std::move(dimSymPair.second),
                                       std::move(constraints));
   // checks that we are at the end of the string
+  if (lexer.reachedEOF())
+    return success();
+  return emitErrorForToken(lexer.peek(),
+                           "expected to be at the end of the set");
+}
+
+LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
+  std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
+  if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
+    return failure();
+
+  if (!lexer.peek().isa(Token::Kind::Arrow))
+    return emitErrorForToken(lexer.peek(), "expected \"->\" but got: " +
+                                               lexer.peek().string());
+
+  pwExpr = std::make_unique<PwExprExpr>(std::move(dimSymPair.first),
+                                        std::move(dimSymPair.second));
+  if (failed(parsePieces(pwExpr->getPieces())))
+    return failure();
+
   if (lexer.reachedEOF())
     return success();
   return emitErrorForToken(lexer.peek(),
@@ -370,6 +400,39 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   }
 
   expr = std::make_unique<AndExpr>(std::move(constraints));
+  return success();
+}
+
+LogicalResult
+Parser::parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces) {
+  do {
+    lexer.next();
+    if (failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
+      return failure();
+
+    std::unique_ptr<Expr> expr;
+    if (failed(parseSum(expr)))
+      return failure();
+
+    if (failed(lexer.nextAssertKind(Token::Kind::RightParen)) ||
+        failed(lexer.nextAssertKind(Token::Kind::Colon)) ||
+        failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
+      return failure();
+
+    std::unique_ptr<Expr> constraints;
+
+    if (!lexer.peek().isa(Token::Kind::RightParen)) {
+      parseOr(constraints);
+    }
+
+    if (failed(lexer.nextAssertKind(Token::Kind::RightParen)))
+      return failure();
+
+    std::unique_ptr<PieceExpr> piece =
+        std::make_unique<PieceExpr>(std::move(expr), std::move(constraints));
+    pieces.emplace_back(std::move(piece));
+
+  } while (lexer.peek().isa(Token::Kind::SemiColon));
   return success();
 }
 
@@ -500,19 +563,19 @@ InFlightDiagnostic Parser::emitError(SMLoc loc, const Twine &message) {
 }
 
 //===----------------------------------------------------------------------===//
-// PresburgerSetParser
+// PresburgerParser
 //===----------------------------------------------------------------------===//
-
-PresburgerSetParser::PresburgerSetParser(Parser parser) : parser(parser) {}
+//
+PresburgerParser::PresburgerParser(Parser parser) : parser(parser) {}
 
 LogicalResult
-PresburgerSetParser::initVariables(const SmallVector<StringRef, 8> &vars,
-                                   StringMap<size_t> &map) {
+PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
+                                StringMap<size_t> &map) {
   map.clear();
   for (auto &name : vars) {
     auto it = map.find(name);
     if (it != map.end())
-      return emitError(
+      return parser.emitError(
           "repeated variable names in the tuple are not yet supported");
 
     map.insert_or_assign(name, map.size());
@@ -520,7 +583,7 @@ PresburgerSetParser::initVariables(const SmallVector<StringRef, 8> &vars,
   return success();
 }
 
-LogicalResult PresburgerSetParser::parsePresburgerSet(PresburgerSet &set) {
+LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
 
   std::unique_ptr<SetExpr> setExpr;
   if (failed(parser.parseSet(setExpr)))
@@ -539,8 +602,8 @@ LogicalResult PresburgerSetParser::parsePresburgerSet(PresburgerSet &set) {
   return success();
 }
 
-LogicalResult PresburgerSetParser::parsePresburgerSet(Expr *constraints,
-                                                      PresburgerSet &set) {
+LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
+                                                   PresburgerSet &set) {
   set = PresburgerSet(dimNameToIndex.size(), symNameToIndex.size());
   if (auto orConstraints = constraints->dyn_cast<OrExpr>()) {
     for (std::unique_ptr<Expr> &basicSet : orConstraints->getConstraints()) {
@@ -562,21 +625,21 @@ LogicalResult PresburgerSetParser::parsePresburgerSet(Expr *constraints,
 }
 
 LogicalResult
-PresburgerSetParser::parseFlatAffineConstraints(Expr *constraints,
-                                                FlatAffineConstraints &cs) {
+PresburgerParser::parseFlatAffineConstraints(Expr *constraints,
+                                             FlatAffineConstraints &cs) {
   cs = FlatAffineConstraints(dimNameToIndex.size(), symNameToIndex.size());
   if (constraints->dyn_cast<OrExpr>() != nullptr)
     return emitError("or conditions are not valid for basic sets");
 
   if (auto constraint = constraints->dyn_cast<ConstraintExpr>()) {
-    PresburgerSetParser::Constraint c;
+    PresburgerParser::Constraint c;
     if (failed(parseConstraint(constraint, c)))
       return failure();
     addConstraint(cs, c);
   } else if (auto andConstraints = constraints->dyn_cast<AndExpr>()) {
     for (std::unique_ptr<ConstraintExpr> &constraint :
          andConstraints->getConstraints()) {
-      PresburgerSetParser::Constraint c;
+      PresburgerParser::Constraint c;
       if (failed(parseConstraint(constraint.get(), c)))
         return failure();
       addConstraint(cs, c);
@@ -589,8 +652,8 @@ PresburgerSetParser::parseFlatAffineConstraints(Expr *constraints,
 }
 
 LogicalResult
-PresburgerSetParser::parseConstraint(ConstraintExpr *constraint,
-                                     PresburgerSetParser::Constraint &c) {
+PresburgerParser::parseConstraint(ConstraintExpr *constraint,
+                                  PresburgerParser::Constraint &c) {
   if (constraint == nullptr)
     llvm_unreachable("constraint was nullptr!");
 
@@ -632,8 +695,8 @@ PresburgerSetParser::parseConstraint(ConstraintExpr *constraint,
 }
 
 LogicalResult
-PresburgerSetParser::parseSum(Expr *expr,
-                              std::pair<int64_t, SmallVector<int64_t, 8>> &r) {
+PresburgerParser::parseSum(Expr *expr,
+                           std::pair<int64_t, SmallVector<int64_t, 8>> &r) {
   int64_t constant = 0;
   SmallVector<int64_t, 8> coeffs(dimNameToIndex.size() + symNameToIndex.size(),
                                  0);
@@ -650,8 +713,8 @@ PresburgerSetParser::parseSum(Expr *expr,
 }
 
 LogicalResult
-PresburgerSetParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
-                                     SmallVector<int64_t, 8> &coeffs) {
+PresburgerParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
+                                  SmallVector<int64_t, 8> &coeffs) {
   int64_t delta = 1;
   if (auto coeff = term->getCoeff())
     delta = coeff->getValue();
@@ -677,19 +740,54 @@ PresburgerSetParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
   return emitError("encountered unknown variable name: " + var->getName());
 }
 
-void PresburgerSetParser::addConstraint(
-    FlatAffineConstraints &cs, PresburgerSetParser::Constraint &constraint) {
+void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
+                                     PresburgerParser::Constraint &constraint) {
   if (constraint.second == Kind::Equality)
     cs.addEquality(constraint.first);
   else
     cs.addInequality(constraint.first);
 }
 
-InFlightDiagnostic PresburgerSetParser::emitError(const Twine &message) {
+InFlightDiagnostic PresburgerParser::emitError(const Twine &message) {
   return parser.emitError(message);
 }
 
-InFlightDiagnostic PresburgerSetParser::emitError(SMLoc loc,
-                                                  const Twine &message) {
+InFlightDiagnostic PresburgerParser::emitError(SMLoc loc,
+                                               const Twine &message) {
   return parser.emitError(loc, message);
 }
+
+LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
+
+  std::unique_ptr<PwExprExpr> pwExpr;
+  if (failed(parser.parsePwExpr(pwExpr)))
+    return failure();
+
+  initVariables(pwExpr->getDims(), dimNameToIndex);
+  initVariables(pwExpr->getSyms(), symNameToIndex);
+
+  res = PresburgerPwExpr(dimNameToIndex.size(), symNameToIndex.size());
+
+  assert(pwExpr->getPieces().size() > 0 &&
+         "expect atleast one piece in a piecewise expression");
+
+  for (unsigned i = 0, e = pwExpr->getPieces().size(); i < e; i++) {
+    PieceExpr *piece = pwExpr->getPieceAt(i);
+    if (failed(parseAndAddPiece(piece, res)))
+      return failure();
+  }
+
+  return success();
+}
+
+LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
+                                                 PresburgerPwExpr &pwExpr) {
+  std::pair<int64_t, SmallVector<int64_t, 8>> expr;
+  parseSum(piece->getExpr(), expr);
+
+  PresburgerSet set;
+  parsePresburgerSet(piece->getConstraints(), set);
+  pwExpr.addPiece(expr, set);
+  return success();
+}
+

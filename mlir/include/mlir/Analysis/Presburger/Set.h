@@ -20,6 +20,8 @@ public:
   void intersectSet(const PresburgerSet &set);
   static bool equal(const PresburgerSet &s, const PresburgerSet &t);
   void print(raw_ostream &os) const;
+  void printVariableList(raw_ostream &os) const;
+  void printConstraints(raw_ostream &os) const;
   void dump() const;
   llvm::hash_code hash_value() const;
   bool isMarkedEmpty() const;
@@ -46,7 +48,6 @@ private:
   Optional<SmallVector<int64_t, 8>> maybeSample;
   void printFlatAffineConstraints(raw_ostream &os,
                                   FlatAffineConstraints cs) const;
-  void printVariableList(raw_ostream &os) const;
   void printVar(raw_ostream &os, int64_t var, unsigned i,
                 unsigned &countNonZero) const;
 };

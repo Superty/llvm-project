@@ -9,6 +9,15 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
     let summary = "presburger set";
 
     let description = [{
+        Syntax:
+        ```
+        operation      ::= `presburger.set #presburger<"set ` pb-set `">` 
+        pb-set         ::= dim-and-symbol-use-list `:` `(` pb-constraints? `)`
+        pb-constraints ::= pb-constraint ((`and` | `or`) pb-constraint)*
+        pb-constraint  ::= pb-expr (`>=` | `=` | `<=`) pb-expr
+        pb-expr        ::= affine-expr
+        ```
+
         The `presburger.set` operator allows us to introduce a new presburger
         set as an SSA value. The type of the SSA value is `!presburger.set<dimC,symC>`,
         where `dimC` represents the amount of dimensions and `symC` the amount
@@ -17,6 +26,9 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
         (similar to integer sets of the affine dialect).
 
         Note that no type is required, because it can be extracted from the attribute.
+
+        Note that for now the expressions only support affine once, more is comming
+        soon.
 
         **Examples:**
 
@@ -29,6 +41,41 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
     let arguments = (ins PresburgerSetAttr:$set);
 
     let results = (outs PresburgerSetType:$res);
+}
+
+def Presburger_PwExprOp : Presburger_Op<"pwExpr", [NoSideEffect]> {
+    let summary = "piecewise Presburger expression";
+
+    let description = [{
+        Syntax:
+        ```
+        operation  ::= `presburger.pwExpr #presburger<"pwExpr` pb-pw-expr `">` 
+        pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)* 
+        piece      ::= `(`pb-expr`) : (`pb-constraints`)`
+        ```
+
+        The `presburger.pwExpr` operator allows us to introduce a new piecewise
+        Presburger expression as an SSA value. The type of the SSA value is 
+        `!presburger.pwExpr<dimC,symC>`, where `dimC` represents the amount of 
+        dimensions and `symC` the amount of symbols of the Presburger expressions.
+        It requires a `PresburgerPwExprAttr` that captures a piecewise Presburger 
+        expression.
+
+        Note that no type is required, because it can be extracted from the 
+        attribute.
+
+        TODO: define the behavior of values outside of domains. 
+
+        **Examples:**
+
+        ```mlir
+        %expr1 = presburger.pwExpr #presburger<"pwExpr (x)[] -> (x + 1) : (x >= 0) ; (0) : (-x + 1 >= 0)">
+        %expr2 = presburger.pwExpr #presburger<"pwExpr (x,y)[] -> (x) : (x >= 0 and 2y >= 0) ; (y) : (-x + 1 >= 0)">
+        ```
+    }];
+
+    let arguments = (ins PresburgerPwExprAttr:$pwExpr);
+    let results = (outs PresburgerPwExprType:$res);
 }
 
 

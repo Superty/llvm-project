@@ -49,6 +49,31 @@ static LogicalResult verify(SetOp op) {
   return success();
 }
 
+// Presburger pw expr
+
+static void print(OpAsmPrinter &printer, PwExprOp op) {
+  printer << "presburger.pwExpr " << op.pwExprAttr();
+}
+
+static ParseResult parsePwExprOp(OpAsmParser &parser, OperationState &result) {
+  PresburgerPwExprAttr pwExpr;
+
+  if (parser.parseAttribute(pwExpr, "pwExpr", result.attributes))
+    return failure();
+
+  // TODO Currently we inherit the type from the PresburgerPwExprAttr, I'm
+  // not sure if this is desirable.
+  Type outType = pwExpr.getType();
+
+  parser.addTypeToList(outType, result.types);
+  return success();
+}
+
+static LogicalResult verify(PwExprOp op) {
+  // TODO do we need something here?
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // Presburger ops
 //===----------------------------------------------------------------------===//
