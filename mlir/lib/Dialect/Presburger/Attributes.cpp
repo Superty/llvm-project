@@ -12,7 +12,7 @@ struct PresburgerSetAttributeStorage : public AttributeStorage {
       : AttributeStorage(t), value(value) {}
 
   bool operator==(const KeyTy &key) const {
-    return PresburgerSet::equal(key.second, value);
+    return false; // PresburgerSet::equal(key.second, value);
   }
 
   static llvm::hash_code hashKey(const KeyTy &key) {
