@@ -507,7 +507,7 @@ bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
 
 bool mlir::sameConstraint(ArrayRef<int64_t> c1, ArrayRef<int64_t> c2) {
   Fraction ratio(0, 1);
-  assert(c1.size() == c1.size() && "the constraints have different dimensions");
+  assert(c1.size() == c2.size() && "the constraints have different dimensions");
   // if c1 = a*c2, this iterates over the vector trying to find a as soon as
   // possible and then comparing with a.
   for (unsigned i = 0; i < c1.size(); i++) {
@@ -693,6 +693,7 @@ bool adjEqCasePure(SmallVectorImpl<FlatAffineConstraints> &basicSetVector,
 SmallVector<int64_t, 8> mlir::combineConstraint(ArrayRef<int64_t> c1,
                                                 ArrayRef<int64_t> c2,
                                                 Fraction &ratio) {
+  assert(c1.size() == c2.size() && "dimensions must be equal");
   int64_t n = ratio.num;
   int64_t d = ratio.den;
   SmallVector<int64_t, 8> result;
@@ -705,6 +706,7 @@ SmallVector<int64_t, 8> mlir::combineConstraint(ArrayRef<int64_t> c1,
 Optional<SmallVector<int64_t, 8>>
 mlir::wrapping(const FlatAffineConstraints &bs, SmallVectorImpl<int64_t> &valid,
                SmallVectorImpl<int64_t> &invalid) {
+  assert(valid.size() == invalid.size() && "dimensions must be equal");
   unsigned n = bs.getNumDimIds();
   Simplex simplex(n + 1);
 
