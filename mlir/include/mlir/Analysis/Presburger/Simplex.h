@@ -27,6 +27,7 @@
 namespace mlir {
 
 class GBRSimplex;
+class PresburgerBasicSet;
 
 /// This class implements a version of the Simplex and Generalized Basis
 /// Reduction algorithms, which can perform analysis of integer sets with affine
@@ -131,6 +132,7 @@ public:
   Simplex() = delete;
   explicit Simplex(unsigned nVar);
   explicit Simplex(const FlatAffineConstraints &constraints);
+  explicit Simplex(const PresburgerBasicSet &bs);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -225,6 +227,7 @@ public:
   void dump() const;
 
   void addFlatAffineConstraints(const FlatAffineConstraints &cs);
+  void addBasicSet(const PresburgerBasicSet &bs);
   // void addFlatAffineConstraintsAsIneqs(const FlatAffineConstraints &cs);
 
   void detectImplicitEqualities();
