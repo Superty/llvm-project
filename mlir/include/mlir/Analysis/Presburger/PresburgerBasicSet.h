@@ -38,6 +38,9 @@ public:
   unsigned getNumDivs() const { return divs.size(); }
   unsigned getNumInequalities() const { return ineqs.size(); }
   unsigned getNumEqualities() const { return eqs.size(); }
+
+  void intersect(PresburgerBasicSet bs);
+
   void appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
   static void toCommonSpace(PresburgerBasicSet &a, PresburgerBasicSet &b);

@@ -374,6 +374,13 @@ void PresburgerBasicSet::toCommonSpace(PresburgerBasicSet &a, PresburgerBasicSet
   a.appendDivisionVariables(bDivs);
   b.prependDivisionVariables(aDivs);
 }
+
+void PresburgerBasicSet::intersect(PresburgerBasicSet bs) {
+  toCommonSpace(*this, bs);
+  ineqs.insert(ineqs.end(), std::make_move_iterator(bs.ineqs.begin()), std::make_move_iterator(bs.ineqs.end()));
+  eqs.insert(eqs.end(), std::make_move_iterator(bs.eqs.begin()), std::make_move_iterator(bs.eqs.end()));
+}
+
 void PresburgerBasicSet::updateFromSimplex(const Simplex &simplex) {
   if (simplex.isEmpty()) {
     // maybeIsEmpty = true;
