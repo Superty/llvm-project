@@ -136,7 +136,9 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
     result.addBasicSet(b);
     return;
   }
-  const PresburgerBasicSet &sI = s.getBasicSet()[i];
+  PresburgerBasicSet sI = s.getBasicSet()[i];
+  PresburgerBasicSet::toCommonSpace(b, sI);
+
   auto initialSnap = simplex.getSnapshot();
   unsigned offset = simplex.numConstraints();
   simplex.addBasicSet(sI);
