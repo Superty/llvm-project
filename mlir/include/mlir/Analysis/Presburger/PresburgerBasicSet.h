@@ -119,6 +119,7 @@ private:
   void prependExistentialDimensions(unsigned count);
   void appendExistentialDimensions(unsigned count);
 
+  PresburgerBasicSet makePlainBasicSet() const;
   bool isPlainBasicSet() const;
 
   void updateFromSimplex(const Simplex &simplex);
