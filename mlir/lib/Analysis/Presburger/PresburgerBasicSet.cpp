@@ -66,6 +66,9 @@ PresburgerBasicSet PresburgerBasicSet::makePlainBasicSet() const {
 
 Optional<SmallVector<int64_t, 8>>
 PresburgerBasicSet::findIntegerSample() const {
+  if (!isPlainBasicSet())
+    return makePlainBasicSet().findIntegerSample();
+
   PresburgerBasicSet cone = makeRecessionCone();
   if (cone.getNumEqualities() < getNumTotalDims())
     return findSampleUnbounded(cone);
