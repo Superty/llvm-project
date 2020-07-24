@@ -50,6 +50,14 @@ void PresburgerBasicSet::addEquality(ArrayRef<int64_t> coeffs) {
   eqs.emplace_back(coeffs);
 }
 
+
+void PresburgerBasicSet::removeInequality(unsigned i) {
+  ineqs.erase(ineqs.begin() + i, ineqs.begin() + i + 1);
+}
+
+void PresburgerBasicSet::removeEquality(unsigned i) {
+  eqs.erase(eqs.begin() + i, eqs.begin() + i + 1);
+}
 void PresburgerBasicSet::dump() const {
   // auto printName = [&](unsigned idx) {
   //   assert(idx < nDim && "Out of bounds index!");

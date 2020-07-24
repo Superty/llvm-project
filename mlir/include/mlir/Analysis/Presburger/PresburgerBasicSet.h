@@ -37,6 +37,8 @@ public:
   void removeLastInequality();
   void removeLastDivision();
 
+  void removeInequality(unsigned i);
+  void removeEquality(unsigned i);
   void dump() const;
 
 private:
