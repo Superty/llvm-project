@@ -22,6 +22,10 @@ void PresburgerBasicSet::removeLastInequality() {
   ineqs.pop_back();
 }
 
+void PresburgerBasicSet::removeLastEquality() {
+  eqs.pop_back();
+}
+
 const InequalityConstraint &PresburgerBasicSet::getInequality(unsigned i) const {
   return ineqs[i];
 }
