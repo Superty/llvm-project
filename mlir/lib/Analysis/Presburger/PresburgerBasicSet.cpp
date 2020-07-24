@@ -53,6 +53,17 @@ void PresburgerBasicSet::addEquality(ArrayRef<int64_t> coeffs) {
   eqs.emplace_back(coeffs);
 }
 
+PresburgerBasicSet PresburgerBasicSet::makePlainBasicSet() const {
+  PresburgerBasicSet plainBasicSet(getNumTotalDims(), 0, 0);
+  plainBasicSet.ineqs = ineqs;
+  plainBasicSet.eqs = eqs;
+  for (const DivisionConstraint &div : divs) {
+    plainBasicSet.ineqs.emplace_back(div.getInequalityLowerBound());
+    plainBasicSet.ineqs.emplace_back(div.getInequalityUpperBound());
+  }
+  return plainBasicSet;
+}
+
 Optional<SmallVector<int64_t, 8>>
 PresburgerBasicSet::findIntegerSample() const {
   PresburgerBasicSet cone = makeRecessionCone();
