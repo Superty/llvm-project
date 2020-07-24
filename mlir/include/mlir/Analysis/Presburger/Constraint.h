@@ -13,8 +13,10 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_CONSTRAINT_H
 #define MLIR_ANALYSIS_PRESBURGER_CONSTRAINT_H
 
+#include "mlir/Support/LLVM.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
 
@@ -27,9 +29,37 @@ public:
     coeffs[coeffs.size() - 2] = 0;
   }
 
+  unsigned getNumDims() const {
+    // The last element of the coefficient vector is the constant term and does
+    // not correspond to any dimension.
+    return coeffs.size() - 1;
+  }
+
+  /// Insert `count` empty dimensions before the `pos`th dimension, or at the
+  /// end if `pos` is equal to `getNumDims()`.
+  void insertDimensions(unsigned pos, unsigned count) {
+    assert(pos <= getNumDims());
+    coeffs.insert(coeffs.begin() + pos, count, 0);
+  }
+
+  /// Erase `count` dimensions starting at the `pos`-th one.
+  void eraseDimensions(unsigned pos, unsigned count) {
+    assert(pos + count - 1 < getNumDims() &&
+           "Dimension to be erased does not exist!");
+    coeffs.erase(coeffs.begin() + pos, coeffs.begin() + pos + count);
+  }
+
+
+  void substitute(ArrayRef<int64_t> values) {
+    assert(values.size() <= getNumDims() && "Too many values to substitute!");
+    for (size_t i = 0; i < values.size(); i++)
+      coeffs.back() += values[i] * coeffs[i];
+
+    coeffs = SmallVector<int64_t, 8>(coeffs.begin() + values.size(), coeffs.end());
+  }
+
   void removeLastDimension() {
-    coeffs[coeffs.size() - 2] = coeffs.back();
-    coeffs.pop_back();
+    eraseDimensions(getNumDims() - 1, 1);
   }
 
   void print(raw_ostream &os) const {
@@ -44,12 +74,19 @@ public:
         continue;
 
       if (first) {
-        os << coeffs[i];
+        if (coeffs[i] == -1)
+          os << '-';
+        else if (coeffs[i] != 1)
+          os << coeffs[i];
         first = false;
       } else if (coeffs[i] > 0) {
-        os << " + " << coeffs[i];
+        os << " + ";
+        if (coeffs[i] != 1)
+          os << coeffs[i];
       } else {
         os << " - " << -coeffs[i];
+        if (-coeffs[i] != 1)
+          os << -coeffs[i];
       }
       
       os << "x" << i;
@@ -92,6 +129,23 @@ public:
     Constraint::print(os);
     os << ")/" << denom << ')';
   }
+
+  void insertDimensions(unsigned pos, unsigned count) {
+    if (pos <= variable)
+      variable += count;
+    Constraint::insertDimensions(pos, count);
+  }
+
+  void eraseDimensions(unsigned pos, unsigned count) {
+    assert(!(pos <= variable && variable < pos + count) &&
+           "cannot erase division variable!");
+    Constraint::eraseDimensions(pos, count);
+  }
+
+  void substitute(ArrayRef<int64_t> values) {
+    assert(variable >= values.size() && "Not yet implemented");
+  }
+
   void dump() const { print(llvm::errs()); }
 private:
   int64_t denom;
