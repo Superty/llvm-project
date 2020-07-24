@@ -140,6 +140,22 @@ public:
     os << ")/" << denom << ')';
   }
 
+  InequalityConstraint getInequalityLowerBound() const {
+    SmallVector<int64_t, 8> ineqCoeffs = coeffs;
+    ineqCoeffs[variable] -= denom;
+    return InequalityConstraint(ineqCoeffs);
+  }
+
+  InequalityConstraint getInequalityUpperBound() const {
+    SmallVector<int64_t, 8> ineqCoeffs;
+    ineqCoeffs.reserve(coeffs.size());
+    for (int64_t coeff : coeffs)
+      ineqCoeffs.push_back(-coeff);
+    ineqCoeffs[variable] += denom;
+    ineqCoeffs.back() += denom - 1;
+    return InequalityConstraint(ineqCoeffs);
+  }
+
   void insertDimensions(unsigned pos, unsigned count) {
     if (pos <= variable)
       variable += count;
