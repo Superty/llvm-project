@@ -7,6 +7,7 @@
 
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 #include "llvm/ADT/SmallVector.h"
 
 namespace mlir {
@@ -24,6 +25,7 @@ public:
   static LinearTransform makeTransformToColumnEchelon(MatrixType M);
 
   FlatAffineConstraints postMultiplyBasicSet(const FlatAffineConstraints &bs);
+  PresburgerBasicSet postMultiplyBasicSet(const PresburgerBasicSet &bs);
   SmallVector<int64_t, 8> postMultiplyRow(ArrayRef<int64_t> row);
   SmallVector<int64_t, 8> preMultiplyColumn(ArrayRef<int64_t> col);
 
