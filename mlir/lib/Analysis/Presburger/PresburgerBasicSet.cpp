@@ -13,8 +13,7 @@
 
 namespace mlir {
 
-void PresburgerBasicSet::
-addInequality(ArrayRef<int64_t> coeffs) {
+void PresburgerBasicSet::addInequality(ArrayRef<int64_t> coeffs) {
   ineqs.emplace_back(coeffs);
 }
 
