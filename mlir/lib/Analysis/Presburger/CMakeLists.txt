@@ -7,4 +7,5 @@ add_mlir_library(MLIRPresburger
   Printer.cpp
   Matrix.cpp
   LinearTransform.cpp
+  ../AffineStructures.cpp
   )
