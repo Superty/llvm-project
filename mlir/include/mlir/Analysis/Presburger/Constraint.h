@@ -49,6 +49,9 @@ public:
     coeffs.erase(coeffs.begin() + pos, coeffs.begin() + pos + count);
   }
 
+  ArrayRef<int64_t> getCoeffs() const {
+    return coeffs;
+  }
 
   void substitute(ArrayRef<int64_t> values) {
     assert(values.size() <= getNumDims() && "Too many values to substitute!");
