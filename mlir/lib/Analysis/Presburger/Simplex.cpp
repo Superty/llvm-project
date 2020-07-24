@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 
@@ -32,6 +33,11 @@ Simplex::Simplex(unsigned nVar)
 Simplex::Simplex(const FlatAffineConstraints &constraints)
     : Simplex(constraints.getNumIds()) {
   addFlatAffineConstraints(constraints);
+}
+
+Simplex::Simplex(const PresburgerBasicSet &bs)
+    : Simplex(bs.getNumTotalDims()) {
+  addBasicSet(bs);
 }
 
 const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
@@ -834,6 +840,15 @@ void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
     addInequality(cs.getInequality(i));
   for (unsigned i = 0; i < cs.getNumEqualities(); ++i)
     addEquality(cs.getEquality(i));
+}
+
+void Simplex::addBasicSet(const PresburgerBasicSet &bs) {
+  assert(bs.getNumTotalDims() == numVariables() &&
+         "BasicSet must have same dimensionality as simplex");
+  for (const InequalityConstraint &ineq : bs.getInequalities())
+    addInequality(ineq.getCoeffs());
+  for (const EqualityConstraint &eq : bs.getEqualities())
+    addInequality(eq.getCoeffs());
 }
 
 Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
