@@ -53,12 +53,20 @@ public:
     return coeffs;
   }
 
+  void shiftToOrigin() {
+    coeffs.back() = 0;
+  }
+
   void substitute(ArrayRef<int64_t> values) {
     assert(values.size() <= getNumDims() && "Too many values to substitute!");
     for (size_t i = 0; i < values.size(); i++)
       coeffs.back() += values[i] * coeffs[i];
 
     coeffs = SmallVector<int64_t, 8>(coeffs.begin() + values.size(), coeffs.end());
+  }
+
+  void shift(int64_t x) {
+    coeffs.back() += x;
   }
 
   void removeLastDimension() {
