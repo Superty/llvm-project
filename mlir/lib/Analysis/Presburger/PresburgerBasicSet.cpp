@@ -318,6 +318,16 @@ void PresburgerBasicSet::removeInequality(unsigned i) {
 void PresburgerBasicSet::removeEquality(unsigned i) {
   eqs.erase(eqs.begin() + i, eqs.begin() + i + 1);
 }
+
+void PresburgerBasicSet::insertDimensions(unsigned pos, unsigned count) {
+  for (auto &ineq : ineqs)
+    ineq.insertDimensions(pos, count);
+  for (auto &eq : eqs)
+    eq.insertDimensions(pos, count);
+  for (auto &div : divs)
+    div.insertDimensions(pos, count);
+}
+
 void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
   divs.emplace_back(coeffs, denom, /*variable = */getNumTotalDims());
   for (auto &ineq : ineqs)
@@ -328,6 +338,42 @@ void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_
     div.appendDimension();
 }
 
+// TODO we can make these mutable arrays and move the divs in our only use case.
+void PresburgerBasicSet::appendDivisionVariables(ArrayRef<DivisionConstraint> newDivs) {
+  insertDimensions(nParam + nDim + nExist + divs.size(), newDivs.size());
+  divs.insert(divs.end(), newDivs.begin(), newDivs.end());
+}
+
+void PresburgerBasicSet::prependDivisionVariables(ArrayRef<DivisionConstraint> newDivs) {
+  insertDimensions(nParam + nDim + nExist, newDivs.size());
+  divs.insert(divs.begin(), newDivs.begin(), newDivs.end());
+}
+
+void PresburgerBasicSet::prependExistentialDimensions(unsigned count) {
+  insertDimensions(nParam + nDim, count);
+  nExist += count;
+}
+
+void PresburgerBasicSet::appendExistentialDimensions(unsigned count) {
+  insertDimensions(nParam + nDim + nExist, count);
+  nExist += count;
+}
+
+void PresburgerBasicSet::toCommonSpace(PresburgerBasicSet &a, PresburgerBasicSet &b) {
+  unsigned initialANExist = a.nExist;
+  a.appendExistentialDimensions(b.nExist);
+  b.prependExistentialDimensions(initialANExist);
+
+  unsigned offset = a.nParam + a.nDim + a.nExist;
+  SmallVector<DivisionConstraint, 8> aDivs = a.divs, bDivs = b.divs;
+  for (DivisionConstraint &div : aDivs)
+    div.insertDimensions(offset + aDivs.size(), bDivs.size());
+  for (DivisionConstraint &div : bDivs)
+    div.insertDimensions(offset, aDivs.size());
+
+  a.appendDivisionVariables(bDivs);
+  b.prependDivisionVariables(aDivs);
+}
 void PresburgerBasicSet::updateFromSimplex(const Simplex &simplex) {
   if (simplex.isEmpty()) {
     // maybeIsEmpty = true;

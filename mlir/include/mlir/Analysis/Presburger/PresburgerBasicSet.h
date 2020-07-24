@@ -40,6 +40,9 @@ public:
   unsigned getNumEqualities() const { return eqs.size(); }
   void appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
+  static void toCommonSpace(PresburgerBasicSet &a, PresburgerBasicSet &b);
+  void appendDivisionVariables(ArrayRef<DivisionConstraint> newDivs);
+  void prependDivisionVariables(ArrayRef<DivisionConstraint> newDivs);
 
   const InequalityConstraint &getInequality(unsigned i) const;
   const EqualityConstraint &getEquality(unsigned i) const;
@@ -110,6 +113,11 @@ private:
   findSampleUnbounded(PresburgerBasicSet &cone) const;
 
   Matrix coefficientMatrixFromEqs() const;
+
+  void insertDimensions(unsigned pos, unsigned count);
+  void prependExistentialDimensions(unsigned count);
+  void appendExistentialDimensions(unsigned count);
+
   void assertPlainSet() const;
 
   void updateFromSimplex(const Simplex &simplex);
