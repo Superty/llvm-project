@@ -38,6 +38,11 @@ public:
   unsigned getNumEqualities() const { return eqs.size(); }
   void appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
+
+  const InequalityConstraint &getInequality(unsigned i) const;
+  const EqualityConstraint &getEquality(unsigned i) const;
+  ArrayRef<InequalityConstraint> getInequalities() const;
+  ArrayRef<EqualityConstraint> getEqualities() const;
   void addInequality(ArrayRef<int64_t> coeffs);
   void addEquality(ArrayRef<int64_t> coeffs);
 

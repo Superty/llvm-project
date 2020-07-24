@@ -35,6 +35,18 @@ void PresburgerBasicSet::removeLastInequality() {
   ineqs.pop_back();
 }
 
+const InequalityConstraint &PresburgerBasicSet::getInequality(unsigned i) const {
+  return ineqs[i];
+}
+const EqualityConstraint &PresburgerBasicSet::getEquality(unsigned i) const {
+  return eqs[i];
+}
+ArrayRef<InequalityConstraint> PresburgerBasicSet::getInequalities() const {
+  return ineqs;
+}
+ArrayRef<EqualityConstraint> PresburgerBasicSet::getEqualities() const {
+  return eqs;
+}
 void PresburgerBasicSet::removeLastDivision() {
   divs.pop_back();
   for (auto &ineq : ineqs)
