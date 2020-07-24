@@ -20,6 +20,8 @@
 #include "llvm/ADT/SmallVector.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 class PresburgerBasicSet {
 public:
@@ -43,6 +45,8 @@ private:
   SmallVector<DivisionConstraint, 8> divs;
   unsigned nDim, nParam, nExist;
 };
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_PRESBURGERBASICSET_H

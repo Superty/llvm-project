@@ -10,7 +10,9 @@
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 
-namespace mlir {
+using namespace mlir;
+using namespace mlir::analysis;
+using namespace mlir::analysis::presburger;
 
 void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
   divs.emplace_back(coeffs, denom, /*variable = */nDim);
@@ -83,5 +85,3 @@ void PresburgerBasicSet::dump() const {
   //   llvm::errs() << " == 0 and ";
   // }
 }
-
-} // namespace mlir
