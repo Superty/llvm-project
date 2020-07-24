@@ -84,14 +84,12 @@ Matrix PresburgerBasicSet::coefficientMatrixFromEqs() const {
   return result;
 }
 
-void PresburgerBasicSet::assertPlainSet() const {
-  assert((nParam == 0 && nExist == 0 && divs.empty()) &&
-         "The set is expected to be a plain set without parameters, "
-         "existentials or divisions");
+bool PresburgerBasicSet::isPlainBasicSet() const {
+  return nParam == 0 && nExist == 0 && divs.empty();
 }
 
 void PresburgerBasicSet::substitute(ArrayRef<int64_t> values) {
-  assertPlainSet();
+  assert(isPlainBasicSet());
   for (auto &ineq : ineqs)
     ineq.substitute(values);
   for (auto &eq : eqs)
@@ -205,7 +203,7 @@ Optional<SmallVector<int64_t, 8>> PresburgerBasicSet::findSampleFullCone() {
 // directions lie in the span of the first `nDim - unboundedDims` directions.
 void PresburgerBasicSet::projectOutUnboundedDimensions(
     unsigned unboundedDims) {
-  assertPlainSet();
+  assert(isPlainBasicSet());
   unsigned remainingDims = getNumTotalDims() - unboundedDims;
 
   // TODO: support for symbols
@@ -253,7 +251,7 @@ void PresburgerBasicSet::projectOutUnboundedDimensions(
 Optional<SmallVector<int64_t, 8>>
 PresburgerBasicSet::findBoundedDimensionsSample(
     const PresburgerBasicSet &cone) const {
-  cone.assertPlainSet();
+  assert(cone.isPlainBasicSet());
   PresburgerBasicSet boundedSet = *this;
   boundedSet.projectOutUnboundedDimensions(getNumTotalDims() -
                                            cone.getNumEqualities());
