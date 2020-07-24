@@ -421,8 +421,8 @@ private:
   // parsing helpers
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
   LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerExpr &expr);
-  LogicalResult parseFlatAffineConstraints(Expr *constraints,
-                                           FlatAffineConstraints &cs);
+  LogicalResult parsePresburgerBasicSet(Expr *constraints,
+                                           PresburgerBasicSet &bs);
   LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,
                               StringMap<size_t> &map);
   LogicalResult parseConstraint(ConstraintExpr *constraint, Constraint &c);
@@ -430,7 +430,7 @@ private:
                          std::pair<int64_t, SmallVector<int64_t, 8>> &r);
   LogicalResult parseAndAddTerm(TermExpr *term, int64_t &constant,
                                 SmallVector<int64_t, 8> &coeffs);
-  void addConstraint(FlatAffineConstraints &cs, Constraint &constraint);
+  void addConstraint(PresburgerBasicSet &bs, Constraint &constraint);
   InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
   InFlightDiagnostic emitError(const Twine &message = {});
 
@@ -439,7 +439,7 @@ private:
   Parser parser;
 };
 
-}; // namespace presburger
-}; // namespace mlir
+} // namespace presburger
+} // namespace mlir
 
 #endif // PRESBURGER_PARSER_H

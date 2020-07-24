@@ -10,7 +10,9 @@
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 
-namespace mlir {
+using namespace mlir;
+using namespace analysis::presburger;
+
 using Direction = Simplex::Direction;
 
 /// Construct a Simplex object with `nVar` variables.
@@ -351,6 +353,3 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
   }
   result.value.push_back(lexmin);
 }
-
-
-} // namespace mlir

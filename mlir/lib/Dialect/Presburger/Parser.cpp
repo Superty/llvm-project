@@ -716,25 +716,25 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
 /// Creates a PresburgerSet instance from constraints
 ///
 /// For each AndExpr contained in constraints it creates one
-/// FlatAffineConstraints object
+/// PresburgerBasicSet object
 LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
                                                    PresburgerSet &set) {
   set = PresburgerSet(dimNameToIndex.size(), symNameToIndex.size());
   if (auto orConstraints = constraints->dyn_cast<OrExpr>()) {
     for (std::unique_ptr<Expr> &basicSet : orConstraints->getConstraints()) {
-      FlatAffineConstraints cs;
-      if (failed(parseFlatAffineConstraints(basicSet.get(), cs)))
+      PresburgerBasicSet bs;
+      if (failed(parsePresburgerBasicSet(basicSet.get(), bs)))
         return failure();
-      set.addFlatAffineConstraints(cs);
+      set.addBasicSet(bs);
     }
     return success();
   }
 
-  FlatAffineConstraints cs;
-  if (failed(parseFlatAffineConstraints(constraints, cs)))
+  PresburgerBasicSet bs;
+  if (failed(parsePresburgerBasicSet(constraints, bs)))
     return failure();
 
-  set.addFlatAffineConstraints(cs);
+  set.addBasicSet(bs);
 
   return success();
 }
@@ -744,9 +744,9 @@ LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
 /// Expects either a single ConstraintExpr or multiple of them combined in an
 /// AndExpr
 LogicalResult
-PresburgerParser::parseFlatAffineConstraints(Expr *constraints,
-                                             FlatAffineConstraints &cs) {
-  cs = FlatAffineConstraints(dimNameToIndex.size(), symNameToIndex.size());
+PresburgerParser::parsePresburgerBasicSet(Expr *constraints,
+                                             PresburgerBasicSet &cs) {
+  cs = PresburgerBasicSet(dimNameToIndex.size(), symNameToIndex.size());
   if (constraints->dyn_cast<OrExpr>() != nullptr)
     return emitError("or conditions are not valid for basic sets");
 
@@ -874,12 +874,12 @@ PresburgerParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
   return emitError("encountered unknown variable name: " + var->getName());
 }
 
-void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
+void PresburgerParser::addConstraint(PresburgerBasicSet &bs,
                                      PresburgerParser::Constraint &constraint) {
   if (constraint.second == Kind::Equality)
-    cs.addEquality(constraint.first);
+    bs.addEquality(constraint.first);
   else
-    cs.addInequality(constraint.first);
+    bs.addInequality(constraint.first);
 }
 
 /// Parse a Presburger expression into expr

@@ -1,7 +1,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_SET_H
 #define MLIR_ANALYSIS_PRESBURGER_SET_H
 
-#include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 
 namespace mlir {
 namespace analysis {
@@ -11,13 +11,13 @@ class PresburgerSet {
 public:
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false)
       : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty) {}
-  PresburgerSet(FlatAffineConstraints cs);
+  PresburgerSet(PresburgerBasicSet cs);
 
   unsigned getNumBasicSets() const;
   unsigned getNumDims() const;
   unsigned getNumSyms() const;
-  const SmallVector<FlatAffineConstraints, 4> &getFlatAffineConstraints() const;
-  void addFlatAffineConstraints(FlatAffineConstraints cs);
+  const SmallVector<PresburgerBasicSet, 4> &getBasicSets() const;
+  void addBasicSet(PresburgerBasicSet cs);
   void unionSet(const PresburgerSet &set);
   void intersectSet(const PresburgerSet &set);
   static bool equal(const PresburgerSet &s, const PresburgerSet &t);
@@ -32,7 +32,7 @@ public:
   static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym);
   static PresburgerSet complement(const PresburgerSet &set);
   void subtract(const PresburgerSet &set);
-  static PresburgerSet subtract(FlatAffineConstraints c,
+  static PresburgerSet subtract(PresburgerBasicSet c,
                                 const PresburgerSet &set);
 
   llvm::Optional<SmallVector<int64_t, 8>> findIntegerSample();
@@ -42,12 +42,15 @@ public:
 private:
   unsigned nDim;
   unsigned nSym;
-  SmallVector<FlatAffineConstraints, 4> flatAffineConstraints;
+  SmallVector<PresburgerBasicSet, 4> basicSets;
   // This is NOT just cached information about the constraints in basicSets.
   // If this is set to true, then the set is empty, irrespective of the state
   // of basicSets.
   bool markedEmpty;
   Optional<SmallVector<int64_t, 8>> maybeSample;
+  void printBasicSet(raw_ostream &os, PresburgerBasicSet cs) const;
+  void printVar(raw_ostream &os, int64_t var, unsigned i,
+                unsigned &countNonZero) const;
 };
 
 } // namespace presburger

@@ -26,6 +26,8 @@
 // #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 struct pwaFunction {
   SmallVector<PresburgerBasicSet, 8> domain;
@@ -74,6 +76,8 @@ private:
   unsigned nParam, nDiv;
   SmallVector<SmallVector<int64_t, 8>, 8> originalCoeffs;
 };
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_H

@@ -5,12 +5,12 @@ using namespace analysis::presburger;
 
 namespace {
 
-void printFlatAffineConstraints(raw_ostream &os,
-                                const FlatAffineConstraints &cs);
+void printPresburgerBasicSet(raw_ostream &os,
+                                const PresburgerBasicSet &bs);
 
 void printConstraints(
     raw_ostream &os,
-    const SmallVectorImpl<FlatAffineConstraints> &flatAffineConstraints);
+    const SmallVectorImpl<PresburgerBasicSet> &basicSets);
 void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym);
 void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
                unsigned nDim);
@@ -34,45 +34,45 @@ void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
   }
 }
 
-/// Prints the constraints of each `FlatAffineConstraints`.
+/// Prints the constraints of each `PresburgerBasicSet`.
 ///
 void printConstraints(
     raw_ostream &os,
-    const SmallVectorImpl<FlatAffineConstraints> &flatAffineConstraints) {
+    const SmallVectorImpl<PresburgerBasicSet> &basicSets) {
   os << "(";
   bool fst = true;
-  for (auto &c : flatAffineConstraints) {
+  for (auto &c : basicSets) {
     if (fst)
       fst = false;
     else
       os << " or ";
-    printFlatAffineConstraints(os, c);
+    printPresburgerBasicSet(os, c);
   }
   os << ")";
 }
 
-/// Prints the constraints of the `FlatAffineConstraints`. Each constraint is
+/// Prints the constraints of the `PresburgerBasicSet`. Each constraint is
 /// printed separately and the are conjuncted with 'and'.
 ///
-void printFlatAffineConstraints(raw_ostream &os,
-                                const FlatAffineConstraints &cs) {
-  unsigned numIds = cs.getNumIds();
-  for (unsigned i = 0, e = cs.getNumEqualities(); i < e; ++i) {
+void printPresburgerBasicSet(raw_ostream &os,
+                                const PresburgerBasicSet &bs) {
+  unsigned numTotalDims = bs.getNumTotalDims();
+  for (unsigned i = 0, e = bs.getNumEqualities(); i < e; ++i) {
     if (i != 0)
       os << " and ";
-    ArrayRef<int64_t> eq = cs.getEquality(i);
-    printExpr(os, eq.take_front(numIds), eq[numIds], cs.getNumDimIds());
+    ArrayRef<int64_t> eq = bs.getEquality(i).getCoeffs();
+    printExpr(os, eq.take_front(numTotalDims), eq[numTotalDims], bs.getNumDims());
     os << " = 0";
   }
 
-  if (cs.getNumEqualities() > 0 && cs.getNumInequalities() > 0)
+  if (bs.getNumEqualities() > 0 && bs.getNumInequalities() > 0)
     os << " and ";
 
-  for (unsigned i = 0, e = cs.getNumInequalities(); i < e; ++i) {
+  for (unsigned i = 0, e = bs.getNumInequalities(); i < e; ++i) {
     if (i != 0)
       os << " and ";
-    ArrayRef<int64_t> ineq = cs.getInequality(i);
-    printExpr(os, ineq.take_front(numIds), ineq[numIds], cs.getNumDimIds());
+    ArrayRef<int64_t> ineq = bs.getInequality(i).getCoeffs();
+    printExpr(os, ineq.take_front(numTotalDims), ineq[numTotalDims], bs.getNumDims());
     os << " >= 0";
   }
 }
@@ -159,7 +159,7 @@ void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
     os << "(1 = 0)";
     return;
   }
-  printConstraints(os, set.getFlatAffineConstraints());
+  printConstraints(os, set.getBasicSets());
 }
 
 void mlir::analysis::presburger::printPresburgerExpr(
@@ -180,7 +180,7 @@ void mlir::analysis::presburger::printPresburgerExpr(
     printExpr(os, eI.second, eI.first, nDim);
     os << ")";
     os << " : ";
-    printConstraints(os, expr.getDomains()[i].getFlatAffineConstraints());
+    printConstraints(os, expr.getDomains()[i].getBasicSets());
   }
 }
 

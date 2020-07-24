@@ -27,8 +27,7 @@ namespace presburger {
 
 class PresburgerBasicSet {
 public:
-  PresburgerBasicSet() = delete;
-  PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist)
+  PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0, unsigned oNExist = 0)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
   unsigned getNumDims() const { return nDim; }

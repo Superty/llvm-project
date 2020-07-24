@@ -30,34 +30,34 @@ struct PresburgerTransformer {
   /// Note that there are no short circuit evaluation or other simplification
   /// applied.
   Value lowerPresburgerSet(const PresburgerSet &set) {
-    if (set.getNumBasicSets() == 0) {
+    if (set.isUniverse()) {
       return builder.create<ConstantIntOp>(loc, 1, 1);
     }
     Value condition = builder.create<ConstantIntOp>(loc, 0, 1);
-    for (const FlatAffineConstraints &basicSet :
-         set.getFlatAffineConstraints()) {
-      Value isInBasicSet = lowerFlatAffineConstraints(basicSet);
+    for (const PresburgerBasicSet &basicSet :
+         set.getBasicSets()) {
+      Value isInBasicSet = lowerBasicSet(basicSet);
 
       condition = builder.create<OrOp>(loc, condition, isInBasicSet);
     }
     return condition;
   }
 
-  Value lowerFlatAffineConstraints(const FlatAffineConstraints &basicSet) {
-    if (basicSet.isEmpty()) {
-      return builder.create<ConstantIntOp>(loc, 0, 1);
-    }
+  Value lowerBasicSet(const PresburgerBasicSet &basicSet) {
+    // if (basicSet.isEmpty()) {
+    //   return builder.create<ConstantIntOp>(loc, 0, 1);
+    // }
 
     Value condition = builder.create<ConstantIntOp>(loc, 1, 1);
     for (unsigned i = 0, e = basicSet.getNumEqualities(); i < e; ++i) {
-      ArrayRef<int64_t> eq = basicSet.getEquality(i);
+      ArrayRef<int64_t> eq = basicSet.getEquality(i).getCoeffs();
       Value isConsSat = lowerPresburgerConstraint(eq.drop_back(), eq.back(),
                                                   CmpIPredicate::eq);
       condition = builder.create<AndOp>(loc, condition, isConsSat);
     }
 
     for (unsigned i = 0, e = basicSet.getNumInequalities(); i < e; ++i) {
-      ArrayRef<int64_t> ineq = basicSet.getInequality(i);
+      ArrayRef<int64_t> ineq = basicSet.getInequality(i).getCoeffs();
       Value isConsSat = lowerPresburgerConstraint(ineq.drop_back(), ineq.back(),
                                                   CmpIPredicate::sge);
       condition = builder.create<AndOp>(loc, condition, isConsSat);
