@@ -276,11 +276,10 @@ bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
   if (s.getNumDims() != t.getNumDims())
     return false;
 
-  return true;
-  /*PresburgerSet sCopy = s, tCopy = t;
+  PresburgerSet sCopy = s, tCopy = t;
   sCopy.subtract(t);
   tCopy.subtract(s);
-  return !sCopy.findIntegerSample() && !tCopy.findIntegerSample();*/
+  return !sCopy.findIntegerSample() && !tCopy.findIntegerSample();
 }
 
 Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
