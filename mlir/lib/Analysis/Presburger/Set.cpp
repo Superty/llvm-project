@@ -4,13 +4,13 @@
 // TODO should we change this to a storage type?
 using namespace mlir;
 
-PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
-    : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()), markedEmpty(false) {
-  addFlatAffineConstraints(cs);
+PresburgerSet::PresburgerSet(PresburgerBasicSet cs)
+    : nDim(cs.getNumDims()), nSym(cs.getNumParams()), markedEmpty(false) {
+  addBasicSet(cs);
 }
 
 unsigned PresburgerSet::getNumBasicSets() const {
-  return flatAffineConstraints.size();
+  return basicSets.size();
 }
 
 unsigned PresburgerSet::getNumDims() const { return nDim; }
@@ -20,20 +20,20 @@ unsigned PresburgerSet::getNumSyms() const { return nSym; }
 bool PresburgerSet::isMarkedEmpty() const { return markedEmpty; }
 
 bool PresburgerSet::isUniverse() const {
-  return flatAffineConstraints.size() == 0 && !markedEmpty;
+  return basicSets.size() == 0 && !markedEmpty;
 }
 
-const SmallVector<FlatAffineConstraints, 4> &
-PresburgerSet::getFlatAffineConstraints() const {
-  return flatAffineConstraints;
+const SmallVector<PresburgerBasicSet, 4> &
+PresburgerSet::getBasicSet() const {
+  return basicSets;
 }
 
 // This is only used to check assertions
-static void assertDimensionsCompatible(FlatAffineConstraints cs,
+static void assertDimensionsCompatible(PresburgerBasicSet cs,
                                        PresburgerSet set) {
-  assert(cs.getNumDimIds() == set.getNumDims() &&
-         cs.getNumSymbolIds() == set.getNumSyms() &&
-         "Dimensionalities of FlatAffineConstraints and PresburgerSet do not "
+  assert(cs.getNumDims() == set.getNumDims() &&
+         cs.getNumParams() == set.getNumSyms() &&
+         "Dimensionalities of PresburgerBasicSet and PresburgerSet do not "
          "match");
 }
 
@@ -43,18 +43,18 @@ static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
          "Dimensionalities of PresburgerSets do not match");
 }
 
-void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
+void PresburgerSet::addBasicSet(PresburgerBasicSet cs) {
   assertDimensionsCompatible(cs, *this);
 
   markedEmpty = false;
-  flatAffineConstraints.push_back(cs);
+  basicSets.push_back(cs);
 }
 
 void PresburgerSet::unionSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
 
-  for (const FlatAffineConstraints &cs : set.flatAffineConstraints)
-    addFlatAffineConstraints(std::move(cs));
+  for (const PresburgerBasicSet &cs : set.basicSets)
+    addBasicSet(std::move(cs));
 }
 
 // Compute the intersection of the two sets.
@@ -79,12 +79,11 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   }
 
   PresburgerSet result(nDim, nSym, true);
-  for (const FlatAffineConstraints &cs1 : flatAffineConstraints) {
-    for (const FlatAffineConstraints &cs2 : set.flatAffineConstraints) {
-      FlatAffineConstraints intersection(cs1);
-      intersection.append(cs2);
-      if (!intersection.isEmpty())
-        result.addFlatAffineConstraints(std::move(intersection));
+  for (const PresburgerBasicSet &cs1 : basicSets) {
+    for (const PresburgerBasicSet &cs2 : set.basicSets) {
+      PresburgerBasicSet intersection(cs1);
+      intersection.intersect(cs2);
+      result.addBasicSet(std::move(intersection));
     }
   }
   *this = std::move(result);
@@ -128,19 +127,19 @@ SmallVector<int64_t, 8> complementIneq(const ArrayRef<int64_t> &ineq) {
 // As a heuristic, we try adding all the constraints and check if simplex
 // says that the intersection is empty. Also, in the process we find out that
 // some constraints are redundant, which we then ignore.
-void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
+void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
                          const PresburgerSet &s, unsigned i,
                          PresburgerSet &result) {
   if (i == s.getNumBasicSets()) {
-    // FlatAffineConstraints BCopy = B;
+    // PresburgerBasicSet BCopy = B;
     // BCopy.simplify();
-    result.addFlatAffineConstraints(b);
+    result.addBasicSet(b);
     return;
   }
-  const FlatAffineConstraints &sI = s.getFlatAffineConstraints()[i];
+  const PresburgerBasicSet &sI = s.getBasicSet()[i];
   auto initialSnap = simplex.getSnapshot();
   unsigned offset = simplex.numConstraints();
-  simplex.addFlatAffineConstraints(sI);
+  simplex.addBasicSet(sI);
 
   if (simplex.isEmpty()) {
     simplex.rollback(initialSnap);
@@ -167,7 +166,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
 
     subtractRecursively(b, simplex, s, i + 1, result);
 
-    b.removeInequality(b.getNumInequalities() - 1);
+    b.removeLastInequality();
     simplex.rollback(snap);
   };
 
@@ -177,7 +176,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   for (unsigned j = 0, e = sI.getNumEqualities(); j < e; ++j) {
     // The first inequality is positive and the second is negative, of which
     // we need the complements (strict negative and strict positive).
-    const auto &eq = sI.getEquality(j);
+    const auto &eq = sI.getEquality(j).getCoeffs();
     if (!isMarkedRedundant[2 * j]) {
       recurseWithInequality(inequalityFromEquality(eq, true, true));
       if (isMarkedRedundant[2 * j + 1]) {
@@ -201,17 +200,17 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   for (unsigned j = 0; j < sI.getNumInequalities(); j++) {
     if (isMarkedRedundant[offset + j])
       continue;
-    const auto &ineq = sI.getInequality(j);
+    const auto &ineq = sI.getInequality(j).getCoeffs();
 
     recurseWithInequality(complementIneq(ineq));
     addInequality(ineq);
   }
 
   for (unsigned i = b.getNumInequalities(); i > originalNumIneqs; --i)
-    b.removeInequality(i - 1);
+    b.removeLastInequality();
 
   for (unsigned i = b.getNumEqualities(); i > originalNumEqs; --i)
-    b.removeEquality(i - 1);
+    b.removeLastEquality();
 
   // TODO benchmark technically we can probably drop this as the caller will
   // rollback. See if it makes much of a difference. Only the last rollback
@@ -220,25 +219,23 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
 }
 
 // Returns the set difference c - set.
-PresburgerSet PresburgerSet::subtract(FlatAffineConstraints cs,
+PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(cs, set);
-  if (cs.isEmptyByGCDTest())
-    return PresburgerSet::makeEmptySet(cs.getNumDimIds(), cs.getNumSymbolIds());
 
   if (set.isUniverse())
     return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
   if (set.isMarkedEmpty())
     return PresburgerSet(cs);
 
-  PresburgerSet result(cs.getNumDimIds(), cs.getNumSymbolIds());
+  PresburgerSet result(cs.getNumDims(), cs.getNumParams());
   Simplex simplex(cs);
   subtractRecursively(cs, simplex, set, 0, result);
   return result;
 }
 
 PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
-  return subtract(FlatAffineConstraints(set.getNumDims(), set.getNumSyms()),
+  return subtract(PresburgerBasicSet(set.getNumDims(), set.getNumSyms(), 0),
                   set);
 }
 
@@ -261,7 +258,7 @@ void PresburgerSet::subtract(const PresburgerSet &set) {
   }
 
   PresburgerSet result = PresburgerSet::makeEmptySet(nDim, nSym);
-  for (const FlatAffineConstraints &c : flatAffineConstraints)
+  for (const PresburgerBasicSet &c : basicSets)
     result.unionSet(subtract(c, set));
   *this = result;
 }
@@ -291,7 +288,7 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
   if (isUniverse())
     return SmallVector<int64_t, 8>(nDim, 0);
 
-  for (FlatAffineConstraints &cs : flatAffineConstraints) {
+  for (PresburgerBasicSet &cs : basicSets) {
     if (auto opt = cs.findIntegerSample()) {
       maybeSample = SmallVector<int64_t, 8>();
 
@@ -320,12 +317,12 @@ void PresburgerSet::print(raw_ostream &os) const {
   }
   os << " : (";
   bool fst = true;
-  for (auto &c : flatAffineConstraints) {
+  for (auto &c : basicSets) {
     if (fst)
       fst = false;
     else
       os << " or ";
-    printFlatAffineConstraints(os, c);
+    printBasicSet(os, c);
   }
   os << ")";
 }
@@ -364,14 +361,15 @@ void PresburgerSet::printVar(raw_ostream &os, int64_t val, unsigned i,
   countNonZero++;
 }
 
-void PresburgerSet::printFlatAffineConstraints(raw_ostream &os,
-                                               FlatAffineConstraints cs) const {
+void PresburgerSet::printBasicSet(raw_ostream &os,
+                                               PresburgerBasicSet cs) const {
   for (unsigned i = 0, e = cs.getNumEqualities(); i < e; ++i) {
     if (i != 0)
       os << " and ";
     unsigned countNonZero = 0;
-    for (unsigned j = 0, f = cs.getNumCols(); j < f; ++j) {
-      printVar(os, cs.atEq(i, j), j, countNonZero);
+    auto coeffs = cs.getEquality(i).getCoeffs();
+    for (unsigned j = 0, f = coeffs.size(); j < f; ++j) {
+      printVar(os, coeffs[j], j, countNonZero);
     }
     os << " = 0";
   }
@@ -381,8 +379,9 @@ void PresburgerSet::printFlatAffineConstraints(raw_ostream &os,
     if (i != 0)
       os << " and ";
     unsigned countNonZero = 0;
-    for (unsigned j = 0, f = cs.getNumCols(); j < f; ++j) {
-      printVar(os, cs.atIneq(i, j), j, countNonZero);
+    auto coeffs = cs.getInequality(i).getCoeffs();
+    for (unsigned j = 0, f = coeffs.size(); j < f; ++j) {
+      printVar(os, coeffs[j], j, countNonZero);
     }
     os << " >= 0";
   }
@@ -403,7 +402,7 @@ void PresburgerSet::printVariableList(raw_ostream &os) const {
 }
 
 llvm::hash_code PresburgerSet::hash_value() const {
-  // TODO how should we hash FlatAffineConstraints without having access to
+  // TODO how should we hash PresburgerBasicSet without having access to
   // private vars?
   return llvm::hash_combine(nDim, nSym);
 }
