@@ -14,20 +14,7 @@ using namespace mlir;
 using namespace mlir::analysis;
 using namespace mlir::analysis::presburger;
 
-void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
-  divs.emplace_back(coeffs, denom, /*variable = */nDim);
-
-  for (auto &ineq : ineqs)
-    ineq.appendNewDimension();
-  for (auto &eq : eqs)
-    eq.appendNewDimension();
-  for (auto &div : divs)
-    div.appendNewDimension();
-  nDim++;
-}
-
-void PresburgerBasicSet::
-addInequality(ArrayRef<int64_t> coeffs) {
+void PresburgerBasicSet::addInequality(ArrayRef<int64_t> coeffs) {
   ineqs.emplace_back(coeffs);
 }
 
@@ -47,6 +34,7 @@ ArrayRef<InequalityConstraint> PresburgerBasicSet::getInequalities() const {
 ArrayRef<EqualityConstraint> PresburgerBasicSet::getEqualities() const {
   return eqs;
 }
+
 void PresburgerBasicSet::removeLastDivision() {
   divs.pop_back();
   for (auto &ineq : ineqs)
@@ -55,7 +43,6 @@ void PresburgerBasicSet::removeLastDivision() {
     eq.removeLastDimension();
   for (auto &div : divs)
     div.removeLastDimension();
-  nDim--;
 }
 
 void PresburgerBasicSet::addEquality(ArrayRef<int64_t> coeffs) {
@@ -69,6 +56,15 @@ void PresburgerBasicSet::removeInequality(unsigned i) {
 
 void PresburgerBasicSet::removeEquality(unsigned i) {
   eqs.erase(eqs.begin() + i, eqs.begin() + i + 1);
+}
+void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+  divs.emplace_back(coeffs, denom, /*variable = */getNumTotalDims());
+  for (auto &ineq : ineqs)
+    ineq.appendDimension();
+  for (auto &eq : eqs)
+    eq.appendDimension();
+  for (auto &div : divs)
+    div.appendDimension();
 }
 void PresburgerBasicSet::dump() const {
   // auto printName = [&](unsigned idx) {

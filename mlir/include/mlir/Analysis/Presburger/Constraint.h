@@ -24,10 +24,6 @@ class Constraint {
 public:
   Constraint() = delete;
 
-  void appendNewDimension() {
-    coeffs.push_back(coeffs.back());
-    coeffs[coeffs.size() - 2] = 0;
-  }
 
   unsigned getNumDims() const {
     // The last element of the coefficient vector is the constant term and does
@@ -67,6 +63,10 @@ public:
 
   void shift(int64_t x) {
     coeffs.back() += x;
+  }
+
+  void appendDimension() {
+    insertDimensions(getNumDims(), 1);
   }
 
   void removeLastDimension() {
