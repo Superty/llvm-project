@@ -2,6 +2,7 @@ set(LLVM_OPTIONAL_SOURCES
   AffineAnalysis.cpp
   AffineStructures.cpp
   CallGraph.cpp
+  LinearTransformFlatAffineConstraints.cpp
   Liveness.cpp
   LoopAnalysis.cpp
   NestedMatcher.cpp
@@ -32,6 +33,7 @@ add_mlir_library(MLIRAnalysis
 add_mlir_library(MLIRLoopAnalysis
   AffineAnalysis.cpp
   AffineStructures.cpp
+  LinearTransformFlatAffineConstraints.cpp
   LoopAnalysis.cpp
   NestedMatcher.cpp
   Utils.cpp

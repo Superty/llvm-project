@@ -5,4 +5,5 @@ add_mlir_library(MLIRPresburger
   PresburgerBasicSet.cpp
   Matrix.cpp
   LinearTransform.cpp
+  ../AffineStructures.cpp
   )
