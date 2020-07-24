@@ -119,7 +119,7 @@ private:
   void prependExistentialDimensions(unsigned count);
   void appendExistentialDimensions(unsigned count);
 
-  void assertPlainSet() const;
+  bool isPlainBasicSet() const;
 
   void updateFromSimplex(const Simplex &simplex);
 
