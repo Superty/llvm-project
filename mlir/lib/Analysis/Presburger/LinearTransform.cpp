@@ -3,6 +3,7 @@
  */
 
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 
 using namespace mlir;
 using namespace analysis::presburger;
