@@ -137,6 +137,7 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
     return;
   }
   PresburgerBasicSet sI = s.getBasicSet()[i];
+  assert(sI.getNumExists() == 0 && "Existentials are not yet supported");
   PresburgerBasicSet::toCommonSpace(b, sI);
 
   auto initialSnap = simplex.getSnapshot();
@@ -224,6 +225,7 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
 PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(cs, set);
+  assert(cs.getNumExists() == 0 && "Existentials are not yet supported");
 
   if (set.isUniverse())
     return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
