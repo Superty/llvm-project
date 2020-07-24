@@ -29,6 +29,13 @@ public:
   PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
+  unsigned getNumDims() const { return nDim; }
+  unsigned getNumTotalDims() const { return nParam + nDim + nExist + divs.size(); }
+  unsigned getNumParams() const { return nParam; }
+  unsigned getNumExists() const { return nExist; }
+  unsigned getNumDivs() const { return divs.size(); }
+  unsigned getNumInequalities() const { return ineqs.size(); }
+  unsigned getNumEqualities() const { return eqs.size(); }
   void appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
   void addInequality(ArrayRef<int64_t> coeffs);
