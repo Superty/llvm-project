@@ -24,7 +24,6 @@ class Constraint {
 public:
   Constraint() = delete;
 
-
   unsigned getNumDims() const {
     // The last element of the coefficient vector is the constant term and does
     // not correspond to any dimension.
