@@ -26,6 +26,11 @@ namespace mlir {
 namespace presburger {
 using ErrorCallback = std::function<InFlightDiagnostic(SMLoc, const Twine &)>;
 
+/// This class is used by the following Lexer to represent the lexical tokens
+/// produced by it.
+///
+/// Stores a StringRef with the actual content of the token. This gives
+/// additionally a location that enables easier error reporting.
 class Token {
 public:
   enum class Kind {
@@ -60,47 +65,86 @@ public:
   explicit Token(Kind kind) : kind(kind) {}
   Token(Kind kind, StringRef content) : kind(kind), content(content) {}
 
+  /// Returns true if the token is of Kind kind.
   bool isa(Kind kind);
+
+  /// Retruns the StringRef corresponding to the content.
   StringRef string();
-  static std::string name(Token::Kind kind);
+
+  /// Returns a StringRef with a name for the provided kind.
+  static StringRef name(Token::Kind kind);
 
 private:
   Kind kind;
   StringRef content;
 };
 
+/// Splits the buffer into Tokens and is able to report errors at certain
+/// location while using the provided ErrorCallback.
 class Lexer {
 public:
   Lexer(StringRef buffer, ErrorCallback callback);
 
+  /// Returns the next token without consuming it.
   Token peek();
+
+  /// Returns the next token and consumes it.
   Token next();
+
+  /// Consumes a token with specified kind. If non is present it is a no-op.
   void consume(Token::Kind kind);
+
+  /// Consumes the next token and emits an error if it doesn't match the
+  /// provided kind.
   LogicalResult nextAssertKind(Token::Kind kind);
   LogicalResult nextAssertKind(Token::Kind kind, Token &token);
+
+  /// Returns true if the end of the buffer is reached.
   bool reachedEOF();
 
+  /// Emits the provided error message at the location provided.
   InFlightDiagnostic emitError(const char *loc, const Twine &message = {});
   InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
+
+  /// Emits the provided error message at the current possition of the Lexer.
   InFlightDiagnostic emitError(const Twine &message = {});
+
+  /// Emits the provided error message at the start of the buffer.
   InFlightDiagnostic emitErrorAtStart(const Twine &message = {});
 
 private:
   bool isSpace(char c);
   bool isDigit(char c);
   bool isAlpha(char c);
+
+  /// Returns a Token from start to curPtr
   Token atom(Token::Kind kind, const char *start);
+
+  /// Creates an integer token while consuming all digits
   Token integer(const char *start);
+
+  /// Create an identifier of keyword. An identifier has to start witha n
+  /// alphabetic char and after that contains a sequence of alphanumeric chars.
   Token identifierOrKeyword(const char *start);
+
+  /// Determines the next token and consumes it.
   Token nextToken();
 
+  /// Holds the current token.
   Token current;
 
+  /// The buffer containing the string to lex.
   StringRef buffer;
+
+  /// The current possition in the buffer.
   const char *curPtr;
+
+  /// An error callback function. This is required as otherwise exact error
+  /// messages aren't possible.
   ErrorCallback callback;
 };
 
+/// This is a baseclass for all AST nodes for the Presburger constructs.
 class Expr {
 public:
   enum class Type {
@@ -285,16 +329,15 @@ private:
 
 class PwExprExpr : public Expr {
 public:
-  PwExprExpr(SmallVector<StringRef, 8> dims, SmallVector<StringRef, 8> syms)
-      : dims(std::move(dims)), syms(std::move(syms)) {}
+  PwExprExpr(SmallVector<StringRef, 8> dims, SmallVector<StringRef, 8> syms,
+             SmallVector<std::unique_ptr<PieceExpr>, 4> pieces)
+      : dims(std::move(dims)), syms(std::move(syms)),
+        pieces(std::move(pieces)) {}
 
   SmallVector<StringRef, 8> &getDims() { return dims; }
   SmallVector<StringRef, 8> &getSyms() { return syms; }
   SmallVector<std::unique_ptr<PieceExpr>, 4> &getPieces() { return pieces; }
-  PieceExpr *getPieceAt(unsigned i) {
-    assert(i < pieces.size() && "out of bounds access");
-    return pieces[i].get();
-  }
+  PieceExpr &getPieceAt(size_t i) { return *pieces[i]; }
 
   static Type getStaticType() { return Type::PwExpr; }
   virtual Type getType() { return Type::PwExpr; }
@@ -305,22 +348,44 @@ private:
   SmallVector<std::unique_ptr<PieceExpr>, 4> pieces;
 };
 
+/// Uses the Lexer to transform a token stream into an AST representing
+/// different Presburger constructs.
 class Parser {
 public:
   Parser(StringRef buffer, ErrorCallback callback) : lexer(buffer, callback) {}
 
-  LogicalResult parse(std::unique_ptr<Expr> &expr);
+  /// Parse a Presburger set and returns an AST corresponding to it.
   LogicalResult parseSet(std::unique_ptr<SetExpr> &setExpr);
+
+  /// Parse a piecewise Presburger expression and returns an AST corresponding
+  /// to it.
   LogicalResult parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr);
+
+  /// Parse a keyword that starts with a letter
+  LogicalResult parseKeyword(StringRef &keyword);
+
+  /// Emits the provided error message at the start of the buffer.
+  InFlightDiagnostic emitError(const Twine &message = {});
+
+  /// Emits the provided error message at the location provided.
+  InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
+
+  /// Emits the provided error message at the start of the token.
+  InFlightDiagnostic emitErrorForToken(Token token, const Twine &message = {});
+
+private:
+  // Helpers for the parsing
+
   LogicalResult parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
                                              Token::Kind rightToken,
                                              bool allowEmpty);
-
   LogicalResult parseDimAndOptionalSymbolIdList(
       std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
           &dimSymPair);
+
   LogicalResult parseOr(std::unique_ptr<Expr> &expr);
   LogicalResult parseAnd(std::unique_ptr<Expr> &expr);
+
   LogicalResult parseConstraint(std::unique_ptr<ConstraintExpr> &constraint);
   LogicalResult parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces);
   LogicalResult parseSum(std::unique_ptr<Expr> &expr);
@@ -330,14 +395,15 @@ public:
                              bool is_negated = false);
   LogicalResult parseVariable(std::unique_ptr<VariableExpr> &vExpr);
 
-  InFlightDiagnostic emitError(const Twine &message = {});
-  InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
-  InFlightDiagnostic emitErrorForToken(Token token, const Twine &message = {});
-
-private:
   Lexer lexer;
 };
 
+/// This class uses the Parser class to parse Presburger constructs. It uses the
+/// Parser class to generate an AST and then transforms this AST to the
+/// according datastructures.
+///
+/// At the moment it expects a Parser instance as this parser is already used to
+/// determine the kind of object to parse. TODO change this
 class PresburgerParser {
 public:
   enum class Kind { Equality, Inequality };
@@ -345,10 +411,14 @@ public:
 
   PresburgerParser(Parser parser);
 
+  /// Parse a piecewise Presburger expression into pwExpr
   LogicalResult parsePresburgerPwExpr(PresburgerPwExpr &pwExpr);
+
+  /// Parse a Presburger set into set
   LogicalResult parsePresburgerSet(PresburgerSet &set);
 
-protected:
+private:
+  // parsing helpers
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
   LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerPwExpr &pwExpr);
   LogicalResult parseFlatAffineConstraints(Expr *constraints,

@@ -36,11 +36,11 @@ Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
   Parser p(parser.getFullSymbolSpec(), callback);
 
   // Parse the kind keyword first.
-  std::unique_ptr<VariableExpr> attrKind;
-  if (failed(p.parseVariable(attrKind)))
+  StringRef attrKind;
+  if (failed(p.parseKeyword(attrKind)))
     return {};
 
-  if (attrKind->getName() == PresburgerSetAttr::getKindName()) {
+  if (attrKind == PresburgerSetAttr::getKindName()) {
     PresburgerParser setParser(p);
     PresburgerSet set;
 
@@ -52,7 +52,7 @@ Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
         getContext(), set.getNumDims(), set.getNumSyms());
 
     return PresburgerSetAttr::get(type, set);
-  } else if (attrKind->getName() == PresburgerPwExprAttr::getKindName()) {
+  } else if (attrKind == PresburgerPwExprAttr::getKindName()) {
     PresburgerParser pwParser(p);
     PresburgerPwExpr pwExpr;
 
@@ -63,10 +63,10 @@ Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
         getContext(), pwExpr.getNumDims(), pwExpr.getNumSyms());
 
     return PresburgerPwExprAttr::get(type, pwExpr);
-
-  } else {
-    return {};
   }
+  parser.emitError(parser.getCurrentLocation(),
+                   "unknown Presburger attribute kind: " + attrKind);
+  return {};
 }
 
 void PresburgerDialect::printAttribute(Attribute attr,

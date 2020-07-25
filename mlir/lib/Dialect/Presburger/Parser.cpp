@@ -15,7 +15,7 @@ bool Token::isa(Kind mayKind) { return kind == mayKind; }
 
 StringRef Token::string() { return content; }
 
-std::string Token::name(Token::Kind kind) {
+StringRef Token::name(Token::Kind kind) {
   switch (kind) {
   case Token::Kind::Integer:
     return "integer";
@@ -100,6 +100,10 @@ Token Lexer::integer(const char *start) {
   return Token(Token::Kind::Integer, StringRef(start, curPtr - start));
 }
 
+/// Create an identifier of keyword. An identifier has to start witha n
+/// alphabetic char and after that contains a sequence of alphanumeric chars.
+///
+/// If the resulting string matches a keyword an according token is returned.
 Token Lexer::identifierOrKeyword(const char *start) {
   char c = *curPtr;
   assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
@@ -119,6 +123,8 @@ Token Lexer::identifierOrKeyword(const char *start) {
   return Token(kind, StringRef(start, curPtr - start));
 }
 
+/// Determines the next token and consumes it.
+/// As an invariant we have that curPtr always points to the next unread char
 Token Lexer::nextToken() {
   while (isSpace(*curPtr))
     curPtr++;
@@ -191,19 +197,24 @@ Token Lexer::nextToken() {
   }
 }
 
+/// Returns the next token without consuming it.
 Token Lexer::peek() { return current; }
 
+/// Returns the next token and consumes it.
 Token Lexer::next() {
   Token result = current;
   current = nextToken();
   return result;
 }
 
+/// Consumes a token with specified kind. If non is present it is a no-op.
 void Lexer::consume(Token::Kind kind) {
   if (current.isa(kind))
     next();
 }
 
+/// Consumes the next token and emits an error if it doesn't match the
+/// provided kind.
 LogicalResult Lexer::nextAssertKind(Token::Kind kind) {
   Token token = next();
   if (!token.isa(kind))
@@ -212,6 +223,8 @@ LogicalResult Lexer::nextAssertKind(Token::Kind kind) {
   return success();
 }
 
+/// Consumes the next token and emits an error if it doesn't match the
+/// provided kind.
 LogicalResult Lexer::nextAssertKind(Token::Kind kind, Token &token) {
   token = next();
   if (!token.isa(kind))
@@ -220,20 +233,27 @@ LogicalResult Lexer::nextAssertKind(Token::Kind kind, Token &token) {
   return success();
 }
 
-bool Lexer::reachedEOF() { return curPtr - 1 == buffer.end(); }
+bool Lexer::reachedEOF() {
+  assert(curPtr - 1 <= buffer.end() && "read outside of the buffer");
+  return curPtr - 1 == buffer.end();
+}
 
+/// Emits the provided error message at the location provided.
 InFlightDiagnostic Lexer::emitError(const char *loc, const Twine &message) {
   return callback(SMLoc::getFromPointer(loc), message);
 }
 
+/// Emits the provided error message at the location provided.
 InFlightDiagnostic Lexer::emitError(SMLoc loc, const Twine &message) {
   return callback(loc, message);
 }
 
+/// Emits the provided error message at the start of the buffer.
 InFlightDiagnostic Lexer::emitErrorAtStart(const Twine &message) {
   return emitError(SMLoc::getFromPointer(buffer.begin()), message);
 }
 
+/// Emits the provided error message at the current possition of the Lexer.
 InFlightDiagnostic Lexer::emitError(const Twine &message) {
   assert(!reachedEOF() &&
          "curPtr is out of range, you have to specify a location");
@@ -244,10 +264,19 @@ InFlightDiagnostic Lexer::emitError(const Twine &message) {
 // Parser (partly from libint)
 //===----------------------------------------------------------------------===//
 
-LogicalResult Parser::parse(std::unique_ptr<Expr> &expr) {
-  return parseOr(expr);
-}
-
+/// Parse a Presburger set.
+///
+///  pb-set        ::= dim-and-symbol-use-list `:` `(` pb-or-expr? `)`
+///  pb-or-expr    ::= pb-and-expr (`or` pb-and-expr)*
+///  pb-and-expr   ::= pb-constraint (`and` pb-constraint)*
+///  pb-constraint ::= pb-sum (`>=` | `=` | `<=`) pb-sum
+///  pb-sum        ::= pb-term (('+' | '-') pb-term)*
+///  pb-term       ::= '-'? pb-int? pb-var
+///                ::= '-'? pb-int
+///  pb-var        ::= letter (digit | letter)*
+///  pb-int        ::= digit+
+///
+/// TODO adapt grammar to future changes
 LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
   if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
@@ -289,8 +318,14 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
                            "expected to be at the end of the set");
 }
 
+/// Parse a piecewise Presburger expression.
+///
+///  pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)*
+///  piece      ::= `(`pb-sum`) : (`pb-or-expr`)`
+///
 LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
+  SmallVector<std::unique_ptr<PieceExpr>, 4> pieces;
   if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
     return failure();
 
@@ -298,10 +333,12 @@ LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
     return emitErrorForToken(lexer.peek(), "expected \"->\" but got: " +
                                                lexer.peek().string());
 
-  pwExpr = std::make_unique<PwExprExpr>(std::move(dimSymPair.first),
-                                        std::move(dimSymPair.second));
-  if (failed(parsePieces(pwExpr->getPieces())))
+  if (failed(parsePieces(pieces)))
     return failure();
+
+  pwExpr = std::make_unique<PwExprExpr>(std::move(dimSymPair.first),
+                                        std::move(dimSymPair.second),
+                                        std::move(pieces));
 
   if (lexer.reachedEOF())
     return success();
@@ -309,6 +346,25 @@ LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
                            "expected to be at the end of the set");
 }
 
+/// This parses a string following the variable rule. It is only used to
+/// allow PresburgerDialect::parseAttribute to check what kind of attribute
+/// should be parsed
+///
+/// TODO find a nicer way to do this
+LogicalResult Parser::parseKeyword(StringRef &keyword) {
+  std::unique_ptr<VariableExpr> varExpr;
+  if (failed(parseVariable(varExpr)))
+    return failure();
+  keyword = varExpr->getName();
+  return success();
+}
+
+/// Parse a comma-separated list of elements, terminated with an arbitrary
+/// token.  This allows empty lists if allowEmptyList is true.
+///
+///   abstract-list ::= rightToken           // if allowEmptyList == true
+///   abstract-list ::= element (',' element)* rightToken
+///
 LogicalResult Parser::parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
                                                    Token::Kind rightToken,
                                                    bool allowEmpty) {
@@ -335,6 +391,10 @@ LogicalResult Parser::parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
   return lexer.nextAssertKind(rightToken);
 }
 
+/// Parse the list of symbolic identifiers
+///
+/// dim-and-symbol-use-list is defined elsewhere
+///
 LogicalResult Parser::parseDimAndOptionalSymbolIdList(
     std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
         &dimSymPair) {
@@ -355,6 +415,10 @@ LogicalResult Parser::parseDimAndOptionalSymbolIdList(
   return success();
 }
 
+/// Parse an or expression.
+///
+///  pb-or-expr ::= pb-and-expr (`or` pb-and-expr)*
+///
 LogicalResult Parser::parseOr(std::unique_ptr<Expr> &expr) {
   SmallVector<std::unique_ptr<Expr>, 8> exprs;
   std::unique_ptr<Expr> andExpr;
@@ -378,6 +442,10 @@ LogicalResult Parser::parseOr(std::unique_ptr<Expr> &expr) {
   return success();
 }
 
+/// Parse an and expression.
+///
+///  pb-and-expr ::= pb-constraint (`and` pb-constraint)*
+///
 LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
   std::unique_ptr<ConstraintExpr> c;
@@ -403,6 +471,10 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   return success();
 }
 
+/// Parse a piece of a piecewise Presburger expression.
+///
+///  piece ::= `(`pb-sum`) : (`pb-or-expr`)`
+///
 LogicalResult
 Parser::parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces) {
   do {
@@ -436,6 +508,10 @@ Parser::parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces) {
   return success();
 }
 
+/// Parse a Presburger constraint
+///
+///  pb-constraint ::= pb-expr (`>=` | `=` | `<=`) pb-expr
+///
 LogicalResult
 Parser::parseConstraint(std::unique_ptr<ConstraintExpr> &constraint) {
   std::unique_ptr<Expr> leftExpr;
@@ -469,6 +545,10 @@ Parser::parseConstraint(std::unique_ptr<ConstraintExpr> &constraint) {
   return success();
 }
 
+/// Parse a Presburger sum.
+///
+///  pb-sum ::= pb-term (('+' | '-') pb-term)*
+///
 LogicalResult Parser::parseSum(std::unique_ptr<Expr> &expr) {
   SmallVector<std::unique_ptr<TermExpr>, 8> terms;
   std::unique_ptr<TermExpr> term;
@@ -496,6 +576,11 @@ LogicalResult Parser::parseSum(std::unique_ptr<Expr> &expr) {
   return success();
 }
 
+/// Parse a Presburger term.
+///
+///  pb-term       ::= '-'? pb-int? pb-var
+///                ::= '-'? pb-int
+///
 LogicalResult Parser::parseTerm(std::unique_ptr<TermExpr> &term,
                                 bool isNegated) {
   std::unique_ptr<IntegerExpr> integer;
@@ -523,6 +608,10 @@ LogicalResult Parser::parseTerm(std::unique_ptr<TermExpr> &term,
   return success();
 }
 
+/// Parse an variable.
+///
+///  pb-var ::= letter (digit | letter)*
+///
 LogicalResult Parser::parseVariable(std::unique_ptr<VariableExpr> &vExpr) {
   Token t;
   if (failed(lexer.nextAssertKind(Token::Kind::Identifier, t)))
@@ -531,6 +620,10 @@ LogicalResult Parser::parseVariable(std::unique_ptr<VariableExpr> &vExpr) {
   return success();
 }
 
+/// Parse an signless integer.
+///
+///  pb-int ::= digit+
+///
 LogicalResult Parser::parseInteger(std::unique_ptr<IntegerExpr> &iExpr,
                                    bool isNegated) {
   bool negativ = isNegated ^ lexer.peek().isa(Token::Kind::Minus);
@@ -568,6 +661,7 @@ InFlightDiagnostic Parser::emitError(SMLoc loc, const Twine &message) {
 //
 PresburgerParser::PresburgerParser(Parser parser) : parser(parser) {}
 
+/// initializes a name to id mapping for variables
 LogicalResult
 PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
                                 StringMap<size_t> &map) {
@@ -575,7 +669,7 @@ PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
   for (auto &name : vars) {
     auto it = map.find(name);
     if (it != map.end())
-      return parser.emitError(
+      return emitError(
           "repeated variable names in the tuple are not yet supported");
 
     map.insert_or_assign(name, map.size());
@@ -583,6 +677,9 @@ PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
   return success();
 }
 
+/// Parse a Presburger set into set
+///
+/// For the exact parsing rules, see Parser::parseSet
 LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
 
   std::unique_ptr<SetExpr> setExpr;
@@ -602,6 +699,10 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
   return success();
 }
 
+/// Creates a PresburgerSet instance from constraints
+///
+/// For each AndExpr contained in constraints it creates one
+/// FlatAffineConstraints object
 LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
                                                    PresburgerSet &set) {
   set = PresburgerSet(dimNameToIndex.size(), symNameToIndex.size());
@@ -624,6 +725,10 @@ LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
   return success();
 }
 
+/// Creates a FlatAffineConstraint instance from constraints
+///
+/// Expects either a single ConstraintExpr or multiple of them combined in an
+/// AndExpr
 LogicalResult
 PresburgerParser::parseFlatAffineConstraints(Expr *constraints,
                                              FlatAffineConstraints &cs) {
@@ -651,6 +756,11 @@ PresburgerParser::parseFlatAffineConstraints(Expr *constraints,
   return success();
 }
 
+/// Creates a constraint from a ConstraintExpr.
+///
+/// It either returns an equality (== 0) or an inequalitiy (>= 0).
+/// As a ConstraintExpr contains sums on both sides, they are subtracted from
+/// each other to get the desired form.
 LogicalResult
 PresburgerParser::parseConstraint(ConstraintExpr *constraint,
                                   PresburgerParser::Constraint &c) {
@@ -694,6 +804,11 @@ PresburgerParser::parseConstraint(ConstraintExpr *constraint,
   return success();
 }
 
+/// Creates a list of coefficients and a constant from a SumExpr or a TermExpr.
+///
+/// The list of coefficients corresponds to the coefficients of the dimensions
+/// and after that the symbols.
+///
 LogicalResult
 PresburgerParser::parseSum(Expr *expr,
                            std::pair<int64_t, SmallVector<int64_t, 8>> &r) {
@@ -712,6 +827,11 @@ PresburgerParser::parseSum(Expr *expr,
   return success();
 }
 
+/// Takes a TermExpr and addapts the matchin coefficient or the constant to this
+/// terms value. To determine the coefficient id it luuks it up in the
+/// nameToIndex mappings
+///
+/// Failes if the variable name is unknown
 LogicalResult
 PresburgerParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
                                   SmallVector<int64_t, 8> &coeffs) {
@@ -748,15 +868,9 @@ void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
     cs.addInequality(constraint.first);
 }
 
-InFlightDiagnostic PresburgerParser::emitError(const Twine &message) {
-  return parser.emitError(message);
-}
-
-InFlightDiagnostic PresburgerParser::emitError(SMLoc loc,
-                                               const Twine &message) {
-  return parser.emitError(loc, message);
-}
-
+/// Parse a piecewise Presburger expression into pwExpr
+///
+/// For the exact parsing rules, see Parser::parsePwExpr
 LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
 
   std::unique_ptr<PwExprExpr> pwExpr;
@@ -771,15 +885,14 @@ LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
   assert(pwExpr->getPieces().size() > 0 &&
          "expect atleast one piece in a piecewise expression");
 
-  for (unsigned i = 0, e = pwExpr->getPieces().size(); i < e; i++) {
-    PieceExpr *piece = pwExpr->getPieceAt(i);
-    if (failed(parseAndAddPiece(piece, res)))
+  for (std::unique_ptr<PieceExpr> &piece : pwExpr->getPieces())
+    if (failed(parseAndAddPiece(piece.get(), res)))
       return failure();
-  }
 
   return success();
 }
 
+/// Takes a PieceExpr and adds its corresponding representation to pwExpr
 LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
                                                  PresburgerPwExpr &pwExpr) {
   std::pair<int64_t, SmallVector<int64_t, 8>> expr;
@@ -791,3 +904,13 @@ LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
   return success();
 }
 
+/// Emits the provided error message at the start of the string to parse.
+InFlightDiagnostic PresburgerParser::emitError(const Twine &message) {
+  return parser.emitError(message);
+}
+
+/// Emits the provided error message at the location provided.
+InFlightDiagnostic PresburgerParser::emitError(SMLoc loc,
+                                               const Twine &message) {
+  return parser.emitError(loc, message);
+}

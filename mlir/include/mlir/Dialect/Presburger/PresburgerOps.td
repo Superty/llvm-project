@@ -11,11 +11,16 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
     let description = [{
         Syntax:
         ```
-        operation      ::= `presburger.set #presburger<"set ` pb-set `">` 
-        pb-set         ::= dim-and-symbol-use-list `:` `(` pb-constraints? `)`
-        pb-constraints ::= pb-constraint ((`and` | `or`) pb-constraint)*
-        pb-constraint  ::= pb-expr (`>=` | `=` | `<=`) pb-expr
-        pb-expr        ::= affine-expr
+        operation     ::= `presburger.set #presburger<"set ` pb-set `">` 
+        pb-set        ::= dim-and-symbol-use-list `:` `(` pb-or-expr? `)`
+        pb-or-expr    ::= pb-and-expr (`or` pb-and-expr)*
+        pb-and-expr   ::= pb-constraint (`and` pb-constraint)*
+        pb-constraint ::= pb-sum (`>=` | `=` | `<=`) pb-sum
+        pb-sum        ::= pb-term (('+' | '-') pb-term)*
+        pb-term       ::= '-'? pb-int? pb-var
+                      ::= '-'? pb-int
+        pb-var        ::= letter (digit | letter)*
+        pb-int        ::= digit+
         ```
 
         The `presburger.set` operator allows us to introduce a new presburger
@@ -51,7 +56,7 @@ def Presburger_PwExprOp : Presburger_Op<"pwExpr", [NoSideEffect]> {
         ```
         operation  ::= `presburger.pwExpr #presburger<"pwExpr` pb-pw-expr `">` 
         pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)* 
-        piece      ::= `(`pb-expr`) : (`pb-constraints`)`
+        piece      ::= `(`pb-sum`) : (`pb-or-expr`)`
         ```
 
         The `presburger.pwExpr` operator allows us to introduce a new piecewise
