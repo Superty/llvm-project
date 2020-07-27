@@ -263,6 +263,47 @@ static LogicalResult verify(ContainsOp op) {
   return verifyLocality(op.set(), op);
 }
 
+static ParseResult parseApplyOp(OpAsmParser &parser, OperationState &result) {
+  unsigned numDims;
+  if (parseDimAndSymbolList(parser, result.operands, numDims) ||
+      parser.parseOptionalAttrDict(result.attributes))
+    return failure();
+
+  unsigned numSyms = result.operands.size() - numDims;
+
+  OpAsmParser::OperandType exprOp;
+  if (parser.parseOperand(exprOp))
+    return failure();
+
+  PresburgerExprType exprType = PresburgerExprType::get(
+      parser.getBuilder().getContext(), numDims, numSyms);
+
+  if (parser.resolveOperand(exprOp, exprType, result.operands))
+    return failure();
+
+  Type outType = parser.getBuilder().getIndexType();
+  parser.addTypeToList(outType, result.types);
+
+  return success();
+}
+
+static void print(OpAsmPrinter &printer, ApplyOp op) {
+  PresburgerExprType exprType = op.expr().getType().cast<PresburgerExprType>();
+  printer << "presburger.apply ";
+  printDimAndSymbolList(op.operand_begin(),
+                        op.operand_begin() + exprType.getDimCount() +
+                            exprType.getSymbolCount(),
+                        exprType.getDimCount(), printer);
+  printer << " ";
+  printer.printOperand(op.expr());
+}
+
+static LogicalResult verify(ApplyOp op) {
+  /// return verifyLocality(op.set(), op);
+  // TODO add this as soon as we have a trait
+  return success();
+}
+
 namespace mlir {
 namespace presburger {
 #define GET_OP_CLASSES

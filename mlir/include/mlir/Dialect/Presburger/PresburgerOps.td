@@ -232,4 +232,31 @@ def Presburger_ContainsOp : Presburger_Op<"contains", [NoSideEffect]> {
 
 }
 
+def Presburger_ApplyOp : Presburger_Op<"apply", [NoSideEffect]> {
+    let summary = "applies a Presburger expression to the specified parameters";
+
+    let description = [{
+        The presburger.apply operation applies the specified Presburger
+        expression to the provided parameters. 
+
+        All the provided SSA values - except the Presburger expression - 
+        must all have `index` type.
+
+        TODO define what happens if point isn't contained in a domain 
+
+        Example:
+
+        ```mlir
+        %expr = presburger.expr #presburger<"expr (x)[s] -> (x + s) : (x >= 0) ; (0) : (-x + 1 >= 0)">
+        ...
+
+        %contained = presburger.apply (%d1)[%s1] %expr 
+        ```
+    }];
+
+    let arguments = (ins Variadic<Index>:$dimAndSyms, PresburgerExprType:$expr);
+
+    let results = (outs Index:$res);
+
+}
 #endif // Presburger_OPS
