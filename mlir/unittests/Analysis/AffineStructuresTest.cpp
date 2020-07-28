@@ -274,4 +274,47 @@ TEST(FlatAffineConstraintsTest, IsIntegerEmptyTest) {
                   .isIntegerEmpty());
 }
 
+TEST(FlatAffineConstraintsTest, removeRedundantTest) {
+  FlatAffineConstraints fac = makeFACFromConstraints(1,
+                                                     {
+                                                         {1, -2}, // x >= 2.
+                                                         {-1, 2}  // x <= 2.
+                                                     },
+                                                     {{1, -2}}); // x == 2.
+  EXPECT_EQ(fac.getNumInequalities(), 2u);
+  EXPECT_EQ(fac.getNumEqualities(), 1u);
+  fac.removeRedundantConstraints();
+
+  // Both inequalities are redundant given the equality. Both have been removed.
+  EXPECT_EQ(fac.getNumInequalities(), 0u);
+  EXPECT_EQ(fac.getNumEqualities(), 1u);
+
+  FlatAffineConstraints fac2 =
+      makeFACFromConstraints(2,
+                             {
+                                 {1, 0, -3}, // x >= 3.
+                                 {0, 1, -2}  // y >= 2 (redundant).
+                             },
+                             {{1, -1, 0}}); // x == y.
+  EXPECT_EQ(fac2.getNumInequalities(), 2u);
+  EXPECT_EQ(fac2.getNumEqualities(), 1u);
+  fac2.removeRedundantConstraints();
+
+  // The second inequality is redundant and should have been removed. The
+  // remaining inequality should be the first one.
+  EXPECT_EQ(fac2.getNumInequalities(), 1u);
+  EXPECT_THAT(fac2.getInequality(0), testing::ElementsAre(1, 0, -3));
+  EXPECT_EQ(fac2.getNumEqualities(), 1u);
+
+  FlatAffineConstraints fac3 = makeFACFromConstraints(
+      3, {}, {{1, -1, 0, 0}, {1, 0, -1, 0}, {0, 1, -1, 0}}); // x == y.
+  EXPECT_EQ(fac3.getNumInequalities(), 0u);
+  EXPECT_EQ(fac3.getNumEqualities(), 3u);
+  fac3.removeRedundantConstraints();
+
+  // One of the three equalities can be removed.
+  EXPECT_EQ(fac3.getNumInequalities(), 0u);
+  EXPECT_EQ(fac3.getNumEqualities(), 2u);
+}
+
 } // namespace mlir
