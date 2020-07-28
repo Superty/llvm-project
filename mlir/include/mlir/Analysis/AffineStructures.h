@@ -537,6 +537,9 @@ public:
   /// removeTrivialRedundancy.
   void removeRedundantInequalities();
 
+  // A check using Simplex to eliminate redundant constraints.
+  void removeRedundantConstraints();
+
   // Removes all equalities and inequalities.
   void clearConstraints();
 
