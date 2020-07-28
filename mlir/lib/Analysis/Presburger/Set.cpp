@@ -1,4 +1,5 @@
 #include "mlir/Analysis/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 
 // TODO should we change this to a storage type?
@@ -313,99 +314,10 @@ PresburgerSet::maybeGetCachedSample() const {
 
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
-  printVariableList(os);
-  os << " : ";
-  printConstraints(os);
-}
-
-void PresburgerSet::printConstraints(raw_ostream &os) const {
-  if (markedEmpty) {
-    os << "(1 = 0)";
-    return;
-  }
-  os << "(";
-  bool fst = true;
-  for (auto &c : flatAffineConstraints) {
-    if (fst)
-      fst = false;
-    else
-      os << " or ";
-    printFlatAffineConstraints(os, c);
-  }
-  os << ")";
+  PresburgerPrinter::print(os, *this);
 }
 
 void PresburgerSet::dump() const { print(llvm::errs()); }
-
-void PresburgerSet::printVar(raw_ostream &os, int64_t val, unsigned i,
-                             unsigned &countNonZero) const {
-  bool isConst = i >= getNumDims() + getNumSyms();
-  if (val == 0) {
-    return;
-  } else if (val > 0) {
-    if (countNonZero > 0) {
-      os << " + ";
-    }
-    if (val > 1 || isConst)
-      os << val;
-  } else {
-    if (countNonZero > 0) {
-      os << " - ";
-      if (val != -1 || isConst)
-        os << -val;
-    } else {
-      if (val == -1 && !isConst)
-        os << "-";
-      else
-        os << val;
-    }
-  }
-
-  if (i < getNumDims()) {
-    os << 'd' << i;
-  } else if (i < getNumDims() + getNumSyms()) {
-    os << 's' << (i - getNumDims());
-  }
-  countNonZero++;
-}
-
-void PresburgerSet::printFlatAffineConstraints(raw_ostream &os,
-                                               FlatAffineConstraints cs) const {
-  for (unsigned i = 0, e = cs.getNumEqualities(); i < e; ++i) {
-    if (i != 0)
-      os << " and ";
-    unsigned countNonZero = 0;
-    for (unsigned j = 0, f = cs.getNumCols(); j < f; ++j) {
-      printVar(os, cs.atEq(i, j), j, countNonZero);
-    }
-    os << " = 0";
-  }
-  if (cs.getNumEqualities() > 0 && cs.getNumInequalities() > 0)
-    os << " and ";
-  for (unsigned i = 0, e = cs.getNumInequalities(); i < e; ++i) {
-    if (i != 0)
-      os << " and ";
-    unsigned countNonZero = 0;
-    for (unsigned j = 0, f = cs.getNumCols(); j < f; ++j) {
-      printVar(os, cs.atIneq(i, j), j, countNonZero);
-    }
-    os << " >= 0";
-  }
-}
-
-void PresburgerSet::printVariableList(raw_ostream &os) const {
-  os << "(";
-  for (unsigned i = 0; i < getNumDims(); i++)
-    os << (i != 0 ? ", " : "") << 'd' << i;
-  os << ")";
-
-  if (getNumDims() > 0) {
-    os << "[";
-    for (unsigned i = 0; i < getNumSyms(); i++)
-      os << (i != 0 ? ", " : "") << 's' << i;
-    os << "]";
-  }
-}
 
 llvm::hash_code PresburgerSet::hash_value() const {
   // TODO how should we hash FlatAffineConstraints without having access to

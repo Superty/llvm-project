@@ -21,6 +21,9 @@ public:
   unsigned getNumDims() const;
   unsigned getNumSyms() const;
 
+  const SmallVector<ExprType, 2> &getExprs() const;
+  const SmallVector<PresburgerSet, 2> &getDomains() const;
+
   /// Adds a piece that applies expr on the speciefied domain.
   void addPiece(const ExprType &expr, const PresburgerSet &domain);
 
