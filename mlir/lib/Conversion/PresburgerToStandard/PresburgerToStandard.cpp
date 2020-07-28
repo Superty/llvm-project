@@ -80,6 +80,9 @@ struct PresburgerSetTransformer {
 } // namespace
 
 /// Presburger contains are replaced by runtime checks
+// TODO this should perhaps be matched on a compleat function, as it otherwise
+// might read updated values, i.e. violating an invariant of the rewrite
+// framework
 class PresburgerContainsLowering : public OpRewritePattern<ContainsOp> {
 public:
   using OpRewritePattern<ContainsOp>::OpRewritePattern;

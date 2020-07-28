@@ -65,7 +65,7 @@ StringRef Token::name(Token::Kind kind) {
     return "\"or\"";
   case Token::Kind::Arrow:
     return "\"->\"";
-  case Token::Kind::SemiColon:
+  case Token::Kind::Semicolon:
     return "';'";
   case Token::Kind::Unknown:
     return "unknown";
@@ -74,7 +74,7 @@ StringRef Token::name(Token::Kind kind) {
 }
 
 //===----------------------------------------------------------------------===//
-// Lexer (from libint)
+// Lexer
 //===----------------------------------------------------------------------===//
 
 Lexer::Lexer(StringRef buffer, ErrorCallback callback)
@@ -88,12 +88,12 @@ bool Lexer::isDigit(char c) { return std::isdigit(c); }
 
 bool Lexer::isAlpha(char c) { return std::isalpha(c); }
 
-Token Lexer::atom(Token::Kind kind, const char *start) {
+Token Lexer::getAtom(Token::Kind kind, const char *start) {
   curPtr++;
   return Token(kind, StringRef(start, curPtr - start));
 }
 
-Token Lexer::integer(const char *start) {
+Token Lexer::consumeInteger(const char *start) {
   while (isDigit(*curPtr))
     curPtr++;
 
@@ -104,7 +104,7 @@ Token Lexer::integer(const char *start) {
 /// alphabetic char and after that contains a sequence of alphanumeric chars.
 ///
 /// If the resulting string matches a keyword an according token is returned.
-Token Lexer::identifierOrKeyword(const char *start) {
+Token Lexer::consumeIdentifierOrKeyword(const char *start) {
   char c = *curPtr;
   assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
 
@@ -134,66 +134,66 @@ Token Lexer::nextToken() {
   char c = *curPtr;
 
   if (isDigit(c))
-    return integer(tokStart);
+    return consumeInteger(tokStart);
 
   if (isAlpha(c))
-    return identifierOrKeyword(tokStart);
+    return consumeIdentifierOrKeyword(tokStart);
 
   switch (c) {
   case '(':
-    return atom(Token::Kind::LeftParen, tokStart);
+    return getAtom(Token::Kind::LeftParen, tokStart);
   case ')':
-    return atom(Token::Kind::RightParen, tokStart);
+    return getAtom(Token::Kind::RightParen, tokStart);
   case '[':
-    return atom(Token::Kind::LeftSquare, tokStart);
+    return getAtom(Token::Kind::LeftSquare, tokStart);
   case ']':
-    return atom(Token::Kind::RightSquare, tokStart);
+    return getAtom(Token::Kind::RightSquare, tokStart);
   case '{':
-    return atom(Token::Kind::LeftCurly, tokStart);
+    return getAtom(Token::Kind::LeftCurly, tokStart);
   case '}':
-    return atom(Token::Kind::RightCurly, tokStart);
+    return getAtom(Token::Kind::RightCurly, tokStart);
   case '+':
-    return atom(Token::Kind::Plus, tokStart);
+    return getAtom(Token::Kind::Plus, tokStart);
   case '-':
     if (*(curPtr + 1) == '>') {
       curPtr++;
-      return atom(Token::Kind::Arrow, tokStart);
+      return getAtom(Token::Kind::Arrow, tokStart);
     }
-    return atom(Token::Kind::Minus, tokStart);
+    return getAtom(Token::Kind::Minus, tokStart);
   case '*':
-    return atom(Token::Kind::Times, tokStart);
+    return getAtom(Token::Kind::Times, tokStart);
   case '/':
-    return atom(Token::Kind::Divide, tokStart);
+    return getAtom(Token::Kind::Divide, tokStart);
   case '%':
-    return atom(Token::Kind::Modulo, tokStart);
+    return getAtom(Token::Kind::Modulo, tokStart);
   case '<':
     if (*(curPtr + 1) == '=') {
       curPtr++;
-      return atom(Token::Kind::LessEqual, tokStart);
+      return getAtom(Token::Kind::LessEqual, tokStart);
     }
-    return atom(Token::Kind::LessThan, tokStart);
+    return getAtom(Token::Kind::LessThan, tokStart);
   case '>':
     if (*(curPtr + 1) == '=') {
       curPtr++;
-      return atom(Token::Kind::GreaterEqual, tokStart);
+      return getAtom(Token::Kind::GreaterEqual, tokStart);
     }
-    return atom(Token::Kind::GreaterThan, tokStart);
+    return getAtom(Token::Kind::GreaterThan, tokStart);
   case '=':
-    return atom(Token::Kind::Equal, tokStart);
+    return getAtom(Token::Kind::Equal, tokStart);
   case '!':
     if (*(curPtr + 1) == '=') {
       curPtr++;
-      return atom(Token::Kind::NotEqual, tokStart);
+      return getAtom(Token::Kind::NotEqual, tokStart);
     }
-    return atom(Token::Kind::Unknown, tokStart);
+    return getAtom(Token::Kind::Unknown, tokStart);
   case ':':
-    return atom(Token::Kind::Colon, tokStart);
+    return getAtom(Token::Kind::Colon, tokStart);
   case ',':
-    return atom(Token::Kind::Comma, tokStart);
+    return getAtom(Token::Kind::Comma, tokStart);
   case ';':
-    return atom(Token::Kind::SemiColon, tokStart);
+    return getAtom(Token::Kind::Semicolon, tokStart);
   default:
-    return atom(Token::Kind::Unknown, tokStart);
+    return getAtom(Token::Kind::Unknown, tokStart);
   }
 }
 
@@ -261,7 +261,7 @@ InFlightDiagnostic Lexer::emitError(const Twine &message) {
 }
 
 //===----------------------------------------------------------------------===//
-// Parser (partly from libint)
+// Parser
 //===----------------------------------------------------------------------===//
 
 /// Parse a Presburger set.
@@ -504,7 +504,7 @@ Parser::parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces) {
         std::make_unique<PieceExpr>(std::move(expr), std::move(constraints));
     pieces.emplace_back(std::move(piece));
 
-  } while (lexer.peek().isa(Token::Kind::SemiColon));
+  } while (lexer.peek().isa(Token::Kind::Semicolon));
   return success();
 }
 
@@ -608,7 +608,7 @@ LogicalResult Parser::parseTerm(std::unique_ptr<TermExpr> &term,
   return success();
 }
 
-/// Parse an variable.
+/// Parse a variable.
 ///
 ///  pb-var ::= letter (digit | letter)*
 ///
@@ -620,7 +620,7 @@ LogicalResult Parser::parseVariable(std::unique_ptr<VariableExpr> &vExpr) {
   return success();
 }
 
-/// Parse an signless integer.
+/// Parse a signless integer.
 ///
 ///  pb-int ::= digit+
 ///
@@ -828,10 +828,10 @@ PresburgerParser::parseSum(Expr *expr,
 }
 
 /// Takes a TermExpr and addapts the matchin coefficient or the constant to this
-/// terms value. To determine the coefficient id it luuks it up in the
+/// terms value. To determine the coefficient id it looks it up in the
 /// nameToIndex mappings
 ///
-/// Failes if the variable name is unknown
+/// Fails if the variable name is unknown
 LogicalResult
 PresburgerParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
                                   SmallVector<int64_t, 8> &coeffs) {

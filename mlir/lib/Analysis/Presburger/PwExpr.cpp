@@ -86,7 +86,7 @@ void PresburgerPwExpr::printExpr(ExprType expr, raw_ostream &os) const {
 
 // TODO somehow merge this with PresburgerSet
 void PresburgerPwExpr::printVariableList(raw_ostream &os) const {
-  assert(domains.size() > 0 && "pwExpr needs atleast one piece");
+  assert(!domains.empty() && "pwExpr needs atleast one piece");
   domains[0].printVariableList(os);
 }
 

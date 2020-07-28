@@ -16,9 +16,6 @@
 #include "llvm/Support/SMLoc.h"
 #include "llvm/Support/SourceMgr.h"
 
-// TODO change to use the MLIR ADTs
-#include <memory>
-
 using llvm::SMLoc;
 using llvm::StringMap;
 
@@ -58,7 +55,7 @@ public:
     And,
     Or,
     Arrow,
-    SemiColon,
+    Semicolon,
     Unknown
   };
   Token() : kind(Kind::Unknown) {}
@@ -68,7 +65,7 @@ public:
   /// Returns true if the token is of Kind kind.
   bool isa(Kind kind);
 
-  /// Retruns the StringRef corresponding to the content.
+  /// Returns the StringRef corresponding to the content.
   StringRef string();
 
   /// Returns a StringRef with a name for the provided kind.
@@ -80,7 +77,7 @@ private:
 };
 
 /// Splits the buffer into Tokens and is able to report errors at certain
-/// location while using the provided ErrorCallback.
+/// location by using the provided ErrorCallback.
 class Lexer {
 public:
   Lexer(StringRef buffer, ErrorCallback callback);
@@ -91,7 +88,8 @@ public:
   /// Returns the next token and consumes it.
   Token next();
 
-  /// Consumes a token with specified kind. If non is present it is a no-op.
+  /// Consumes a token with specified kind. If the next token is not of the
+  /// specified kind it is a no-op.
   void consume(Token::Kind kind);
 
   /// Consumes the next token and emits an error if it doesn't match the
@@ -118,14 +116,14 @@ private:
   bool isAlpha(char c);
 
   /// Returns a Token from start to curPtr
-  Token atom(Token::Kind kind, const char *start);
+  Token getAtom(Token::Kind kind, const char *start);
 
   /// Creates an integer token while consuming all digits
-  Token integer(const char *start);
+  Token consumeInteger(const char *start);
 
-  /// Create an identifier of keyword. An identifier has to start witha n
+  /// Create an identifier or keyword. An identifier has to start with an
   /// alphabetic char and after that contains a sequence of alphanumeric chars.
-  Token identifierOrKeyword(const char *start);
+  Token consumeIdentifierOrKeyword(const char *start);
 
   /// Determines the next token and consumes it.
   Token nextToken();
