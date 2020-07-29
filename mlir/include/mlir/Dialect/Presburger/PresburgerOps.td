@@ -48,22 +48,22 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
     let results = (outs PresburgerSetType:$res);
 }
 
-def Presburger_PwExprOp : Presburger_Op<"pwExpr", [NoSideEffect]> {
+def Presburger_ExprOp : Presburger_Op<"expr", [NoSideEffect]> {
     let summary = "piecewise Presburger expression";
 
     let description = [{
         Syntax:
         ```
-        operation  ::= `presburger.pwExpr #presburger<"pwExpr` pb-pw-expr `">` 
+        operation  ::= `presburger.expr #presburger<"expr` pb-pw-expr `">` 
         pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)* 
         piece      ::= `(`pb-sum`) : (`pb-or-expr`)`
         ```
 
-        The `presburger.pwExpr` operator allows us to introduce a new piecewise
+        The `presburger.expr` operator allows us to introduce a new piecewise
         Presburger expression as an SSA value. The type of the SSA value is 
-        `!presburger.pwExpr<dimC,symC>`, where `dimC` represents the amount of 
+        `!presburger.expr<dimC,symC>`, where `dimC` represents the amount of 
         dimensions and `symC` the amount of symbols of the Presburger expressions.
-        It requires a `PresburgerPwExprAttr` that captures a piecewise Presburger 
+        It requires a `PresburgerExprAttr` that captures a piecewise Presburger 
         expression.
 
         Note that no type is required, because it can be extracted from the 
@@ -74,13 +74,13 @@ def Presburger_PwExprOp : Presburger_Op<"pwExpr", [NoSideEffect]> {
         **Examples:**
 
         ```mlir
-        %expr1 = presburger.pwExpr #presburger<"pwExpr (x)[] -> (x + 1) : (x >= 0) ; (0) : (-x + 1 >= 0)">
-        %expr2 = presburger.pwExpr #presburger<"pwExpr (x,y)[] -> (x) : (x >= 0 and 2y >= 0) ; (y) : (-x + 1 >= 0)">
+        %expr1 = presburger.expr #presburger<"expr (x)[] -> (x + 1) : (x >= 0) ; (0) : (-x + 1 >= 0)">
+        %expr2 = presburger.expr #presburger<"expr (x,y)[] -> (x) : (x >= 0 and 2y >= 0) ; (y) : (-x + 1 >= 0)">
         ```
     }];
 
-    let arguments = (ins PresburgerPwExprAttr:$pwExpr);
-    let results = (outs PresburgerPwExprType:$res);
+    let arguments = (ins PresburgerExprAttr:$expr);
+    let results = (outs PresburgerExprType:$res);
 }
 
 

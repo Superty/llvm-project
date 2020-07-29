@@ -7,7 +7,7 @@
 #define PRESBURGER_PARSER_H
 
 #include "mlir/Analysis/AffineStructures.h"
-#include "mlir/Analysis/Presburger/PwExpr.h"
+#include "mlir/Analysis/Presburger/Expr.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/Support/LogicalResult.h"
@@ -410,7 +410,7 @@ public:
   PresburgerParser(Parser parser);
 
   /// Parse a piecewise Presburger expression into pwExpr
-  LogicalResult parsePresburgerPwExpr(PresburgerPwExpr &pwExpr);
+  LogicalResult parsePresburgerExpr(PresburgerExpr &pwExpr);
 
   /// Parse a Presburger set into set
   LogicalResult parsePresburgerSet(PresburgerSet &set);
@@ -418,7 +418,7 @@ public:
 private:
   // parsing helpers
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
-  LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerPwExpr &pwExpr);
+  LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerExpr &pwExpr);
   LogicalResult parseFlatAffineConstraints(Expr *constraints,
                                            FlatAffineConstraints &cs);
   LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,

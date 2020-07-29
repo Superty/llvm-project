@@ -18,8 +18,8 @@ using namespace mlir::presburger;
 
 PresburgerDialect::PresburgerDialect(mlir::MLIRContext *context)
     : Dialect(getDialectNamespace(), context) {
-  addAttributes<PresburgerSetAttr, PresburgerPwExprAttr>();
-  addTypes<PresburgerSetType, PresburgerPwExprType>();
+  addAttributes<PresburgerSetAttr, PresburgerExprAttr>();
+  addTypes<PresburgerSetType, PresburgerExprType>();
   addOperations<
 #define GET_OP_LIST
 #include "mlir/Dialect/Presburger/PresburgerOps.cpp.inc"
@@ -52,17 +52,17 @@ Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
         getContext(), set.getNumDims(), set.getNumSyms());
 
     return PresburgerSetAttr::get(type, set);
-  } else if (attrKind == PresburgerPwExprAttr::getKindName()) {
+  } else if (attrKind == PresburgerExprAttr::getKindName()) {
     PresburgerParser pwParser(p);
-    PresburgerPwExpr pwExpr;
+    PresburgerExpr pwExpr;
 
-    if ((failed(pwParser.parsePresburgerPwExpr(pwExpr))))
+    if ((failed(pwParser.parsePresburgerExpr(pwExpr))))
       return Attribute();
 
-    PresburgerPwExprType type = PresburgerPwExprType::get(
+    PresburgerExprType type = PresburgerExprType::get(
         getContext(), pwExpr.getNumDims(), pwExpr.getNumSyms());
 
-    return PresburgerPwExprAttr::get(type, pwExpr);
+    return PresburgerExprAttr::get(type, pwExpr);
   }
   parser.emitError(parser.getCurrentLocation(),
                    "unknown Presburger attribute kind: " + attrKind);
@@ -76,9 +76,9 @@ void PresburgerDialect::printAttribute(Attribute attr,
     printer << PresburgerSetAttr::getKindName();
     attr.cast<PresburgerSetAttr>().getValue().print(printer.getStream());
     break;
-  case PresburgerAttributes::PresburgerPwExpr:
-    printer << PresburgerPwExprAttr::getKindName();
-    attr.cast<PresburgerPwExprAttr>().getValue().print(printer.getStream());
+  case PresburgerAttributes::PresburgerExpr:
+    printer << PresburgerExprAttr::getKindName();
+    attr.cast<PresburgerExprAttr>().getValue().print(printer.getStream());
     break;
   default:
     llvm_unreachable("unknown PresburgerAttr kind");
@@ -105,8 +105,8 @@ Type PresburgerDialect::parseType(DialectAsmParser &parser) const {
   if (typeKeyword == PresburgerSetType::getKeyword())
     return parsePresburgerType<PresburgerSetType>(parser, getContext());
 
-  if (typeKeyword == PresburgerPwExprType::getKeyword())
-    return parsePresburgerType<PresburgerPwExprType>(parser, getContext());
+  if (typeKeyword == PresburgerExprType::getKeyword())
+    return parsePresburgerType<PresburgerExprType>(parser, getContext());
 
   parser.emitError(loc, "unknown Presburger type");
   return Type();
@@ -117,9 +117,9 @@ void printPresburgerSetType(PresburgerSetType set, DialectAsmPrinter &printer) {
   printer << "<" << set.getDimCount() << "," << set.getSymbolCount() << ">";
 }
 
-void printPresburgerPwExprType(PresburgerPwExprType set,
-                               DialectAsmPrinter &printer) {
-  printer << PresburgerPwExprType::getKeyword();
+void printPresburgerExprType(PresburgerExprType set,
+                             DialectAsmPrinter &printer) {
+  printer << PresburgerExprType::getKeyword();
   printer << "<" << set.getDimCount() << "," << set.getSymbolCount() << ">";
 }
 
@@ -129,8 +129,8 @@ void PresburgerDialect::printType(Type type, DialectAsmPrinter &printer) const {
     printPresburgerSetType(type.cast<PresburgerSetType>(), printer);
     break;
   }
-  case PresburgerTypes::PwExpr: {
-    printPresburgerPwExprType(type.cast<PresburgerPwExprType>(), printer);
+  case PresburgerTypes::Expr: {
+    printPresburgerExprType(type.cast<PresburgerExprType>(), printer);
     break;
   }
   default:

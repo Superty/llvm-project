@@ -30,12 +30,12 @@ def PresburgerSetAttr : Attr<CPred<"$_self.isa<PresburgerSetAttr>()">, "Presburg
     let returnType = [{ PresburgerSet }];
 }
 
-def PresburgerPwExprType : Type<CPred<"$_self.isa<PresburgerPwExprType>()">, "Presburger piecewise expression type">;
+def PresburgerExprType : Type<CPred<"$_self.isa<PresburgerExprType>()">, "Presburger piecewise expression type">;
 
 
-def PresburgerPwExprAttr : Attr<CPred<"$_self.isa<PresburgerPwExprAttr>()">, "Presburger piecewise expression attr"> {
-    let storageType = [{ PresburgerPwExprAttr }];
-    let returnType = [{ PresburgerPwExpr }];
+def PresburgerExprAttr : Attr<CPred<"$_self.isa<PresburgerExprAttr>()">, "Presburger piecewise expression attr"> {
+    let storageType = [{ PresburgerExprAttr }];
+    let returnType = [{ PresburgerExpr }];
 }
 //===----------------------------------------------------------------------===//
 // Presburger trait definition

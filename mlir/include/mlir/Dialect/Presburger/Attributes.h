@@ -1,7 +1,7 @@
 #ifndef PRESBURGER_ATTRIBUTES_H
 #define PRESBURGER_ATTRIBUTES_H
 
-#include "mlir/Analysis/Presburger/PwExpr.h"
+#include "mlir/Analysis/Presburger/Expr.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Dialect/Presburger/Types.h"
 #include "mlir/IR/Attributes.h"
@@ -12,13 +12,13 @@ namespace presburger {
 
 namespace detail {
 struct PresburgerSetAttributeStorage;
-struct PresburgerPwExprAttributeStorage;
+struct PresburgerExprAttributeStorage;
 } // namespace detail
 
 namespace PresburgerAttributes {
 enum Kind {
   PresburgerSet = Attribute::FIRST_PRIVATE_EXPERIMENTAL_3_ATTR,
-  PresburgerPwExpr
+  PresburgerExpr
 };
 
 } // namespace PresburgerAttributes
@@ -41,22 +41,21 @@ public:
   }
 };
 
-class PresburgerPwExprAttr
-    : public Attribute::AttrBase<PresburgerPwExprAttr, Attribute,
-                                 detail::PresburgerPwExprAttributeStorage> {
+class PresburgerExprAttr
+    : public Attribute::AttrBase<PresburgerExprAttr, Attribute,
+                                 detail::PresburgerExprAttributeStorage> {
 public:
   using Base::Base;
-  using ValueType = PresburgerPwExpr;
+  using ValueType = PresburgerExpr;
 
-  static PresburgerPwExprAttr get(PresburgerPwExprType t,
-                                  PresburgerPwExpr value);
+  static PresburgerExprAttr get(PresburgerExprType t, PresburgerExpr value);
 
   static StringRef getKindName();
 
-  PresburgerPwExpr getValue() const;
+  PresburgerExpr getValue() const;
 
   static bool kindof(unsigned kind) {
-    return kind == PresburgerAttributes::PresburgerPwExpr;
+    return kind == PresburgerAttributes::PresburgerExpr;
   }
 };
 

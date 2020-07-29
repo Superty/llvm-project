@@ -12,7 +12,7 @@ void PresburgerPrinter::print(raw_ostream &os, const PresburgerSet &set) {
   printConstraints(os, set.getFlatAffineConstraints());
 }
 
-void PresburgerPrinter::print(raw_ostream &os, const PresburgerPwExpr &expr) {
+void PresburgerPrinter::print(raw_ostream &os, const PresburgerExpr &expr) {
   unsigned nDim = expr.getNumDims(), nSym = expr.getNumSyms();
   printVariableList(os, nDim, nSym);
 

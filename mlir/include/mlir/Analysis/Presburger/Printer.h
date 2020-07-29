@@ -1,7 +1,7 @@
 #ifndef PRESBURGER_PRINTER_H
 #define PRESBURGER_PRINTER_H
 
-#include "mlir/Analysis/Presburger/PwExpr.h"
+#include "mlir/Analysis/Presburger/Expr.h"
 #include "mlir/Analysis/Presburger/Set.h"
 
 namespace mlir {
@@ -13,7 +13,7 @@ public:
   static void print(raw_ostream &os, const PresburgerSet &set);
 
   /// Prints the piecewise Presburger expression into the stream
-  static void print(raw_ostream &os, const PresburgerPwExpr &expr);
+  static void print(raw_ostream &os, const PresburgerExpr &expr);
 
 private:
   // print helpers

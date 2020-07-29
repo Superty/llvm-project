@@ -876,7 +876,7 @@ void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
 /// Parse a piecewise Presburger expression into pwExpr
 ///
 /// For the exact parsing rules, see Parser::parsePwExpr
-LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
+LogicalResult PresburgerParser::parsePresburgerExpr(PresburgerExpr &res) {
 
   std::unique_ptr<PwExprExpr> pwExpr;
   if (failed(parser.parsePwExpr(pwExpr)))
@@ -885,7 +885,7 @@ LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
   initVariables(pwExpr->getDims(), dimNameToIndex);
   initVariables(pwExpr->getSyms(), symNameToIndex);
 
-  res = PresburgerPwExpr(dimNameToIndex.size(), symNameToIndex.size());
+  res = PresburgerExpr(dimNameToIndex.size(), symNameToIndex.size());
 
   assert(pwExpr->getPieces().size() > 0 &&
          "expect atleast one piece in a piecewise expression");
@@ -899,7 +899,7 @@ LogicalResult PresburgerParser::parsePresburgerPwExpr(PresburgerPwExpr &res) {
 
 /// Takes a PieceExpr and adds its corresponding representation to pwExpr
 LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
-                                                 PresburgerPwExpr &pwExpr) {
+                                                 PresburgerExpr &pwExpr) {
   std::pair<int64_t, SmallVector<int64_t, 8>> expr;
   parseSum(piece->getExpr(), expr);
 

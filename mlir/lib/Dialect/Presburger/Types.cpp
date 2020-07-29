@@ -27,8 +27,8 @@ struct PresburgerSetTypeStorage : public TypeStorage {
   unsigned dimCount, symbolCount;
 };
 
-struct PresburgerPwExprTypeStorage : public TypeStorage {
-  PresburgerPwExprTypeStorage(unsigned dimCount, unsigned symbolCount)
+struct PresburgerExprTypeStorage : public TypeStorage {
+  PresburgerExprTypeStorage(unsigned dimCount, unsigned symbolCount)
       : dimCount(dimCount), symbolCount(symbolCount) {}
 
   using KeyTy = std::pair<unsigned, unsigned>;
@@ -41,10 +41,10 @@ struct PresburgerPwExprTypeStorage : public TypeStorage {
     return KeyTy(dimCount, symbolCount);
   }
 
-  static PresburgerPwExprTypeStorage *construct(TypeStorageAllocator &allocator,
-                                                const KeyTy &key) {
-    return new (allocator.allocate<PresburgerPwExprTypeStorage>())
-        PresburgerPwExprTypeStorage(key.first, key.second);
+  static PresburgerExprTypeStorage *construct(TypeStorageAllocator &allocator,
+                                              const KeyTy &key) {
+    return new (allocator.allocate<PresburgerExprTypeStorage>())
+        PresburgerExprTypeStorage(key.first, key.second);
   }
 
   unsigned dimCount, symbolCount;
@@ -68,16 +68,14 @@ unsigned PresburgerSetType::getSymbolCount() const {
   return getImpl()->symbolCount;
 }
 
-PresburgerPwExprType PresburgerPwExprType::get(MLIRContext *context,
-                                               unsigned dimCount,
-                                               unsigned symbolCount) {
-  return Base::get(context, PresburgerTypes::PwExpr, dimCount, symbolCount);
+PresburgerExprType PresburgerExprType::get(MLIRContext *context,
+                                           unsigned dimCount,
+                                           unsigned symbolCount) {
+  return Base::get(context, PresburgerTypes::Expr, dimCount, symbolCount);
 }
 
-unsigned PresburgerPwExprType::getDimCount() const {
-  return getImpl()->dimCount;
-}
+unsigned PresburgerExprType::getDimCount() const { return getImpl()->dimCount; }
 
-unsigned PresburgerPwExprType::getSymbolCount() const {
+unsigned PresburgerExprType::getSymbolCount() const {
   return getImpl()->symbolCount;
 }

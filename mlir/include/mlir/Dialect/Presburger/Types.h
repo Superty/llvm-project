@@ -8,13 +8,13 @@ namespace mlir {
 namespace presburger {
 namespace detail {
 struct PresburgerSetTypeStorage;
-struct PresburgerPwExprTypeStorage;
+struct PresburgerExprTypeStorage;
 } // namespace detail
 
 namespace PresburgerTypes {
 enum Kinds {
   Set = Type::Kind::FIRST_PRIVATE_EXPERIMENTAL_3_TYPE,
-  PwExpr,
+  Expr,
 };
 } // namespace PresburgerTypes
 
@@ -35,18 +35,18 @@ public:
   unsigned getSymbolCount() const;
 };
 
-class PresburgerPwExprType
-    : public Type::TypeBase<PresburgerPwExprType, Type,
-                            detail::PresburgerPwExprTypeStorage> {
+class PresburgerExprType
+    : public Type::TypeBase<PresburgerExprType, Type,
+                            detail::PresburgerExprTypeStorage> {
 public:
   using Base::Base;
 
-  static bool kindof(unsigned kind) { return kind == PresburgerTypes::PwExpr; }
+  static bool kindof(unsigned kind) { return kind == PresburgerTypes::Expr; }
 
-  static PresburgerPwExprType get(MLIRContext *context, unsigned dimCount,
-                                  unsigned symbolCount);
+  static PresburgerExprType get(MLIRContext *context, unsigned dimCount,
+                                unsigned symbolCount);
 
-  static llvm::StringRef getKeyword() { return "pwExpr"; }
+  static llvm::StringRef getKeyword() { return "expr"; }
 
   unsigned getDimCount() const;
   unsigned getSymbolCount() const;

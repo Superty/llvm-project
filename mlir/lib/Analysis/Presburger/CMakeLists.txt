@@ -1,7 +1,7 @@
 add_mlir_library(MLIRPresburger
   Simplex.cpp
   Set.cpp
-  PwExpr.cpp
+  Expr.cpp
   Printer.cpp
   Matrix.cpp
   LinearTransform.cpp
