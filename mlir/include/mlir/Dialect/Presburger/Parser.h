@@ -94,8 +94,8 @@ public:
 
   /// Consumes the next token and emits an error if it doesn't match the
   /// provided kind.
-  LogicalResult nextAssertKind(Token::Kind kind);
-  LogicalResult nextAssertKind(Token::Kind kind, Token &token);
+  LogicalResult consumeKindOrError(Token::Kind kind);
+  LogicalResult consumeKindOrError(Token::Kind kind, Token &token);
 
   /// Returns true if the end of the buffer is reached.
   bool reachedEOF();
@@ -385,7 +385,7 @@ private:
   LogicalResult parseAnd(std::unique_ptr<Expr> &expr);
 
   LogicalResult parseConstraint(std::unique_ptr<ConstraintExpr> &constraint);
-  LogicalResult parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces);
+  LogicalResult parsePiece(std::unique_ptr<PieceExpr> &piece);
   LogicalResult parseSum(std::unique_ptr<Expr> &expr);
   LogicalResult parseTerm(std::unique_ptr<TermExpr> &term,
                           bool is_negated = false);

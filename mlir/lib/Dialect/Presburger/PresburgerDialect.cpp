@@ -85,24 +85,15 @@ void PresburgerDialect::printAttribute(Attribute attr,
   }
 }
 
-Type parsePresburgerSetType(DialectAsmParser &parser, MLIRContext *context) {
+template <class PresburgerType>
+Type parsePresburgerType(DialectAsmParser &parser, MLIRContext *context) {
   unsigned dimCount, symbolCount;
   if (parser.parseLess() || parser.parseInteger<unsigned>(dimCount) ||
       parser.parseComma() || parser.parseInteger<unsigned>(symbolCount) ||
       parser.parseGreater()) {
     return Type();
   }
-  return PresburgerSetType::get(context, dimCount, symbolCount);
-}
-
-Type parsePresburgerPwExprType(DialectAsmParser &parser, MLIRContext *context) {
-  unsigned dimCount, symbolCount;
-  if (parser.parseLess() || parser.parseInteger<unsigned>(dimCount) ||
-      parser.parseComma() || parser.parseInteger<unsigned>(symbolCount) ||
-      parser.parseGreater()) {
-    return Type();
-  }
-  return PresburgerPwExprType::get(context, dimCount, symbolCount);
+  return PresburgerType::get(context, dimCount, symbolCount);
 }
 
 Type PresburgerDialect::parseType(DialectAsmParser &parser) const {
@@ -111,12 +102,12 @@ Type PresburgerDialect::parseType(DialectAsmParser &parser) const {
   if (parser.parseKeyword(&typeKeyword))
     return Type();
 
-  if (typeKeyword == PresburgerSetType::getKeyword()) {
-    return parsePresburgerSetType(parser, getContext());
-  }
-  if (typeKeyword == PresburgerPwExprType::getKeyword()) {
-    return parsePresburgerPwExprType(parser, getContext());
-  }
+  if (typeKeyword == PresburgerSetType::getKeyword())
+    return parsePresburgerType<PresburgerSetType>(parser, getContext());
+
+  if (typeKeyword == PresburgerPwExprType::getKeyword())
+    return parsePresburgerType<PresburgerPwExprType>(parser, getContext());
+
   parser.emitError(loc, "unknown Presburger type");
   return Type();
 }

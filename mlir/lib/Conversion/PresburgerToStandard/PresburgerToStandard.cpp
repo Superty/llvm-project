@@ -12,12 +12,23 @@ using namespace mlir;
 using namespace mlir::presburger;
 
 namespace {
+
+/// This class is a helper for lowering Presburger constructs to the standard
+/// dialect.
 struct PresburgerSetTransformer {
 
   PresburgerSetTransformer(OpBuilder &builder, ValueRange dimAndSymbolValues,
                            Location loc)
       : builder(builder), dimAndSymbolValues(dimAndSymbolValues), loc(loc) {}
 
+  /// This create a sequence of std operations that check if a provided point
+  /// satisfies all the Presburger constraints. This is done in a straight
+  /// forward fashion by just genreating code that computes the value of an
+  /// expression and checks if it satisfies the given constraint. This is done
+  /// for all constraints and the end result is true, if every check succeeded.
+  ///
+  /// Note that there are no short circuit evaluation or other simplification
+  /// applied.
   Value lowerPresburgerSet(const PresburgerSet &set) {
     Value condition = builder.create<ConstantIntOp>(loc, 0, 1);
     for (const FlatAffineConstraints &basicSet :
@@ -80,8 +91,8 @@ struct PresburgerSetTransformer {
 } // namespace
 
 /// Presburger contains are replaced by runtime checks
-// TODO this should perhaps be matched on a compleat function, as it otherwise
-// might read updated values, i.e. violating an invariant of the rewrite
+// TODO this should perhaps be matched on a complete function, as it otherwise
+// might read outdated values, i.e. violating an invariant of the rewrite
 // framework
 class PresburgerContainsLowering : public OpRewritePattern<ContainsOp> {
 public:

@@ -215,7 +215,7 @@ void Lexer::consume(Token::Kind kind) {
 
 /// Consumes the next token and emits an error if it doesn't match the
 /// provided kind.
-LogicalResult Lexer::nextAssertKind(Token::Kind kind) {
+LogicalResult Lexer::consumeKindOrError(Token::Kind kind) {
   Token token = next();
   if (!token.isa(kind))
     return emitError("expected " + Token::name(kind));
@@ -225,7 +225,7 @@ LogicalResult Lexer::nextAssertKind(Token::Kind kind) {
 
 /// Consumes the next token and emits an error if it doesn't match the
 /// provided kind.
-LogicalResult Lexer::nextAssertKind(Token::Kind kind, Token &token) {
+LogicalResult Lexer::consumeKindOrError(Token::Kind kind, Token &token) {
   token = next();
   if (!token.isa(kind))
     return emitError("expected " + Token::name(kind));
@@ -287,7 +287,7 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
                              "expected ':' but got: " + lexer.peek().string());
 
   lexer.next();
-  if (failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
+  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
     return failure();
 
   if (lexer.peek().isa(Token::Kind::RightParen)) {
@@ -305,7 +305,7 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
   if (failed(parseOr(constraints)))
     return failure();
 
-  if (failed(lexer.nextAssertKind(Token::Kind::RightParen)))
+  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
     return failure();
 
   setExpr = std::make_unique<SetExpr>(std::move(dimSymPair.first),
@@ -332,9 +332,20 @@ LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
   if (!lexer.peek().isa(Token::Kind::Arrow))
     return emitErrorForToken(lexer.peek(), "expected \"->\" but got: " +
                                                lexer.peek().string());
+  lexer.next();
 
-  if (failed(parsePieces(pieces)))
+  std::unique_ptr<PieceExpr> pieceExpr;
+
+  if (failed(parsePiece(pieceExpr)))
     return failure();
+  pieces.push_back(std::move(pieceExpr));
+
+  while (lexer.peek().isa(Token::Kind::Semicolon)) {
+    lexer.next();
+    if (failed(parsePiece(pieceExpr)))
+      return failure();
+    pieces.push_back(std::move(pieceExpr));
+  }
 
   pwExpr = std::make_unique<PwExprExpr>(std::move(dimSymPair.first),
                                         std::move(dimSymPair.second),
@@ -388,7 +399,7 @@ LogicalResult Parser::parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
   if (!allowEmpty)
     return emitErrorForToken(token, "expected non empty list");
 
-  return lexer.nextAssertKind(rightToken);
+  return lexer.consumeKindOrError(rightToken);
 }
 
 /// Parse the list of symbolic identifiers
@@ -398,7 +409,7 @@ LogicalResult Parser::parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
 LogicalResult Parser::parseDimAndOptionalSymbolIdList(
     std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
         &dimSymPair) {
-  if (failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
+  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
     return failure();
 
   if (failed(parseCommaSeparatedListUntil(dimSymPair.first,
@@ -475,36 +486,30 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
 ///
 ///  piece ::= `(`pb-sum`) : (`pb-or-expr`)`
 ///
-LogicalResult
-Parser::parsePieces(SmallVector<std::unique_ptr<PieceExpr>, 4> &pieces) {
-  do {
-    lexer.next();
-    if (failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
-      return failure();
+LogicalResult Parser::parsePiece(std::unique_ptr<PieceExpr> &piece) {
+  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
+    return failure();
 
-    std::unique_ptr<Expr> expr;
-    if (failed(parseSum(expr)))
-      return failure();
+  std::unique_ptr<Expr> expr;
+  if (failed(parseSum(expr)))
+    return failure();
 
-    if (failed(lexer.nextAssertKind(Token::Kind::RightParen)) ||
-        failed(lexer.nextAssertKind(Token::Kind::Colon)) ||
-        failed(lexer.nextAssertKind(Token::Kind::LeftParen)))
-      return failure();
+  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)) ||
+      failed(lexer.consumeKindOrError(Token::Kind::Colon)) ||
+      failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
+    return failure();
 
-    std::unique_ptr<Expr> constraints;
+  std::unique_ptr<Expr> constraints;
 
-    if (!lexer.peek().isa(Token::Kind::RightParen)) {
-      parseOr(constraints);
-    }
+  if (!lexer.peek().isa(Token::Kind::RightParen)) {
+    parseOr(constraints);
+  }
 
-    if (failed(lexer.nextAssertKind(Token::Kind::RightParen)))
-      return failure();
+  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
+    return failure();
 
-    std::unique_ptr<PieceExpr> piece =
-        std::make_unique<PieceExpr>(std::move(expr), std::move(constraints));
-    pieces.emplace_back(std::move(piece));
+  piece = std::make_unique<PieceExpr>(std::move(expr), std::move(constraints));
 
-  } while (lexer.peek().isa(Token::Kind::Semicolon));
   return success();
 }
 
@@ -614,7 +619,7 @@ LogicalResult Parser::parseTerm(std::unique_ptr<TermExpr> &term,
 ///
 LogicalResult Parser::parseVariable(std::unique_ptr<VariableExpr> &vExpr) {
   Token t;
-  if (failed(lexer.nextAssertKind(Token::Kind::Identifier, t)))
+  if (failed(lexer.consumeKindOrError(Token::Kind::Identifier, t)))
     return failure();
   vExpr = std::make_unique<VariableExpr>(t.string());
   return success();
@@ -630,7 +635,7 @@ LogicalResult Parser::parseInteger(std::unique_ptr<IntegerExpr> &iExpr,
   lexer.consume(Token::Kind::Minus);
 
   Token integerToken;
-  if (failed(lexer.nextAssertKind(Token::Kind::Integer, integerToken)))
+  if (failed(lexer.consumeKindOrError(Token::Kind::Integer, integerToken)))
     return failure();
   int64_t value;
   if (!llvm::to_integer(integerToken.string(), value))
