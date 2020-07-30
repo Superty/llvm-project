@@ -327,12 +327,12 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
                            "expected to be at the end of the set");
 }
 
-/// Parse a piecewise Presburger expression.
+/// Parse a Presburger expression.
 ///
-///  pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)*
+///  pb-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)*
 ///  piece      ::= `(`pb-sum`) : (`pb-or-expr`)`
 ///
-LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
+LogicalResult Parser::parseExpr(std::unique_ptr<PresburgerExprExpr> &expr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
   SmallVector<std::unique_ptr<PieceExpr>, 4> pieces;
   if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
@@ -356,9 +356,9 @@ LogicalResult Parser::parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr) {
     pieces.push_back(std::move(pieceExpr));
   }
 
-  pwExpr = std::make_unique<PwExprExpr>(std::move(dimSymPair.first),
-                                        std::move(dimSymPair.second),
-                                        std::move(pieces));
+  expr = std::make_unique<PresburgerExprExpr>(std::move(dimSymPair.first),
+                                              std::move(dimSymPair.second),
+                                              std::move(pieces));
 
   if (lexer.reachedEOF())
     return success();
@@ -491,7 +491,7 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   return success();
 }
 
-/// Parse a piece of a piecewise Presburger expression.
+/// Parse a piece of a Presburger expression.
 ///
 ///  piece ::= `(`pb-sum`) : (`pb-or-expr`)`
 ///
@@ -882,39 +882,40 @@ void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
     cs.addInequality(constraint.first);
 }
 
-/// Parse a piecewise Presburger expression into pwExpr
+/// Parse a Presburger expression into expr
 ///
-/// For the exact parsing rules, see Parser::parsePwExpr
+/// For the exact parsing rules, see Parser::parseExpr
 LogicalResult PresburgerParser::parsePresburgerExpr(PresburgerExpr &res) {
 
-  std::unique_ptr<PwExprExpr> pwExpr;
-  if (failed(parser.parsePwExpr(pwExpr)))
+  std::unique_ptr<PresburgerExprExpr> expr;
+  if (failed(parser.parseExpr(expr)))
     return failure();
 
-  initVariables(pwExpr->getDims(), dimNameToIndex);
-  initVariables(pwExpr->getSyms(), symNameToIndex);
+  initVariables(expr->getDims(), dimNameToIndex);
+  initVariables(expr->getSyms(), symNameToIndex);
 
   res = PresburgerExpr(dimNameToIndex.size(), symNameToIndex.size());
 
-  assert(pwExpr->getPieces().size() > 0 &&
-         "expect atleast one piece in a piecewise expression");
+  assert(expr->getPieces().size() > 0 &&
+         "expect atleast one piece in a Presburger expression");
 
-  for (std::unique_ptr<PieceExpr> &piece : pwExpr->getPieces())
+  for (std::unique_ptr<PieceExpr> &piece : expr->getPieces())
     if (failed(parseAndAddPiece(piece.get(), res)))
       return failure();
 
   return success();
 }
 
-/// Takes a PieceExpr and adds its corresponding representation to pwExpr
+/// Takes a PieceExpr and adds its corresponding representation to expr
 LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
-                                                 PresburgerExpr &pwExpr) {
-  std::pair<int64_t, SmallVector<int64_t, 8>> expr;
-  parseSum(piece->getExpr(), expr);
+                                                 PresburgerExpr &expr) {
+  std::pair<int64_t, SmallVector<int64_t, 8>> affineExpr;
+  parseSum(piece->getExpr(), affineExpr);
 
   PresburgerSet set;
   parsePresburgerSet(piece->getConstraints(), set);
-  pwExpr.addPiece(expr, set);
+
+  expr.addPiece(affineExpr, set);
   return success();
 }
 

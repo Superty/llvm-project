@@ -2,6 +2,9 @@
 
 func @pw() {
 
+  // CHECK: %{{.*}} = presburger.expr #presburger<"expr(d0) -> (d0) : ()">
+  %emptyDomain = presburger.expr #presburger<"expr (x) -> (x) : ()">
+
   // CHECK: %{{.*}} = presburger.expr #presburger<"expr(d0) -> (d0 + 1) : (d0 >= 0)">
   %expr = presburger.expr #presburger<"expr (x) -> (x + 1) : (x >= 0)">
 

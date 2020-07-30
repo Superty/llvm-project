@@ -49,22 +49,21 @@ def Presburger_SetOp : Presburger_Op<"set", [NoSideEffect, ProducesPresburgerSet
 }
 
 def Presburger_ExprOp : Presburger_Op<"expr", [NoSideEffect]> {
-    let summary = "piecewise Presburger expression";
+    let summary = "Presburger expression";
 
     let description = [{
         Syntax:
         ```
-        operation  ::= `presburger.expr #presburger<"expr` pb-pw-expr `">` 
-        pb-pw-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)* 
+        operation  ::= `presburger.expr #presburger<"expr` pb-expr `">` 
+        pb-expr ::= dim-and-symbol-use-list `->` piece (`;` piece)* 
         piece      ::= `(`pb-sum`) : (`pb-or-expr`)`
         ```
 
-        The `presburger.expr` operator allows us to introduce a new piecewise
-        Presburger expression as an SSA value. The type of the SSA value is 
+        The `presburger.expr` operator allows us to introduce a new Presburger 
+        expression as an SSA value. The type of the SSA value is 
         `!presburger.expr<dimC,symC>`, where `dimC` represents the amount of 
         dimensions and `symC` the amount of symbols of the Presburger expressions.
-        It requires a `PresburgerExprAttr` that captures a piecewise Presburger 
-        expression.
+        It requires a `PresburgerExprAttr` that captures a Presburger expression.
 
         Note that no type is required, because it can be extracted from the 
         attribute.

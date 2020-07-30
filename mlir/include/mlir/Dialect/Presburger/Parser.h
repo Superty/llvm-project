@@ -156,7 +156,7 @@ public:
     Constraint,
     Set,
     Piece,
-    PwExpr,
+    PresburgerExpr,
     None
   };
 
@@ -326,10 +326,11 @@ private:
   std::unique_ptr<Expr> constraints;
 };
 
-class PwExprExpr : public Expr {
+class PresburgerExprExpr : public Expr {
 public:
-  PwExprExpr(SmallVector<StringRef, 8> dims, SmallVector<StringRef, 8> syms,
-             SmallVector<std::unique_ptr<PieceExpr>, 4> pieces)
+  PresburgerExprExpr(SmallVector<StringRef, 8> dims,
+                     SmallVector<StringRef, 8> syms,
+                     SmallVector<std::unique_ptr<PieceExpr>, 4> pieces)
       : dims(std::move(dims)), syms(std::move(syms)),
         pieces(std::move(pieces)) {}
 
@@ -338,8 +339,8 @@ public:
   SmallVector<std::unique_ptr<PieceExpr>, 4> &getPieces() { return pieces; }
   PieceExpr &getPieceAt(size_t i) { return *pieces[i]; }
 
-  static Type getStaticType() { return Type::PwExpr; }
-  virtual Type getType() { return Type::PwExpr; }
+  static Type getStaticType() { return Type::PresburgerExpr; }
+  virtual Type getType() { return Type::PresburgerExpr; }
 
 private:
   SmallVector<StringRef, 8> dims;
@@ -356,9 +357,9 @@ public:
   /// Parse a Presburger set and returns an AST corresponding to it.
   LogicalResult parseSet(std::unique_ptr<SetExpr> &setExpr);
 
-  /// Parse a piecewise Presburger expression and returns an AST corresponding
+  /// Parse a Presburger expression and returns an AST corresponding
   /// to it.
-  LogicalResult parsePwExpr(std::unique_ptr<PwExprExpr> &pwExpr);
+  LogicalResult parseExpr(std::unique_ptr<PresburgerExprExpr> &expr);
 
   /// Parse a keyword that starts with a letter
   LogicalResult parseKeyword(StringRef &keyword);
@@ -410,8 +411,8 @@ public:
 
   PresburgerParser(Parser parser);
 
-  /// Parse a piecewise Presburger expression into pwExpr
-  LogicalResult parsePresburgerExpr(PresburgerExpr &pwExpr);
+  /// Parse a Presburger expression into expr
+  LogicalResult parsePresburgerExpr(PresburgerExpr &expr);
 
   /// Parse a Presburger set into set
   LogicalResult parsePresburgerSet(PresburgerSet &set);
@@ -419,7 +420,7 @@ public:
 private:
   // parsing helpers
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
-  LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerExpr &pwExpr);
+  LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerExpr &expr);
   LogicalResult parseFlatAffineConstraints(Expr *constraints,
                                            FlatAffineConstraints &cs);
   LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,

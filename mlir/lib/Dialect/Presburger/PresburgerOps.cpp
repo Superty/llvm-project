@@ -56,14 +56,14 @@ static void print(OpAsmPrinter &printer, ExprOp op) {
 }
 
 static ParseResult parseExprOp(OpAsmParser &parser, OperationState &result) {
-  PresburgerExprAttr pwExpr;
+  PresburgerExprAttr expr;
 
-  if (parser.parseAttribute(pwExpr, "expr", result.attributes))
+  if (parser.parseAttribute(expr, "expr", result.attributes))
     return failure();
 
   // TODO Currently we inherit the type from the PresburgerExprAttr,
   // I'm not sure if this is desirable.
-  Type outType = pwExpr.getType();
+  Type outType = expr.getType();
 
   parser.addTypeToList(outType, result.types);
   return success();

@@ -53,16 +53,16 @@ Attribute PresburgerDialect::parseAttribute(DialectAsmParser &parser,
 
     return PresburgerSetAttr::get(type, set);
   } else if (attrKind == PresburgerExprAttr::getKindName()) {
-    PresburgerParser pwParser(p);
-    PresburgerExpr pwExpr;
+    PresburgerParser exprParser(p);
+    PresburgerExpr expr;
 
-    if ((failed(pwParser.parsePresburgerExpr(pwExpr))))
+    if ((failed(exprParser.parsePresburgerExpr(expr))))
       return Attribute();
 
     PresburgerExprType type = PresburgerExprType::get(
-        getContext(), pwExpr.getNumDims(), pwExpr.getNumSyms());
+        getContext(), expr.getNumDims(), expr.getNumSyms());
 
-    return PresburgerExprAttr::get(type, pwExpr);
+    return PresburgerExprAttr::get(type, expr);
   }
   parser.emitError(parser.getCurrentLocation(),
                    "unknown Presburger attribute kind: " + attrKind);
