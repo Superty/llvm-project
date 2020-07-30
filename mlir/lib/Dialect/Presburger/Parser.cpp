@@ -913,7 +913,11 @@ LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
   parseSum(piece->getExpr(), affineExpr);
 
   PresburgerSet set;
-  parsePresburgerSet(piece->getConstraints(), set);
+
+  if (piece->getConstraints() == nullptr)
+    set = PresburgerSet(expr.getNumDims(), expr.getNumSyms());
+  else
+    parsePresburgerSet(piece->getConstraints(), set);
 
   expr.addPiece(affineExpr, set);
   return success();
