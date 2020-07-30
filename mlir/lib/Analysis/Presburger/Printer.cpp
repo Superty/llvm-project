@@ -2,41 +2,24 @@
 
 using namespace mlir;
 
-void PresburgerPrinter::print(raw_ostream &os, const PresburgerSet &set) {
-  printVariableList(os, set.getNumDims(), set.getNumSyms());
-  os << " : ";
-  if (set.isMarkedEmpty()) {
-    os << "(1 = 0)";
-    return;
-  }
-  printConstraints(os, set.getFlatAffineConstraints());
-}
+namespace {
 
-void PresburgerPrinter::print(raw_ostream &os, const PresburgerExpr &expr) {
-  unsigned nDim = expr.getNumDims(), nSym = expr.getNumSyms();
-  printVariableList(os, nDim, nSym);
+void printFlatAffineConstraints(raw_ostream &os,
+                                const FlatAffineConstraints &cs);
 
-  os << " -> ";
-
-  for (unsigned i = 0, e = expr.getExprs().size(); i < e; ++i) {
-    if (i != 0)
-      os << " ; ";
-
-    os << "(";
-    // TODO change this as soon as we have a Constraint class. Try to unify the
-    // handling of expression
-    auto eI = expr.getExprs()[i];
-    printExpr(os, eI.second, eI.first, nDim);
-    os << ")";
-    os << " : ";
-    printConstraints(os, expr.getDomains()[i].getFlatAffineConstraints());
-  }
-}
+void printConstraints(
+    raw_ostream &os,
+    const SmallVectorImpl<FlatAffineConstraints> &flatAffineConstraints);
+void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym);
+void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
+               unsigned nDim);
+bool printCoeff(raw_ostream &os, int64_t val, bool first);
+void printVarName(raw_ostream &os, int64_t i, unsigned nDim);
+void printConst(raw_ostream &os, int64_t c, bool first);
 
 /// Prints the '(d0, ..., dN)[s0, ... ,sM]' dimension and symbol list.
 ///
-void PresburgerPrinter::printVariableList(raw_ostream &os, unsigned nDim,
-                                          unsigned nSym) {
+void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
   os << "(";
   for (unsigned i = 0; i < nDim; i++)
     os << (i != 0 ? ", " : "") << 'd' << i;
@@ -52,7 +35,7 @@ void PresburgerPrinter::printVariableList(raw_ostream &os, unsigned nDim,
 
 /// Prints the constraints of each `FlatAffineConstraints`.
 ///
-void PresburgerPrinter::printConstraints(
+void printConstraints(
     raw_ostream &os,
     const SmallVectorImpl<FlatAffineConstraints> &flatAffineConstraints) {
   os << "(";
@@ -70,8 +53,8 @@ void PresburgerPrinter::printConstraints(
 /// Prints the constraints of the `FlatAffineConstraints`. Each constraint is
 /// printed separately and the are conjuncted with 'and'.
 ///
-void PresburgerPrinter::printFlatAffineConstraints(
-    raw_ostream &os, const FlatAffineConstraints &cs) {
+void printFlatAffineConstraints(raw_ostream &os,
+                                const FlatAffineConstraints &cs) {
   unsigned numIds = cs.getNumIds();
   for (unsigned i = 0, e = cs.getNumEqualities(); i < e; ++i) {
     if (i != 0)
@@ -97,12 +80,11 @@ void PresburgerPrinter::printFlatAffineConstraints(
 /// first = false. First indicates if this is the first summand of an
 /// expression.
 ///
-/// Returns failure if the coefficient value is 0 and therefore is not printed.
+/// Returns false if the coefficient value is 0 and therefore is not printed.
 ///
-LogicalResult PresburgerPrinter::printCoef(raw_ostream &os, int64_t val,
-                                           bool first) {
+bool printCoeff(raw_ostream &os, int64_t val, bool first) {
   if (val == 0)
-    return failure();
+    return false;
 
   if (val > 0) {
     if (!first) {
@@ -122,15 +104,14 @@ LogicalResult PresburgerPrinter::printCoef(raw_ostream &os, int64_t val,
         os << val;
     }
   }
-  return success();
+  return true;
 }
 
 /// Prints the identifier of the i'th variable. The first nDim variables are
 /// dimensions and therefore prefixed with 'd', everything afterwards is a
 /// symbol with prefix 's'.
 ///
-void PresburgerPrinter::printVarName(raw_ostream &os, int64_t i,
-                                     unsigned nDim) {
+void printVarName(raw_ostream &os, int64_t i, unsigned nDim) {
   if (i < nDim) {
     os << 'd' << i;
   } else {
@@ -140,7 +121,7 @@ void PresburgerPrinter::printVarName(raw_ostream &os, int64_t i,
 
 /// Prints a constant with an additional '+' or '-' is first = false. First
 /// indicates if this is the first summand of an expression.
-void PresburgerPrinter::printConst(raw_ostream &os, int64_t c, bool first) {
+void printConst(raw_ostream &os, int64_t c, bool first) {
   if (first) {
     os << c;
   } else {
@@ -151,19 +132,52 @@ void PresburgerPrinter::printConst(raw_ostream &os, int64_t c, bool first) {
   }
 }
 
-/// Prints a Presburger expression. `coeffs` contains all the coefficients:
+/// Prints an affine expression. `coeffs` contains all the coefficients:
 /// dimensions followed by symbols.
 ///
-void PresburgerPrinter::printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs,
-                                  int64_t constant, unsigned nDim) {
+void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
+               unsigned nDim) {
   bool first = true;
   for (unsigned i = 0, e = coeffs.size(); i < e; ++i) {
-    if (succeeded(printCoef(os, coeffs[i], first))) {
+    if (printCoeff(os, coeffs[i], first)) {
       first = false;
       printVarName(os, i, nDim);
     }
   }
 
   printConst(os, constant, first);
+}
+
+} // namespace
+
+void mlir::printPresburgerSet(raw_ostream &os, const PresburgerSet &set) {
+  printVariableList(os, set.getNumDims(), set.getNumSyms());
+  os << " : ";
+  if (set.isMarkedEmpty()) {
+    os << "(1 = 0)";
+    return;
+  }
+  printConstraints(os, set.getFlatAffineConstraints());
+}
+
+void mlir::printPresburgerExpr(raw_ostream &os, const PresburgerExpr &expr) {
+  unsigned nDim = expr.getNumDims(), nSym = expr.getNumSyms();
+  printVariableList(os, nDim, nSym);
+
+  os << " -> ";
+
+  for (unsigned i = 0, e = expr.getExprs().size(); i < e; ++i) {
+    if (i != 0)
+      os << " ; ";
+
+    os << "(";
+    // TODO change this as soon as we have a Constraint class. Try to unify the
+    // handling of expression
+    auto eI = expr.getExprs()[i];
+    printExpr(os, eI.second, eI.first, nDim);
+    os << ")";
+    os << " : ";
+    printConstraints(os, expr.getDomains()[i].getFlatAffineConstraints());
+  }
 }
 

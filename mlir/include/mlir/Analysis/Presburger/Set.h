@@ -46,10 +46,6 @@ private:
   // of basicSets.
   bool markedEmpty;
   Optional<SmallVector<int64_t, 8>> maybeSample;
-  void printFlatAffineConstraints(raw_ostream &os,
-                                  FlatAffineConstraints cs) const;
-  void printVar(raw_ostream &os, int64_t var, unsigned i,
-                unsigned &countNonZero) const;
 };
 
 } // namespace mlir

@@ -24,7 +24,7 @@ void PresburgerExpr::addPiece(const ExprType &expr,
 }
 
 void PresburgerExpr::print(raw_ostream &os) const {
-  PresburgerPrinter::print(os, *this);
+  mlir::printPresburgerExpr(os, *this);
 }
 
 void PresburgerExpr::dump() const { print(llvm::errs()); }

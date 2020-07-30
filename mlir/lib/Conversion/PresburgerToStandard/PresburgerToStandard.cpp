@@ -21,7 +21,7 @@ struct PresburgerSetTransformer {
                            Location loc)
       : builder(builder), dimAndSymbolValues(dimAndSymbolValues), loc(loc) {}
 
-  /// This create a sequence of std operations that check if a provided point
+  /// This creates a sequence of std operations that check if a provided point
   /// satisfies all the Presburger constraints. This is done in a straight
   /// forward fashion by just genreating code that computes the value of an
   /// expression and checks if it satisfies the given constraint. This is done
@@ -91,9 +91,9 @@ struct PresburgerSetTransformer {
 } // namespace
 
 /// Presburger contains are replaced by runtime checks
-// TODO this should perhaps be matched on a complete function, as it otherwise
-// might read outdated values, i.e. violating an invariant of the rewrite
-// framework
+/// TODO this should perhaps be matched on a complete function, as it otherwise
+/// might read outdated values, i.e. violating an invariant of the rewrite
+/// framework
 class PresburgerContainsLowering : public OpRewritePattern<ContainsOp> {
 public:
   using OpRewritePattern<ContainsOp>::OpRewritePattern;

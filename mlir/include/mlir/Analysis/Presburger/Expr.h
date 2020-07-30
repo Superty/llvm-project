@@ -4,13 +4,16 @@
 #include "mlir/Analysis/Presburger/Set.h"
 
 namespace mlir {
-/// This class implements a data structure that represents a piecewise
-/// Presburger expression. Each piece is define by a domain and an expression
-/// that is applied to points lying in this domain. Domains are represented as
-/// parameteric Presburger sets, expressions by normal Presburger expressions.
+/// This class implements a data structure that represents a Presburger
+/// expression, i.e a piecewise affine expression. Each piece is define by a
+/// domain and an expression that is applied to points lying in this domain.
+/// Domains are represented as parameteric Presburger sets, expressions by
+/// affine expressions.
 ///
-/// As the domains can be parametric, a piecewise Presburger expression not only
-/// takes dimension parameters, but symbols as well.
+/// As the domains can be parametric, a Presburger expression not only takes
+/// dimension parameters, but symbols as well.
+///
+/// TODO: Add support for quasi-affine expressions as soon as the land.
 ///
 class PresburgerExpr {
 public:
@@ -32,12 +35,6 @@ public:
   llvm::hash_code hash_value() const;
 
 private:
-  // print helpers
-  void printVariableList(raw_ostream &os) const;
-  void printExpr(ExprType expr, raw_ostream &os) const;
-  void printVar(raw_ostream &os, int64_t val, unsigned i,
-                unsigned &countNonZero) const;
-
   SmallVector<ExprType, 2> exprs;
   SmallVector<PresburgerSet, 2> domains;
 
