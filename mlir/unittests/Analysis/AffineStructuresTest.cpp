@@ -274,7 +274,7 @@ TEST(FlatAffineConstraintsTest, IsIntegerEmptyTest) {
                   .isIntegerEmpty());
 }
 
-TEST(FlatAffineConstraintsTest, removeRedundantTest) {
+TEST(FlatAffineConstraintsTest, removeRedundantConstraintsTest) {
   FlatAffineConstraints fac = makeFACFromConstraints(1,
                                                      {
                                                          {1, -2}, // x >= 2.

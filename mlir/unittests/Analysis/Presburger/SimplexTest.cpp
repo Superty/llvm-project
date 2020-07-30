@@ -218,7 +218,7 @@ TEST(SimplexTest, getSamplePointIfIntegral) {
 
 TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
   Simplex tab(0);
-  tab.addInequality({0}); // 0 >= 0
+  tab.addInequality({0}); // 0 >= 0.
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -227,7 +227,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
 
 TEST(SimplexTest, isMarkedRedundant_no_var_eq) {
   Simplex tab(0);
-  tab.addEquality({0}); // 0 == 0
+  tab.addEquality({0}); // 0 == 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
@@ -235,7 +235,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_eq) {
 
 TEST(SimplexTest, isMarkedRedundant_pos_var_eq) {
   Simplex tab(1);
-  tab.addEquality({1, 0}); // x == 0
+  tab.addEquality({1, 0}); // x == 0.
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -244,7 +244,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_eq) {
 
 TEST(SimplexTest, isMarkedRedundant_zero_var_eq) {
   Simplex tab(1);
-  tab.addEquality({0, 0}); // 0x == 0
+  tab.addEquality({0, 0}); // 0x == 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
@@ -252,7 +252,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_eq) {
 
 TEST(SimplexTest, isMarkedRedundant_neg_var_eq) {
   Simplex tab(1);
-  tab.addEquality({-1, 0}); // -x == 0
+  tab.addEquality({-1, 0}); // -x == 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
@@ -260,7 +260,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_eq) {
 
 TEST(SimplexTest, isMarkedRedundant_pos_var_ge) {
   Simplex tab(1);
-  tab.addInequality({1, 0}); // x >= 0
+  tab.addInequality({1, 0}); // x >= 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
@@ -268,7 +268,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_ge) {
 
 TEST(SimplexTest, isMarkedRedundant_zero_var_ge) {
   Simplex tab(1);
-  tab.addInequality({0, 0}); // 0x >= 0
+  tab.addInequality({0, 0}); // 0x >= 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_TRUE(tab.isMarkedRedundant(0));
@@ -276,7 +276,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_ge) {
 
 TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
   Simplex tab(1);
-  tab.addInequality({-1, 0}); // x <= 0
+  tab.addInequality({-1, 0}); // x <= 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));
@@ -285,9 +285,9 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
 TEST(SimplexTest, isMarkedRedundant_no_redundant) {
   Simplex tab(3);
 
-  tab.addEquality({-1, 0, 1, 0});     // u = w
-  tab.addInequality({-1, 16, 0, 15}); // 15 - (u - 16v) >= 0
-  tab.addInequality({1, -16, 0, 0});  //      (u - 16v) >= 0
+  tab.addEquality({-1, 0, 1, 0});     // u = w.
+  tab.addInequality({-1, 16, 0, 15}); // 15 - (u - 16v) >= 0.
+  tab.addInequality({1, -16, 0, 0});  //      (u - 16v) >= 0.
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -341,14 +341,14 @@ TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
   Simplex tab(3);
 
   // [4] to [7] are repeats of [0] to [3].
-  tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
-  tab.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7
-  tab.addInequality({1, 0, -8, 0}); // [2]: 8z <= x
-  tab.addInequality({0, 1, 0, 0});  // [3]: y >= 0
-  tab.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x
-  tab.addInequality({1, 0, -8, 0}); // [5]: 8z <= x
-  tab.addInequality({0, 1, 0, 0});  // [6]: y >= 0
-  tab.addInequality({0, -1, 0, 1}); // [7]: y <= 1
+  tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1.
+  tab.addInequality({-1, 0, 8, 7}); // [1]: 8z >= x - 7.
+  tab.addInequality({1, 0, -8, 0}); // [2]: 8z <= x.
+  tab.addInequality({0, 1, 0, 0});  // [3]: y >= 0.
+  tab.addInequality({-1, 0, 8, 7}); // [4]: 8z >= 7 - x.
+  tab.addInequality({1, 0, -8, 0}); // [5]: 8z <= x.
+  tab.addInequality({0, 1, 0, 0});  // [6]: y >= 0.
+  tab.addInequality({0, -1, 0, 1}); // [7]: y <= 1.
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -365,14 +365,14 @@ TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
 
 TEST(SimplexTest, isMarkedRedundant) {
   Simplex tab(3);
-  tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
-  tab.addInequality({1, 0, 0, -1}); // [1]: x >= 1
-  tab.addInequality({-1, 0, 0, 2}); // [2]: x <= 2
-  tab.addInequality({-1, 0, 2, 7}); // [3]: 2z >= x - 7
-  tab.addInequality({1, 0, -2, 0}); // [4]: 2z <= x
-  tab.addInequality({0, 1, 0, 0});  // [5]: y >= 0
-  tab.addInequality({0, 1, -2, 1}); // [6]: y >= 2z - 1
-  tab.addInequality({-1, 1, 0, 1}); // [7]: y >= x - 1
+  tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1.
+  tab.addInequality({1, 0, 0, -1}); // [1]: x >= 1.
+  tab.addInequality({-1, 0, 0, 2}); // [2]: x <= 2.
+  tab.addInequality({-1, 0, 2, 7}); // [3]: 2z >= x - 7.
+  tab.addInequality({1, 0, -2, 0}); // [4]: 2z <= x.
+  tab.addInequality({0, 1, 0, 0});  // [5]: y >= 0.
+  tab.addInequality({0, 1, -2, 1}); // [6]: y >= 2z - 1.
+  tab.addInequality({-1, 1, 0, 1}); // [7]: y >= x - 1.
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -394,8 +394,8 @@ TEST(SimplexTest, isMarkedRedundant) {
 
 TEST(SimplexTest, addInequality_already_redundant) {
   Simplex tab(1);
-  tab.addInequality({1, -1}); // x >= 1
-  tab.addInequality({1, 0});  // x >= 0
+  tab.addInequality({1, -1}); // x >= 1.
+  tab.addInequality({1, 0});  // x >= 0.
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
   EXPECT_FALSE(tab.isMarkedRedundant(0));

@@ -1416,7 +1416,6 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   Simplex simplex(*this);
   simplex.detectRedundant();
 
-  // Scan to get rid of all inequalities marked redundant, in-place.
   auto copyInequality = [&](unsigned src, unsigned dest) {
     if (src == dest)
       return;
@@ -1425,13 +1424,18 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   };
   unsigned pos = 0;
   unsigned numIneqs = getNumInequalities();
+  // Scan to get rid of all inequalities marked redundant, in-place. In Simplex,
+  // the first constraints added are the inequalities.
   for (unsigned r = 0; r < numIneqs; r++) {
     if (!simplex.isMarkedRedundant(r))
       copyInequality(r, pos++);
   }
   inequalities.resize(numReservedCols * pos);
 
-  // Scan to get rid of all equalities marked redundant, in-place.
+  // Scan to get rid of all equalities marked redundant, in-place. In Simplex,
+  // after the inequalities, a pair of constraints for each equality is added.
+  // An equality is redundant is both the inequalities in its pair are
+  // redundant.
   auto copyEquality = [&](unsigned src, unsigned dest) {
     if (src == dest)
       return;
@@ -1440,8 +1444,8 @@ void FlatAffineConstraints::removeRedundantConstraints() {
   };
   pos = 0;
   for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {
-    if (!simplex.isMarkedRedundant(numIneqs + 2 * r) ||
-        !simplex.isMarkedRedundant(numIneqs + 2 * r + 1))
+    if (!(simplex.isMarkedRedundant(numIneqs + 2 * r) &&
+          simplex.isMarkedRedundant(numIneqs + 2 * r + 1)))
       copyEquality(r, pos++);
   }
   equalities.resize(numReservedCols * pos);

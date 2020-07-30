@@ -187,7 +187,7 @@ public:
   /// inequalities with successive indices.
   bool isMarkedRedundant(unsigned inequalityIndex) const;
 
-  /// Finds a maximal subset of constraints that is redundant, i.e., such that
+  /// Finds a subset of constraints that is redundant, i.e., such that
   /// the set of solutions does not change if these constraints are removed.
   /// Marks these constraints as redundant. Whether a specific constraint has
   /// been marked redundant can be queried using isMarkedRedundant.

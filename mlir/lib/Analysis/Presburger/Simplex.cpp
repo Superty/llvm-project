@@ -497,7 +497,15 @@ void Simplex::markRowRedundant(Unknown &u) {
   undoLog.emplace_back(UndoLogEntry::UnmarkLastRedundant);
 }
 
+/// Find a subset of constraints that is redundant and mark them redundant.
+///
+/// We iterate through the constraints and check for each one if it can attain
+/// negative sample values. If it cannot, it is redundant.
 void Simplex::detectRedundant() {
+  // It is not meaningful to talk about redundancy for empty sets.
+  if (empty)
+    return;
+
   for (Unknown &u : con) {
     if (u.orientation == Orientation::Column) {
       unsigned column = u.pos;
@@ -548,7 +556,7 @@ bool Simplex::isUnbounded() {
 /// The product constraints and variables are stored as: first A's, then B's.
 ///
 /// The product tableau has row layout:
-///   A's redundant rows, B's redundan rows, A's other rows, B's other rows.
+///   A's redundant rows, B's redundant rows, A's other rows, B's other rows.
 ///
 /// It has column layout:
 ///   denominator, constant, A's columns, B's columns.
