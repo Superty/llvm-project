@@ -25,6 +25,8 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 class GBRSimplex;
 
@@ -449,6 +451,8 @@ private:
   SmallVector<Unknown, 8> con, var;
 };
 
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_SIMPLEX_H

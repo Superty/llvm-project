@@ -17,6 +17,8 @@
 #include "mlir/Support/MathExtras.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 /// A class to represent fractions. The sign of the fraction is represented
 /// in the sign of the numerator; the denominator is always positive.
@@ -72,6 +74,8 @@ inline Fraction operator*(Fraction x, Fraction y) {
   return Fraction(x.num * y.num, x.den * y.den);
 }
 
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_FRACTION_H

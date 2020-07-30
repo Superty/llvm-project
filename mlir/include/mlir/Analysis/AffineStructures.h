@@ -19,6 +19,7 @@
 #include "mlir/Support/LogicalResult.h"
 
 namespace mlir {
+using namespace analysis::presburger;
 
 class AffineCondition;
 class AffineForOp;
@@ -28,8 +29,13 @@ class IntegerSet;
 class MLIRContext;
 class Value;
 class MemRefType;
-class Simplex;
 struct MutableAffineMap;
+
+namespace analysis {
+namespace presburger {
+class Simplex;
+}
+} // namespace analysis
 
 /// A flat list of affine equalities and inequalities in the form.
 /// Inequality: c_0*x_0 + c_1*x_1 + .... + c_{n-1}*x_{n-1} >= 0

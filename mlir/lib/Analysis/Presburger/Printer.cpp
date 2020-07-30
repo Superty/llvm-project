@@ -1,6 +1,7 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 
 using namespace mlir;
+using namespace analysis::presburger;
 
 namespace {
 
@@ -150,7 +151,8 @@ void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
 
 } // namespace
 
-void mlir::printPresburgerSet(raw_ostream &os, const PresburgerSet &set) {
+void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
+                                                    const PresburgerSet &set) {
   printVariableList(os, set.getNumDims(), set.getNumSyms());
   os << " : ";
   if (set.isMarkedEmpty()) {
@@ -160,7 +162,8 @@ void mlir::printPresburgerSet(raw_ostream &os, const PresburgerSet &set) {
   printConstraints(os, set.getFlatAffineConstraints());
 }
 
-void mlir::printPresburgerExpr(raw_ostream &os, const PresburgerExpr &expr) {
+void mlir::analysis::presburger::printPresburgerExpr(
+    raw_ostream &os, const PresburgerExpr &expr) {
   unsigned nDim = expr.getNumDims(), nSym = expr.getNumSyms();
   printVariableList(os, nDim, nSym);
 

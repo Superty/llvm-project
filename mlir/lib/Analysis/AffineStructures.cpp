@@ -27,6 +27,7 @@
 #define DEBUG_TYPE "affine-structures"
 
 using namespace mlir;
+using namespace analysis::presburger;
 using llvm::SmallDenseMap;
 using llvm::SmallDenseSet;
 

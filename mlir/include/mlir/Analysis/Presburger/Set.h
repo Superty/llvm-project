@@ -4,6 +4,8 @@
 #include "mlir/Analysis/AffineStructures.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 class PresburgerSet {
 public:
@@ -48,6 +50,8 @@ private:
   Optional<SmallVector<int64_t, 8>> maybeSample;
 };
 
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_SET_H

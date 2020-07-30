@@ -10,7 +10,9 @@
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 
-namespace mlir {
+using namespace mlir;
+using namespace analysis::presburger;
+
 using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
@@ -761,6 +763,10 @@ void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
     addEquality(cs.getEquality(i));
 }
 
+namespace mlir {
+namespace analysis {
+namespace presburger {
+
 /// Given a simplex for a polytope, construct a new simplex whose variables
 /// are identified with a pair of points (x, y) in the original polytope.
 /// Supports some operations needed for generalized basis reduction. In what
@@ -889,6 +895,9 @@ private:
   /// A stack of snapshots, used for rolling back.
   SmallVector<unsigned, 8> snapshotStack;
 };
+} // namespace presburger
+} // namespace analysis
+} // namespace mlir
 
 /// Reduce the basis to try and find a direction in which the polytope is
 /// "thin". This only works for bounded polytopes.
@@ -1647,4 +1656,3 @@ void Simplex::print(raw_ostream &os) const {
 
 void Simplex::dump() const { print(llvm::errs()); }
 
-} // namespace mlir

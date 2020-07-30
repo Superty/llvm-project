@@ -4,7 +4,9 @@
 
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 
-namespace mlir {
+using namespace mlir;
+using namespace analysis::presburger;
+
 LinearTransform::LinearTransform(MatrixType oMatrix)
     : matrix(std::move(oMatrix)) {}
 
@@ -146,4 +148,3 @@ LinearTransform::postMultiplyBasicSet(const FlatAffineConstraints &bs) {
   // bs.simplify(); // isl does this here
   return result;
 }
-} // namespace mlir

@@ -10,6 +10,8 @@
 #include "llvm/ADT/SmallVector.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 // TODO this is called LinearTransform but we really just use it like a matrix,
 // e.g. we talk about post-multiplying with a row rather than in linear
@@ -30,5 +32,8 @@ private:
 
   MatrixType matrix;
 };
+
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 #endif // MLIR_ANALYSIS_PRESBURGER_LINEAR_TRANSFORM_H

@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 TEST(MatrixTest, ReadWrite) {
   Matrix mat(5, 5);
@@ -89,4 +91,6 @@ TEST(MatrixTest, resizeVertically) {
       EXPECT_EQ(mat(row, col), row >= 3 ? 0 : int(10 * row + col));
 }
 
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir

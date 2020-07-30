@@ -4,6 +4,7 @@
 
 // TODO should we change this to a storage type?
 using namespace mlir;
+using namespace analysis::presburger;
 
 PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
     : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()), markedEmpty(false) {
@@ -314,7 +315,7 @@ PresburgerSet::maybeGetCachedSample() const {
 
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
-  mlir::printPresburgerSet(os, *this);
+  printPresburgerSet(os, *this);
 }
 
 void PresburgerSet::dump() const { print(llvm::errs()); }

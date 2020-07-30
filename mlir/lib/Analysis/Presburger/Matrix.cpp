@@ -8,7 +8,8 @@
 
 #include "mlir/Analysis/Presburger/Matrix.h"
 
-namespace mlir {
+using namespace mlir;
+using namespace analysis::presburger;
 
 Matrix::Matrix(unsigned rows, unsigned columns)
     : nRows(rows), nColumns(columns), data(nRows * nColumns) {}
@@ -106,4 +107,3 @@ void Matrix::print(raw_ostream &os) const {
 
 void Matrix::dump() const { print(llvm::errs()); }
 
-} // namespace mlir

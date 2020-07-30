@@ -4,6 +4,9 @@
 #include "mlir/Analysis/Presburger/Set.h"
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
+
 /// This class implements a data structure that represents a Presburger
 /// expression, i.e a piecewise affine expression. Each piece is define by a
 /// domain and an expression that is applied to points lying in this domain.
@@ -40,6 +43,9 @@ private:
 
   unsigned nDim, nSym;
 };
+
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_EXPR_H

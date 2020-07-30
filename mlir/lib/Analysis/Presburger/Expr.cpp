@@ -2,6 +2,7 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 
 using namespace mlir;
+using namespace analysis::presburger;
 
 unsigned PresburgerExpr::getNumDims() const { return nDim; }
 
@@ -24,7 +25,7 @@ void PresburgerExpr::addPiece(const ExprType &expr,
 }
 
 void PresburgerExpr::print(raw_ostream &os) const {
-  mlir::printPresburgerExpr(os, *this);
+  printPresburgerExpr(os, *this);
 }
 
 void PresburgerExpr::dump() const { print(llvm::errs()); }

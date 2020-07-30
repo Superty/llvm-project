@@ -12,6 +12,8 @@
 #include <gtest/gtest.h>
 
 namespace mlir {
+namespace analysis {
+namespace presburger {
 
 /// Take a snapshot, add constraints making the set empty, and rollback.
 /// The set should not be empty after rolling back.
@@ -402,4 +404,6 @@ TEST(SimplexTest, getSamplePointIfIntegral) {
                    .hasValue());
 }
 
+} // namespace presburger
+} // namespace analysis
 } // namespace mlir
