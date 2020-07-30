@@ -67,6 +67,8 @@ StringRef Token::name(Token::Kind kind) {
     return "\"->\"";
   case Token::Kind::Semicolon:
     return "';'";
+  case Token::Kind::Eof:
+    return "EOF";
   case Token::Kind::Unknown:
     return "unknown";
   }
@@ -78,7 +80,7 @@ StringRef Token::name(Token::Kind kind) {
 //===----------------------------------------------------------------------===//
 
 Lexer::Lexer(StringRef buffer, ErrorCallback callback)
-    : buffer(buffer), curPtr(buffer.begin()), callback(callback) {
+    : buffer(buffer), curPos(0), callback(callback) {
   current = nextToken();
 }
 
@@ -88,31 +90,32 @@ bool Lexer::isDigit(char c) { return std::isdigit(c); }
 
 bool Lexer::isAlpha(char c) { return std::isalpha(c); }
 
-Token Lexer::getAtom(Token::Kind kind, const char *start) {
-  curPtr++;
-  return Token(kind, StringRef(start, curPtr - start));
+Token Lexer::getAtom(Token::Kind kind, unsigned start) {
+  curPos++;
+  return Token(kind, StringRef(start + buffer.begin(), curPos - start));
 }
 
-Token Lexer::consumeInteger(const char *start) {
-  while (isDigit(*curPtr))
-    curPtr++;
+Token Lexer::consumeInteger(unsigned start) {
+  while (isDigit(buffer[curPos]))
+    curPos++;
 
-  return Token(Token::Kind::Integer, StringRef(start, curPtr - start));
+  return Token(Token::Kind::Integer,
+               StringRef(start + buffer.begin(), curPos - start));
 }
 
 /// Create an identifier of keyword. An identifier has to start witha n
 /// alphabetic char and after that contains a sequence of alphanumeric chars.
 ///
 /// If the resulting string matches a keyword an according token is returned.
-Token Lexer::consumeIdentifierOrKeyword(const char *start) {
-  char c = *curPtr;
+Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
+  char c = buffer[curPos];
   assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
 
   while (isDigit(c) || isAlpha(c)) {
-    c = *++curPtr;
+    c = buffer[++curPos];
   }
 
-  StringRef content(start, curPtr - start);
+  StringRef content(start + buffer.begin(), curPos - start);
 
   // if we need more keyword, do something similar to the mlir parser
   Token::Kind kind = llvm::StringSwitch<Token::Kind>(content)
@@ -120,18 +123,24 @@ Token Lexer::consumeIdentifierOrKeyword(const char *start) {
                          .Case("or", Token::Kind::Or)
                          .Default(Token::Kind::Identifier);
 
-  return Token(kind, StringRef(start, curPtr - start));
+  return Token(kind, content);
 }
 
 /// Determines the next token and consumes it.
-/// As an invariant we have that curPtr always points to the next unread char
+/// As an invariant we have that curPos always points to the next unread char
+///
+/// If the end of the buffer is reached, this will return a Token with kind
+/// `Eof`.
 Token Lexer::nextToken() {
-  while (isSpace(*curPtr))
-    curPtr++;
+  if (reachedEOF()) {
+    return Token(Token::Kind::Eof, StringRef(buffer.begin() + curPos, 0));
+  }
+  while (isSpace(buffer[curPos]))
+    curPos++;
 
-  const char *tokStart = curPtr;
+  unsigned tokStart = curPos;
 
-  char c = *curPtr;
+  char c = buffer[curPos];
 
   if (isDigit(c))
     return consumeInteger(tokStart);
@@ -155,8 +164,8 @@ Token Lexer::nextToken() {
   case '+':
     return getAtom(Token::Kind::Plus, tokStart);
   case '-':
-    if (*(curPtr + 1) == '>') {
-      curPtr++;
+    if (buffer[curPos + 1] == '>') {
+      curPos++;
       return getAtom(Token::Kind::Arrow, tokStart);
     }
     return getAtom(Token::Kind::Minus, tokStart);
@@ -167,22 +176,22 @@ Token Lexer::nextToken() {
   case '%':
     return getAtom(Token::Kind::Modulo, tokStart);
   case '<':
-    if (*(curPtr + 1) == '=') {
-      curPtr++;
+    if (buffer[curPos + 1] == '=') {
+      curPos++;
       return getAtom(Token::Kind::LessEqual, tokStart);
     }
     return getAtom(Token::Kind::LessThan, tokStart);
   case '>':
-    if (*(curPtr + 1) == '=') {
-      curPtr++;
+    if (buffer[curPos + 1] == '=') {
+      curPos++;
       return getAtom(Token::Kind::GreaterEqual, tokStart);
     }
     return getAtom(Token::Kind::GreaterThan, tokStart);
   case '=':
     return getAtom(Token::Kind::Equal, tokStart);
   case '!':
-    if (*(curPtr + 1) == '=') {
-      curPtr++;
+    if (buffer[curPos + 1] == '=') {
+      curPos++;
       return getAtom(Token::Kind::NotEqual, tokStart);
     }
     return getAtom(Token::Kind::Unknown, tokStart);
@@ -234,8 +243,8 @@ LogicalResult Lexer::consumeKindOrError(Token::Kind kind, Token &token) {
 }
 
 bool Lexer::reachedEOF() {
-  assert(curPtr - 1 <= buffer.end() && "read outside of the buffer");
-  return curPtr - 1 == buffer.end();
+  assert(curPos <= buffer.size() && "read outside of the buffer");
+  return curPos == buffer.size();
 }
 
 /// Emits the provided error message at the location provided.
@@ -256,8 +265,8 @@ InFlightDiagnostic Lexer::emitErrorAtStart(const Twine &message) {
 /// Emits the provided error message at the current possition of the Lexer.
 InFlightDiagnostic Lexer::emitError(const Twine &message) {
   assert(!reachedEOF() &&
-         "curPtr is out of range, you have to specify a location");
-  return emitError(curPtr, message);
+         "lexer is out of range, you have to specify a location");
+  return emitError(buffer.begin() + curPos, message);
 }
 
 //===----------------------------------------------------------------------===//

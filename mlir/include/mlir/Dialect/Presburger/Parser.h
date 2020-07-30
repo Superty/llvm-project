@@ -56,6 +56,7 @@ public:
     Or,
     Arrow,
     Semicolon,
+    Eof,
     Unknown
   };
   Token() : kind(Kind::Unknown) {}
@@ -116,14 +117,14 @@ private:
   bool isAlpha(char c);
 
   /// Returns a Token from start to curPtr
-  Token getAtom(Token::Kind kind, const char *start);
+  Token getAtom(Token::Kind kind, unsigned start);
 
   /// Creates an integer token while consuming all digits
-  Token consumeInteger(const char *start);
+  Token consumeInteger(unsigned start);
 
   /// Create an identifier or keyword. An identifier has to start with an
   /// alphabetic char and after that contains a sequence of alphanumeric chars.
-  Token consumeIdentifierOrKeyword(const char *start);
+  Token consumeIdentifierOrKeyword(unsigned start);
 
   /// Determines the next token and consumes it.
   Token nextToken();
@@ -135,7 +136,7 @@ private:
   StringRef buffer;
 
   /// The current possition in the buffer.
-  const char *curPtr;
+  unsigned curPos;
 
   /// An error callback function. This is required as otherwise exact error
   /// messages aren't possible.
