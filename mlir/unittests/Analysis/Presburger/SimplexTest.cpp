@@ -361,6 +361,10 @@ TEST(SimplexTest, ineqType) {
   Simplex simplex2(1);
   simplex2.addInequality({1, -1}); // x >= 1.
   EXPECT_EQ(simplex2.ineqType({-1, 0}), Simplex::IneqType::AdjIneq); // x <= 0.
+  Simplex simplex3(1);
+  simplex3.addInequality({1, -2}); // x >= 2.
+  simplex3.addInequality({-1, 3}); // x <= 3.
+  EXPECT_EQ(simplex3.ineqType({-1, 1}), Simplex::IneqType::AdjIneq);
 }
 
 TEST(SimplexTest, getSamplePointIfIntegral) {
