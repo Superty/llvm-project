@@ -354,6 +354,15 @@ TEST(SimplexTest, isUnbounded) {
                    .isUnbounded());
 }
 
+TEST(SimplexTest, ineqType) {
+  Simplex simplex(1);
+  simplex.addEquality({1, 0}); // x >= 0.
+  EXPECT_EQ(simplex.ineqType({1, -1}), Simplex::IneqType::AdjEq); // x >= 1.
+  Simplex simplex2(1);
+  simplex2.addInequality({1, -1}); // x >= 1.
+  EXPECT_EQ(simplex2.ineqType({-1, 0}), Simplex::IneqType::AdjIneq); // x <= 0.
+}
+
 TEST(SimplexTest, getSamplePointIfIntegral) {
   // Empty set.
   EXPECT_FALSE(simplexFromConstraints(3,
