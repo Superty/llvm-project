@@ -15,10 +15,10 @@ namespace {
 
 /// This class is a helper for lowering Presburger constructs to the standard
 /// dialect.
-struct PresburgerSetTransformer {
+struct PresburgerTransformer {
 
-  PresburgerSetTransformer(OpBuilder &builder, ValueRange dimAndSymbolValues,
-                           Location loc)
+  PresburgerTransformer(OpBuilder &builder, ValueRange dimAndSymbolValues,
+                        Location loc)
       : builder(builder), dimAndSymbolValues(dimAndSymbolValues), loc(loc) {}
 
   /// This creates a sequence of std operations that check if a provided point
@@ -30,6 +30,9 @@ struct PresburgerSetTransformer {
   /// Note that there are no short circuit evaluation or other simplification
   /// applied.
   Value lowerPresburgerSet(const PresburgerSet &set) {
+    if (set.getNumBasicSets() == 0) {
+      return builder.create<ConstantIntOp>(loc, 1, 1);
+    }
     Value condition = builder.create<ConstantIntOp>(loc, 0, 1);
     for (const FlatAffineConstraints &basicSet :
          set.getFlatAffineConstraints()) {
@@ -62,11 +65,8 @@ struct PresburgerSetTransformer {
     return condition;
   }
 
-  Value lowerPresburgerConstraint(ArrayRef<int64_t> coeffs, int64_t c,
-                                  CmpIPredicate pred) {
-    assert(coeffs.size() == dimAndSymbolValues.size() &&
-           "expect coefficients for every dim and symbol");
-
+  /// TODO add comment
+  Value lowerExpr(ArrayRef<int64_t> coeffs, int64_t c) {
     Value sum = builder.create<ConstantIndexOp>(loc, c);
 
     // TODO can we do a kind of zip().fold() ?
@@ -77,6 +77,15 @@ struct PresburgerSetTransformer {
       Value prod = builder.create<MulIOp>(loc, coeff, val);
       sum = builder.create<AddIOp>(loc, sum, prod);
     }
+    return sum;
+  }
+
+  Value lowerPresburgerConstraint(ArrayRef<int64_t> coeffs, int64_t c,
+                                  CmpIPredicate pred) {
+    assert(coeffs.size() == dimAndSymbolValues.size() &&
+           "expect coefficients for every dim and symbol");
+
+    Value sum = lowerExpr(coeffs, c);
 
     Value zeroConstant = builder.create<ConstantIndexOp>(loc, 0);
     Value cmp = builder.create<CmpIOp>(loc, pred, sum, zeroConstant);
@@ -90,10 +99,8 @@ struct PresburgerSetTransformer {
 
 } // namespace
 
-/// Presburger contains are replaced by runtime checks
-/// TODO this should perhaps be matched on a complete function, as it otherwise
-/// might read outdated values, i.e. violating an invariant of the rewrite
-/// framework
+/// Presburger contains is replaced by runtime checks
+///
 class PresburgerContainsLowering : public OpRewritePattern<ContainsOp> {
 public:
   using OpRewritePattern<ContainsOp>::OpRewritePattern;
@@ -107,9 +114,10 @@ public:
     if (!setDef)
       return failure();
     PresburgerSetAttr setAttr = setDef.getAttrOfType<PresburgerSetAttr>("set");
+    // TODO do we need a copy here?
     PresburgerSet set(setAttr.getValue());
 
-    PresburgerSetTransformer t(rewriter, op.dimAndSyms(), loc);
+    PresburgerTransformer t(rewriter, op.dimAndSyms(), loc);
 
     Value reduced = t.lowerPresburgerSet(set);
     rewriter.replaceOp(op, reduced);
@@ -117,10 +125,97 @@ public:
   }
 };
 
+/// Presburger apply is replaced by runtime checks.
+///
+/// The lowered code goes over the pieces and checks if the point is part of a
+/// certain piece. If this is the case it evaluates the expression of the
+/// according piece and returns the result.
+///
+/// Every contains check and evaluation is in a separate block that are
+/// connected by conditional branches.
+///
+class PresburgerApplyLowering : public OpRewritePattern<ApplyOp> {
+public:
+  using OpRewritePattern<ApplyOp>::OpRewritePattern;
+  using ExprType = PresburgerExpr::ExprType;
+
+  LogicalResult matchAndRewrite(ApplyOp op,
+                                PatternRewriter &rewriter) const override {
+    Location loc = op.getLoc();
+    ExprOp exprDef = op.expr().getDefiningOp<ExprOp>();
+    if (!exprDef)
+      return failure();
+
+    PresburgerExprAttr exprAttr =
+        exprDef.getAttrOfType<PresburgerExprAttr>("expr");
+    PresburgerExpr expr(exprAttr.getValue());
+
+    PresburgerTransformer t(rewriter, op.dimAndSyms(), loc);
+
+    assert(expr.getDomains().size() > 0 &&
+           "expect a Presburger expression to have atleast one domain");
+
+    Block *before = rewriter.getInsertionBlock();
+    Block *after = rewriter.splitBlock(before, rewriter.getInsertionPoint());
+
+    Region *region = before->getParent();
+    Block *currentBlock = new Block();
+    region->push_back(currentBlock);
+
+    rewriter.setInsertionPointToEnd(before);
+    rewriter.create<BranchOp>(loc, currentBlock);
+    rewriter.setInsertionPointToStart(currentBlock);
+
+    for (unsigned i = 0, e = expr.getDomains().size(); i < e; ++i) {
+      Value condition = t.lowerPresburgerSet(expr.getDomains()[i]);
+      Block *applyBlock = new Block();
+      region->push_back(applyBlock);
+
+      rewriter.setInsertionPointToStart(applyBlock);
+
+      ExprType pieceExpr = expr.getExprs()[i];
+      Value res = t.lowerExpr(pieceExpr.second, pieceExpr.first);
+      rewriter.create<BranchOp>(loc, after, res);
+
+      rewriter.setInsertionPointToEnd(currentBlock);
+
+      if (i + 1 < e) {
+        // As long as there are reminaing pieces we either jump to the apply
+        // block or we check the next piece, depending on the evaluated
+        // condition.
+        currentBlock = new Block();
+        region->push_back(currentBlock);
+
+        rewriter.create<CondBranchOp>(loc, condition, applyBlock, currentBlock);
+
+        rewriter.setInsertionPointToStart(currentBlock);
+      } else {
+        // If we are at the end, we either succeeded the check or we have to
+        // return a default value
+        // TODO define default value
+        Value destOp = rewriter.create<ConstantIndexOp>(loc, 0);
+        rewriter.create<CondBranchOp>(loc, condition, applyBlock, after,
+                                      destOp);
+      }
+    }
+
+    BlockArgument blockArgument =
+        after->addArgument(IndexType::get(rewriter.getContext()));
+    rewriter.setInsertionPoint(op);
+
+    rewriter.replaceOp(op.getOperation(), blockArgument);
+
+    return success();
+  }
+};
+
 void mlir::populatePresburgerToStdConversionPatterns(
     OwningRewritePatternList &patterns, MLIRContext *ctx) {
   // clang-format off
-  patterns.insert<PresburgerContainsLowering>(ctx);
+  patterns.insert<
+    PresburgerContainsLowering,
+    PresburgerApplyLowering
+    >(ctx);
   // clang-format on
 }
 
@@ -132,6 +227,10 @@ class ConvertPresburgerToStandardPass
     populatePresburgerToStdConversionPatterns(patterns, &getContext());
     ConversionTarget target(getContext());
     target.addLegalDialect<StandardOpsDialect>();
+    // This is somehow needed as otherwise new blocks will not be
+    // considered legal.
+    target.addLegalOp<FuncOp>();
+
     if (failed(applyPartialConversion(getOperation(), target, patterns)))
       signalPassFailure();
   }

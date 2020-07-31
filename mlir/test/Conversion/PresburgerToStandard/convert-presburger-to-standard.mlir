@@ -1,5 +1,21 @@
 // RUN: mlir-opt --convert-presburger-to-std %s | FileCheck %s
 
+//-----------------------------------------------------------------------------
+// presburger.contains
+//-----------------------------------------------------------------------------
+
+// CHECK-LABEL: func @contains_universe(%arg0: index) -> i1 {
+// CHECK-NEXT:    {{.*}} = presburger.set #presburger<"{{.*}}">
+// CHECK-NEXT:    %true = constant true
+// CHECK-NEXT:    return %true : i1
+// CHECK-NEXT:  }
+func @contains_universe(%x0 : index) -> i1 {
+  %set1 = presburger.set #presburger<"set(x)[] : ()">
+
+  %c = presburger.contains (%x0)[] %set1
+  return %c : i1
+}
+
 // -----
 
 // CHECK-LABEL: func @contains_runtime
@@ -53,4 +69,32 @@ func @contains_runtime(%x0 : index, %x1 : index, %s0 : index) -> i1 {
 
   %c = presburger.contains (%x0, %x1)[%s0] %set1
   return %c : i1
+}
+
+//-----------------------------------------------------------------------------
+// presburger.apply
+//-----------------------------------------------------------------------------
+
+// CHECK-LABEL: func @simple_apply(%arg0: index) -> index {
+// CHECK-NEXT:    %{{.*}} = presburger.expr #presburger<"{{.*}}">
+// CHECK-NEXT:    br ^bb2
+// CHECK-NEXT:  ^bb1(%1: index):  
+// CHECK-NEXT:    return %1 : index
+// CHECK-NEXT:  ^bb2:  // pred: ^bb0
+// CHECK-NEXT:    %true = constant true
+// CHECK-NEXT:    %c0 = constant 0 : index
+// CHECK-NEXT:    cond_br %true, ^bb3, ^bb1(%c0 : index)
+// CHECK-NEXT:  ^bb3:  
+// CHECK-NEXT:    %c0_0 = constant 0 : index
+// CHECK-NEXT:    %c1 = constant 1 : index
+// CHECK-NEXT:    %2 = muli %c1, %arg0 : index
+// CHECK-NEXT:    %3 = addi %c0_0, %2 : index
+// CHECK-NEXT:    br ^bb1(%3 : index)
+// CHECK-NEXT:  }
+func @simple_apply(%d1 : index) -> index {
+
+  %expr1 = presburger.expr #presburger<"expr(x)[] -> (x) : ()">
+  %c1 = presburger.apply (%d1)[] %expr1 
+
+  return %c1 : index
 }
