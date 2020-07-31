@@ -1410,8 +1410,8 @@ void FlatAffineConstraints::removeRedundantInequalities() {
   inequalities.resize(numReservedCols * pos);
 }
 
-// A more complex check to eliminate redundant inequalities. Uses Simplex
-// to check if a constraint is redundant.
+// A more complex check to eliminate redundant inequalities and equalities. Uses
+// Simplex to check if a constraint is redundant.
 void FlatAffineConstraints::removeRedundantConstraints() {
   Simplex simplex(*this);
   simplex.detectRedundant();

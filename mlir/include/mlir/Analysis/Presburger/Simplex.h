@@ -114,7 +114,7 @@ class GBRSimplex;
 ///
 /// The Simplex class supports redundancy checking via detectRedundant and
 /// isMarkedRedundant. A redundant constraint is one which is never violated as
-/// long as the other constrants are not violated. i.e., removing a redundant
+/// long as the other constrants are not violated, i.e., removing a redundant
 /// constraint does not change the set of solutions to the constraints. As a
 /// heuristic, constraints that have been marked redundant can be ignored for
 /// most operations. Therefore, these constraints are kept in rows 0 to
@@ -185,7 +185,7 @@ public:
   /// Constraints are numbered from 0 starting at the first added inequality.
   /// Equalities are added as a pair of inequalities and so correspond to two
   /// inequalities with successive indices.
-  bool isMarkedRedundant(unsigned inequalityIndex) const;
+  bool isMarkedRedundant(unsigned constraintIndex) const;
 
   /// Finds a subset of constraints that is redundant, i.e., such that
   /// the set of solutions does not change if these constraints are removed.
@@ -293,6 +293,9 @@ private:
   /// sample value, false otherwise.
   LogicalResult restoreRow(Unknown &u);
 
+  /// Mark the specified unknown redundant. This operation is added to the undo
+  /// log and will be undone by rollbacks. The specified unknown must be in row
+  /// orientation.
   void markRowRedundant(Unknown &u);
 
   enum class UndoLogEntry {

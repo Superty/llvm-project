@@ -333,7 +333,7 @@ TEST(SimplexTest, isMarkedRedundant_regression_test) {
 
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
-  for (unsigned i = 0; i < tab.numConstraints(); ++i)
+  for (unsigned i = 0, e = tab.numConstraints(); i < e; ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << '\n';
 }
 
@@ -390,6 +390,25 @@ TEST(SimplexTest, isMarkedRedundant) {
   EXPECT_TRUE(tab.isMarkedRedundant(5));
   EXPECT_TRUE(tab.isMarkedRedundant(6));
   EXPECT_FALSE(tab.isMarkedRedundant(7));
+}
+
+TEST(SimplexTest, isMarkedRedundant2) {
+  Simplex tab(3); // Variables are x, y, N.
+  tab.addInequality({1, 0, 0, 0});    // [0]: x >= 0.
+  tab.addInequality({-32, 0, 1, -1}); // [1]: 32x <= N - 1.
+  tab.addInequality({0, 1, 0, 0});    // [2]: y >= 0.
+  tab.addInequality({-32, 1, 0, 0});  // [3]: y >= 32x.
+  tab.addInequality({32, -1, 0, 31}); // [4]: y <= 32x + 31.
+  tab.addInequality({0, -1, 1, -1});  // [5]: y <= N - 1.
+  // [3] and [0] imply [2], as we have y >= 32x >= 0.
+  // [3] and [5] imply [1], as we have 32x <= y <= N - 1.
+  tab.detectRedundant();
+  EXPECT_FALSE(tab.isMarkedRedundant(0));
+  EXPECT_TRUE(tab.isMarkedRedundant(1));
+  EXPECT_TRUE(tab.isMarkedRedundant(2));
+  EXPECT_FALSE(tab.isMarkedRedundant(3));
+  EXPECT_FALSE(tab.isMarkedRedundant(4));
+  EXPECT_FALSE(tab.isMarkedRedundant(5));
 }
 
 TEST(SimplexTest, addInequality_already_redundant) {
