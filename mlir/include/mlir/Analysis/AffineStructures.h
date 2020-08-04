@@ -537,7 +537,9 @@ public:
   /// removeTrivialRedundancy.
   void removeRedundantInequalities();
 
-  /// A check using Simplex to eliminate redundant constraints.
+  /// Removes redundant constraints using Simplex. The algorithm can
+  /// theoretically take exponential time in the worst case, but is known to
+  /// perform much better in the average case.
   void removeRedundantConstraints();
 
   // Removes all equalities and inequalities.
