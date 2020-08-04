@@ -216,6 +216,7 @@ TEST(SimplexTest, getSamplePointIfIntegral) {
                    .hasValue());
 }
 
+/// Some basic sanity checks involving zero or one variables.
 TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
   Simplex tab(0);
   tab.addInequality({0}); // 0 >= 0.
@@ -282,6 +283,8 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
   EXPECT_FALSE(tab.isMarkedRedundant(0));
 }
 
+/// None of the constraints are redundant. Slightly more complicated test
+/// involving an equality.
 TEST(SimplexTest, isMarkedRedundant_no_redundant) {
   Simplex tab(3);
 
@@ -294,47 +297,6 @@ TEST(SimplexTest, isMarkedRedundant_no_redundant) {
 
   for (unsigned i = 0; i < tab.numConstraints(); ++i)
     EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << "\n";
-}
-
-TEST(SimplexTest, isMarkedRedundant_regression_test) {
-  Simplex tab(17);
-
-  tab.addEquality({0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0});
-  tab.addEquality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, -10});
-  tab.addEquality({0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, -13});
-  tab.addEquality({0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -10});
-  tab.addEquality({1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -13});
-  tab.addInequality({0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1});
-  tab.addInequality({0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 500});
-  tab.addInequality({0, 0, 0, -16, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1});
-  tab.addInequality({0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 998});
-  tab.addInequality({0, 0, 0, 16, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15});
-  tab.addInequality({0, 0, 0, 0, -16, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 998});
-  tab.addInequality({0, 0, 0, 0, 16, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, -1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 500});
-  tab.addInequality({0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 15});
-  tab.addInequality({0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, -16, 0, 0, 0, 0, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -16, 0, 1, 0, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, -1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 998});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, -1, 0, 0, 15});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 8, 8});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, -8, -1});
-  tab.addInequality({0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, -8, -1});
-
-  tab.detectRedundant();
-  ASSERT_FALSE(tab.isEmpty());
-  for (unsigned i = 0, e = tab.numConstraints(); i < e; ++i)
-    EXPECT_FALSE(tab.isMarkedRedundant(i)) << "i = " << i << '\n';
 }
 
 TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
