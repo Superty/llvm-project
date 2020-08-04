@@ -355,7 +355,7 @@ TEST(SimplexTest, isMarkedRedundant) {
 }
 
 TEST(SimplexTest, isMarkedRedundant2) {
-  Simplex simplex(3); // Variables are x, y, N.
+  Simplex simplex(3);                     // Variables are x, y, N.
   simplex.addInequality({1, 0, 0, 0});    // [0]: x >= 0.
   simplex.addInequality({-32, 0, 1, -1}); // [1]: 32x <= N - 1.
   simplex.addInequality({0, 1, 0, 0});    // [2]: y >= 0.
