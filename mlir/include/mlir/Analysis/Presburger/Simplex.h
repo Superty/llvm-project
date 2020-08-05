@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // Functionality to perform analysis on FlatAffineConstraints. In particular,
-// support for performing emptiness checks.
+// support for performing emptiness checks and redundancy checks.
 //
 //===----------------------------------------------------------------------===//
 
@@ -34,7 +34,10 @@ class GBRSimplex;
 /// inequalities and equalities, and can perform emptiness checks, i.e., it can
 /// find a solution to the set of constraints if one exists, or say that the
 /// set is empty if no solution exists. Currently, this only works for bounded
-/// sets. Simplex can also be constructed from a FlatAffineConstraints object.
+/// sets. Furthermore, it can find a subset of these constraints that are
+/// redundant, i.e. a subset of constraints that doesn't constrain the affine
+/// set further after adding the non-redundant constraints. Simplex can also be
+/// constructed from a FlatAffineConstraints object.
 ///
 /// The implementation of this Simplex class, other than the functionality
 /// for sampling, is based on the paper
