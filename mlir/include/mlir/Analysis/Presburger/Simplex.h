@@ -301,6 +301,7 @@ private:
   /// orientation.
   void markRowRedundant(Unknown &u);
 
+  /// Enum to denote operations that need to be undone during rollback.
   enum class UndoLogEntry {
     RemoveLastConstraint,
     UnmarkEmpty,

@@ -1434,7 +1434,7 @@ void FlatAffineConstraints::removeRedundantConstraints() {
 
   // Scan to get rid of all equalities marked redundant, in-place. In Simplex,
   // after the inequalities, a pair of constraints for each equality is added.
-  // An equality is redundant is both the inequalities in its pair are
+  // An equality is redundant if both the inequalities in its pair are
   // redundant.
   auto copyEquality = [&](unsigned src, unsigned dest) {
     if (src == dest)

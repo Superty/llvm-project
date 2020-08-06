@@ -503,14 +503,20 @@ void Simplex::markRowRedundant(Unknown &u) {
 }
 
 /// Find a subset of constraints that is redundant and mark them redundant.
-///
-/// We iterate through the constraints and check for each one if it can attain
-/// negative sample values. If it cannot, it is redundant.
 void Simplex::detectRedundant() {
   // It is not meaningful to talk about redundancy for empty sets.
   if (empty)
     return;
 
+  // Iterate through the constraints and check for each one if it can attain
+  // negative sample values. If it can, it's not redundant. Otherwise, it is.
+  // We mark redundant constraints redundant.
+  //
+  // Constraints that get marked redundant in one iteration are not respected
+  // when checking constraints in later iterations. This prevents, for example,
+  // two identical constraints both being marked redundant since each is
+  // redundant given the other one. In this example, only the first of the
+  // constraints that is processed will get marked redundant, as it should be.
   for (Unknown &u : con) {
     if (u.orientation == Orientation::Column) {
       unsigned column = u.pos;

@@ -354,7 +354,7 @@ TEST(SimplexTest, isMarkedRedundant) {
   EXPECT_FALSE(simplex.isMarkedRedundant(7));
 }
 
-TEST(SimplexTest, isMarkedRedundant2) {
+TEST(SimplexTest, isMarkedRedundantTiledLoopNestConstraints) {
   Simplex simplex(3);                     // Variables are x, y, N.
   simplex.addInequality({1, 0, 0, 0});    // [0]: x >= 0.
   simplex.addInequality({-32, 0, 1, -1}); // [1]: 32x <= N - 1.
