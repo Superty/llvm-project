@@ -114,8 +114,8 @@ public:
     if (!setDef)
       return failure();
     PresburgerSetAttr setAttr = setDef.getAttrOfType<PresburgerSetAttr>("set");
-    // TODO do we need a copy here?
-    PresburgerSet set(setAttr.getValue());
+
+    const PresburgerSet &set = setAttr.getValue();
 
     PresburgerTransformer t(rewriter, op.dimAndSyms(), loc);
 
@@ -148,7 +148,7 @@ public:
 
     PresburgerExprAttr exprAttr =
         exprDef.getAttrOfType<PresburgerExprAttr>("expr");
-    PresburgerExpr expr(exprAttr.getValue());
+    const PresburgerExpr &expr = exprAttr.getValue();
 
     PresburgerTransformer t(rewriter, op.dimAndSyms(), loc);
 
@@ -159,43 +159,44 @@ public:
     Block *after = rewriter.splitBlock(before, rewriter.getInsertionPoint());
 
     Region *region = before->getParent();
-    Block *currentBlock = new Block();
-    region->push_back(currentBlock);
+    Block *containsBlock = new Block();
+    region->push_back(containsBlock);
 
     rewriter.setInsertionPointToEnd(before);
-    rewriter.create<BranchOp>(loc, currentBlock);
-    rewriter.setInsertionPointToStart(currentBlock);
+    rewriter.create<BranchOp>(loc, containsBlock);
+    rewriter.setInsertionPointToStart(containsBlock);
 
     for (unsigned i = 0, e = expr.getDomains().size(); i < e; ++i) {
       Value condition = t.lowerPresburgerSet(expr.getDomains()[i]);
-      Block *applyBlock = new Block();
-      region->push_back(applyBlock);
 
-      rewriter.setInsertionPointToStart(applyBlock);
+      // A block that contains the code of the expression evaluation
+      Block *evalBlock = new Block();
+      region->push_back(evalBlock);
+
+      rewriter.setInsertionPointToStart(evalBlock);
 
       ExprType pieceExpr = expr.getExprs()[i];
       Value res = t.lowerExpr(pieceExpr.second, pieceExpr.first);
       rewriter.create<BranchOp>(loc, after, res);
 
-      rewriter.setInsertionPointToEnd(currentBlock);
+      rewriter.setInsertionPointToEnd(containsBlock);
 
       if (i + 1 < e) {
         // As long as there are reminaing pieces we either jump to the apply
         // block or we check the next piece, depending on the evaluated
         // condition.
-        currentBlock = new Block();
-        region->push_back(currentBlock);
+        containsBlock = new Block();
+        region->push_back(containsBlock);
 
-        rewriter.create<CondBranchOp>(loc, condition, applyBlock, currentBlock);
+        rewriter.create<CondBranchOp>(loc, condition, evalBlock, containsBlock);
 
-        rewriter.setInsertionPointToStart(currentBlock);
+        rewriter.setInsertionPointToStart(containsBlock);
       } else {
         // If we are at the end, we either succeeded the check or we have to
         // return a default value
         // TODO define default value
         Value destOp = rewriter.create<ConstantIndexOp>(loc, 0);
-        rewriter.create<CondBranchOp>(loc, condition, applyBlock, after,
-                                      destOp);
+        rewriter.create<CondBranchOp>(loc, condition, evalBlock, after, destOp);
       }
     }
 
