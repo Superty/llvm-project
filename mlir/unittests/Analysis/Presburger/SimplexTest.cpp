@@ -373,20 +373,6 @@ TEST(SimplexTest, isMarkedRedundantTiledLoopNestConstraints) {
   EXPECT_FALSE(simplex.isMarkedRedundant(5));
 }
 
-TEST(SimplexTest, isMarkedRedundant2) {
-  Simplex simplex(2);
-  simplex.addInequality({128, 0, -127}); // [0]: 128x >= 127.
-  simplex.addInequality({-1, 0, 7});     // [1]: x <= 7.
-  simplex.addInequality({-128, 1, 0});   // [2]: y >= 128x.
-  simplex.addInequality({0, 1, 0});      // [3]: y >= 0.
-  // [2] and [0] imply [3] since we have y >= 128x >= 127.
-  simplex.detectRedundant();
-  EXPECT_FALSE(simplex.isMarkedRedundant(0));
-  EXPECT_FALSE(simplex.isMarkedRedundant(1));
-  EXPECT_FALSE(simplex.isMarkedRedundant(2));
-  EXPECT_TRUE(simplex.isMarkedRedundant(3));
-}
-
 TEST(SimplexTest, addInequality_already_redundant) {
   Simplex simplex(1);
   simplex.addInequality({1, -1}); // x >= 1.

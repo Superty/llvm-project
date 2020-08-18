@@ -365,6 +365,21 @@ TEST(FlatAffineConstraintsTest, removeRedundantConstraintsTest) {
   fac4.removeRedundantConstraints();
   EXPECT_EQ(fac4.getNumInequalities(), nIneq);
   EXPECT_EQ(fac4.getNumEqualities(), nEq);
+
+  FlatAffineConstraints fac5 =
+      makeFACFromConstraints(2,
+                             {
+                                 {128, 0, 127}, // [0]: 128x >= -127.
+                                 {-1, 0, 7},    // [1]: x <= 7.
+                                 {-128, 1, 0},  // [2]: y >= 128x.
+                                 {0, 1, 0}      // [3]: y >= 0.
+                             },
+                             {});
+  // [0] implies that 128x >= 0, since x has to be an integer. (This should be
+  // caught by GCDTightenInqualities().)
+  // So [2] and [0] imply [3] since we have y >= 128x >= 0.
+  fac5.removeRedundantConstraints();
+  EXPECT_EQ(fac5.getNumInequalities(), 3u);
 }
 
 } // namespace mlir
