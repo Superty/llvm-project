@@ -1413,6 +1413,9 @@ void FlatAffineConstraints::removeRedundantInequalities() {
 // A more complex check to eliminate redundant inequalities and equalities. Uses
 // Simplex to check if a constraint is redundant.
 void FlatAffineConstraints::removeRedundantConstraints() {
+  // First, we run GCDTightenInequalities. This allows us to catch some
+  // constraints which are not redundant when considering rational solutions
+  // but are redundant in terms of integer solutions.
   GCDTightenInequalities();
   Simplex simplex(*this);
   simplex.detectRedundant();
