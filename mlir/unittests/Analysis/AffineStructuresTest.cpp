@@ -380,6 +380,11 @@ TEST(FlatAffineConstraintsTest, removeRedundantConstraintsTest) {
   // So [2] and [0] imply [3] since we have y >= 128x >= 0.
   fac5.removeRedundantConstraints();
   EXPECT_EQ(fac5.getNumInequalities(), 3u);
+  SmallVector<int64_t, 8> redundantConstraint = {0, 1, 0};
+  for (unsigned i = 0; i < 3; ++i) {
+    // Ensure that the removed constraint was the redundant constraint [3].
+    EXPECT_NE(fac5.getInequality(i), ArrayRef<int64_t>(redundantConstraint));
+  }
 }
 
 } // namespace mlir
