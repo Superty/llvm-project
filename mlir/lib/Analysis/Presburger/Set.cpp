@@ -7,7 +7,7 @@ using namespace mlir;
 using namespace analysis::presburger;
 
 PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
-    : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()), markedEmpty(false) {
+    : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()) {
   addFlatAffineConstraints(cs);
 }
 
@@ -18,12 +18,6 @@ unsigned PresburgerSet::getNumBasicSets() const {
 unsigned PresburgerSet::getNumDims() const { return nDim; }
 
 unsigned PresburgerSet::getNumSyms() const { return nSym; }
-
-bool PresburgerSet::isMarkedEmpty() const { return markedEmpty; }
-
-bool PresburgerSet::isUniverse() const {
-  return flatAffineConstraints.size() == 0 && !markedEmpty;
-}
 
 const SmallVector<FlatAffineConstraints, 4> &
 PresburgerSet::getFlatAffineConstraints() const {
@@ -48,7 +42,6 @@ static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
 void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
   assertDimensionsCompatible(cs, *this);
 
-  markedEmpty = false;
   flatAffineConstraints.push_back(cs);
 }
 
@@ -59,6 +52,13 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
     addFlatAffineConstraints(std::move(cs));
 }
 
+PresburgerSet PresburgerSet::makeUniverse(unsigned nDim, unsigned nSym) {
+  PresburgerSet result(nDim, nSym);
+  result.addFlatAffineConstraints(FlatAffineConstraints(nDim, nSym));
+  return result;
+}
+
+
 // Compute the intersection of the two sets.
 //
 // We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
@@ -66,21 +66,7 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
 void PresburgerSet::intersectSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
 
-  if (markedEmpty)
-    return;
-  if (set.markedEmpty) {
-    markedEmpty = true;
-    return;
-  }
-
-  if (set.isUniverse())
-    return;
-  if (isUniverse()) {
-    *this = set;
-    return;
-  }
-
-  PresburgerSet result(nDim, nSym, true);
+  PresburgerSet result(nDim, nSym);
   for (const FlatAffineConstraints &cs1 : flatAffineConstraints) {
     for (const FlatAffineConstraints &cs2 : set.flatAffineConstraints) {
       FlatAffineConstraints intersection(cs1);
@@ -90,11 +76,6 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
     }
   }
   *this = std::move(result);
-}
-
-PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
-  PresburgerSet result(nDim, nSym, true);
-  return result;
 }
 
 SmallVector<int64_t, 8> inequalityFromEquality(const ArrayRef<int64_t> &eq,
@@ -227,12 +208,7 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints cs,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(cs, set);
   if (cs.isEmptyByGCDTest())
-    return PresburgerSet::makeEmptySet(cs.getNumDimIds(), cs.getNumSymbolIds());
-
-  if (set.isUniverse())
-    return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
-  if (set.isMarkedEmpty())
-    return PresburgerSet(cs);
+    return PresburgerSet(cs.getNumDimIds(), cs.getNumSymbolIds());
 
   PresburgerSet result(cs.getNumDimIds(), cs.getNumSymbolIds());
   Simplex simplex(cs);
@@ -250,20 +226,7 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 // We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
-  if (markedEmpty)
-    return;
-  if (set.isMarkedEmpty())
-    return;
-  if (set.isUniverse()) {
-    markedEmpty = true;
-    return;
-  }
-  if (isUniverse()) {
-    *this = PresburgerSet::complement(set);
-    return;
-  }
-
-  PresburgerSet result = PresburgerSet::makeEmptySet(nDim, nSym);
+  PresburgerSet result = PresburgerSet(nDim, nSym);
   for (const FlatAffineConstraints &c : flatAffineConstraints)
     result.unionSet(subtract(c, set));
   *this = result;
@@ -289,10 +252,6 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
   assert(nSym == 0 && "sampling on sets with symbols is not yet supported");
   if (maybeSample)
     return maybeSample;
-  if (markedEmpty)
-    return {};
-  if (isUniverse())
-    return SmallVector<int64_t, 8>(nDim, 0);
 
   for (FlatAffineConstraints &cs : flatAffineConstraints) {
     if (auto opt = cs.findIntegerSample()) {
@@ -309,8 +268,6 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
 
 llvm::Optional<SmallVector<int64_t, 8>>
 PresburgerSet::maybeGetCachedSample() const {
-  if (isUniverse())
-    return SmallVector<int64_t, 8>(nDim, 0);
   return maybeSample;
 }
 

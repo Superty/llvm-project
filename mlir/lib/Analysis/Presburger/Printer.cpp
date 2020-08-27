@@ -155,10 +155,6 @@ void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
                                                     const PresburgerSet &set) {
   printVariableList(os, set.getNumDims(), set.getNumSyms());
   os << " : ";
-  if (set.isMarkedEmpty()) {
-    os << "(1 = 0)";
-    return;
-  }
   printConstraints(os, set.getFlatAffineConstraints());
 }
 

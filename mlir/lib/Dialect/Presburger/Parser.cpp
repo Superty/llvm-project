@@ -701,7 +701,7 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
     return failure();
 
   if (setExpr->getConstraints() == nullptr) {
-    set = PresburgerSet(setExpr->getDims().size(), setExpr->getSyms().size());
+    set = PresburgerSet::makeUniverse(setExpr->getDims().size(), setExpr->getSyms().size());
     return success();
   }
 
@@ -915,7 +915,7 @@ LogicalResult PresburgerParser::parseAndAddPiece(PieceExpr *piece,
   PresburgerSet set;
 
   if (piece->getConstraints() == nullptr)
-    set = PresburgerSet(expr.getNumDims(), expr.getNumSyms());
+    set = PresburgerSet::makeUniverse(expr.getNumDims(), expr.getNumSyms());
   else
     parsePresburgerSet(piece->getConstraints(), set);
 

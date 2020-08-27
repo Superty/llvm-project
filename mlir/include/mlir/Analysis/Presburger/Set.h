@@ -9,8 +9,8 @@ namespace presburger {
 
 class PresburgerSet {
 public:
-  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false)
-      : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty) {}
+  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
+      : nDim(nDim), nSym(nSym) {}
   PresburgerSet(FlatAffineConstraints cs);
 
   unsigned getNumBasicSets() const;
@@ -26,14 +26,13 @@ public:
   void printConstraints(raw_ostream &os) const;
   void dump() const;
   llvm::hash_code hash_value() const;
-  bool isMarkedEmpty() const;
-  bool isUniverse() const;
 
-  static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym);
   static PresburgerSet complement(const PresburgerSet &set);
   void subtract(const PresburgerSet &set);
   static PresburgerSet subtract(FlatAffineConstraints c,
                                 const PresburgerSet &set);
+
+  static PresburgerSet makeUniverse(unsigned nDim, unsigned nSym);
 
   llvm::Optional<SmallVector<int64_t, 8>> findIntegerSample();
   // bool containsPoint(const std::vector<INT> &values) const;
@@ -43,10 +42,6 @@ private:
   unsigned nDim;
   unsigned nSym;
   SmallVector<FlatAffineConstraints, 4> flatAffineConstraints;
-  // This is NOT just cached information about the constraints in basicSets.
-  // If this is set to true, then the set is empty, irrespective of the state
-  // of basicSets.
-  bool markedEmpty;
   Optional<SmallVector<int64_t, 8>> maybeSample;
 };
 
