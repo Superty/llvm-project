@@ -92,21 +92,20 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
 }
 
 namespace {
-SmallVector<int64_t, 8> inequalityFromEquality(const ArrayRef<int64_t> &eq,
-                                               bool negated, bool strict) {
+SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
+                                               bool negated) {
   SmallVector<int64_t, 8> coeffs;
   for (auto coeff : eq)
     coeffs.emplace_back(negated ? -coeff : coeff);
-
-  // The constant is at the end.
-  if (strict)
-    --coeffs.back();
-
   return coeffs;
 }
 
-SmallVector<int64_t, 8> complementIneq(const ArrayRef<int64_t> &ineq) {
-  return inequalityFromEquality(ineq, true, true);
+SmallVector<int64_t, 8> complementIneq(ArrayRef<int64_t> ineq) {
+  SmallVector<int64_t, 8> coeffs;
+  for (auto coeff : ineq)
+    coeffs.emplace_back(-coeff);
+  --coeffs.back();
+  return coeffs;
 }
 } // anonymous namespace
 
@@ -153,20 +152,21 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
 
   simplex.rollback(initialSnap);
-  auto addInequality = [&](const ArrayRef<int64_t> &ineq) {
+
+  auto recurseWithInequality = [&, i](ArrayRef<int64_t> ineq) {
+    size_t snap = simplex.getSnapshot();
     b.addInequality(ineq);
     simplex.addInequality(ineq);
-  };
-
-  auto recurseWithInequality = [&, i](const ArrayRef<int64_t> &ineq) {
-    size_t snap = simplex.getSnapshot();
-
-    addInequality(ineq);
-
     subtractRecursively(b, simplex, s, i + 1, result);
-
     b.removeInequality(b.getNumInequalities() - 1);
     simplex.rollback(snap);
+  };
+
+
+  auto processInequality = [&](ArrayRef<int64_t> ineq) {
+    recurseWithInequality(complementIneq(ineq));
+    b.addInequality(ineq);
+    simplex.addInequality(ineq);
   };
 
   unsigned originalNumIneqs = b.getNumInequalities();
@@ -175,34 +175,18 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   for (unsigned j = 0; j < sI.getNumInequalities(); j++) {
     if (isMarkedRedundant[j])
       continue;
-    const auto &ineq = sI.getInequality(j);
-
-    recurseWithInequality(complementIneq(ineq));
-    addInequality(ineq);
+    processInequality(sI.getInequality(j));
   }
 
   offset = sI.getNumInequalities();
   for (unsigned j = 0, e = sI.getNumEqualities(); j < e; ++j) {
-    // The first inequality is positive and the second is negative, of which
-    // we need the complements (strict negative and strict positive).
     const auto &eq = sI.getEquality(j);
-    if (!isMarkedRedundant[offset + 2 * j]) {
-      recurseWithInequality(inequalityFromEquality(eq, true, true));
-      if (isMarkedRedundant[offset + 2 * j + 1]) {
-        addInequality(inequalityFromEquality(eq, false, false));
-        continue;
-      }
-    }
-    if (!isMarkedRedundant[offset + 2 * j + 1]) {
-      recurseWithInequality(inequalityFromEquality(eq, false, true));
-      if (isMarkedRedundant[offset + 2 * j]) {
-        addInequality(inequalityFromEquality(eq, true, false));
-        continue;
-      }
-    }
-
-    b.addEquality(eq);
-    simplex.addEquality(eq);
+    // Same as the above loop for inequalities, done once each for the positive
+    // and negative inequalities.
+    if (!isMarkedRedundant[offset + 2 * j])
+      processInequality(inequalityFromEquality(eq, false));
+    if (!isMarkedRedundant[offset + 2 * j + 1])
+      processInequality(inequalityFromEquality(eq, true));
   }
 
   for (unsigned i = b.getNumInequalities(); i > originalNumIneqs; --i)
