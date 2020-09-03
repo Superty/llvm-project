@@ -10,8 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_ANALYSIS_PRESBURGER_PRESBURGER_SET_H
-#define MLIR_ANALYSIS_PRESBURGER_PRESBURGER_SET_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_SET_H
+#define MLIR_ANALYSIS_PRESBURGER_SET_H
 
 #include "mlir/Analysis/AffineStructures.h"
 
@@ -95,4 +95,4 @@ private:
 
 } // namespace mlir
 
-#endif // MLIR_ANALYSIS_PRESBURGER_PRESBURGER_SET_H
+#endif // MLIR_ANALYSIS_PRESBURGER_SET_H

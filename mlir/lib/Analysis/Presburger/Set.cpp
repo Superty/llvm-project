@@ -29,18 +29,19 @@ PresburgerSet::getFlatAffineConstraints() const {
   return flatAffineConstraints;
 }
 
-const FlatAffineConstraints& PresburgerSet::getFlatAffineConstraints(unsigned index) const {
+const FlatAffineConstraints &
+PresburgerSet::getFlatAffineConstraints(unsigned index) const {
   assert(index < flatAffineConstraints.size() && "index out of bounds!");
   return flatAffineConstraints[index];
 }
 
 namespace {
-void assertDimensionsCompatible(FlatAffineConstraints cs,
-                                       PresburgerSet set) {
-  assert(cs.getNumDimIds() == set.getNumDims() &&
-         cs.getNumSymbolIds() == set.getNumSyms() &&
-         "Dimensionalities of the FlatAffineConstraints and PresburgerSet do not "
-         "match");
+void assertDimensionsCompatible(FlatAffineConstraints cs, PresburgerSet set) {
+  assert(
+      cs.getNumDimIds() == set.getNumDims() &&
+      cs.getNumSymbolIds() == set.getNumSyms() &&
+      "Dimensionalities of the FlatAffineConstraints and PresburgerSet do not "
+      "match");
 }
 
 void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
@@ -170,7 +171,6 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     b.removeInequality(b.getNumInequalities() - 1);
     simplex.rollback(snap);
   };
-
 
   auto processInequality = [&](ArrayRef<int64_t> ineq) {
     recurseWithInequality(complementIneq(ineq));

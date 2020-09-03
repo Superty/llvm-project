@@ -1084,11 +1084,11 @@ int64_t valueAt(ArrayRef<int64_t> expr, ArrayRef<int64_t> point) {
     value += expr[i] * point[i];
   return value;
 }
-}
+} // namespace
 
-/// A point satisfies an equality iff the value of the equality at the expression
-/// is zero, and it satisfies an inequality iff the value of the inequality
-/// at that point is non-negative.
+/// A point satisfies an equality iff the value of the equality at the
+/// expression is zero, and it satisfies an inequality iff the value of the
+/// inequality at that point is non-negative.
 bool FlatAffineConstraints::containsPoint(ArrayRef<int64_t> point) const {
   for (unsigned i = 0; i < getNumEqualities(); ++i) {
     if (valueAt(getEquality(i), point) != 0)
