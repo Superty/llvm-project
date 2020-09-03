@@ -261,8 +261,11 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
 }
 
 void PresburgerSet::print(raw_ostream &os) const {
-  for (const FlatAffineConstraints &fac : flatAffineConstraints)
+  os << getNumFACs() << " FlatAffineConstraints:\n";
+  for (const FlatAffineConstraints &fac : flatAffineConstraints) {
     fac.print(os);
+    os << '\n';
+  }
 }
 
 void PresburgerSet::dump() const { print(llvm::errs()); }
