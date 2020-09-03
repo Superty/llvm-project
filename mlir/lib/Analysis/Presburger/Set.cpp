@@ -35,8 +35,7 @@ PresburgerSet::getFlatAffineConstraints(unsigned index) const {
   return flatAffineConstraints[index];
 }
 
-namespace {
-void assertDimensionsCompatible(FlatAffineConstraints cs, PresburgerSet set) {
+static void assertDimensionsCompatible(FlatAffineConstraints cs, PresburgerSet set) {
   assert(
       cs.getNumDimIds() == set.getNumDims() &&
       cs.getNumSymbolIds() == set.getNumSyms() &&
@@ -44,12 +43,11 @@ void assertDimensionsCompatible(FlatAffineConstraints cs, PresburgerSet set) {
       "match");
 }
 
-void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
+static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
   assert(set1.getNumDims() == set2.getNumDims() &&
          set1.getNumSyms() == set2.getNumSyms() &&
          "Dimensionalities of the PresburgerSets do not match");
 }
-} // anonymous namespace
 
 /// Add an FAC to the union.
 void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
@@ -101,8 +99,7 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   *this = std::move(result);
 }
 
-namespace {
-SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
+static SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
                                                bool negated) {
   SmallVector<int64_t, 8> coeffs;
   for (auto coeff : eq)
@@ -110,32 +107,31 @@ SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
   return coeffs;
 }
 
-SmallVector<int64_t, 8> complementIneq(ArrayRef<int64_t> ineq) {
+static SmallVector<int64_t, 8> complementIneq(ArrayRef<int64_t> ineq) {
   SmallVector<int64_t, 8> coeffs;
   for (auto coeff : ineq)
     coeffs.emplace_back(-coeff);
   --coeffs.back();
   return coeffs;
 }
-} // anonymous namespace
 
-// Return the set difference b - s and accumulate the result into `result`.
-// `simplex` must correspond to b.
-//
-// In the following, U denotes union, /\ denotes intersection, - denotes set
-// subtraction and ~ denotes complement.
-// Let b be the basic set and s = (U_i s_i) be the set. We want b - (U_i s_i).
-//
-// Let s_i = /\_j s_ij. To compute b - s_i = b /\ ~s_i, we partition s_i based
-// on the first violated constraint:
-// ~s_i = (~s_i1) U (s_i1 /\ ~s_i2) U (s_i1 /\ s_i2 /\ ~s_i3) U ...
-// And the required result is (b /\ ~s_i1) U (b /\ s_i1 /\ ~s_i2) U ...
-// We recurse by subtracting U_{j > i} S_j from each of these parts and
-// returning the union of the results.
-//
-// As a heuristic, we try adding all the constraints and check if simplex
-// says that the intersection is empty. Also, in the process we find out that
-// some constraints are redundant, which we then ignore.
+/// Return the set difference b - s and accumulate the result into `result`.
+/// `simplex` must correspond to b.
+///
+/// In the following, U denotes union, /\ denotes intersection, - denotes set
+/// subtraction and ~ denotes complement.
+/// Let b be the basic set and s = (U_i s_i) be the set. We want b - (U_i s_i).
+///
+/// Let s_i = /\_j s_ij. To compute b - s_i = b /\ ~s_i, we partition s_i based
+/// on the first violated constraint:
+/// ~s_i = (~s_i1) U (s_i1 /\ ~s_i2) U (s_i1 /\ s_i2 /\ ~s_i3) U ...
+/// And the required result is (b /\ ~s_i1) U (b /\ s_i1 /\ ~s_i2) U ...
+/// We recurse by subtracting U_{j > i} S_j from each of these parts and
+/// returning the union of the results.
+///
+/// As a heuristic, we try adding all the constraints and check if simplex
+/// says that the intersection is empty. Also, in the process we find out that
+/// some constraints are redundant, which we then ignore.
 void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
                          const PresburgerSet &s, unsigned i,
                          PresburgerSet &result) {
@@ -243,8 +239,7 @@ bool PresburgerSet::isIntegerEmpty() const {
   assert(nSym == 0 && "findIntegerSample is intended for non-symbolic sets");
   // The set is empty iff all of the disjuncts are empty.
   for (const FlatAffineConstraints &fac : flatAffineConstraints) {
-    bool empty = fac.isIntegerEmpty();
-    if (!empty)
+    if (!fac.isIntegerEmpty())
       return false;
   }
   return true;
