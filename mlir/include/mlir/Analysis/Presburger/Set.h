@@ -53,6 +53,9 @@ public:
   /// Intersect the given set with the current set.
   void intersectSet(const PresburgerSet &set);
 
+  /// Returns true if the set contains the given point, or false otherwise.
+  bool containsPoint(ArrayRef<int64_t> point) const;
+
   /// Print the set's internal state.
   void print(raw_ostream &os) const;
   void dump() const;
@@ -68,7 +71,7 @@ public:
                                 const PresburgerSet &set);
 
   /// Return a universe set of the specified type that contains all points.
-  static PresburgerSet makeUniverse(unsigned nDim, unsigned nSym);
+  static PresburgerSet makeUniverse(unsigned nDim = 0, unsigned nSym = 0);
 
   /// Returns true if all the sets in the union are known to be integer empty
   /// false otherwise.
