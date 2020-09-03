@@ -15,17 +15,6 @@
 
 namespace mlir {
 
-/// Evaluate the value of the given affine expression at the specified point.
-/// The expression is a list of coefficients for the dimensions followed by the
-/// constant term.
-int64_t valueAt(ArrayRef<int64_t> expr, ArrayRef<int64_t> point) {
-  assert(expr.size() == 1 + point.size());
-  int64_t value = expr.back();
-  for (unsigned i = 0; i < point.size(); ++i)
-    value += expr[i] * point[i];
-  return value;
-}
-
 /// If 'hasValue' is true, check that findIntegerSample returns a valid sample
 /// for the FlatAffineConstraints fac.
 ///
@@ -41,10 +30,7 @@ void checkSample(bool hasValue, const FlatAffineConstraints &fac) {
     }
   } else {
     ASSERT_TRUE(maybeSample.hasValue());
-    for (unsigned i = 0; i < fac.getNumEqualities(); ++i)
-      EXPECT_EQ(valueAt(fac.getEquality(i), *maybeSample), 0);
-    for (unsigned i = 0; i < fac.getNumInequalities(); ++i)
-      EXPECT_GE(valueAt(fac.getInequality(i), *maybeSample), 0);
+    EXPECT_TRUE(fac.containsPoint(*maybeSample));
   }
 }
 

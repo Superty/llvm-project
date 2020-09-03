@@ -66,6 +66,15 @@ void PresburgerSet::unionSet(const PresburgerSet &set) {
     addFlatAffineConstraints(std::move(cs));
 }
 
+/// A point is contained in the union iff any of the parts contain the point.
+bool PresburgerSet::containsPoint(ArrayRef<int64_t> point) const {
+  for (const FlatAffineConstraints &fac : flatAffineConstraints) {
+    if (fac.containsPoint(point))
+      return true;
+  }
+  return false;
+}
+
 PresburgerSet PresburgerSet::makeUniverse(unsigned nDim, unsigned nSym) {
   PresburgerSet result(nDim, nSym);
   result.addFlatAffineConstraints(FlatAffineConstraints(nDim, nSym));
@@ -198,7 +207,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   simplex.rollback(initialSnap);
 }
 
-// Returns the set difference fac - set.
+/// Returns the set difference fac - set.
 PresburgerSet PresburgerSet::subtract(FlatAffineConstraints fac,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);

@@ -153,6 +153,10 @@ public:
   /// Returns such a point if one exists, or an empty Optional otherwise.
   Optional<SmallVector<int64_t, 8>> findIntegerSample() const;
 
+  /// Returns true if the given point satisfies the constraints, or false
+  /// otherwise.
+  bool containsPoint(ArrayRef<int64_t> point) const;
+
   // Clones this object.
   std::unique_ptr<FlatAffineConstraints> clone() const;
 
