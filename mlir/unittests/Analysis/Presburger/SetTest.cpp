@@ -17,7 +17,7 @@ void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
                        ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet unionSet = s;
   unionSet.unionSet(t);
-  for (auto &point : points) {
+  for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inUnion = unionSet.containsPoint(point);
@@ -29,7 +29,7 @@ void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
                            ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet intersection = s;
   intersection.unionSet(t);
-  for (auto &point : points) {
+  for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inIntersection = intersection.containsPoint(point);
@@ -41,7 +41,7 @@ void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
                           ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet diff = s;
   diff.subtract(t);
-  for (auto &point : points) {
+  for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inDiff = diff.containsPoint(point);
