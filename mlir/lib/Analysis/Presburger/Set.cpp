@@ -35,7 +35,8 @@ PresburgerSet::getFlatAffineConstraints(unsigned index) const {
   return flatAffineConstraints[index];
 }
 
-static void assertDimensionsCompatible(FlatAffineConstraints cs, PresburgerSet set) {
+static void assertDimensionsCompatible(FlatAffineConstraints cs,
+                                       PresburgerSet set) {
   assert(
       cs.getNumDimIds() == set.getNumDims() &&
       cs.getNumSymbolIds() == set.getNumSyms() &&
@@ -100,7 +101,7 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
 }
 
 static SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
-                                               bool negated) {
+                                                      bool negated) {
   SmallVector<int64_t, 8> coeffs;
   for (auto coeff : eq)
     coeffs.emplace_back(negated ? -coeff : coeff);
