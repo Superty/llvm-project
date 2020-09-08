@@ -35,17 +35,16 @@ PresburgerSet::getFlatAffineConstraints(unsigned index) const {
   return flatAffineConstraints[index];
 }
 
-
 /// Assert that the FlatAffineConstraints and PresburgerSet live in
 /// compatible spaces..
 static void assertDimensionsCompatible(const FlatAffineConstraints &fac,
                                        const PresburgerSet &set) {
   assert(fac.getNumDimIds() == set.getNumDims() &&
          "Number of dimensions of the FlatAffineConstraints and PresburgerSet"
-          "do not match!");
+         "do not match!");
   assert(fac.getNumSymbolIds() == set.getNumSyms() &&
          "Number of symbols of the FlatAffineConstraints and PresburgerSet"
-          "do not match!");
+         "do not match!");
 }
 
 /// Assert that the two PresburgerSets live in compatible spaces.

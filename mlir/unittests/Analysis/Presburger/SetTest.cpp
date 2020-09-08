@@ -53,7 +53,7 @@ void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
 }
 
 void testComplementAtPoints(PresburgerSet s,
-                          ArrayRef<SmallVector<int64_t, 4>> points) {
+                            ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet complement = PresburgerSet::complement(s);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
@@ -476,22 +476,35 @@ TEST(SetTest, Subtract) {
 
 TEST(SetTest, Complement) {
   // Complement of universe.
-  testComplementAtPoints(PresburgerSet::makeUniverse(1),
-                    {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
+  testComplementAtPoints(
+      PresburgerSet::makeUniverse(1),
+      {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   // Complement of null set.
-  testComplementAtPoints(PresburgerSet(1),
-                    {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
+  testComplementAtPoints(
+      PresburgerSet(1),
+      {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  testComplementAtPoints(makeSetFromFACs(2, {makeFACFromIneq(2,
+  testComplementAtPoints(
+      makeSetFromFACs(2, {makeFACFromIneq(2,
                                           {
                                               {1, 0, -2},  // x >= 2.
                                               {0, 1, -2},  // y >= 2.
                                               {-1, 0, 10}, // x <= 10.
                                               {0, -1, 10}  // y <= 10.
                                           })}),
-  {{1, 1}, {2, 1}, {1, 2}, {2, 2}, {2, 3}, {3, 2}, {10, 10}, {10, 11}, {11, 10},
-   {2, 10}, {2, 11}, {1, 10}});
+      {{1, 1},
+       {2, 1},
+       {1, 2},
+       {2, 2},
+       {2, 3},
+       {3, 2},
+       {10, 10},
+       {10, 11},
+       {11, 10},
+       {2, 10},
+       {2, 11},
+       {1, 10}});
 }
 
 } // namespace mlir
