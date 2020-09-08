@@ -11,9 +11,9 @@
 
 using namespace mlir;
 
-PresburgerSet::PresburgerSet(FlatAffineConstraints cs)
-    : nDim(cs.getNumDimIds()), nSym(cs.getNumSymbolIds()) {
-  addFlatAffineConstraints(cs);
+PresburgerSet::PresburgerSet(FlatAffineConstraints fac)
+    : nDim(fac.getNumDimIds()), nSym(fac.getNumSymbolIds()) {
+  addFlatAffineConstraints(fac);
 }
 
 unsigned PresburgerSet::getNumFACs() const {
@@ -35,25 +35,32 @@ PresburgerSet::getFlatAffineConstraints(unsigned index) const {
   return flatAffineConstraints[index];
 }
 
-static void assertDimensionsCompatible(FlatAffineConstraints cs,
-                                       PresburgerSet set) {
-  assert(
-      cs.getNumDimIds() == set.getNumDims() &&
-      cs.getNumSymbolIds() == set.getNumSyms() &&
-      "Dimensionalities of the FlatAffineConstraints and PresburgerSet do not "
-      "match");
+
+/// Assert that the FlatAffineConstraints and PresburgerSet live in
+/// compatible spaces..
+static void assertDimensionsCompatible(const FlatAffineConstraints &fac,
+                                       const PresburgerSet &set) {
+  assert(fac.getNumDimIds() == set.getNumDims() &&
+         "Number of dimensions of the FlatAffineConstraints and PresburgerSet"
+          "do not match!");
+  assert(fac.getNumSymbolIds() == set.getNumSyms() &&
+         "Number of symbols of the FlatAffineConstraints and PresburgerSet"
+          "do not match!");
 }
 
-static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
+/// Assert that the two PresburgerSets live in compatible spaces.
+static void assertDimensionsCompatible(const PresburgerSet &set1,
+                                       const PresburgerSet &set2) {
   assert(set1.getNumDims() == set2.getNumDims() &&
-         set1.getNumSyms() == set2.getNumSyms() &&
-         "Dimensionalities of the PresburgerSets do not match");
+         "Number of dimensions of the PresburgerSets do not match!");
+  assert(set1.getNumSyms() == set2.getNumSyms() &&
+         "Number of symbols of the PresburgerSets do not match!");
 }
 
 /// Add an FAC to the union.
-void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
-  assertDimensionsCompatible(cs, *this);
-  flatAffineConstraints.push_back(cs);
+void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints fac) {
+  assertDimensionsCompatible(fac, *this);
+  flatAffineConstraints.push_back(std::move(fac));
 }
 
 /// Union the current set with the given set.
@@ -62,8 +69,8 @@ void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints cs) {
 /// current set.
 void PresburgerSet::unionSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
-  for (const FlatAffineConstraints &cs : set.flatAffineConstraints)
-    addFlatAffineConstraints(std::move(cs));
+  for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
+    addFlatAffineConstraints(std::move(fac));
 }
 
 /// A point is contained in the union iff any of the parts contain the point.
@@ -89,10 +96,10 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
 
   PresburgerSet result(nDim, nSym);
-  for (const FlatAffineConstraints &cs1 : flatAffineConstraints) {
-    for (const FlatAffineConstraints &cs2 : set.flatAffineConstraints) {
-      FlatAffineConstraints intersection(cs1);
-      intersection.append(cs2);
+  for (const FlatAffineConstraints &csA : flatAffineConstraints) {
+    for (const FlatAffineConstraints &csB : set.flatAffineConstraints) {
+      FlatAffineConstraints intersection(csA);
+      intersection.append(csB);
       if (!intersection.isEmpty())
         result.addFlatAffineConstraints(std::move(intersection));
     }
@@ -100,17 +107,22 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   *this = std::move(result);
 }
 
-static SmallVector<int64_t, 8> inequalityFromEquality(ArrayRef<int64_t> eq,
-                                                      bool negated) {
-  SmallVector<int64_t, 8> coeffs;
-  for (auto coeff : eq)
-    coeffs.emplace_back(negated ? -coeff : coeff);
-  return coeffs;
+/// An equality can be decomposed into two inequalities. This function allows
+/// p:
+static SmallVector<int64_t, 8> negatedCoeffs(ArrayRef<int64_t> coeffs) {
+  SmallVector<int64_t, 8> negatedCoeffs;
+  for (int64_t coeff : coeffs)
+    negatedCoeffs.emplace_back(-coeff);
+  return negatedCoeffs;
 }
 
+/// Return the complement of the given inequality.
+///
+/// The complement of a_1 x_1 + ... + a_n x_ + c >= 0 is
+/// a_1 x_1 + ... + a_n x_ + c < 0, i.e., -a_1 x_1 - ... - a_n x_ - c - 1 >= 0.
 static SmallVector<int64_t, 8> complementIneq(ArrayRef<int64_t> ineq) {
   SmallVector<int64_t, 8> coeffs;
-  for (auto coeff : ineq)
+  for (int64_t coeff : ineq)
     coeffs.emplace_back(-coeff);
   --coeffs.back();
   return coeffs;
@@ -141,7 +153,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     return;
   }
   const FlatAffineConstraints &sI = s.getFlatAffineConstraints()[i];
-  auto initialSnap = simplex.getSnapshot();
+  unsigned initialSnap = simplex.getSnapshot();
   unsigned offset = simplex.numConstraints();
   simplex.addFlatAffineConstraints(sI);
 
@@ -186,13 +198,13 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
 
   offset = sI.getNumInequalities();
   for (unsigned j = 0, e = sI.getNumEqualities(); j < e; ++j) {
-    const auto &eq = sI.getEquality(j);
+    const ArrayRef<int64_t> &coeffs = sI.getEquality(j);
     // Same as the above loop for inequalities, done once each for the positive
     // and negative inequalities.
     if (!isMarkedRedundant[offset + 2 * j])
-      processInequality(inequalityFromEquality(eq, false));
+      processInequality(coeffs);
     if (!isMarkedRedundant[offset + 2 * j + 1])
-      processInequality(inequalityFromEquality(eq, true));
+      processInequality(negatedCoeffs(coeffs));
   }
 
   for (unsigned i = b.getNumInequalities(); i > originalNumIneqs; --i)
@@ -205,7 +217,7 @@ void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
 }
 
 /// Returns the set difference fac - set.
-PresburgerSet PresburgerSet::subtract(FlatAffineConstraints fac,
+PresburgerSet PresburgerSet::subtract(FlatAffineConstraints &fac,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);
   if (fac.isEmptyByGCDTest())
@@ -215,6 +227,12 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints fac,
   Simplex simplex(fac);
   subtractRecursively(fac, simplex, set, 0, result);
   return result;
+}
+
+PresburgerSet PresburgerSet::subtract(FlatAffineConstraints &&fac,
+                                      const PresburgerSet &set) {
+  FlatAffineConstraints lvalue(fac);
+  return subtract(fac, set);
 }
 
 PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
@@ -229,7 +247,7 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
   PresburgerSet result(nDim, nSym);
-  for (const FlatAffineConstraints &c : flatAffineConstraints)
+  for (FlatAffineConstraints &c : flatAffineConstraints)
     result.unionSet(subtract(c, set));
   *this = result;
 }

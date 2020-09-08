@@ -67,7 +67,11 @@ public:
   void subtract(const PresburgerSet &set);
 
   /// Return the set difference c - set.
-  static PresburgerSet subtract(FlatAffineConstraints c,
+  static PresburgerSet subtract(FlatAffineConstraints &fac,
+                                const PresburgerSet &set);
+
+  /// Return the set difference c - set.
+  static PresburgerSet subtract(FlatAffineConstraints &&fac,
                                 const PresburgerSet &set);
 
   /// Return a universe set of the specified type that contains all points.
@@ -90,7 +94,7 @@ private:
   unsigned nSym;
 
   /// The list of flatAffineConstraints that this set is the union of.
-  SmallVector<FlatAffineConstraints, 4> flatAffineConstraints;
+  SmallVector<FlatAffineConstraints, 2> flatAffineConstraints;
 };
 
 } // namespace mlir
