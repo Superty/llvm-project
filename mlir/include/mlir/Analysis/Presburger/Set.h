@@ -27,7 +27,7 @@ class PresburgerSet {
 public:
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
       : nDim(nDim), nSym(nSym) {}
-  PresburgerSet(FlatAffineConstraints cs);
+  PresburgerSet(FlatAffineConstraints fac);
 
   /// Return the number of FACs in the union.
   unsigned getNumFACs() const;
@@ -39,13 +39,13 @@ public:
   unsigned getNumSyms() const;
 
   /// Returns a reference to the list of FlatAffineConstraints.
-  ArrayRef<FlatAffineConstraints> getFlatAffineConstraints() const;
+  ArrayRef<FlatAffineConstraints> getAllFlatAffineConstraints() const;
 
   /// Returns the FlatAffineConsatraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
   /// Add the given FlatAffineConstraints to the union.
-  void addFlatAffineConstraints(FlatAffineConstraints cs);
+  void addFlatAffineConstraints(const FlatAffineConstraints &fac);
 
   /// Intersect the given set with the current set.
   void unionSet(const PresburgerSet &set);
@@ -66,11 +66,11 @@ public:
   /// Subtract the given set from the current set.
   void subtract(const PresburgerSet &set);
 
-  /// Return the set difference c - set.
+  /// Return the set difference fac - set.
   static PresburgerSet subtract(FlatAffineConstraints &fac,
                                 const PresburgerSet &set);
 
-  /// Return the set difference c - set.
+  /// Return the set difference fac - set.
   static PresburgerSet subtract(FlatAffineConstraints &&fac,
                                 const PresburgerSet &set);
 
@@ -83,7 +83,7 @@ public:
 
   /// Find an integer sample from the given set. This should not be called if
   /// any of the FACs in the union are unbounded.
-  llvm::Optional<SmallVector<int64_t, 8>> findIntegerSample();
+  bool findIntegerSample(SmallVectorImpl<int64_t> &sample);
 
 private:
   /// Number of identifiers corresponding to real dimensions.

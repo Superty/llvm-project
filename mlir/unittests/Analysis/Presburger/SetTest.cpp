@@ -92,7 +92,7 @@ PresburgerSet makeSetFromFACs(unsigned dims,
 }
 
 TEST(SetTest, containsPoint) {
-  PresburgerSet set1 =
+  PresburgerSet setA =
       makeSetFromFACs(1, {
                              makeFACFromIneq(1, {{1, -2},    // x >= 2.
                                                  {-1, 8}}),  // x <= 8.
@@ -101,14 +101,14 @@ TEST(SetTest, containsPoint) {
                          });
   for (unsigned x = 0; x <= 21; ++x) {
     if ((2 <= x && x <= 8) || (10 <= x && x <= 20))
-      EXPECT_TRUE(set1.containsPoint({x}));
+      EXPECT_TRUE(setA.containsPoint({x}));
     else
-      EXPECT_FALSE(set1.containsPoint({x}));
+      EXPECT_FALSE(setA.containsPoint({x}));
   }
 
   // A parallelogram with vertices {(3, 1), (10, -6), (24, 8), (17, 15)} union
   // a square with opposite corners (2, 2) and (10, 10).
-  PresburgerSet set2 =
+  PresburgerSet setB =
       makeSetFromFACs(2, {makeFACFromIneq(2,
                                           {
                                               {1, 1, -2},   // x + y >= 4.
@@ -126,11 +126,11 @@ TEST(SetTest, containsPoint) {
   for (unsigned x = 1; x <= 25; ++x) {
     for (unsigned y = -6; y <= 16; ++y) {
       if (4 <= x + y && x + y <= 32 && 2 <= x - y && x - y <= 16)
-        EXPECT_TRUE(set2.containsPoint({x, y}));
+        EXPECT_TRUE(setB.containsPoint({x, y}));
       else if (2 <= x && x <= 10 && 2 <= y && y <= 10)
-        EXPECT_TRUE(set2.containsPoint({x, y}));
+        EXPECT_TRUE(setB.containsPoint({x, y}));
       else
-        EXPECT_FALSE(set2.containsPoint({x, y}));
+        EXPECT_FALSE(setB.containsPoint({x, y}));
     }
   }
 }

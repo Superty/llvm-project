@@ -25,7 +25,7 @@ unsigned PresburgerSet::getNumDims() const { return nDim; }
 unsigned PresburgerSet::getNumSyms() const { return nSym; }
 
 ArrayRef<FlatAffineConstraints>
-PresburgerSet::getFlatAffineConstraints() const {
+PresburgerSet::getAllFlatAffineConstraints() const {
   return flatAffineConstraints;
 }
 
@@ -36,7 +36,7 @@ PresburgerSet::getFlatAffineConstraints(unsigned index) const {
 }
 
 /// Assert that the FlatAffineConstraints and PresburgerSet live in
-/// compatible spaces..
+/// compatible spaces.
 static void assertDimensionsCompatible(const FlatAffineConstraints &fac,
                                        const PresburgerSet &set) {
   assert(fac.getNumDimIds() == set.getNumDims() &&
@@ -48,18 +48,18 @@ static void assertDimensionsCompatible(const FlatAffineConstraints &fac,
 }
 
 /// Assert that the two PresburgerSets live in compatible spaces.
-static void assertDimensionsCompatible(const PresburgerSet &set1,
-                                       const PresburgerSet &set2) {
-  assert(set1.getNumDims() == set2.getNumDims() &&
+static void assertDimensionsCompatible(const PresburgerSet &setA,
+                                       const PresburgerSet &setB) {
+  assert(setA.getNumDims() == setB.getNumDims() &&
          "Number of dimensions of the PresburgerSets do not match!");
-  assert(set1.getNumSyms() == set2.getNumSyms() &&
+  assert(setA.getNumSyms() == setB.getNumSyms() &&
          "Number of symbols of the PresburgerSets do not match!");
 }
 
-/// Add an FAC to the union.
-void PresburgerSet::addFlatAffineConstraints(FlatAffineConstraints fac) {
+/// Add a FAC to the union.
+void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
   assertDimensionsCompatible(fac, *this);
-  flatAffineConstraints.push_back(std::move(fac));
+  flatAffineConstraints.push_back(fac);
 }
 
 /// Union the current set with the given set.
@@ -106,8 +106,7 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
   *this = std::move(result);
 }
 
-/// An equality can be decomposed into two inequalities. This function allows
-/// p:
+/// Returns
 static SmallVector<int64_t, 8> negatedCoeffs(ArrayRef<int64_t> coeffs) {
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
@@ -144,14 +143,14 @@ static SmallVector<int64_t, 8> complementIneq(ArrayRef<int64_t> ineq) {
 /// As a heuristic, we try adding all the constraints and check if simplex
 /// says that the intersection is empty. Also, in the process we find out that
 /// some constraints are redundant, which we then ignore.
-void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
-                         const PresburgerSet &s, unsigned i,
-                         PresburgerSet &result) {
+static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
+                                const PresburgerSet &s, unsigned i,
+                                PresburgerSet &result) {
   if (i == s.getNumFACs()) {
     result.addFlatAffineConstraints(b);
     return;
   }
-  const FlatAffineConstraints &sI = s.getFlatAffineConstraints()[i];
+  const FlatAffineConstraints &sI = s.getFlatAffineConstraints(i);
   unsigned initialSnap = simplex.getSnapshot();
   unsigned offset = simplex.numConstraints();
   simplex.addFlatAffineConstraints(sI);
@@ -263,14 +262,16 @@ bool PresburgerSet::isIntegerEmpty() const {
   return true;
 }
 
-Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
+bool PresburgerSet::findIntegerSample(SmallVectorImpl<int64_t> &sample) {
   assert(nSym == 0 && "findIntegerSample is intended for non-symbolic sets");
   // A sample exists iff any of the disjuncts containts a sample.
   for (FlatAffineConstraints &fac : flatAffineConstraints) {
-    if (Optional<SmallVector<int64_t, 8>> opt = fac.findIntegerSample())
-      return *opt;
+    if (Optional<SmallVector<int64_t, 8>> opt = fac.findIntegerSample()) {
+      sample = std::move(*opt);
+      return true;
+    }
   }
-  return {};
+  return false;
 }
 
 void PresburgerSet::print(raw_ostream &os) const {
