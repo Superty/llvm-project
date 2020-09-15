@@ -234,14 +234,6 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   simplex.rollback(initialSnapshot);
 }
 
-/// Return the set difference facA \ facB.
-PresburgerSet
-PresburgerSet::getSetDifference(const FlatAffineConstraints &facA,
-                                const FlatAffineConstraints &facB) {
-  PresburgerSet setB(facB);
-  return getSetDifference(facA, setB);
-}
-
 /// Return the set difference fac \ set.
 ///
 /// The FAC here is modified in subtractRecursively, so it cannot be a const
