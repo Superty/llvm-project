@@ -25,8 +25,10 @@ namespace mlir {
 /// represents the union of these FACs.
 class PresburgerSet {
 public:
+  /// Construct an empty PresburgerSet.
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
       : nDim(nDim), nSym(nSym) {}
+
   explicit PresburgerSet(const FlatAffineConstraints &fac);
 
   /// Return the number of FACs in the union.
@@ -60,19 +62,15 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
-  /// Returns the complement of the given set.
-  static PresburgerSet complement(const PresburgerSet &set);
+  /// Perform the complement operation on the set..
+  void complement();
+
+  /// Return the set difference facA \ facB.
+  static PresburgerSet getSetDifference(const FlatAffineConstraints &facA,
+                                        const FlatAffineConstraints &facB);
 
   /// Subtract the given set from the current set.
   void subtract(const PresburgerSet &set);
-
-  /// Return the set difference fac \ set.
-  static PresburgerSet subtract(FlatAffineConstraints &fac,
-                                const PresburgerSet &set);
-
-  /// Return the set difference fac \ set.
-  static PresburgerSet subtract(FlatAffineConstraints &&fac,
-                                const PresburgerSet &set);
 
   /// Return a universe set of the specified type that contains all points.
   static PresburgerSet makeUniverse(unsigned nDim = 0, unsigned nSym = 0);
@@ -86,6 +84,10 @@ public:
   bool findIntegerSample(SmallVectorImpl<int64_t> &sample);
 
 private:
+  /// Return the set difference fac \ set.
+  static PresburgerSet getSetDifference(FlatAffineConstraints fac,
+                                        const PresburgerSet &set);
+
   /// Number of identifiers corresponding to real dimensions.
   unsigned nDim;
 
