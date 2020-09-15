@@ -27,7 +27,7 @@ class PresburgerSet {
 public:
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
       : nDim(nDim), nSym(nSym) {}
-  PresburgerSet(FlatAffineConstraints fac);
+  explicit PresburgerSet(const FlatAffineConstraints &fac);
 
   /// Return the number of FACs in the union.
   unsigned getNumFACs() const;
@@ -66,11 +66,11 @@ public:
   /// Subtract the given set from the current set.
   void subtract(const PresburgerSet &set);
 
-  /// Return the set difference fac - set.
+  /// Return the set difference fac \ set.
   static PresburgerSet subtract(FlatAffineConstraints &fac,
                                 const PresburgerSet &set);
 
-  /// Return the set difference fac - set.
+  /// Return the set difference fac \ set.
   static PresburgerSet subtract(FlatAffineConstraints &&fac,
                                 const PresburgerSet &set);
 
