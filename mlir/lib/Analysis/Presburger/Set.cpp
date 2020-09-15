@@ -66,9 +66,13 @@ void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
 /// Return the union of this set and the given set.
 ///
 /// This is accomplished by simply adding all the FACs of the given set to the
-/// current set.
+/// current set. 
 PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
+  // This copy is not strictly necessary; the result could be constructed
+  // in-place. However, to keep the API uniform with intersect, subtract and
+  // complement which return the result of their operations, we need to make a
+  // copy here.
   PresburgerSet result = *this;
   for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
     result.addFlatAffineConstraints(fac);
