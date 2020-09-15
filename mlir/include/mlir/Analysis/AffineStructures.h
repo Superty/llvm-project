@@ -97,6 +97,12 @@ public:
       ids.append(idArgs.begin(), idArgs.end());
   }
 
+  /// Return a system with no constraints, i.e., one which is satisfied by all
+  /// points.
+  static FlatAffineConstraints universe(unsigned numDims = 0, unsigned numSymbols = 0) {
+    return FlatAffineConstraints(numDims, numSymbols);
+  }
+
   /// Create a flat affine constraint system from an AffineValueMap or a list of
   /// these. The constructed system will only include equalities.
   explicit FlatAffineConstraints(const AffineValueMap &avm);
