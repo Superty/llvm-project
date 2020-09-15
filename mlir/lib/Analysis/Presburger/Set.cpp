@@ -232,8 +232,17 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   simplex.rollback(initialSnapshot);
 }
 
+PresburgerSet PresburgerSet::getSetDifference(const FlatAffineConstraints &facA, const FlatAffineConstraints &facB) {
+  PresburgerSet setB(facB);
+  return getSetDifference(facA, setB);
+}
+
 /// Returns the set difference fac \ set.
-PresburgerSet PresburgerSet::subtract(FlatAffineConstraints &fac,
+///
+/// The FAC here is modified in subtractRecursively, so it cannot be a const
+/// reference even though it is restored to its original state before returning
+/// from that function. 
+PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
                                       const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);
   if (fac.isEmptyByGCDTest())
@@ -245,15 +254,9 @@ PresburgerSet PresburgerSet::subtract(FlatAffineConstraints &fac,
   return result;
 }
 
-PresburgerSet PresburgerSet::subtract(FlatAffineConstraints &&fac,
-                                      const PresburgerSet &set) {
-  FlatAffineConstraints lvalue(fac);
-  return subtract(fac, set);
-}
-
-PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
-  FlatAffineConstraints universe(set.getNumDims(), set.getNumSyms());
-  return subtract(universe, set);
+void PresburgerSet::complement() {
+  FlatAffineConstraints universe(getNumDims(), getNumSyms());
+  *this = getSetDifference(universe, *this);
 }
 
 /// Subtracts the set from the current set.
@@ -261,10 +264,10 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
   PresburgerSet result(nDim, nSym);
-  for (FlatAffineConstraints &c : flatAffineConstraints)
-    result.unionSet(subtract(c, set));
-  *this = result;
   /// We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i).
+  for (FlatAffineConstraints &fac : flatAffineConstraints)
+    result.unionSet(getSetDifference(fac, set));
+  *this = result;
 }
 
 /// Return true if all the sets in the union are known to be integer empty,

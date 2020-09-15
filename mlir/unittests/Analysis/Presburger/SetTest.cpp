@@ -54,10 +54,11 @@ void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
 
 void testComplementAtPoints(PresburgerSet s,
                             ArrayRef<SmallVector<int64_t, 4>> points) {
-  PresburgerSet complement = PresburgerSet::complement(s);
+  PresburgerSet sComplement = s;
+  sComplement.complement();
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
-    bool inComplement = complement.containsPoint(point);
+    bool inComplement = sComplement.containsPoint(point);
     if (inS)
       EXPECT_FALSE(inComplement);
     else
