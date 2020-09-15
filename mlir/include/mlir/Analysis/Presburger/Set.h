@@ -65,10 +65,6 @@ public:
   /// Return the complement of this set.
   PresburgerSet complement() const;
 
-  /// Return the set difference facA \ facB.
-  static PresburgerSet getSetDifference(const FlatAffineConstraints &facA,
-                                        const FlatAffineConstraints &facB);
-
   /// Return the set difference of this set and the given set, i.e.,
   /// return `this \ set`.
   PresburgerSet subtract(const PresburgerSet &set) const;
