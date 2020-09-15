@@ -50,10 +50,10 @@ public:
   void addFlatAffineConstraints(const FlatAffineConstraints &fac);
 
   /// Intersect the given set with the current set.
-  void unionSet(const PresburgerSet &set);
+  PresburgerSet &unionSet(const PresburgerSet &set);
 
   /// Intersect the given set with the current set.
-  void intersectSet(const PresburgerSet &set);
+  PresburgerSet &intersectSet(const PresburgerSet &set);
 
   /// Returns true if the set contains the given point, or false otherwise.
   bool containsPoint(ArrayRef<int64_t> point) const;
@@ -63,14 +63,14 @@ public:
   void dump() const;
 
   /// Perform the complement operation on the set..
-  void complement();
+  PresburgerSet &complement();
 
   /// Return the set difference facA \ facB.
   static PresburgerSet getSetDifference(const FlatAffineConstraints &facA,
                                         const FlatAffineConstraints &facB);
 
   /// Subtract the given set from the current set.
-  void subtract(const PresburgerSet &set);
+  PresburgerSet &subtract(const PresburgerSet &set);
 
   /// Return a universe set of the specified type that contains all points.
   static PresburgerSet makeUniverse(unsigned nDim = 0, unsigned nSym = 0);

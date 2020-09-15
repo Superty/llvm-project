@@ -67,10 +67,11 @@ void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
 ///
 /// This is accomplished by simply adding all the FACs of the given set to the
 /// current set.
-void PresburgerSet::unionSet(const PresburgerSet &set) {
+PresburgerSet &PresburgerSet::unionSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
   for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
     addFlatAffineConstraints(std::move(fac));
+  return *this;
 }
 
 /// A point is contained in the union iff any of the parts contain the point.
@@ -92,7 +93,7 @@ PresburgerSet PresburgerSet::makeUniverse(unsigned nDim, unsigned nSym) {
 //
 // We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
 // as (S_1 and T_1) or (S_1 and T_2) or ...
-void PresburgerSet::intersectSet(const PresburgerSet &set) {
+PresburgerSet &PresburgerSet::intersectSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
 
   PresburgerSet result(nDim, nSym);
@@ -105,6 +106,7 @@ void PresburgerSet::intersectSet(const PresburgerSet &set) {
     }
   }
   *this = std::move(result);
+  return *this;
 }
 
 /// Returns `coeffs` with all the elements negated.
@@ -254,20 +256,21 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
   return result;
 }
 
-void PresburgerSet::complement() {
+PresburgerSet &PresburgerSet::complement() {
   FlatAffineConstraints universe(getNumDims(), getNumSyms());
   *this = getSetDifference(universe, *this);
+  return *this;
 }
 
-/// Subtracts the set from the current set.
-///
-void PresburgerSet::subtract(const PresburgerSet &set) {
+/// Subtracts the given set.
+PresburgerSet &PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
   PresburgerSet result(nDim, nSym);
   /// We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i).
   for (FlatAffineConstraints &fac : flatAffineConstraints)
     result.unionSet(getSetDifference(fac, set));
   *this = result;
+  return *this;
 }
 
 /// Return true if all the sets in the union are known to be integer empty,
