@@ -88,10 +88,14 @@ bool PresburgerSet::containsPoint(ArrayRef<int64_t> point) const {
   return false;
 }
 
-PresburgerSet PresburgerSet::makeUniverse(unsigned nDim, unsigned nSym) {
+PresburgerSet PresburgerSet::universe(unsigned nDim, unsigned nSym) {
   PresburgerSet result(nDim, nSym);
-  result.addFlatAffineConstraints(FlatAffineConstraints(nDim, nSym));
+  result.addFlatAffineConstraints(FlatAffineConstraints::universe(nDim, nSym));
   return result;
+}
+
+PresburgerSet PresburgerSet::emptySet(unsigned nDim, unsigned nSym) {
+  return PresburgerSet(nDim, nSym);
 }
 
 // Return the intersection of this set with the given set.
@@ -257,8 +261,8 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
 
 /// Return the complement of this set.
 PresburgerSet PresburgerSet::complement() const {
-  FlatAffineConstraints universe(getNumDims(), getNumSyms());
-  return getSetDifference(universe, *this);
+  return getSetDifference(
+    FlatAffineConstraints::universe(getNumDims(), getNumSyms()), *this);
 }
 
 /// Return the result of subtract the given set from this set, i.e.,

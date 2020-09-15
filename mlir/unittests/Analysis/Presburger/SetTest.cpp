@@ -143,23 +143,23 @@ TEST(SetTest, Union) {
                          });
 
   // Universe union set.
-  testUnionAtPoints(PresburgerSet::makeUniverse(1), set,
+  testUnionAtPoints(PresburgerSet::universe(1), set,
                     {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  // Null union set.
-  testUnionAtPoints(PresburgerSet(1), set,
+  // empty set union set.
+  testUnionAtPoints(PresburgerSet::emptySet(1), set,
                     {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  // Null union Universe.
-  testUnionAtPoints(PresburgerSet(1), PresburgerSet::makeUniverse(1),
+  // empty set union Universe.
+  testUnionAtPoints(PresburgerSet::emptySet(1), PresburgerSet::universe(1),
                     {{1}, {2}, {0}, {-1}});
 
-  // Universe union Null.
-  testUnionAtPoints(PresburgerSet::makeUniverse(1), PresburgerSet(1),
+  // Universe union empty set.
+  testUnionAtPoints(PresburgerSet::universe(1), PresburgerSet::emptySet(1),
                     {{1}, {2}, {0}, {-1}});
 
-  // Null union Null.
-  testUnionAtPoints(PresburgerSet(1), PresburgerSet(1), {{1}, {2}, {0}, {-1}});
+  // empty set union empty set.
+  testUnionAtPoints(PresburgerSet::emptySet(1), PresburgerSet::emptySet(1), {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Intersect) {
@@ -172,24 +172,24 @@ TEST(SetTest, Intersect) {
                          });
 
   // Universe intersection set.
-  testIntersectAtPoints(PresburgerSet::makeUniverse(1), set,
+  testIntersectAtPoints(PresburgerSet::universe(1), set,
                         {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  // Null intersection set.
-  testIntersectAtPoints(PresburgerSet(1), set,
+  // empty set intersection set.
+  testIntersectAtPoints(PresburgerSet::emptySet(1), set,
                         {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  // Null intersection Universe.
-  testIntersectAtPoints(PresburgerSet(1), PresburgerSet::makeUniverse(1),
+  // empty set intersection Universe.
+  testIntersectAtPoints(PresburgerSet::emptySet(1), PresburgerSet::universe(1),
                         {{1}, {2}, {0}, {-1}});
 
-  // Universe intersection Null.
-  testIntersectAtPoints(PresburgerSet::makeUniverse(1), PresburgerSet(1),
+  // Universe intersection empty set.
+  testIntersectAtPoints(PresburgerSet::universe(1), PresburgerSet::emptySet(1),
                         {{1}, {2}, {0}, {-1}});
 
   // Universe intersection Universe.
-  testIntersectAtPoints(PresburgerSet::makeUniverse(1),
-                        PresburgerSet::makeUniverse(1), {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::universe(1),
+                        PresburgerSet::universe(1), {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Subtract) {
@@ -475,12 +475,12 @@ TEST(SetTest, Subtract) {
 TEST(SetTest, Complement) {
   // Complement of universe.
   testComplementAtPoints(
-      PresburgerSet::makeUniverse(1),
+      PresburgerSet::universe(1),
       {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
-  // Complement of null set.
+  // Complement of empty set.
   testComplementAtPoints(
-      PresburgerSet(1),
+      PresburgerSet::emptySet(1),
       {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   testComplementAtPoints(

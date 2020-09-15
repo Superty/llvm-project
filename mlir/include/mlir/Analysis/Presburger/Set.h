@@ -70,7 +70,9 @@ public:
   PresburgerSet subtract(const PresburgerSet &set) const;
 
   /// Return a universe set of the specified type that contains all points.
-  static PresburgerSet makeUniverse(unsigned nDim = 0, unsigned nSym = 0);
+  static PresburgerSet universe(unsigned nDim = 0, unsigned nSym = 0);
+  /// Return an empty set of the specified type that contains no points.
+  static PresburgerSet emptySet(unsigned nDim = 0, unsigned nSym = 0);
 
   /// Return true if all the sets in the union are known to be integer empty
   /// false otherwise.
