@@ -159,7 +159,8 @@ TEST(SetTest, Union) {
                     {{1}, {2}, {0}, {-1}});
 
   // empty set union empty set.
-  testUnionAtPoints(PresburgerSet::emptySet(1), PresburgerSet::emptySet(1), {{1}, {2}, {0}, {-1}});
+  testUnionAtPoints(PresburgerSet::emptySet(1), PresburgerSet::emptySet(1),
+                    {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Intersect) {
@@ -188,8 +189,8 @@ TEST(SetTest, Intersect) {
                         {{1}, {2}, {0}, {-1}});
 
   // Universe intersection Universe.
-  testIntersectAtPoints(PresburgerSet::universe(1),
-                        PresburgerSet::universe(1), {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::universe(1), PresburgerSet::universe(1),
+                        {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Subtract) {

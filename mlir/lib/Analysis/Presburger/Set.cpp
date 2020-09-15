@@ -66,7 +66,7 @@ void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
 /// Return the union of this set and the given set.
 ///
 /// This is accomplished by simply adding all the FACs of the given set to the
-/// current set. 
+/// current set.
 PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
   // This copy is not strictly necessary; the result could be constructed
@@ -262,7 +262,7 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
 /// Return the complement of this set.
 PresburgerSet PresburgerSet::complement() const {
   return getSetDifference(
-    FlatAffineConstraints::universe(getNumDims(), getNumSyms()), *this);
+      FlatAffineConstraints::universe(getNumDims(), getNumSyms()), *this);
 }
 
 /// Return the result of subtract the given set from this set, i.e.,
