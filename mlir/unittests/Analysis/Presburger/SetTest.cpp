@@ -15,8 +15,7 @@ namespace mlir {
 
 void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
                        ArrayRef<SmallVector<int64_t, 4>> points) {
-  PresburgerSet unionSet = s;
-  unionSet.unionSet(t);
+  PresburgerSet unionSet = s.unionSet(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
@@ -27,8 +26,7 @@ void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
 
 void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
                            ArrayRef<SmallVector<int64_t, 4>> points) {
-  PresburgerSet intersection = s;
-  intersection.unionSet(t);
+  PresburgerSet intersection = s.intersect(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
@@ -39,8 +37,7 @@ void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
 
 void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
                           ArrayRef<SmallVector<int64_t, 4>> points) {
-  PresburgerSet diff = s;
-  diff.subtract(t);
+  PresburgerSet diff = s.subtract(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
@@ -54,11 +51,11 @@ void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
 
 void testComplementAtPoints(PresburgerSet s,
                             ArrayRef<SmallVector<int64_t, 4>> points) {
-  PresburgerSet sComplement = s;
-  sComplement.complement();
+  PresburgerSet complement = s.complement();
+  complement.complement();
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
-    bool inComplement = sComplement.containsPoint(point);
+    bool inComplement = complement.containsPoint(point);
     if (inS)
       EXPECT_FALSE(inComplement);
     else
@@ -175,24 +172,24 @@ TEST(SetTest, Intersect) {
                          });
 
   // Universe intersection set.
-  testUnionAtPoints(PresburgerSet::makeUniverse(1), set,
-                    {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
+  testIntersectAtPoints(PresburgerSet::makeUniverse(1), set,
+                        {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   // Null intersection set.
-  testUnionAtPoints(PresburgerSet(1), set,
-                    {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
+  testIntersectAtPoints(PresburgerSet(1), set,
+                        {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   // Null intersection Universe.
-  testUnionAtPoints(PresburgerSet(1), PresburgerSet::makeUniverse(1),
-                    {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet(1), PresburgerSet::makeUniverse(1),
+                        {{1}, {2}, {0}, {-1}});
 
   // Universe intersection Null.
-  testUnionAtPoints(PresburgerSet::makeUniverse(1), PresburgerSet(1),
-                    {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::makeUniverse(1), PresburgerSet(1),
+                        {{1}, {2}, {0}, {-1}});
 
   // Universe intersection Universe.
-  testUnionAtPoints(PresburgerSet::makeUniverse(1),
-                    PresburgerSet::makeUniverse(1), {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::makeUniverse(1),
+                        PresburgerSet::makeUniverse(1), {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Subtract) {

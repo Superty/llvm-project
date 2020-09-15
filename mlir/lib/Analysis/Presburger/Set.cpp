@@ -63,15 +63,16 @@ void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
   flatAffineConstraints.push_back(fac);
 }
 
-/// Union the current set with the given set.
+/// Return the union of this set and the given set.
 ///
 /// This is accomplished by simply adding all the FACs of the given set to the
 /// current set.
-PresburgerSet &PresburgerSet::unionSet(const PresburgerSet &set) {
+PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
+  PresburgerSet result = *this;
   for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
-    addFlatAffineConstraints(std::move(fac));
-  return *this;
+    result.addFlatAffineConstraints(fac);
+  return result;
 }
 
 /// A point is contained in the union iff any of the parts contain the point.
@@ -89,11 +90,11 @@ PresburgerSet PresburgerSet::makeUniverse(unsigned nDim, unsigned nSym) {
   return result;
 }
 
-// Compute the intersection of the two sets.
+// Return the intersection of this set with the given set.
 //
 // We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
 // as (S_1 and T_1) or (S_1 and T_2) or ...
-PresburgerSet &PresburgerSet::intersectSet(const PresburgerSet &set) {
+PresburgerSet PresburgerSet::intersect(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
 
   PresburgerSet result(nDim, nSym);
@@ -105,11 +106,10 @@ PresburgerSet &PresburgerSet::intersectSet(const PresburgerSet &set) {
         result.addFlatAffineConstraints(std::move(intersection));
     }
   }
-  *this = std::move(result);
-  return *this;
+  return result;
 }
 
-/// Returns `coeffs` with all the elements negated.
+/// Return `coeffs` with all the elements negated.
 static SmallVector<int64_t, 8> getNegatedCoeffs(ArrayRef<int64_t> coeffs) {
   SmallVector<int64_t, 8> negatedCoeffs;
   negatedCoeffs.reserve(coeffs.size());
@@ -234,18 +234,21 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   simplex.rollback(initialSnapshot);
 }
 
-PresburgerSet PresburgerSet::getSetDifference(const FlatAffineConstraints &facA, const FlatAffineConstraints &facB) {
+/// Return the set difference facA \ facB.
+PresburgerSet
+PresburgerSet::getSetDifference(const FlatAffineConstraints &facA,
+                                const FlatAffineConstraints &facB) {
   PresburgerSet setB(facB);
   return getSetDifference(facA, setB);
 }
 
-/// Returns the set difference fac \ set.
+/// Return the set difference fac \ set.
 ///
 /// The FAC here is modified in subtractRecursively, so it cannot be a const
 /// reference even though it is restored to its original state before returning
-/// from that function. 
+/// from that function.
 PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
-                                      const PresburgerSet &set) {
+                                              const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);
   if (fac.isEmptyByGCDTest())
     return PresburgerSet(fac.getNumDimIds(), fac.getNumSymbolIds());
@@ -256,21 +259,21 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
   return result;
 }
 
-PresburgerSet &PresburgerSet::complement() {
+/// Return the complement of this set.
+PresburgerSet PresburgerSet::complement() const {
   FlatAffineConstraints universe(getNumDims(), getNumSyms());
-  *this = getSetDifference(universe, *this);
-  return *this;
+  return getSetDifference(universe, *this);
 }
 
-/// Subtracts the given set.
-PresburgerSet &PresburgerSet::subtract(const PresburgerSet &set) {
+/// Return the result of subtract the given set from this set, i.e.,
+/// return `this \ set`.
+PresburgerSet PresburgerSet::subtract(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
   PresburgerSet result(nDim, nSym);
   /// We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i).
-  for (FlatAffineConstraints &fac : flatAffineConstraints)
-    result.unionSet(getSetDifference(fac, set));
-  *this = result;
-  return *this;
+  for (const FlatAffineConstraints &fac : flatAffineConstraints)
+    result = result.unionSet(getSetDifference(fac, set));
+  return result;
 }
 
 /// Return true if all the sets in the union are known to be integer empty,

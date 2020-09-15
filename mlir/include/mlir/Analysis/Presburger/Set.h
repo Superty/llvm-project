@@ -40,42 +40,43 @@ public:
   /// Return the number of symbolic dimensions.
   unsigned getNumSyms() const;
 
-  /// Returns a reference to the list of FlatAffineConstraints.
+  /// Return a reference to the list of FlatAffineConstraints.
   ArrayRef<FlatAffineConstraints> getAllFlatAffineConstraints() const;
 
-  /// Returns the FlatAffineConsatraints at the specified index.
+  /// Return the FlatAffineConsatraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
   /// Add the given FlatAffineConstraints to the union.
   void addFlatAffineConstraints(const FlatAffineConstraints &fac);
 
-  /// Intersect the given set with the current set.
-  PresburgerSet &unionSet(const PresburgerSet &set);
+  /// Return the union of this set and the given set.
+  PresburgerSet unionSet(const PresburgerSet &set) const;
 
-  /// Intersect the given set with the current set.
-  PresburgerSet &intersectSet(const PresburgerSet &set);
+  /// Return the intersection of this set and the given set.
+  PresburgerSet intersect(const PresburgerSet &set) const;
 
-  /// Returns true if the set contains the given point, or false otherwise.
+  /// Return true if the set contains the given point, or false otherwise.
   bool containsPoint(ArrayRef<int64_t> point) const;
 
   /// Print the set's internal state.
   void print(raw_ostream &os) const;
   void dump() const;
 
-  /// Perform the complement operation on the set..
-  PresburgerSet &complement();
+  /// Return the complement of this set.
+  PresburgerSet complement() const;
 
   /// Return the set difference facA \ facB.
   static PresburgerSet getSetDifference(const FlatAffineConstraints &facA,
                                         const FlatAffineConstraints &facB);
 
-  /// Subtract the given set from the current set.
-  PresburgerSet &subtract(const PresburgerSet &set);
+  /// Return the set difference of this set and the given set, i.e.,
+  /// return `this \ set`.
+  PresburgerSet subtract(const PresburgerSet &set) const;
 
   /// Return a universe set of the specified type that contains all points.
   static PresburgerSet makeUniverse(unsigned nDim = 0, unsigned nSym = 0);
 
-  /// Returns true if all the sets in the union are known to be integer empty
+  /// Return true if all the sets in the union are known to be integer empty
   /// false otherwise.
   bool isIntegerEmpty() const;
 
