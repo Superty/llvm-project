@@ -53,6 +53,9 @@ add_mlir_library(MLIRLoopAnalysis
   LoopAnalysis.cpp
   NestedMatcher.cpp
   PresburgerSet.cpp
+  Presburger/Simplex.cpp
+  Presburger/Matrix.cpp
+  Presburger/Parser.cpp
   Utils.cpp
 
   ADDITIONAL_HEADER_DIRS
