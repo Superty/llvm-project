@@ -25,7 +25,7 @@ namespace mlir {
 static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
                               ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet unionSet = s.unionSet(t);
-  for (const auto &point : points) {
+  for (const SmallVector<int64_t, 4> &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inUnion = unionSet.containsPoint(point);
@@ -38,7 +38,7 @@ static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
 static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
                                   ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet intersection = s.intersect(t);
-  for (const auto &point : points) {
+  for (const SmallVector<int64_t, 4> &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inIntersection = intersection.containsPoint(point);
@@ -51,7 +51,7 @@ static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
 static void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
                                  ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet diff = s.subtract(t);
-  for (const auto &point : points) {
+  for (const SmallVector<int64_t, 4> &point : points) {
     bool inS = s.containsPoint(point);
     bool inT = t.containsPoint(point);
     bool inDiff = diff.containsPoint(point);
@@ -68,7 +68,7 @@ static void testComplementAtPoints(PresburgerSet s,
                                    ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet complement = s.complement();
   complement.complement();
-  for (const auto &point : points) {
+  for (const SmallVector<int64_t, 4> &point : points) {
     bool inS = s.containsPoint(point);
     bool inComplement = complement.containsPoint(point);
     if (inS)
@@ -84,9 +84,9 @@ static FlatAffineConstraints
 makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
                        ArrayRef<SmallVector<int64_t, 4>> eqs) {
   FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + 1, dims);
-  for (const auto &eq : eqs)
+  for (const SmallVector<int64_t, 4> &eq : eqs)
     fac.addEquality(eq);
-  for (const auto &ineq : ineqs)
+  for (const SmallVector<int64_t, 4> &ineq : ineqs)
     fac.addInequality(ineq);
   return fac;
 }
