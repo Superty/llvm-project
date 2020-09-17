@@ -19,7 +19,7 @@ namespace mlir {
 /// for the FlatAffineConstraints fac.
 ///
 /// If hasValue is false, check that findIntegerSample does not return None.
-void checkSample(bool hasValue, const FlatAffineConstraints &fac) {
+static void checkSample(bool hasValue, const FlatAffineConstraints &fac) {
   Optional<SmallVector<int64_t, 8>> maybeSample = fac.findIntegerSample();
   if (!hasValue) {
     EXPECT_FALSE(maybeSample.hasValue());
@@ -36,7 +36,7 @@ void checkSample(bool hasValue, const FlatAffineConstraints &fac) {
 
 /// Construct a FlatAffineConstraints from a set of inequality and
 /// equality constraints.
-FlatAffineConstraints
+static FlatAffineConstraints
 makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
                        ArrayRef<SmallVector<int64_t, 4>> eqs) {
   FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + 1, dims);
@@ -52,7 +52,7 @@ makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
 /// orderings may cause the algorithm to proceed differently. At least some of
 ///.these permutations should make it past the heuristics and test the
 /// implementation of the GBR algorithm itself.
-void checkPermutationsSample(bool hasValue, unsigned nDim,
+static void checkPermutationsSample(bool hasValue, unsigned nDim,
                              ArrayRef<SmallVector<int64_t, 4>> ineqs,
                              ArrayRef<SmallVector<int64_t, 4>> eqs) {
   SmallVector<unsigned, 4> perm(nDim);

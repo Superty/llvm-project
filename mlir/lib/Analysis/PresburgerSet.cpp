@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Set.h"
+#include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
-#include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallBitVector.h"
 
 using namespace mlir;
 

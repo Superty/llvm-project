@@ -14,7 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 
-#include "mlir/Analysis/Presburger/Set.h"
+#include "mlir/Analysis/PresburgerSet.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -23,7 +23,7 @@ namespace mlir {
 
 /// Compute the union of s and t, and check that each of the given points
 /// belongs to the union iff it belongs to at least one of s and t.
-void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
+static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
                        ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet unionSet = s.unionSet(t);
   for (const auto &point : points) {
@@ -36,7 +36,7 @@ void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
 
 /// Compute the intersection of s and t, and check that each of the given points
 /// belongs to the intersection iff it belongs to at both of s and t.
-void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
+static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
                            ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet intersection = s.intersect(t);
   for (const auto &point : points) {
@@ -49,7 +49,7 @@ void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
 
 /// Compute the set difference s \ t, and check that each of the given points
 /// belongs to the difference iff it belongs to s and does not belong to t.
-void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
+static void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
                           ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet diff = s.subtract(t);
   for (const auto &point : points) {
@@ -65,7 +65,7 @@ void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
 
 /// Compute the complement of s, and check that each of the given points
 /// belongs to the complement iff it does not belong to s.
-void testComplementAtPoints(PresburgerSet s,
+static void testComplementAtPoints(PresburgerSet s,
                             ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet complement = s.complement();
   complement.complement();
@@ -81,7 +81,7 @@ void testComplementAtPoints(PresburgerSet s,
 
 /// Construct a FlatAffineConstraints from a set of inequality and
 /// equality constraints.
-FlatAffineConstraints
+static FlatAffineConstraints
 makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
                        ArrayRef<SmallVector<int64_t, 4>> eqs) {
   FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + 1, dims);
@@ -92,12 +92,12 @@ makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
   return fac;
 }
 
-FlatAffineConstraints makeFACFromIneq(unsigned dims,
+static FlatAffineConstraints makeFACFromIneq(unsigned dims,
                                       ArrayRef<SmallVector<int64_t, 4>> ineqs) {
   return makeFACFromConstraints(dims, ineqs, {});
 }
 
-PresburgerSet makeSetFromFACs(unsigned dims,
+static PresburgerSet makeSetFromFACs(unsigned dims,
                               ArrayRef<FlatAffineConstraints> facs) {
   PresburgerSet set = PresburgerSet::getEmptySet(dims);
   for (const FlatAffineConstraints &fac : facs)
