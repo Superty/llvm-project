@@ -275,7 +275,7 @@ PresburgerSet PresburgerSet::complement() const {
 PresburgerSet PresburgerSet::subtract(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
   PresburgerSet result(nDim, nSym);
-  // We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i). 
+  // We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i).
   for (const FlatAffineConstraints &fac : flatAffineConstraints)
     result.unionSetInPlace(getSetDifference(fac, set));
   return result;
