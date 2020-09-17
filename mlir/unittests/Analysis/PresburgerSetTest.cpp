@@ -34,7 +34,7 @@ static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
 }
 
 /// Compute the intersection of s and t, and check that each of the given points
-/// belongs to the intersection iff it belongs to at both of s and t.
+/// belongs to the intersection iff it belongs to both of s and t.
 static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
                                   ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet intersection = s.intersect(t);
