@@ -92,7 +92,7 @@ makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
 }
 
 static FlatAffineConstraints
-makeFACFromIneq(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
+makeFACFromIneqs(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
   return makeFACFromConstraints(dims, ineqs, {});
 }
 
@@ -107,10 +107,10 @@ static PresburgerSet makeSetFromFACs(unsigned dims,
 TEST(SetTest, containsPoint) {
   PresburgerSet setA =
       makeSetFromFACs(1, {
-                             makeFACFromIneq(1, {{1, -2},    // x >= 2.
-                                                 {-1, 8}}),  // x <= 8.
-                             makeFACFromIneq(1, {{1, -10},   // x >= 10.
-                                                 {-1, 20}}), // x <= 20.
+                             makeFACFromIneqs(1, {{1, -2},    // x >= 2.
+                                                  {-1, 8}}),  // x <= 8.
+                             makeFACFromIneqs(1, {{1, -10},   // x >= 10.
+                                                  {-1, 20}}), // x <= 20.
                          });
   for (unsigned x = 0; x <= 21; ++x) {
     if ((2 <= x && x <= 8) || (10 <= x && x <= 20))
@@ -122,19 +122,19 @@ TEST(SetTest, containsPoint) {
   // A parallelogram with vertices {(3, 1), (10, -6), (24, 8), (17, 15)} union
   // a square with opposite corners (2, 2) and (10, 10).
   PresburgerSet setB =
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 1, -2},   // x + y >= 4.
-                                              {-1, -1, 30}, // x + y <= 32.
-                                              {1, -1, 0},   // x - y >= 2.
-                                              {-1, 1, 10},  // x - y <= 16.
-                                          }),
-                          makeFACFromIneq(2, {
-                                                 {1, 0, -2},  // x >= 2.
-                                                 {0, 1, -2},  // y >= 2.
-                                                 {-1, 0, 10}, // x <= 10.
-                                                 {0, -1, 10}  // y <= 10.
-                                             })});
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 1, -2},   // x + y >= 4.
+                                               {-1, -1, 30}, // x + y <= 32.
+                                               {1, -1, 0},   // x - y >= 2.
+                                               {-1, 1, 10},  // x - y <= 16.
+                                           }),
+                          makeFACFromIneqs(2, {
+                                                  {1, 0, -2},  // x >= 2.
+                                                  {0, 1, -2},  // y >= 2.
+                                                  {-1, 0, 10}, // x <= 10.
+                                                  {0, -1, 10}  // y <= 10.
+                                              })});
 
   for (unsigned x = 1; x <= 25; ++x) {
     for (unsigned y = -6; y <= 16; ++y) {
@@ -151,10 +151,10 @@ TEST(SetTest, containsPoint) {
 TEST(SetTest, Union) {
   PresburgerSet set =
       makeSetFromFACs(1, {
-                             makeFACFromIneq(1, {{1, -2},    // x >= 2.
-                                                 {-1, 8}}),  // x <= 8.
-                             makeFACFromIneq(1, {{1, -10},   // x >= 10.
-                                                 {-1, 20}}), // x <= 20.
+                             makeFACFromIneqs(1, {{1, -2},    // x >= 2.
+                                                  {-1, 8}}),  // x <= 8.
+                             makeFACFromIneqs(1, {{1, -10},   // x >= 10.
+                                                  {-1, 20}}), // x <= 20.
                          });
 
   // Universe union set.
@@ -181,10 +181,10 @@ TEST(SetTest, Union) {
 TEST(SetTest, Intersect) {
   PresburgerSet set =
       makeSetFromFACs(1, {
-                             makeFACFromIneq(1, {{1, -2},    // x >= 2.
-                                                 {-1, 8}}),  // x <= 8.
-                             makeFACFromIneq(1, {{1, -10},   // x >= 10.
-                                                 {-1, 20}}), // x <= 20.
+                             makeFACFromIneqs(1, {{1, -2},    // x >= 2.
+                                                  {-1, 8}}),  // x <= 8.
+                             makeFACFromIneqs(1, {{1, -10},   // x >= 10.
+                                                  {-1, 20}}), // x <= 20.
                          });
 
   // Universe intersection set.
@@ -212,13 +212,13 @@ TEST(SetTest, Subtract) {
   // The interval [2, 8] minus
   // the interval [10, 20].
   testSubtractAtPoints(
-      makeSetFromFACs(1, {makeFACFromIneq(1, {})}),
+      makeSetFromFACs(1, {makeFACFromIneqs(1, {})}),
       makeSetFromFACs(1,
                       {
-                          makeFACFromIneq(1, {{1, -2},    // x >= 2.
-                                              {-1, 8}}),  // x <= 8.
-                          makeFACFromIneq(1, {{1, -10},   // x >= 10.
-                                              {-1, 20}}), // x <= 20.
+                          makeFACFromIneqs(1, {{1, -2},    // x >= 2.
+                                               {-1, 8}}),  // x <= 8.
+                          makeFACFromIneqs(1, {{1, -10},   // x >= 10.
+                                               {-1, 20}}), // x <= 20.
                       }),
       {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
@@ -226,43 +226,43 @@ TEST(SetTest, Subtract) {
   testSubtractAtPoints(
       makeSetFromFACs(1,
                       {
-                          makeFACFromIneq(1,
-                                          {
-                                              {-1, 0} // x <= 0.
-                                          }),
-                          makeFACFromIneq(1,
-                                          {
-                                              {1, -3}, // x >= 3.
-                                              {-1, 4}  // x <= 4.
-                                          }),
-                          makeFACFromIneq(1,
-                                          {
-                                              {1, -6}, // x >= 6.
-                                              {-1, 7}  // x <= 7.
-                                          }),
+                          makeFACFromIneqs(1,
+                                           {
+                                               {-1, 0} // x <= 0.
+                                           }),
+                          makeFACFromIneqs(1,
+                                           {
+                                               {1, -3}, // x >= 3.
+                                               {-1, 4}  // x <= 4.
+                                           }),
+                          makeFACFromIneqs(1,
+                                           {
+                                               {1, -6}, // x >= 6.
+                                               {-1, 7}  // x <= 7.
+                                           }),
                       }),
-      makeSetFromFACs(1, {makeFACFromIneq(1,
-                                          {
-                                              {1, -2}, // x >= 2.
-                                              {-1, 3}, // x <= 3.
-                                          }),
-                          makeFACFromIneq(1,
-                                          {
-                                              {1, -5}, // x >= 5.
-                                              {-1, 6}  // x <= 6.
-                                          })}),
+      makeSetFromFACs(1, {makeFACFromIneqs(1,
+                                           {
+                                               {1, -2}, // x >= 2.
+                                               {-1, 3}, // x <= 3.
+                                           }),
+                          makeFACFromIneqs(1,
+                                           {
+                                               {1, -5}, // x >= 5.
+                                               {-1, 6}  // x <= 6.
+                                           })}),
       {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
 
   // Expected result is {[x, y] : x > y}, i.e., {[x, y] : x >= y + 1}.
   testSubtractAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, -1, 0} // x >= y.
-                                          })}),
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 1, 0} // x >= -y.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, -1, 0} // x >= y.
+                                           })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 1, 0} // x >= -y.
+                                           })}),
       {{0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}});
 
   // A rectangle with corners at (2, 2) and (10, 10), minus
@@ -270,20 +270,20 @@ TEST(SetTest, Subtract) {
   // This splits the former rectangle into two halves, (2, 2) to (5, 10) and
   // (7, 2) to (10, 10).
   testSubtractAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 0, -2},  // x >= 2.
-                                              {0, 1, -2},  // y >= 2.
-                                              {-1, 0, 10}, // x <= 10.
-                                              {0, -1, 10}  // y <= 10.
-                                          })}),
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 0, -5},   // x >= 5.
-                                              {0, 1, 10},   // y >= -10.
-                                              {-1, 0, 7},   // x <= 7.
-                                              {0, -1, 100}, // y <= 100.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 0, -2},  // x >= 2.
+                                               {0, 1, -2},  // y >= 2.
+                                               {-1, 0, 10}, // x <= 10.
+                                               {0, -1, 10}  // y <= 10.
+                                           })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 0, -5},   // x >= 5.
+                                               {0, 1, 10},   // y >= -10.
+                                               {-1, 0, 7},   // x <= 7.
+                                               {0, -1, 100}, // y <= 100.
+                                           })}),
       {{1, 2},  {2, 2},  {4, 2},  {5, 2},  {7, 2},  {8, 2},  {11, 2},
        {1, 1},  {2, 1},  {4, 1},  {5, 1},  {7, 1},  {8, 1},  {11, 1},
        {1, 10}, {2, 10}, {4, 10}, {5, 10}, {7, 10}, {8, 10}, {11, 10},
@@ -294,20 +294,20 @@ TEST(SetTest, Subtract) {
   // This creates a hole in the middle of the former rectangle, and the
   // resulting set can be represented as a union of four rectangles.
   testSubtractAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 0, -2},  // x >= 2.
-                                              {0, 1, -2},  // y >= 2.
-                                              {-1, 0, 10}, // x <= 10.
-                                              {0, -1, 10}  // y <= 10.
-                                          })}),
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 0, -5}, // x >= 5.
-                                              {0, 1, -4}, // y >= 4.
-                                              {-1, 0, 7}, // x <= 7.
-                                              {0, -1, 8}, // y <= 8.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 0, -2},  // x >= 2.
+                                               {0, 1, -2},  // y >= 2.
+                                               {-1, 0, 10}, // x <= 10.
+                                               {0, -1, 10}  // y <= 10.
+                                           })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 0, -5}, // x >= 5.
+                                               {0, 1, -4}, // y >= 4.
+                                               {-1, 0, 7}, // x <= 7.
+                                               {0, -1, 8}, // y <= 8.
+                                           })}),
       {{1, 1},
        {2, 2},
        {10, 10},
@@ -352,8 +352,8 @@ TEST(SetTest, Subtract) {
   testSubtractAtPoints(
       makeSetFromFACs(1,
                       {
-                          makeFACFromIneq(1, {{1, 0},    // x >= 0.
-                                              {-1, 2}}), // x <= 2.
+                          makeFACFromIneqs(1, {{1, 0},    // x >= 0.
+                                               {-1, 2}}), // x <= 2.
                       }),
       makeSetFromFACs(1,
                       {
@@ -371,50 +371,50 @@ TEST(SetTest, Subtract) {
   // A parallelogram with vertices {(3, 1), (10, -6), (24, 8), (17, 15)} minus
   // a triangle with vertices {(2, 2), (10, 2), (10, 10)}.
   testSubtractAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 1, -2},   // x + y >= 4.
-                                              {-1, -1, 30}, // x + y <= 32.
-                                              {1, -1, 0},   // x - y >= 2.
-                                              {-1, 1, 10},  // x - y <= 16.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 1, -2},   // x + y >= 4.
+                                               {-1, -1, 30}, // x + y <= 32.
+                                               {1, -1, 0},   // x - y >= 2.
+                                               {-1, 1, 10},  // x - y <= 16.
+                                           })}),
       makeSetFromFACs(
-          2, {makeFACFromIneq(2,
-                              {
-                                  {1, 0, -2},   // x >= 2. [redundant]
-                                  {0, 1, -2},   // y >= 2.
-                                  {-1, 0, 10},  // x <= 10.
-                                  {0, -1, 10},  // y <= 10. [redundant]
-                                  {1, 1, -2},   // x + y >= 2. [redundant]
-                                  {-1, -1, 30}, // x + y <= 30. [redundant]
-                                  {1, -1, 0},   // x - y >= 0.
-                                  {-1, 1, 10},  // x - y <= 10.
-                              })}),
+          2, {makeFACFromIneqs(2,
+                               {
+                                   {1, 0, -2},   // x >= 2. [redundant]
+                                   {0, 1, -2},   // y >= 2.
+                                   {-1, 0, 10},  // x <= 10.
+                                   {0, -1, 10},  // y <= 10. [redundant]
+                                   {1, 1, -2},   // x + y >= 2. [redundant]
+                                   {-1, -1, 30}, // x + y <= 30. [redundant]
+                                   {1, -1, 0},   // x - y >= 0.
+                                   {-1, 1, 10},  // x - y <= 10.
+                               })}),
       {{1, 2},  {2, 2},   {3, 2},   {4, 2},  {1, 1},   {2, 1},   {3, 1},
        {4, 1},  {2, 0},   {3, 0},   {4, 0},  {5, 0},   {10, 2},  {11, 2},
        {10, 1}, {10, 10}, {10, 11}, {10, 9}, {11, 10}, {10, -6}, {11, -6},
        {24, 8}, {24, 7},  {17, 15}, {16, 15}});
 
   testSubtractAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 1, -2},   // x + y >= 4.
-                                              {-1, -1, 30}, // x + y <= 32.
-                                              {1, -1, 0},   // x - y >= 2.
-                                              {-1, 1, 10},  // x - y <= 16.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 1, -2},   // x + y >= 4.
+                                               {-1, -1, 30}, // x + y <= 32.
+                                               {1, -1, 0},   // x - y >= 2.
+                                               {-1, 1, 10},  // x - y <= 16.
+                                           })}),
       makeSetFromFACs(
-          2, {makeFACFromIneq(2,
-                              {
-                                  {1, 0, -2},   // x >= 2. [redundant]
-                                  {0, 1, -2},   // y >= 2.
-                                  {-1, 0, 10},  // x <= 10.
-                                  {0, -1, 10},  // y <= 10. [redundant]
-                                  {1, 1, -2},   // x + y >= 2. [redundant]
-                                  {-1, -1, 30}, // x + y <= 30. [redundant]
-                                  {1, -1, 0},   // x - y >= 0.
-                                  {-1, 1, 10},  // x - y <= 10.
-                              })}),
+          2, {makeFACFromIneqs(2,
+                               {
+                                   {1, 0, -2},   // x >= 2. [redundant]
+                                   {0, 1, -2},   // y >= 2.
+                                   {-1, 0, 10},  // x <= 10.
+                                   {0, -1, 10},  // y <= 10. [redundant]
+                                   {1, 1, -2},   // x + y >= 2. [redundant]
+                                   {-1, -1, 30}, // x + y <= 30. [redundant]
+                                   {1, -1, 0},   // x - y >= 0.
+                                   {-1, 1, 10},  // x - y <= 10.
+                               })}),
       {{1, 2},  {2, 2},   {3, 2},   {4, 2},  {1, 1},   {2, 1},   {3, 1},
        {4, 1},  {2, 0},   {3, 0},   {4, 0},  {5, 0},   {10, 2},  {11, 2},
        {10, 1}, {10, 10}, {10, 11}, {10, 9}, {11, 10}, {10, -6}, {11, -6},
@@ -425,10 +425,10 @@ TEST(SetTest, Subtract) {
   testSubtractAtPoints(
       makeSetFromFACs(1,
                       {
-                          makeFACFromIneq(1,
-                                          {
-                                              {-1, -5}, // x <= -5.
-                                          }),
+                          makeFACFromIneqs(1,
+                                           {
+                                               {-1, -5}, // x <= -5.
+                                           }),
                           makeFACFromConstraints(1, {},
                                                  {
                                                      {1, -3} // x = 3.
@@ -445,31 +445,31 @@ TEST(SetTest, Subtract) {
       makeSetFromFACs(
           1,
           {
-              makeFACFromIneq(1,
-                              {
-                                  {-1, -2},  // x <= -2.
-                                  {1, -10},  // x >= -10.
-                                  {-1, 0},   // x <= 0. [redundant]
-                                  {-1, 10},  // x <= 10. [redundant]
-                                  {1, -100}, // x >= -100. [redundant]
-                                  {1, -50}   // x >= -50. [redundant]
-                              }),
-              makeFACFromIneq(1,
-                              {
-                                  {1, -3}, // x >= 3.
-                                  {-1, 4}, // x <= 4.
-                                  {1, 1},  // x >= -1. [redundant]
-                                  {1, 7},  // x >= -7. [redundant]
-                                  {-1, 10} // x <= 10. [redundant]
-                              }),
-              makeFACFromIneq(1,
-                              {
-                                  {1, -6}, // x >= 6.
-                                  {-1, 7}, // x <= 7.
-                                  {1, 1},  // x >= -1. [redundant]
-                                  {1, -3}, // x >= -3. [redundant]
-                                  {-1, 5}  // x <= 5. [redundant]
-                              }),
+              makeFACFromIneqs(1,
+                               {
+                                   {-1, -2},  // x <= -2.
+                                   {1, -10},  // x >= -10.
+                                   {-1, 0},   // x <= 0. [redundant]
+                                   {-1, 10},  // x <= 10. [redundant]
+                                   {1, -100}, // x >= -100. [redundant]
+                                   {1, -50}   // x >= -50. [redundant]
+                               }),
+              makeFACFromIneqs(1,
+                               {
+                                   {1, -3}, // x >= 3.
+                                   {-1, 4}, // x <= 4.
+                                   {1, 1},  // x >= -1. [redundant]
+                                   {1, 7},  // x >= -7. [redundant]
+                                   {-1, 10} // x <= 10. [redundant]
+                               }),
+              makeFACFromIneqs(1,
+                               {
+                                   {1, -6}, // x >= 6.
+                                   {-1, 7}, // x <= 7.
+                                   {1, 1},  // x >= -1. [redundant]
+                                   {1, -3}, // x >= -3. [redundant]
+                                   {-1, 5}  // x <= 5. [redundant]
+                               }),
           }),
       {{-6},
        {-5},
@@ -500,13 +500,13 @@ TEST(SetTest, Complement) {
       {{-1}, {-2}, {-8}, {1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   testComplementAtPoints(
-      makeSetFromFACs(2, {makeFACFromIneq(2,
-                                          {
-                                              {1, 0, -2},  // x >= 2.
-                                              {0, 1, -2},  // y >= 2.
-                                              {-1, 0, 10}, // x <= 10.
-                                              {0, -1, 10}  // y <= 10.
-                                          })}),
+      makeSetFromFACs(2, {makeFACFromIneqs(2,
+                                           {
+                                               {1, 0, -2},  // x >= 2.
+                                               {0, 1, -2},  // y >= 2.
+                                               {-1, 0, 10}, // x <= 10.
+                                               {0, -1, 10}  // y <= 10.
+                                           })}),
       {{1, 1},
        {2, 1},
        {1, 2},
