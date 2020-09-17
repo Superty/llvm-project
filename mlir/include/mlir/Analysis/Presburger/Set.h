@@ -22,7 +22,10 @@ namespace mlir {
 /// sampling.
 ///
 /// The FlatAffineConstraints (FACs) are stored in a vector, and the set
-/// represents the union of these FACs.
+/// represents the union of these FACs. Note that there are no invariants
+/// guaranteed on the list of FACs other than that they are all in the same
+/// space, i.e., they all have the same number of dimensions and symbols. For
+/// example, the FACs may overlap each other.
 class PresburgerSet {
 public:
   /// Construct an empty PresburgerSet.
