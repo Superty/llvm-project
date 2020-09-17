@@ -1073,7 +1073,7 @@ FlatAffineConstraints::findIntegerSample() const {
   return Simplex(*this).findIntegerSample();
 }
 
-/// Helper to evaluate the value of an affine expression at a point.
+/// Helper to evaluate an affine expression at a point.
 /// The expression is a list of coefficients for the dimensions followed by the
 /// constant term.
 static int64_t valueAt(ArrayRef<int64_t> expr, ArrayRef<int64_t> point) {
@@ -1089,11 +1089,11 @@ static int64_t valueAt(ArrayRef<int64_t> expr, ArrayRef<int64_t> point) {
 /// expression is zero, and it satisfies an inequality iff the value of the
 /// inequality at that point is non-negative.
 bool FlatAffineConstraints::containsPoint(ArrayRef<int64_t> point) const {
-  for (unsigned i = 0; i < getNumEqualities(); ++i) {
+  for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
     if (valueAt(getEquality(i), point) != 0)
       return false;
   }
-  for (unsigned i = 0; i < getNumInequalities(); ++i) {
+  for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
     if (valueAt(getInequality(i), point) < 0)
       return false;
   }

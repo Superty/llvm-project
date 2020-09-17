@@ -22,16 +22,14 @@ namespace mlir {
 /// sampling.
 ///
 /// The FlatAffineConstraints (FACs) are stored in a vector, and the set
-/// represents the union of these FACs. Note that there are no invariants
-/// guaranteed on the list of FACs other than that they are all in the same
+/// represents the union of these FACs. An empty list corresponds to the empty
+/// set.
+///
+/// Note that there are no invariants guaranteed on the list of FACs other than that they are all in the same
 /// space, i.e., they all have the same number of dimensions and symbols. For
 /// example, the FACs may overlap each other.
 class PresburgerSet {
 public:
-  /// Construct an empty PresburgerSet.
-  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
-      : nDim(nDim), nSym(nSym) {}
-
   explicit PresburgerSet(const FlatAffineConstraints &fac);
 
   /// Return the number of FACs in the union.
@@ -49,11 +47,11 @@ public:
   /// Return the FlatAffineConstraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
-  /// Mutate this set, changing it to the union of this set and the given
+  /// Mutate this set, turning it into the union of this set and the given
   /// FlatAffineConstraints.
   void unionFACInPlace(const FlatAffineConstraints &fac);
 
-  /// Mutate this set, changing it to the union of this set and the given set.
+  /// Mutate this set, turning it into the union of this set and the given set.
   void unionSetInPlace(const PresburgerSet &set);
 
   /// Return the union of this set and the given set.
@@ -77,9 +75,9 @@ public:
   PresburgerSet subtract(const PresburgerSet &set) const;
 
   /// Return a universe set of the specified type that contains all points.
-  static PresburgerSet universe(unsigned nDim = 0, unsigned nSym = 0);
+  static PresburgerSet getUniverse(unsigned nDim = 0, unsigned nSym = 0);
   /// Return an empty set of the specified type that contains no points.
-  static PresburgerSet emptySet(unsigned nDim = 0, unsigned nSym = 0);
+  static PresburgerSet getEmptySet(unsigned nDim = 0, unsigned nSym = 0);
 
   /// Return true if all the sets in the union are known to be integer empty
   /// false otherwise.
@@ -90,6 +88,10 @@ public:
   bool findIntegerSample(SmallVectorImpl<int64_t> &sample);
 
 private:
+  /// Construct an empty PresburgerSet.
+  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0)
+      : nDim(nDim), nSym(nSym) {}
+
   /// Return the set difference fac \ set.
   static PresburgerSet getSetDifference(FlatAffineConstraints fac,
                                         const PresburgerSet &set);

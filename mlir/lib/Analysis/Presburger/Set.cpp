@@ -9,6 +9,7 @@
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/ADT/STLExtras.h"
 
 using namespace mlir;
 
@@ -57,14 +58,14 @@ static void assertDimensionsCompatible(const PresburgerSet &setA,
          "Number of symbols of the PresburgerSets do not match!");
 }
 
-/// Mutate this set, changing it to the union of this set and the given
+/// Mutate this set, turning it into the union of this set and the given
 /// FlatAffineConstraints.
 void PresburgerSet::unionFACInPlace(const FlatAffineConstraints &fac) {
   assertDimensionsCompatible(fac, *this);
   flatAffineConstraints.push_back(fac);
 }
 
-/// Mutate this set, changing it to the union of this set and the given set.
+/// Mutate this set, turning it into the union of this set and the given set.
 ///
 /// This is accomplished by simply adding all the FACs of the given set to this
 /// set.
@@ -91,13 +92,13 @@ bool PresburgerSet::containsPoint(ArrayRef<int64_t> point) const {
   return false;
 }
 
-PresburgerSet PresburgerSet::universe(unsigned nDim, unsigned nSym) {
+PresburgerSet PresburgerSet::getUniverse(unsigned nDim, unsigned nSym) {
   PresburgerSet result(nDim, nSym);
-  result.unionFACInPlace(FlatAffineConstraints::universe(nDim, nSym));
+  result.unionFACInPlace(FlatAffineConstraints::getUniverse(nDim, nSym));
   return result;
 }
 
-PresburgerSet PresburgerSet::emptySet(unsigned nDim, unsigned nSym) {
+PresburgerSet PresburgerSet::getEmptySet(unsigned nDim, unsigned nSym) {
   return PresburgerSet(nDim, nSym);
 }
 
@@ -189,7 +190,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   simplex.rollback(initialSnapshot);
 
   // Recurse with the part b ^ ~ineq. Note that b is modified throughout
-  // this function. At the time this function is called, the current b is
+  // subtractRecursively. At the time this function is called, the current b is
   // actually equal to b ^ s_i1 ^ s_i2 ^ ... ^ s_ij, and ineq is the next
   // inequality, s_{i,j+1}. This function recurses into the next level i + 1
   // with the part b ^ s_i1 ^ s_i2 ^ ... ^ s_ij ^ ~s_{i,j+1}.
@@ -254,7 +255,7 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
                                               const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);
   if (fac.isEmptyByGCDTest())
-    return PresburgerSet(fac.getNumDimIds(), fac.getNumSymbolIds());
+    return PresburgerSet::getEmptySet(fac.getNumDimIds(), fac.getNumSymbolIds());
 
   PresburgerSet result(fac.getNumDimIds(), fac.getNumSymbolIds());
   Simplex simplex(fac);
@@ -265,7 +266,7 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
 /// Return the complement of this set.
 PresburgerSet PresburgerSet::complement() const {
   return getSetDifference(
-      FlatAffineConstraints::universe(getNumDims(), getNumSyms()), *this);
+      FlatAffineConstraints::getUniverse(getNumDims(), getNumSyms()), *this);
 }
 
 /// Return the result of subtract the given set from this set, i.e.,
@@ -294,7 +295,7 @@ bool PresburgerSet::isIntegerEmpty() const {
 bool PresburgerSet::findIntegerSample(SmallVectorImpl<int64_t> &sample) {
   assert(nSym == 0 && "findIntegerSample is intended for non-symbolic sets");
   // A sample exists iff any of the disjuncts contains a sample.
-  for (FlatAffineConstraints &fac : flatAffineConstraints) {
+  for (const FlatAffineConstraints &fac : flatAffineConstraints) {
     if (Optional<SmallVector<int64_t, 8>> opt = fac.findIntegerSample()) {
       sample = std::move(*opt);
       return true;
