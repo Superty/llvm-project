@@ -170,7 +170,7 @@ public:
   void rollback(unsigned snapshot);
 
   /// Add all the constraints from the given FlatAffineConstraints.
-  void addFlatAffineConstraints(const FlatAffineConstraints &fac);
+  void intersectFlatAffineConstraints(const FlatAffineConstraints &fac);
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted.

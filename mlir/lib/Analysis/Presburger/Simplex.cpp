@@ -452,7 +452,7 @@ void Simplex::rollback(unsigned snapshot) {
 }
 
 /// Add all the constraints from the given FlatAffineConstraints.
-void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
+void Simplex::intersectFlatAffineConstraints(const FlatAffineConstraints &fac) {
   assert(fac.getNumIds() == numVariables() &&
          "FlatAffineConstraints must have same dimensionality as simplex");
   for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)

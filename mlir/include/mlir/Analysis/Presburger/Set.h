@@ -46,7 +46,7 @@ public:
   /// Return a reference to the list of FlatAffineConstraints.
   ArrayRef<FlatAffineConstraints> getAllFlatAffineConstraints() const;
 
-  /// Return the FlatAffineConsatraints at the specified index.
+  /// Return the FlatAffineConstraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
   /// Mutate this set, changing it to the union of this set and the given

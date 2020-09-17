@@ -171,7 +171,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   const FlatAffineConstraints &sI = s.getFlatAffineConstraints(i);
   unsigned initialSnapshot = simplex.getSnapshot();
   unsigned offset = simplex.numConstraints();
-  simplex.addFlatAffineConstraints(sI);
+  simplex.intersectFlatAffineConstraints(sI);
 
   if (simplex.isEmpty()) {
     /// b ^ s_i is empty, so b \ s_i = b. We move directly to i + 1.
