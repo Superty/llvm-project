@@ -100,7 +100,7 @@ public:
   /// Return a system with no constraints, i.e., one which is satisfied by all
   /// points.
   static FlatAffineConstraints getUniverse(unsigned numDims = 0,
-                                        unsigned numSymbols = 0) {
+                                           unsigned numSymbols = 0) {
     return FlatAffineConstraints(numDims, numSymbols);
   }
 

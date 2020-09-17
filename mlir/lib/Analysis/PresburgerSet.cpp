@@ -255,7 +255,8 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
                                               const PresburgerSet &set) {
   assertDimensionsCompatible(fac, set);
   if (fac.isEmptyByGCDTest())
-    return PresburgerSet::getEmptySet(fac.getNumDimIds(), fac.getNumSymbolIds());
+    return PresburgerSet::getEmptySet(fac.getNumDimIds(),
+                                      fac.getNumSymbolIds());
 
   PresburgerSet result(fac.getNumDimIds(), fac.getNumSymbolIds());
   Simplex simplex(fac);

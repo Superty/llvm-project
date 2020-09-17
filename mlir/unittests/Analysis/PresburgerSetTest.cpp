@@ -13,7 +13,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "mlir/Analysis/PresburgerSet.h"
 
 #include <gmock/gmock.h>
@@ -24,7 +23,7 @@ namespace mlir {
 /// Compute the union of s and t, and check that each of the given points
 /// belongs to the union iff it belongs to at least one of s and t.
 static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
-                       ArrayRef<SmallVector<int64_t, 4>> points) {
+                              ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet unionSet = s.unionSet(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
@@ -37,7 +36,7 @@ static void testUnionAtPoints(PresburgerSet s, PresburgerSet t,
 /// Compute the intersection of s and t, and check that each of the given points
 /// belongs to the intersection iff it belongs to at both of s and t.
 static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
-                           ArrayRef<SmallVector<int64_t, 4>> points) {
+                                  ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet intersection = s.intersect(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
@@ -50,7 +49,7 @@ static void testIntersectAtPoints(PresburgerSet s, PresburgerSet t,
 /// Compute the set difference s \ t, and check that each of the given points
 /// belongs to the difference iff it belongs to s and does not belong to t.
 static void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
-                          ArrayRef<SmallVector<int64_t, 4>> points) {
+                                 ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet diff = s.subtract(t);
   for (const auto &point : points) {
     bool inS = s.containsPoint(point);
@@ -66,7 +65,7 @@ static void testSubtractAtPoints(PresburgerSet s, PresburgerSet t,
 /// Compute the complement of s, and check that each of the given points
 /// belongs to the complement iff it does not belong to s.
 static void testComplementAtPoints(PresburgerSet s,
-                            ArrayRef<SmallVector<int64_t, 4>> points) {
+                                   ArrayRef<SmallVector<int64_t, 4>> points) {
   PresburgerSet complement = s.complement();
   complement.complement();
   for (const auto &point : points) {
@@ -92,13 +91,13 @@ makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
   return fac;
 }
 
-static FlatAffineConstraints makeFACFromIneq(unsigned dims,
-                                      ArrayRef<SmallVector<int64_t, 4>> ineqs) {
+static FlatAffineConstraints
+makeFACFromIneq(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
   return makeFACFromConstraints(dims, ineqs, {});
 }
 
 static PresburgerSet makeSetFromFACs(unsigned dims,
-                              ArrayRef<FlatAffineConstraints> facs) {
+                                     ArrayRef<FlatAffineConstraints> facs) {
   PresburgerSet set = PresburgerSet::getEmptySet(dims);
   for (const FlatAffineConstraints &fac : facs)
     set.unionFACInPlace(fac);
@@ -167,16 +166,16 @@ TEST(SetTest, Union) {
                     {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   // empty set union Universe.
-  testUnionAtPoints(PresburgerSet::getEmptySet(1), PresburgerSet::getUniverse(1),
-                    {{1}, {2}, {0}, {-1}});
+  testUnionAtPoints(PresburgerSet::getEmptySet(1),
+                    PresburgerSet::getUniverse(1), {{1}, {2}, {0}, {-1}});
 
   // Universe union empty set.
-  testUnionAtPoints(PresburgerSet::getUniverse(1), PresburgerSet::getEmptySet(1),
-                    {{1}, {2}, {0}, {-1}});
+  testUnionAtPoints(PresburgerSet::getUniverse(1),
+                    PresburgerSet::getEmptySet(1), {{1}, {2}, {0}, {-1}});
 
   // empty set union empty set.
-  testUnionAtPoints(PresburgerSet::getEmptySet(1), PresburgerSet::getEmptySet(1),
-                    {{1}, {2}, {0}, {-1}});
+  testUnionAtPoints(PresburgerSet::getEmptySet(1),
+                    PresburgerSet::getEmptySet(1), {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Intersect) {
@@ -197,16 +196,16 @@ TEST(SetTest, Intersect) {
                         {{1}, {2}, {8}, {9}, {10}, {20}, {21}});
 
   // empty set intersection Universe.
-  testIntersectAtPoints(PresburgerSet::getEmptySet(1), PresburgerSet::getUniverse(1),
-                        {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::getEmptySet(1),
+                        PresburgerSet::getUniverse(1), {{1}, {2}, {0}, {-1}});
 
   // Universe intersection empty set.
-  testIntersectAtPoints(PresburgerSet::getUniverse(1), PresburgerSet::getEmptySet(1),
-                        {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::getUniverse(1),
+                        PresburgerSet::getEmptySet(1), {{1}, {2}, {0}, {-1}});
 
   // Universe intersection Universe.
-  testIntersectAtPoints(PresburgerSet::getUniverse(1), PresburgerSet::getUniverse(1),
-                        {{1}, {2}, {0}, {-1}});
+  testIntersectAtPoints(PresburgerSet::getUniverse(1),
+                        PresburgerSet::getUniverse(1), {{1}, {2}, {0}, {-1}});
 }
 
 TEST(SetTest, Subtract) {
@@ -304,7 +303,7 @@ TEST(SetTest, Subtract) {
                                           })}),
       makeSetFromFACs(2, {makeFACFromIneq(2,
                                           {
-                                            {1, 0, -5}, // x >= 5.
+                                              {1, 0, -5}, // x >= 5.
                                               {0, 1, -4}, // y >= 4.
                                               {-1, 0, 7}, // x <= 7.
                                               {0, -1, 8}, // y <= 8.

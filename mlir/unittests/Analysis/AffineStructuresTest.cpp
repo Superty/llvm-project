@@ -53,8 +53,8 @@ makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
 ///.these permutations should make it past the heuristics and test the
 /// implementation of the GBR algorithm itself.
 static void checkPermutationsSample(bool hasValue, unsigned nDim,
-                             ArrayRef<SmallVector<int64_t, 4>> ineqs,
-                             ArrayRef<SmallVector<int64_t, 4>> eqs) {
+                                    ArrayRef<SmallVector<int64_t, 4>> ineqs,
+                                    ArrayRef<SmallVector<int64_t, 4>> eqs) {
   SmallVector<unsigned, 4> perm(nDim);
   std::iota(perm.begin(), perm.end(), 0);
   auto permute = [&perm](ArrayRef<int64_t> coeffs) {
