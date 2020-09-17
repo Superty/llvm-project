@@ -85,7 +85,7 @@ PresburgerSet makeSetFromFACs(unsigned dims,
                               ArrayRef<FlatAffineConstraints> facs) {
   PresburgerSet set(dims);
   for (const FlatAffineConstraints &fac : facs)
-    set.addFlatAffineConstraints(fac);
+    set.unionFACInPlace(fac);
   return set;
 }
 

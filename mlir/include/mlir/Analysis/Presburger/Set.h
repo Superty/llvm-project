@@ -49,8 +49,12 @@ public:
   /// Return the FlatAffineConsatraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
-  /// Add the given FlatAffineConstraints to the union.
-  void addFlatAffineConstraints(const FlatAffineConstraints &fac);
+  /// Mutate this set, changing it to the union of this set and the given
+  /// FlatAffineConstraints.
+  void unionFACInPlace(const FlatAffineConstraints &fac);
+
+  /// Mutate this set, changing it to the union of this set and the given set.
+  void unionSetInPlace(const PresburgerSet &set);
 
   /// Return the union of this set and the given set.
   PresburgerSet unionSet(const PresburgerSet &set) const;

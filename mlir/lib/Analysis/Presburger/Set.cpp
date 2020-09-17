@@ -14,7 +14,7 @@ using namespace mlir;
 
 PresburgerSet::PresburgerSet(const FlatAffineConstraints &fac)
     : nDim(fac.getNumDimIds()), nSym(fac.getNumSymbolIds()) {
-  addFlatAffineConstraints(fac);
+  unionFACInPlace(fac);
 }
 
 unsigned PresburgerSet::getNumFACs() const {
@@ -57,25 +57,28 @@ static void assertDimensionsCompatible(const PresburgerSet &setA,
          "Number of symbols of the PresburgerSets do not match!");
 }
 
-/// Add a FAC to the union.
-void PresburgerSet::addFlatAffineConstraints(const FlatAffineConstraints &fac) {
+/// Mutate this set, changing it to the union of this set and the given
+/// FlatAffineConstraints.
+void PresburgerSet::unionFACInPlace(const FlatAffineConstraints &fac) {
   assertDimensionsCompatible(fac, *this);
   flatAffineConstraints.push_back(fac);
 }
 
-/// Return the union of this set and the given set.
+/// Mutate this set, changing it to the union of this set and the given set.
 ///
-/// This is accomplished by simply adding all the FACs of the given set to the
-/// current set.
+/// This is accomplished by simply adding all the FACs of the given set to this
+/// set.
+void PresburgerSet::unionSetInPlace(const PresburgerSet &set) {
+  assertDimensionsCompatible(set, *this);
+  for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
+    unionFACInPlace(fac);
+}
+
+/// Return the union of this set and the given set.
 PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   assertDimensionsCompatible(set, *this);
-  // This copy is not strictly necessary; the result could be constructed
-  // in-place. However, to keep the API uniform with intersect, subtract and
-  // complement which return the result of their operations, we need to make a
-  // copy here.
   PresburgerSet result = *this;
-  for (const FlatAffineConstraints &fac : set.flatAffineConstraints)
-    result.addFlatAffineConstraints(fac);
+  result.unionSetInPlace(set);
   return result;
 }
 
@@ -90,7 +93,7 @@ bool PresburgerSet::containsPoint(ArrayRef<int64_t> point) const {
 
 PresburgerSet PresburgerSet::universe(unsigned nDim, unsigned nSym) {
   PresburgerSet result(nDim, nSym);
-  result.addFlatAffineConstraints(FlatAffineConstraints::universe(nDim, nSym));
+  result.unionFACInPlace(FlatAffineConstraints::universe(nDim, nSym));
   return result;
 }
 
@@ -111,7 +114,7 @@ PresburgerSet PresburgerSet::intersect(const PresburgerSet &set) const {
       FlatAffineConstraints intersection(csA);
       intersection.append(csB);
       if (!intersection.isEmpty())
-        result.addFlatAffineConstraints(std::move(intersection));
+        result.unionFACInPlace(std::move(intersection));
     }
   }
   return result;
@@ -162,7 +165,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
                                 const PresburgerSet &s, unsigned i,
                                 PresburgerSet &result) {
   if (i == s.getNumFACs()) {
-    result.addFlatAffineConstraints(b);
+    result.unionFACInPlace(b);
     return;
   }
   const FlatAffineConstraints &sI = s.getFlatAffineConstraints(i);
@@ -272,7 +275,7 @@ PresburgerSet PresburgerSet::subtract(const PresburgerSet &set) const {
   PresburgerSet result(nDim, nSym);
   /// We compute (V_i t_i) \ (V_i set_i) as V_i (t_i \ V_i set_i).
   for (const FlatAffineConstraints &fac : flatAffineConstraints)
-    result = result.unionSet(getSetDifference(fac, set));
+    result.unionSetInPlace(getSetDifference(fac, set));
   return result;
 }
 
