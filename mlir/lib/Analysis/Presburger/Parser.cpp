@@ -1,3 +1,14 @@
+//===- Parser.cpp - MLIR Presburger Parser --------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file implements a parser for Presburger sets.
+//
+//===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/Parser.h"
 #include "../../Parser/Parser.h"
@@ -188,6 +199,7 @@ private:
 /// different Presburger constructs.
 class PresburgerParser : public Parser {
 public:
+  // TODO this needs a rewrite
   enum class Kind { Equality, Inequality };
   using Constraint = std::pair<SmallVector<int64_t, 8>, Kind>;
 
@@ -195,11 +207,16 @@ public:
 
   /// Parse a Presburger set into set
   LogicalResult parsePresburgerSet(PresburgerSet &set);
+
+  // TODO should this be public
   /// Parse a Presburger set and returns an AST corresponding to it.
   LogicalResult parseSet(std::unique_ptr<SetExpr> &setExpr);
 
 private:
-  // parsing helpers
+  // TODO some of these functions should not be called parse. Either we split
+  // this up, or rename them
+
+  // Helpers to transform the AST into a PresburgerSet
   LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet &set);
   LogicalResult parseFlatAffineConstraints(Expr *constraints,
                                            FlatAffineConstraints &cs);
@@ -214,8 +231,8 @@ private:
 
   StringMap<unsigned> dimNameToIndex;
   StringMap<unsigned> symNameToIndex;
-  // Helpers for the parsing
 
+  // Helpers for the AST generation
   LogicalResult parseDimAndOptionalSymbolIdList(
       std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
           &dimSymPair);
@@ -339,8 +356,7 @@ PresburgerParser::parseFlatAffineConstraints(Expr *constraints,
 LogicalResult
 PresburgerParser::parseConstraint(ConstraintExpr *constraint,
                                   PresburgerParser::Constraint &c) {
-  if (constraint == nullptr)
-    llvm_unreachable("constraint was nullptr!");
+  assert(constraint != nullptr && "constraint was nullptr!");
 
   std::pair<int64_t, SmallVector<int64_t, 8>> left;
   std::pair<int64_t, SmallVector<int64_t, 8>> right;
@@ -355,17 +371,20 @@ PresburgerParser::parseConstraint(ConstraintExpr *constraint,
 
   int64_t constant;
   SmallVector<int64_t, 8> coeffs;
-  if (constraint->getKind() == ConstraintExpr::Kind::LE) {
+
+  switch (constraint->getKind()) {
+  case ConstraintExpr::Kind::LE:
     constant = rightConst - leftConst;
     for (unsigned i = 0; i < leftCoeffs.size(); i++)
       coeffs.push_back(rightCoeffs[i] - leftCoeffs[i]);
-  } else if (constraint->getKind() == ConstraintExpr::Kind::GE ||
-             constraint->getKind() == ConstraintExpr::Kind::EQ) {
+    break;
+
+  case ConstraintExpr::Kind::GE:
+  case ConstraintExpr::Kind::EQ:
     constant = leftConst - rightConst;
     for (unsigned i = 0; i < leftCoeffs.size(); i++)
       coeffs.push_back(leftCoeffs[i] - rightCoeffs[i]);
-  } else {
-    llvm_unreachable("invalid constraint kind");
+    break;
   }
 
   Kind kind;
@@ -379,7 +398,8 @@ PresburgerParser::parseConstraint(ConstraintExpr *constraint,
   return success();
 }
 
-/// Creates a list of coefficients and a constant from a SumExpr or a TermExpr.
+/// Creates a list of coefficients and a constant from a SumExpr or a
+/// TermExpr.
 ///
 /// The list of coefficients corresponds to the coefficients of the dimensions
 /// and after that the symbols.
@@ -398,12 +418,13 @@ PresburgerParser::parseSum(Expr *expr,
       if (failed(parseAndAddTerm(term.get(), constant, coeffs)))
         return failure();
   }
+  // TODO add a struct for this?
   r = {constant, coeffs};
   return success();
 }
 
-/// Takes a TermExpr and addapts the matchin coefficient or the constant to this
-/// terms value. To determine the coefficient id it looks it up in the
+/// Takes a TermExpr and addapts the matching coefficient or the constant to
+/// this terms value. To determine the coefficient id it looks it up in the
 /// nameToIndex mappings
 ///
 /// Fails if the variable name is unknown
@@ -458,16 +479,10 @@ void PresburgerParser::addConstraint(FlatAffineConstraints &cs,
 /// TODO adapt grammar to future changes
 LogicalResult PresburgerParser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
+  // TODO merge dimSymPair with the id list
   if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
     return failure();
 
-  /*if (!getToken().is(Token::colon))
-    return emitErrorForToken(lexer.peek(),
-                             "expected ':' but got: " + lexer.peek().string());
-  lexer.next();
-  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
-    return failure();
-                             */
   if (parseToken(Token::colon, "expected ':'") ||
       parseToken(Token::l_paren, "expected '('"))
     return failure();
@@ -507,10 +522,11 @@ LogicalResult PresburgerParser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
 ///
 /// dim-and-symbol-use-list is defined elsewhere
 ///
-/// TODO get this from the AffineParser
+/// TODO can we reuse parts of the AffineParser
 LogicalResult PresburgerParser::parseDimAndOptionalSymbolIdList(
     std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
         &dimSymPair) {
+  // TODO refactor this method!
   if (parseToken(Token::l_paren,
                  "expected '(' at start of dimensional identifiers list")) {
     return failure();
@@ -750,6 +766,7 @@ PresburgerParser::parseInteger(std::unique_ptr<IntegerExpr> &iExpr,
 
 } // namespace
 
+/// Parse an PresburgerSet from a given StringRef
 FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
                                                   MLIRContext *ctx) {
   SourceMgr sourceMgr;
