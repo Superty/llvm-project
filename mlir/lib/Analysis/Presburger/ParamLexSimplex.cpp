@@ -273,8 +273,11 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
   }
 
   auto rowHasIntegerCoeffs = [this](unsigned row) {
-    for (unsigned col = 1; col < nCol; col++) {
-      if (tableau(row, col) % tableau(row, 0) != 0)
+    int64_t denom = tableau(row, 0);
+    if (tableau(row, 1) % denom != 0)
+      return false;
+    for (unsigned col = nCol - nParam; col < nCol; col++) {
+      if (tableau(row, col) % denom != 0)
         return false;
     }
     return true;
