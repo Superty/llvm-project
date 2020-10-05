@@ -319,6 +319,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
     for (unsigned col = nCol - nParam; col < nCol - 1; ++col)
       tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
     tableau(nRow - 1, nCol - 1) = denom;
+    moveRowUnknownToColumn(nRow - 1);
     // restoreConsistency();
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
