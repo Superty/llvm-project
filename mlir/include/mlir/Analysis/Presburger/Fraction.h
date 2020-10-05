@@ -51,22 +51,38 @@ inline int compare(Fraction x, Fraction y) {
     return -1;
   return 0;
 }
+inline int compare(Fraction x, int64_t y) {
+  return compare(x, Fraction(y, 1));
+}
+inline int compare(int64_t x, Fraction y) {
+  return compare(Fraction(x, 1), y);
+}
+
 
 inline int64_t floor(Fraction f) { return floorDiv(f.num, f.den); }
-
 inline int64_t ceil(Fraction f) { return ceilDiv(f.num, f.den); }
-
 inline Fraction operator-(Fraction x) { return Fraction(-x.num, x.den); }
-
 inline bool operator<(Fraction x, Fraction y) { return compare(x, y) < 0; }
-
 inline bool operator<=(Fraction x, Fraction y) { return compare(x, y) <= 0; }
-
 inline bool operator==(Fraction x, Fraction y) { return compare(x, y) == 0; }
-
+inline bool operator!=(Fraction x, Fraction y) { return compare(x, y) != 0; }
 inline bool operator>(Fraction x, Fraction y) { return compare(x, y) > 0; }
-
 inline bool operator>=(Fraction x, Fraction y) { return compare(x, y) >= 0; }
+
+inline bool operator<(Fraction x, int64_t y) { return compare(x, y) < 0; }
+inline bool operator<=(Fraction x, int64_t y) { return compare(x, y) <= 0; }
+inline bool operator==(Fraction x, int64_t y) { return compare(x, y) == 0; }
+inline bool operator!=(Fraction x, int64_t y) { return compare(x, y) != 0; }
+inline bool operator>(Fraction x, int64_t y) { return compare(x, y) > 0; }
+inline bool operator>=(Fraction x, int64_t y) { return compare(x, y) >= 0; }
+
+inline bool operator<(int64_t x, Fraction y) { return compare(x, y) < 0; }
+inline bool operator<=(int64_t x, Fraction y) { return compare(x, y) <= 0; }
+inline bool operator==(int64_t x, Fraction y) { return compare(x, y) == 0; }
+inline bool operator!=(int64_t x, Fraction y) { return compare(x, y) != 0; }
+inline bool operator>(int64_t x, Fraction y) { return compare(x, y) > 0; }
+inline bool operator>=(int64_t x, Fraction y) { return compare(x, y) >= 0; }
+
 
 inline Fraction operator*(Fraction x, Fraction y) {
   return Fraction(x.num * y.num, x.den * y.den);
