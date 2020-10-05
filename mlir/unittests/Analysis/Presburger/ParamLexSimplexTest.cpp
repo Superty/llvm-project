@@ -159,7 +159,7 @@ TEST(ParamLexSimplexTest, ParamLexMinTest) {
   // }
 
   // {
-  //   /*
+    
   //   [x, y, z, w] -> {[z] : 0 <= x and x <= 1 and
   //                    0 <= y and y <= 1 and
   //                    0 <= z and z <= 1 and
@@ -167,7 +167,7 @@ TEST(ParamLexSimplexTest, ParamLexMinTest) {
   //                    x + y + z >= 1 and
   //                    3 - x - y - w >= 1 and
   //                    w + x + 1 - y >= 1}
-  //   */
+    
   //   ParamLexSimplex simplex(4, 4);
   //   simplex.addInequality({1, 0, 0, 0, 0});
   //   simplex.addInequality({0, 1, 0, 0, 0});
@@ -203,14 +203,107 @@ TEST(ParamLexSimplexTest, ParamLexMinTest) {
   //   simplex.findParamLexmin().dump();
   // }  
 
-  // This one doesn't work yet.
-  // { // [x] -> {[z] : x = 1 + 3z and z >= 0}
+  // { // [x] -> {[y] : x = 1 + 3y and y >= 0}
   //   ParamLexSimplex simplex(2, 1);
-  //   simplex.addInequality({1, 0, 0});
-  //   simplex.addInequality({0, 1, 0});
-  //   simplex.addEquality({1, -3, -1});
+  //   simplex.addInequality({1, 0, 0}); // x >= 0
+  //   simplex.addInequality({0, 1, 0}); // y >= 0
+  //   simplex.addEquality({1, -3, -1}); // x == 3y + 1
   //   simplex.findParamLexmin().dump();
   // }
+
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and y = 1}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0}); // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0}); // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0}); // z >= 0
+  //   simplex.addEquality({1, -1, -3, 0}); // x == y + 3z
+  //   simplex.addEquality({0, 1, 0, -1});  // y = 1
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and y = 0}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0}); // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0}); // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0}); // z >= 0
+  //   simplex.addEquality({1, -1, -3, 0}); // x == y + 3z
+  //   simplex.addEquality({0, 1, 0, 0});   // y == 0
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and y = 2}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0}); // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0}); // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0}); // z >= 0
+  //   simplex.addEquality({1, -1, -3, 0}); // x == y + 3z
+  //   simplex.addEquality({0, 1, 0, -2});   // y == 2
+  //   simplex.findParamLexmin().dump();
+  // }
+
+
+  // // NOT CHECKED ANSWER; does not crash.
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 0 <= y and y <= 1}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0});  // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0});  // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0});  // z >= 0
+  //   simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+  //   simplex.addInequality({0, -1, 0, 1}); // 1 >= y
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  // { // [x] -> {[y, z] : x = y + 2z and z >= 0 and 1 <= y and y <= 2}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0});  // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0});  // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0});  // z >= 0
+  //   simplex.addEquality({1, -1, -2, 0});  // x == y + 2z
+  //   simplex.addInequality({0, 1, 0, -1}); // y >= 1
+  //   simplex.addInequality({0, -1, 0, 2}); // y <= 2
+  //   simplex.findParamLexmin().dump();
+  // } 
+
+  // // Seems correct
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 2 <= y and y <= 2}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, 0, 0, 0});  // x >= 0
+  //   simplex.addInequality({0, 1, 0, 0});  // y >= 0
+  //   simplex.addInequality({0, 0, 1, 0});  // z >= 0
+  //   simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+  //   simplex.addInequality({0, 1, 0, -2}); // y >= 2
+  //   simplex.addInequality({0, -1, 0, 2}); // y <= 2
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  // // NOT CHECKED ANSWER; does not crash.
+  // { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 0 <= y and y <= 2}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, -1, 0, 0});  // x >= 0
+  //   simplex.addInequality({0, 0, 1, 0});  // z >= 0
+  //   simplex.addInequality({0, 1, 0, 0});  // y >= 0
+  //   simplex.addInequality({0, -1, 0, 1}); // y <= 1
+  //   simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  // // CRASHES.
+  // { // [x] -> {[y, z] : x = y + 3z and x >= y and z >= 0 and y >= 0}
+  //   ParamLexSimplex simplex(3, 1);
+  //   simplex.addInequality({1, -1, 0, 0});  // x >= y
+  //   simplex.addInequality({0, 0, 1, 0});  // z >= 0
+  //   simplex.addInequality({0, 1, 0, -0});  // y >= 0
+  //   simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+  //   simplex.findParamLexmin().dump();
+  // }
+
+  { // [x] -> {[y, z] : x = y + 3z and x >= y and z >= 0 and y >= 0}
+    ParamLexSimplex simplex(3, 1);
+    simplex.addInequality({1, -1, 0, 0});  // x >= y
+    simplex.addInequality({0, 1, 0, -0});  // y >= 0
+    simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+    simplex.findParamLexmin().dump();
+  }
 }
 
 } // namespace mlir
