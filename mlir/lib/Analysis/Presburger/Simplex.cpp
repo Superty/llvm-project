@@ -369,6 +369,15 @@ void Simplex::swapRows(unsigned i, unsigned j) {
   unknownFromRow(j).pos = j;
 }
 
+void Simplex::swapColumns(unsigned i, unsigned j) {
+  if (i == j)
+    return;
+  tableau.swapColumns(i, j);
+  std::swap(colUnknown[i], colUnknown[j]);
+  unknownFromColumn(i).pos = i;
+  unknownFromColumn(j).pos = j;
+}
+
 /// Mark this tableau empty and push an entry to the undo stack.
 void Simplex::markEmpty() {
   // If the set is already empty, then we shouldn't add another UnmarkEmpty log
@@ -612,7 +621,8 @@ void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
     }
     unknown.zero = false;
   } else if (entry == UndoLogEntry::RemoveLastVariable) {
-    assert(var.back().orientation == Orientation::Column && "Variable was moved to row position!");
+    assert(var.back().orientation == Orientation::Column && "Not yet implemented");
+    swapColumns(var.back().pos, nCol - 1);
     tableau.resize(nRow, nCol - 1);
     var.pop_back();
     colUnknown.pop_back();

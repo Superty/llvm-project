@@ -390,6 +390,7 @@ protected:
 
   /// Swap the two rows in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
+  void swapColumns(unsigned i, unsigned j);
 
   /// Swap the two cols in the tableau and associated data structures.
   void swapColumns(unsigned i, unsigned j);
