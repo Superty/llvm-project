@@ -278,6 +278,7 @@ protected:
 
   /// Swap the two rows in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
+  void swapColumns(unsigned i, unsigned j);
 
   /// Restore the unknown to a non-negative sample value.
   ///
