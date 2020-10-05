@@ -335,7 +335,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
 
   result.domain.push_back(domainSet);
   SmallVector<SmallVector<int64_t, 8>, 8> lexmin;
-  for (unsigned i = nParam; i < var.size(); ++i) {
+  for (unsigned i = nParam - nDiv; i < var.size() - nDiv; ++i) {
     if (var[i].orientation == Orientation::Column) {
       lexmin.push_back(SmallVector<int64_t, 8>(nParam + 1, 0));
       continue;
