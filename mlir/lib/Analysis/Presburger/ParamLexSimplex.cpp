@@ -311,6 +311,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
     addDivisionVariable(domainDivCoeffs, denom);
 
     addZeroConstraint();
+    con.back().restricted = true;
     tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
     for (unsigned col = 2; col < nCol - nParam; ++col)
       tableau(nRow - 1, col) = mod(tableau(row, col), denom);
