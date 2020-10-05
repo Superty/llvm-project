@@ -291,8 +291,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
     if (rowHasIntegerCoeffs(row))
       continue;
 
-    llvm_unreachable("Not yet implemented");
-
     SmallVector<int64_t, 8> domainDivCoeffs;
     int64_t denom = tableau(row, 0);
     for (unsigned col = nCol - nParam; col < nCol; ++col)
