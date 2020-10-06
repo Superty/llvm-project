@@ -79,7 +79,7 @@ void Simplex::addZeroConstraint() {
     tableau(nRow - 1, col) = 0;
 
   // Push to undo log along with the index of the new constraint.
-  undoLog.push_back(UndoLogEntry::RemoveLastConstraint);
+  undoLog.emplace_back(UndoLogEntry::RemoveLastConstraint, Optional<int>());
 }
 
 void Simplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
@@ -135,8 +135,6 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   }
 
   normalizeRow(nRow - 1);
-  // Push to undo log along with the index of the new constraint.
-  undoLog.emplace_back(UndoLogEntry::RemoveLastConstraint, Optional<int>());
   return con.size() - 1;
 }
 
@@ -520,7 +518,7 @@ void Simplex::detectRedundant() {
 }
 
 void Simplex::addVariable() {
-  undoLog.push_back(UndoLogEntry::RemoveLastVariable);
+  undoLog.emplace_back(UndoLogEntry::RemoveLastVariable, Optional<int>());
   nCol++;
   tableau.resize(nRow, nCol);
   var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol - 1);
@@ -1582,7 +1580,7 @@ inline void Simplex::extendConstraints(unsigned nNew) {
   if (con.capacity() < con.size() + nNew)
     con.reserve(con.size() + nNew);
   if (tableau.getNumRows() < nRow + nNew) {
-    tableau.resizeVertically(nRow + nNew);
+    tableau.resize(nRow + nNew, nCol);
     rowUnknown.reserve(nRow + nNew);
   }
 }
