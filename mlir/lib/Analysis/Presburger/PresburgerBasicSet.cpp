@@ -38,6 +38,9 @@ ArrayRef<InequalityConstraint> PresburgerBasicSet::getInequalities() const {
 ArrayRef<EqualityConstraint> PresburgerBasicSet::getEqualities() const {
   return eqs;
 }
+ArrayRef<DivisionConstraint> PresburgerBasicSet::getDivisions() const {
+  return divs;
+}
 
 void PresburgerBasicSet::removeLastDivision() {
   divs.pop_back();

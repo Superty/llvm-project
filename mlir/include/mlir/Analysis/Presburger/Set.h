@@ -16,6 +16,8 @@ public:
   unsigned getNumBasicSets() const;
   unsigned getNumDims() const;
   unsigned getNumSyms() const;
+  static PresburgerSet eliminateExistentials(const PresburgerBasicSet &bs);
+  static PresburgerSet eliminateExistentials(const PresburgerSet &set);
   const SmallVector<PresburgerBasicSet, 4> &getBasicSets() const;
   void addBasicSet(PresburgerBasicSet cs);
   void unionSet(const PresburgerSet &set);

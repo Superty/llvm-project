@@ -1,6 +1,7 @@
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 
 // TODO should we change this to a storage type?
 using namespace mlir;
@@ -220,6 +221,39 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
   simplex.rollback(initialSnapshot);
 }
 
+PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs) {
+  ParamLexSimplex paramLexSimplex(bs.getNumTotalDims(), bs.getNumParams() + bs.getNumDims());
+  for (const auto &div : bs.getDivisions()) {
+    // The division variables must be in the same order they are stored in the
+    // basic set.
+    paramLexSimplex.addDivisionVariable(div.getCoeffs(), div.getDenominator());
+  }
+  for (const auto &ineq : bs.getInequalities()) {
+    paramLexSimplex.addInequality(ineq.getCoeffs());
+  }
+  for (const auto &eq : bs.getEqualities()) {
+    paramLexSimplex.addEquality(eq.getCoeffs());
+  }
+
+  PresburgerSet result(bs.getNumDims(), bs.getNumParams());
+  for (auto &bs : paramLexSimplex.findParamLexmin().domain) {
+    result.addBasicSet(bs);
+  }
+  return result;
+}
+
+PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerSet &set) {
+  PresburgerSet unquantifiedSet(set.getNumDims(), set.getNumSyms());
+  for (const auto &bs : set.getBasicSets()) {
+    if (bs.getNumExists() == 0) {
+      unquantifiedSet.addBasicSet(bs);
+    } else {
+      unquantifiedSet.unionSet(PresburgerSet::eliminateExistentials(bs));
+    }
+  }
+  return unquantifiedSet;
+}
+
 // Returns the set difference c - set.
 PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
                                       const PresburgerSet &set) {
@@ -229,7 +263,6 @@ PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
     return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
   if (set.isMarkedEmpty())
     return PresburgerSet(cs);
-
 
   Simplex simplex(cs);
   PresburgerSet result(set.getNumDims(), set.getNumSyms());

@@ -140,6 +140,10 @@ public:
     os << ")/" << denom << ')';
   }
 
+  int64_t getDenominator() const {
+    return denom;
+  }
+
   InequalityConstraint getInequalityLowerBound() const {
     SmallVector<int64_t, 8> ineqCoeffs = coeffs;
     ineqCoeffs[variable] -= denom;

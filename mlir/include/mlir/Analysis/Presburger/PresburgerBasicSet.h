@@ -50,6 +50,7 @@ public:
   const EqualityConstraint &getEquality(unsigned i) const;
   ArrayRef<InequalityConstraint> getInequalities() const;
   ArrayRef<EqualityConstraint> getEqualities() const;
+  ArrayRef<DivisionConstraint> getDivisions() const;
 
   void addInequality(ArrayRef<int64_t> coeffs);
   void addEquality(ArrayRef<int64_t> coeffs);
