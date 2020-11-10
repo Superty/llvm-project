@@ -260,10 +260,12 @@ void PresburgerBasicSet::projectOutUnboundedDimensions(
 
     i++;
   }
+
   for (auto &ineq : ineqs)
-    ineq.eraseDimensions(getNumTotalDims() - unboundedDims, unboundedDims);
+    ineq.eraseDimensions(remainingDims, unboundedDims);
   for (auto &eq : eqs)
-    eq.eraseDimensions(getNumTotalDims() - unboundedDims, unboundedDims);
+    eq.eraseDimensions(remainingDims, unboundedDims);
+  nDim = remainingDims;
 }
 
 Optional<SmallVector<int64_t, 8>>
