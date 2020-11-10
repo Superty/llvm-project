@@ -15,6 +15,9 @@ namespace presburger {
 /// Prints the set into the stream
 void printPresburgerSet(raw_ostream &os, const PresburgerSet &set);
 
+/// Prints the basic set into the stream
+void printPresburgerBasicSet(raw_ostream &os, const PresburgerBasicSet &set);
+
 /// Prints the Presburger expression into the stream
 void printPresburgerExpr(raw_ostream &os, const PresburgerExpr &expr);
 

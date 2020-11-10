@@ -5,7 +5,7 @@ using namespace analysis::presburger;
 
 namespace {
 
-void printPresburgerBasicSet(raw_ostream &os,
+void printConstraints(raw_ostream &os,
                                 const PresburgerBasicSet &bs);
 
 void printConstraints(
@@ -38,15 +38,15 @@ void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
 ///
 void printConstraints(
     raw_ostream &os,
-    const SmallVectorImpl<PresburgerBasicSet> &basicSets) {
+    const PresburgerSet &set) {
   os << "(";
   bool fst = true;
-  for (auto &c : basicSets) {
+  for (auto &c : set.getBasicSets()) {
     if (fst)
       fst = false;
     else
       os << " or ";
-    printPresburgerBasicSet(os, c);
+    printConstraints(os, c);
   }
   os << ")";
 }
@@ -54,7 +54,7 @@ void printConstraints(
 /// Prints the constraints of the `PresburgerBasicSet`. Each constraint is
 /// printed separately and the are conjuncted with 'and'.
 ///
-void printPresburgerBasicSet(raw_ostream &os,
+void printConstraints(raw_ostream &os,
                                 const PresburgerBasicSet &bs) {
   unsigned numTotalDims = bs.getNumTotalDims();
   for (unsigned i = 0, e = bs.getNumEqualities(); i < e; ++i) {
@@ -159,7 +159,14 @@ void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
     os << "(1 = 0)";
     return;
   }
-  printConstraints(os, set.getBasicSets());
+  printConstraints(os, set);
+}
+
+void mlir::analysis::presburger::printPresburgerBasicSet(raw_ostream &os,
+                                                    const PresburgerBasicSet &bs) {
+  printVariableList(os, bs.getNumDims(), bs.getNumParams());
+  os << " : ";
+  printConstraints(os, bs);
 }
 
 void mlir::analysis::presburger::printPresburgerExpr(
@@ -180,7 +187,7 @@ void mlir::analysis::presburger::printPresburgerExpr(
     printExpr(os, eI.second, eI.first, nDim);
     os << ")";
     os << " : ";
-    printConstraints(os, expr.getDomains()[i].getBasicSets());
+    printConstraints(os, expr.getDomains()[i]);
   }
 }
 
