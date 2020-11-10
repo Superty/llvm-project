@@ -346,7 +346,7 @@ PresburgerSet::maybeGetCachedSample() const {
 
 // TODO refactor and rewrite after discussion with the others
 void PresburgerSet::print(raw_ostream &os) const {
-
+  printPresburgerSet(os, *this);
 }
 
 void PresburgerSet::dump() const { print(llvm::errs()); }
