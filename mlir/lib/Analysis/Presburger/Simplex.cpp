@@ -848,7 +848,7 @@ void Simplex::addBasicSet(const PresburgerBasicSet &bs) {
   for (const InequalityConstraint &ineq : bs.getInequalities())
     addInequality(ineq.getCoeffs());
   for (const EqualityConstraint &eq : bs.getEqualities())
-    addInequality(eq.getCoeffs());
+    addEquality(eq.getCoeffs());
 }
 
 Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
