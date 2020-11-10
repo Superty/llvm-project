@@ -20,10 +20,18 @@ unsigned PresburgerSet::getNumDims() const { return nDim; }
 
 unsigned PresburgerSet::getNumSyms() const { return nSym; }
 
-bool PresburgerSet::isMarkedEmpty() const { return markedEmpty; }
+bool PresburgerSet::isMarkedEmpty() const { return markedEmpty || basicSets.empty(); }
 
 bool PresburgerSet::isUniverse() const {
-  return basicSets.size() == 0 && !markedEmpty;
+  if (markedEmpty || basicSets.empty())
+    return false;
+  for (const PresburgerBasicSet &bs : basicSets) {
+    if (bs.getNumInequalities() > 0)
+      return false;
+    if (bs.getNumEqualities() > 0)
+      return false;
+  }
+  return true;
 }
 
 const SmallVector<PresburgerBasicSet, 4> &

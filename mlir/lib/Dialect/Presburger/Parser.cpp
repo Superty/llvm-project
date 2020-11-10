@@ -63,6 +63,8 @@ StringRef Token::name(Token::Kind kind) {
     return "\"and\"";
   case Token::Kind::Or:
     return "\"or\"";
+  case Token::Kind::Empty:
+    return "\"empty\"";
   case Token::Kind::Arrow:
     return "\"->\"";
   case Token::Kind::Semicolon:
@@ -112,7 +114,10 @@ Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
   assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
 
   while (isDigit(c) || isAlpha(c)) {
-    c = buffer[++curPos];
+    ++curPos;
+    if (reachedEOF())
+      break;
+    c = buffer[curPos];
   }
 
   StringRef content(start + buffer.begin(), curPos - start);
@@ -121,6 +126,7 @@ Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
   Token::Kind kind = llvm::StringSwitch<Token::Kind>(content)
                          .Case("and", Token::Kind::And)
                          .Case("or", Token::Kind::Or)
+                         .Case("empty", Token::Kind::Empty)
                          .Default(Token::Kind::Identifier);
 
   return Token(kind, content);
@@ -296,25 +302,9 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
                              "expected ':' but got: " + lexer.peek().string());
 
   lexer.next();
-  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
-    return failure();
-
-  if (lexer.peek().isa(Token::Kind::RightParen)) {
-    lexer.next();
-    setExpr = std::make_unique<SetExpr>(std::move(dimSymPair.first),
-                                        std::move(dimSymPair.second), nullptr);
-    // checks that we are at the end of the string
-    if (lexer.reachedEOF())
-      return success();
-    return emitErrorForToken(lexer.peek(),
-                             "expected to be at the end of the set");
-  }
 
   std::unique_ptr<Expr> constraints;
   if (failed(parseOr(constraints)))
-    return failure();
-
-  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
     return failure();
 
   setExpr = std::make_unique<SetExpr>(std::move(dimSymPair.first),
@@ -443,6 +433,11 @@ LogicalResult Parser::parseOr(std::unique_ptr<Expr> &expr) {
   SmallVector<std::unique_ptr<Expr>, 8> exprs;
   std::unique_ptr<Expr> andExpr;
 
+  if (lexer.peek().isa(Token::Kind::Empty)) {
+    expr = std::make_unique<OrExpr>(std::move(exprs));
+    return success();
+  }
+
   if (failed(parseAnd(andExpr)))
     return failure();
   exprs.push_back(std::move(andExpr));
@@ -467,20 +462,30 @@ LogicalResult Parser::parseOr(std::unique_ptr<Expr> &expr) {
 ///  pb-and-expr ::= pb-constraint (`and` pb-constraint)*
 ///
 LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
+  if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
+    return failure();
+
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
+  if (lexer.peek().isa(Token::Kind::RightParen)) {
+    lexer.next();
+    expr = std::make_unique<AndExpr>(std::move(constraints));
+    return success();
+  }
+
   std::unique_ptr<ConstraintExpr> c;
   if (failed(parseConstraint(c)))
     return failure();
-
   constraints.push_back(std::move(c));
 
   while (lexer.peek().isa(Token::Kind::And)) {
     lexer.next();
     if (failed(parseConstraint(c)))
       return failure();
-
     constraints.push_back(std::move(c));
   }
+
+  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
+    return failure();
 
   if (constraints.size() == 1) {
     expr = std::move(constraints[0]);
@@ -504,18 +509,12 @@ LogicalResult Parser::parsePiece(std::unique_ptr<PieceExpr> &piece) {
     return failure();
 
   if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)) ||
-      failed(lexer.consumeKindOrError(Token::Kind::Colon)) ||
-      failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
+      failed(lexer.consumeKindOrError(Token::Kind::Colon)))
     return failure();
 
   std::unique_ptr<Expr> constraints;
 
-  if (!lexer.peek().isa(Token::Kind::RightParen)) {
-    parseOr(constraints);
-  }
-
-  if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
-    return failure();
+  parseOr(constraints);
 
   piece = std::make_unique<PieceExpr>(std::move(expr), std::move(constraints));
 
@@ -695,7 +694,6 @@ PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
 ///
 /// For the exact parsing rules, see Parser::parseSet
 LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
-
   std::unique_ptr<SetExpr> setExpr;
   if (failed(parser.parseSet(setExpr)))
     return failure();

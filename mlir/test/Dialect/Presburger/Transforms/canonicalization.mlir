@@ -6,9 +6,9 @@
 
 // CHECK-LABEL: func @union
 func @union() -> !presburger.set<1,1> {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0)[s0] : (d0 >= 0 or d0 - s0 - 42 = 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0)[s0] : (d0 >= 0) or (d0 - s0 - 42 = 0)">
   // CHECK-NEXT: return %[[S]]
   %res = presburger.union %set1, %set1 : !presburger.set<1,1>
 
@@ -17,8 +17,8 @@ func @union() -> !presburger.set<1,1> {
 
 // CHECK-LABEL: func @union_no_opt
 func @union_no_opt() -> !presburger.set<1,1> {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
-  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x + s = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
+  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x + s = 42)">
 
   // CHECK-NEXT: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
   // CHECK-NEXT: %[[S2:.*]] = presburger.set #presburger<"{{.*}}">
@@ -46,8 +46,8 @@ func @intersect() -> !presburger.set<1,0> {
 
 // CHECK-LABEL: func @intersect_no_opt
 func @intersect_no_opt() -> !presburger.set<1,1> {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
-  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x + s = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
+  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x + s = 42)">
 
   // CHECK-NEXT: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
   // CHECK-NEXT: %[[S2:.*]] = presburger.set #presburger<"{{.*}}">
@@ -66,7 +66,7 @@ func @intersect_no_opt() -> !presburger.set<1,1> {
 func @subtract() -> !presburger.set<1,0> {
   %set1 = presburger.set #presburger<"set(x)[] : (x >= 0 and x <= 42)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (1 = 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : empty">
   // CHECK-NEXT: return %[[S]]
   %res = presburger.subtract %set1, %set1 : !presburger.set<1,0>
 
@@ -75,8 +75,8 @@ func @subtract() -> !presburger.set<1,0> {
 
 // CHECK-LABEL: func @subtract_no_opt
 func @subtract_no_opt() -> !presburger.set<1,1> {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
-  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x + s = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
+  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x + s = 42)">
 
   // CHECK-NEXT: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
   // CHECK-NEXT: %[[S2:.*]] = presburger.set #presburger<"{{.*}}">
@@ -93,7 +93,7 @@ func @subtract_no_opt() -> !presburger.set<1,1> {
 
 // CHECK-LABEL: func @equal
 func @equal() -> i1 {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
 
   // CHECK-NEXT: %[[R:.*]] = constant true
   // CHECK-NEXT: return %[[R]]
@@ -104,8 +104,8 @@ func @equal() -> i1 {
 
 // CHECK-LABEL: func @equal_no_opt1
 func @equal_no_opt1() -> i1 {
-  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - s = 42)">
-  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0 or x - 1 = 42)">
+  %set1 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - s = 42)">
+  %set2 = presburger.set #presburger<"set(x)[s] : (x >= 0) or (x - 1 = 42)">
 
   // CHECK-NEXT: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
   // CHECK-NEXT: %[[S2:.*]] = presburger.set #presburger<"{{.*}}">
@@ -120,7 +120,7 @@ func @equal_no_opt1() -> i1 {
 // CHECK-LABEL: func @equal_no_opt2
 func @equal_no_opt2() -> i1 {
   %set1 = presburger.set #presburger<"set(x) : (x >= 0 and x <= 42)">
-  %set2 = presburger.set #presburger<"set(x) : (x >= 0 and x <= 41 or x = 42)">
+  %set2 = presburger.set #presburger<"set(x) : (x >= 0 and x <= 41) or (x = 42)">
 
   // CHECK-NEXT: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
   // CHECK-NEXT: %[[S2:.*]] = presburger.set #presburger<"{{.*}}">

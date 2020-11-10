@@ -54,6 +54,7 @@ public:
     Comma,
     And,
     Or,
+    Empty,
     Arrow,
     Semicolon,
     Eof,

@@ -36,7 +36,6 @@ void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
 void printConstraints(
     raw_ostream &os,
     const PresburgerSet &set) {
-  os << "(";
   bool fst = true;
   for (auto &c : set.getBasicSets()) {
     if (fst)
@@ -45,7 +44,6 @@ void printConstraints(
       os << " or ";
     printConstraints(os, c);
   }
-  os << ")";
 }
 
 /// Prints the constraints of the `PresburgerBasicSet`. Each constraint is
@@ -53,6 +51,7 @@ void printConstraints(
 ///
 void printConstraints(raw_ostream &os,
                                 const PresburgerBasicSet &bs) {
+  os << '(';
   unsigned numTotalDims = bs.getNumTotalDims();
   for (unsigned i = 0, e = bs.getNumEqualities(); i < e; ++i) {
     if (i != 0)
@@ -72,6 +71,7 @@ void printConstraints(raw_ostream &os,
     printExpr(os, ineq.take_front(numTotalDims), ineq[numTotalDims], bs);
     os << " >= 0";
   }
+  os << ')';
 }
 
 /// Prints the coefficient of the i'th variable with an additional '+' or '-' is
@@ -173,7 +173,7 @@ void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
   printVariableList(os, set.getNumDims(), set.getNumSyms());
   os << " : ";
   if (set.isMarkedEmpty()) {
-    os << "(1 = 0)";
+    os << "empty";
     return;
   }
   printConstraints(os, set);
