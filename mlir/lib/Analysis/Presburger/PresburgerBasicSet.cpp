@@ -8,6 +8,7 @@
 
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Support/MathExtras.h"
 
 using namespace mlir;
@@ -429,38 +430,10 @@ void PresburgerBasicSet::updateFromSimplex(const Simplex &simplex) {
   }
 }
 
+void PresburgerBasicSet::print(raw_ostream &os) const {
+  printPresburgerBasicSet(os, *this);
+}
+
 void PresburgerBasicSet::dump() const {
-  // auto printName = [&](unsigned idx) {
-  //   assert(idx < nDim && "Out of bounds index!");
-  //   if (idx > nDim - nDiv) llvm::errs() << "d" << idx - (nDim - nDiv);
-  //   else if (idx > nDim - nDiv - nParam) llvm::errs() << "p" << idx - (nDim - nDiv - nParam);
-  //   else llvm::errs() << "x" << idx;
-  // };
-
-  // auto printExpr = [&](ArrayRef<int64_t> expr) {
-  //   for (unsigned idx = 0; idx < expr.size() - 1; ++idx) {
-  //     if (expr[idx] == 0) continue;
-  //     if (expr[idx] == -1) llvm::errs() << "-";
-  //     else if (expr[idx] != 1) llvm::errs() << expr[idx];
-  //     printName(idx);
-  //     llvm::errs() << " + ";
-  //   }
-  //   llvm::errs() << expr.back();
-  // };
-
-  // llvm::errs() << "nDim = " << nDim << ", nParam = " << nParam << ", nDiv = " << nDiv << '\n';
-  // for (unsigned i = 0; i < nDiv; ++i) {
-  //   llvm::errs() << "d" << i << " = [(";
-  //   printExpr(divs[i].num);
-  //   llvm::errs() << ")/" << divs[i].den << "], ";
-  // }
-  // llvm::errs() << '\n';
-  // for (auto &ineq : ineqs) {
-  //   printExpr(ineq);
-  //   llvm::errs() << " >= 0 and ";
-  // }
-  // for (auto &eq : eqs) {
-  //   printExpr(eq);
-  //   llvm::errs() << " == 0 and ";
-  // }
+  print(llvm::errs());
 }
