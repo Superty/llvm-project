@@ -100,7 +100,7 @@ func @subtract_simple_equality() -> !presburger.set<1,0> {
   %set1 = presburger.set #presburger<"set(x) : (x + 1 >= 0)">
   %set2 = presburger.set #presburger<"set(x) : (x = 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (d0 + 1 >= 0 and -d0 - 1 >= 0 or d0 + 1 >= 0 and d0 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (d0 + 1 >= 0 and -d0 - 1 >= 0 or d0 + 1 >= 0 and d0 >= 0 and d0 - 1 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<1,0>
   return %uset : !presburger.set<1,0>
@@ -113,7 +113,7 @@ func @subtract_multi_dim_equality() -> !presburger.set<2,0> {
   %set1 = presburger.set #presburger<"set(x, y) : (x + 1 >= 0)">
   %set2 = presburger.set #presburger<"set(x, y) : (x = y)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0, d1) : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0, d1) : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - d1 - 1 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
@@ -126,7 +126,7 @@ func @subtract_non_convex_eqs() -> !presburger.set<2,0> {
   %set1 = presburger.set #presburger<"set(x, y) : (x + 1 >= 0)">
   %set2 = presburger.set #presburger<"set(x, y) : (x = y or x + y = 0)">
 
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0, d1) : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 - d1 - 1 >= 0 or d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 - 1 >= 0 and -d0 - d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 - 1 >= 0 and d0 + d1 - 1 >= 0)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0, d1) : (d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and -d0 - d1 - 1 >= 0 or d0 + 1 >= 0 and -d0 + d1 - 1 >= 0 and d0 + d1 >= 0 and d0 + d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - d1 - 1 >= 0 and -d0 - d1 - 1 >= 0 or d0 + 1 >= 0 and d0 - d1 >= 0 and d0 - d1 - 1 >= 0 and d0 + d1 >= 0 and d0 + d1 - 1 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %uset = presburger.subtract %set1, %set2 : !presburger.set<2,0>
   return %uset : !presburger.set<2,0>
