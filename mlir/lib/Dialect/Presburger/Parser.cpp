@@ -65,6 +65,8 @@ StringRef Token::name(Token::Kind kind) {
     return "\"or\"";
   case Token::Kind::Empty:
     return "\"empty\"";
+  case Token::Kind::Exists:
+    return "\"exists\"";
   case Token::Kind::Arrow:
     return "\"->\"";
   case Token::Kind::Semicolon:
@@ -127,6 +129,7 @@ Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
                          .Case("and", Token::Kind::And)
                          .Case("or", Token::Kind::Or)
                          .Case("empty", Token::Kind::Empty)
+                         .Case("exists", Token::Kind::Exists)
                          .Default(Token::Kind::Identifier);
 
   return Token(kind, content);
@@ -300,7 +303,6 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
   if (!lexer.peek().isa(Token::Kind::Colon))
     return emitErrorForToken(lexer.peek(),
                              "expected ':' but got: " + lexer.peek().string());
-
   lexer.next();
 
   std::unique_ptr<Expr> constraints;
@@ -465,10 +467,59 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
     return failure();
 
+  SmallVector<StringRef, 8> exists;
+  SmallVector<std::unique_ptr<DivExpr>, 8> divs;
+
+  if (lexer.peek().isa(Token::Kind::Exists)) {
+    lexer.next();
+    while (true) {
+      std::unique_ptr<VariableExpr> varExpr;
+      if (failed(parseVariable(varExpr)))
+        return failure();
+      StringRef name = varExpr->getName();
+
+      if (lexer.peek().isa(Token::Kind::Equal)) {
+        lexer.next();
+        if (failed(lexer.consumeKindOrError(Token::Kind::LeftSquare)))
+          return failure();
+        if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
+          return failure();
+
+        std::unique_ptr<Expr> num;
+        if (failed(parseSum(num)))
+          return failure();
+
+        if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
+          return failure();
+        if (failed(lexer.consumeKindOrError(Token::Kind::Divide)))
+          return failure();
+        
+        std::unique_ptr<IntegerExpr> den;
+        if (failed(parseInteger(den, false)))
+          return failure();
+
+        if (failed(lexer.consumeKindOrError(Token::Kind::RightSquare)))
+          return failure();
+
+        divs.emplace_back(std::make_unique<DivExpr>(name, std::move(num), std::move(den)));
+      } else {
+        exists.emplace_back(name);
+      }
+
+      if (lexer.peek().isa(Token::Kind::Colon)) {
+        lexer.next();
+        break;
+      }
+      
+      if (failed(lexer.consumeKindOrError(Token::Kind::Comma)))
+        lexer.next();
+    }
+  }
+
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
   if (lexer.peek().isa(Token::Kind::RightParen)) {
     lexer.next();
-    expr = std::make_unique<AndExpr>(std::move(constraints));
+    expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divs));
     return success();
   }
 
@@ -487,12 +538,7 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
     return failure();
 
-  if (constraints.size() == 1) {
-    expr = std::move(constraints[0]);
-    return success();
-  }
-
-  expr = std::make_unique<AndExpr>(std::move(constraints));
+  expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divs));
   return success();
 }
 

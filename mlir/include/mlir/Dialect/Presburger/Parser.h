@@ -55,6 +55,7 @@ public:
     And,
     Or,
     Empty,
+    Exists,
     Arrow,
     Semicolon,
     Eof,
@@ -255,10 +256,20 @@ private:
   std::unique_ptr<Expr> rightSum;
 };
 
+struct DivExpr {
+  explicit DivExpr(StringRef oName, std::unique_ptr<Expr> oNum, std::unique_ptr<IntegerExpr> oDen)
+  : name(oName), num(std::move(oNum)), den(std::move(oDen)) {}
+  StringRef name;
+  std::unique_ptr<Expr> num;
+  std::unique_ptr<IntegerExpr> den;
+};
+
 class AndExpr : public Expr {
 public:
-  explicit AndExpr(SmallVector<std::unique_ptr<ConstraintExpr>, 8> oConstraints)
-      : constraints(std::move(oConstraints)) {}
+  explicit AndExpr(SmallVector<std::unique_ptr<ConstraintExpr>, 8> oConstraints, SmallVector<StringRef, 8> oExists, SmallVector<std::unique_ptr<DivExpr>, 8> oDivs)
+      : constraints(std::move(oConstraints)),
+        exists(oExists),
+        divs(std::move(oDivs)) {}
 
   size_t getNumConstraints() { return constraints.size(); }
   ConstraintExpr &getConstraint(size_t position) {
@@ -273,6 +284,8 @@ public:
 
 private:
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
+  SmallVector<StringRef, 8> exists;
+  SmallVector<std::unique_ptr<DivExpr>, 8> divs;
 };
 
 class OrExpr : public Expr {
