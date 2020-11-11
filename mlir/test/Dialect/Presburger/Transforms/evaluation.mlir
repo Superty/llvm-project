@@ -26,6 +26,33 @@ func @union_multi_dim() -> !presburger.set<2,0> {
 
 // -----
 
+// CHECK-LABEL: func @union_exists
+func @union_exists() -> !presburger.set<1,0> {
+  %set1 = presburger.set #presburger<"set(x) : (exists q : x = 2q)">
+  %set2 = presburger.set #presburger<"set(x) : (exists q : x = 3q)">
+
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (exists e0 : d0 - 2e0 = 0) or (exists e0 : d0 - 3e0 = 0)">
+  // CHECK-NEXT: return %[[S]]
+  %uset = presburger.union %set1, %set2 : !presburger.set<1,0>
+  return %uset : !presburger.set<1,0>
+}
+
+// -----
+
+// CHECK-LABEL: func @union_divs
+func @union_divs() -> !presburger.set<1,0> {
+  %set1 = presburger.set #presburger<"set(x) : (exists q = [(x)/2] : x = 2q)">
+  %set2 = presburger.set #presburger<"set(x) : (exists q : x = 3q)">
+
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (exists q0 = [(d0)/2] : d0 - 2q0 = 0) or (exists e0 : d0 - 3e0 = 0)">
+  // CHECK-NEXT: return %[[S]]
+  %uset = presburger.union %set1, %set2 : !presburger.set<1,0>
+  return %uset : !presburger.set<1,0>
+}
+
+// -----
+
+
 // CHECK-LABEL: func @simple_intersect
 func @simple_intersect() -> !presburger.set<1,0> {
   %set1 = presburger.set #presburger<"set(x) : (x >= 0)">
