@@ -39,6 +39,8 @@ void expectEqual(StringRef sDesc, StringRef tDesc) {
 TEST(PresburgerSetTest, Equality) {
   expectEqual("(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
               "(x) : (x >= 0)");
+  expectEqual("(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
+              "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)");
 }
 
 //   { // [x] -> {[y, z] : x = y + 3z and x >= y and z >= 0 and y >= 0}
