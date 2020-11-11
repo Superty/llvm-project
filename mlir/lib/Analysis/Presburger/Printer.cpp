@@ -53,6 +53,30 @@ void printConstraints(raw_ostream &os,
                                 const PresburgerBasicSet &bs) {
   os << '(';
   unsigned numTotalDims = bs.getNumTotalDims();
+
+  if (bs.getNumExists() > 0 || bs.getNumDivs() > 0) {
+    os << "exists ";
+    bool fst = true;
+    for (unsigned i = 0, e = bs.getNumExists(); i < e; ++i) {
+      if (fst)
+        fst = false;
+      else
+        os << ", ";
+      os << "e" << i;
+    }
+    for (unsigned i = 0, e = bs.getNumDivs(); i < e; ++i) {
+      if (fst)
+        fst = false;
+      else
+        os << ", ";
+      os << "q" << i << " = [(";
+      auto &div = bs.getDivisions()[i];
+      printExpr(os, div.getCoeffs().take_front(numTotalDims), div.getCoeffs()[numTotalDims], bs);
+      os << ")/" << div.getDenominator() << "]";
+    }
+    os << " : ";
+  }
+
   for (unsigned i = 0, e = bs.getNumEqualities(); i < e; ++i) {
     if (i != 0)
       os << " and ";
