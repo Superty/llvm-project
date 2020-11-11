@@ -374,7 +374,7 @@ void PresburgerSet::print(raw_ostream &os) const {
   printPresburgerSet(os, *this);
 }
 
-void PresburgerSet::dump() const { print(llvm::errs()); }
+void PresburgerSet::dump() const { print(llvm::errs()); llvm::errs() << '\n'; }
 
 
 llvm::hash_code PresburgerSet::hash_value() const {

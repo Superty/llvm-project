@@ -438,4 +438,5 @@ void PresburgerBasicSet::print(raw_ostream &os) const {
 
 void PresburgerBasicSet::dump() const {
   print(llvm::errs());
+  llvm::errs() << '\n';
 }
