@@ -1,4 +1,5 @@
 #include "mlir/Analysis/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/Constraint.h"
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
@@ -153,15 +154,30 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
     result.addBasicSet(b);
     return;
   }
-  const PresburgerBasicSet &sI = s.getBasicSets()[i];
+  PresburgerBasicSet oldB = b;
+  PresburgerBasicSet sI = s.getBasicSets()[i];
 
   auto initialSnapshot = simplex.getSnapshot();
+  unsigned numSIDivs = sI.getNumDivs();
+  PresburgerBasicSet::toCommonSpace(b, sI);
+  for (unsigned j = 0; j < numSIDivs; ++j)
+    simplex.addVariable();
+
+  for (unsigned j = sI.getNumDivs() - numSIDivs, e = sI.getNumDivs(); j < e; ++j) {
+    const DivisionConstraint &div = sI.getDivisions()[j];
+    simplex.addInequality(div.getInequalityLowerBound().getCoeffs());
+    simplex.addInequality(div.getInequalityUpperBound().getCoeffs());
+  }
+
   unsigned offset = simplex.numConstraints();
+  auto snapshot = simplex.getSnapshot();
   simplex.addBasicSet(sI);
 
   if (simplex.isEmpty()) {
-    simplex.rollback(initialSnapshot);
+    simplex.rollback(snapshot);
     subtractRecursively(b, simplex, s, i + 1, result);
+    simplex.rollback(initialSnapshot);
+    b = oldB;
     return;
   }
 
@@ -171,7 +187,7 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
        j++)
     isMarkedRedundant.push_back(simplex.isMarkedRedundant(offset + j));
 
-  simplex.rollback(initialSnapshot);
+  simplex.rollback(snapshot);
   // Recurse with the part b ^ ~ineq. Note that b is modified throughout
   // subtractRecursively. At the time this function is called, the current b is
   // actually equal to b ^ s_i1 ^ s_i2 ^ ... ^ s_ij, and ineq is the next
@@ -227,6 +243,7 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
     b.removeEquality(i - 1);
 
   simplex.rollback(initialSnapshot);
+  b = oldB;
 }
 
 PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs) {
@@ -274,7 +291,7 @@ PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
 
   Simplex simplex(cs);
   PresburgerSet result(set.getNumDims(), set.getNumSyms());
-  subtractRecursively(cs, simplex, set, 0, result);
+  subtractRecursively(cs, simplex, eliminateExistentials(set), 0, result);
   return result;
 }
 
