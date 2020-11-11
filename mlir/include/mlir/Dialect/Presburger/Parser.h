@@ -257,18 +257,18 @@ private:
 };
 
 struct DivExpr {
-  explicit DivExpr(StringRef oName, std::unique_ptr<Expr> oNum, std::unique_ptr<IntegerExpr> oDen)
-  : name(oName), num(std::move(oNum)), den(std::move(oDen)) {}
-  StringRef name;
+  explicit DivExpr(std::unique_ptr<Expr> oNum, std::unique_ptr<IntegerExpr> oDen)
+  : num(std::move(oNum)), den(std::move(oDen)) {}
   std::unique_ptr<Expr> num;
   std::unique_ptr<IntegerExpr> den;
 };
 
 class AndExpr : public Expr {
 public:
-  explicit AndExpr(SmallVector<std::unique_ptr<ConstraintExpr>, 8> oConstraints, SmallVector<StringRef, 8> oExists, SmallVector<std::unique_ptr<DivExpr>, 8> oDivs)
+  explicit AndExpr(SmallVector<std::unique_ptr<ConstraintExpr>, 8> oConstraints, SmallVector<StringRef, 8> oExists, SmallVector<StringRef, 8> oDivNames, SmallVector<std::unique_ptr<DivExpr>, 8> oDivs)
       : constraints(std::move(oConstraints)),
-        exists(oExists),
+        exists(std::move(oExists)),
+        divNames(std::move(oDivNames)),
         divs(std::move(oDivs)) {}
 
   size_t getNumConstraints() { return constraints.size(); }
@@ -278,6 +278,9 @@ public:
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> &getConstraints() {
     return constraints;
   }
+  SmallVector<StringRef, 8> &getExists() { return exists; }
+  SmallVector<std::unique_ptr<DivExpr>, 8> &getDivs() { return divs; }
+  SmallVector<StringRef, 8> &getDivNames() { return divNames; }
 
   static Type getStaticType() { return Type::And; }
   virtual Type getType() { return Type::And; }
@@ -285,6 +288,7 @@ public:
 private:
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
   SmallVector<StringRef, 8> exists;
+  SmallVector<StringRef, 8> divNames;
   SmallVector<std::unique_ptr<DivExpr>, 8> divs;
 };
 
@@ -450,6 +454,8 @@ private:
 
   StringMap<size_t> dimNameToIndex;
   StringMap<size_t> symNameToIndex;
+  StringMap<size_t> existNameToIndex;
+  StringMap<size_t> divNameToIndex;
   Parser parser;
 };
 

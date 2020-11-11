@@ -468,6 +468,7 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
     return failure();
 
   SmallVector<StringRef, 8> exists;
+  SmallVector<StringRef, 8> divNames;
   SmallVector<std::unique_ptr<DivExpr>, 8> divs;
 
   if (lexer.peek().isa(Token::Kind::Exists)) {
@@ -501,7 +502,8 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
         if (failed(lexer.consumeKindOrError(Token::Kind::RightSquare)))
           return failure();
 
-        divs.emplace_back(std::make_unique<DivExpr>(name, std::move(num), std::move(den)));
+        divNames.emplace_back(name);
+        divs.emplace_back(std::make_unique<DivExpr>(std::move(num), std::move(den)));
       } else {
         exists.emplace_back(name);
       }
@@ -519,7 +521,7 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   SmallVector<std::unique_ptr<ConstraintExpr>, 8> constraints;
   if (lexer.peek().isa(Token::Kind::RightParen)) {
     lexer.next();
-    expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divs));
+    expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divNames), std::move(divs));
     return success();
   }
 
@@ -538,7 +540,7 @@ LogicalResult Parser::parseAnd(std::unique_ptr<Expr> &expr) {
   if (failed(lexer.consumeKindOrError(Token::Kind::RightParen)))
     return failure();
 
-  expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divs));
+  expr = std::make_unique<AndExpr>(std::move(constraints), std::move(exists), std::move(divNames), std::move(divs));
   return success();
 }
 
@@ -789,17 +791,30 @@ LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
 /// AndExpr
 LogicalResult
 PresburgerParser::parsePresburgerBasicSet(Expr *constraints,
-                                             PresburgerBasicSet &cs) {
-  cs = PresburgerBasicSet(dimNameToIndex.size(), symNameToIndex.size());
+                                             PresburgerBasicSet &cs) {                                               
   if (constraints->dyn_cast<OrExpr>() != nullptr)
     return emitError("or conditions are not valid for basic sets");
 
   if (auto constraint = constraints->dyn_cast<ConstraintExpr>()) {
+    llvm_unreachable("PresburgerBasicSets should only contain AndExprs.");
     PresburgerParser::Constraint c;
     if (failed(parseConstraint(constraint, c)))
       return failure();
     addConstraint(cs, c);
   } else if (auto andConstraints = constraints->dyn_cast<AndExpr>()) {
+    initVariables(andConstraints->getExists(), existNameToIndex);
+    initVariables(andConstraints->getDivNames(), divNameToIndex);
+    cs = PresburgerBasicSet(dimNameToIndex.size(), symNameToIndex.size(), existNameToIndex.size());
+
+    for (auto &divExpr : andConstraints->getDivs()) {
+      std::pair<int64_t, SmallVector<int64_t, 8>> affineSum;
+      parseSum(divExpr->num.get(), affineSum);
+      int64_t denominator = divExpr->den->getValue();
+      SmallVector<int64_t, 8> coeffs(affineSum.second);
+      coeffs.push_back(affineSum.first);
+      cs.appendDivisionVariable(coeffs, denominator);
+    }
+
     for (std::unique_ptr<ConstraintExpr> &constraint :
          andConstraints->getConstraints()) {
       PresburgerParser::Constraint c;
@@ -871,7 +886,7 @@ LogicalResult
 PresburgerParser::parseSum(Expr *expr,
                            std::pair<int64_t, SmallVector<int64_t, 8>> &r) {
   int64_t constant = 0;
-  SmallVector<int64_t, 8> coeffs(dimNameToIndex.size() + symNameToIndex.size(),
+  SmallVector<int64_t, 8> coeffs(dimNameToIndex.size() + symNameToIndex.size() + existNameToIndex.size() + divNameToIndex.size(),
                                  0);
   if (auto *term = expr->dyn_cast<TermExpr>()) {
     if (failed(parseAndAddTerm(term, constant, coeffs)))
@@ -903,17 +918,34 @@ PresburgerParser::parseAndAddTerm(TermExpr *term, int64_t &constant,
     return success();
   }
 
+  unsigned offset = 0;
   auto it = dimNameToIndex.find(var->getName());
   if (it != dimNameToIndex.end()) {
-    coeffs[it->second] += delta;
+    coeffs[offset + it->second] += delta;
     return success();
   }
+  offset += dimNameToIndex.size();
 
   it = symNameToIndex.find(var->getName());
   if (it != symNameToIndex.end()) {
-    coeffs[dimNameToIndex.size() + it->second] += delta;
+    coeffs[offset + it->second] += delta;
     return success();
   }
+  offset += symNameToIndex.size();
+
+  it = existNameToIndex.find(var->getName());
+  if (it != existNameToIndex.end()) {
+    coeffs[offset + it->second] += delta;
+    return success();
+  }
+  offset += existNameToIndex.size();
+
+  it = divNameToIndex.find(var->getName());
+  if (it != divNameToIndex.end()) {
+    coeffs[offset + it->second] += delta;
+    return success();
+  }
+  offset += divNameToIndex.size();
 
   return emitError("encountered unknown variable name: " + var->getName());
 }
