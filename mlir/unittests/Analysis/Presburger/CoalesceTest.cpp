@@ -135,13 +135,17 @@ TEST(CoalesceTest, failing) {
       "-1 >= 0 and -d1 + 8d6  + 7 >= 0 and d1 + -8d6  >= 0 ) or (d5  + -2 = 0 "
       "and d4  = 0 and d2  + -2 = 0 and d0  + -1 = 0 and -d1  + 7999 >= 0 and "
       "d3  >= 0 and d1 + -d3  + -1 >= 0 and -d3 + 8d6  + 7 >= 0 and d3 + -8d6  "
-      ">= 0 ) or (d5  = 0 and d4  = 0 and d2  + -2 = 0 and d0  + -1 = 0 and -d1  "
+      ">= 0 ) or (d5  = 0 and d4  = 0 and d2  + -2 = 0 and d0  + -1 = 0 and "
+      "-d1  "
       "+ 7999 >= 0 and d3  >= 0 and d1 + -d3  + -1 >= 0 and -d1 + 8d6  + 7 >= "
-      "0 and d1 + -8d6  >= 0 ) or (d5  + -2 = 0 and d4  = 0 and d3  = 0 and d2  "
+      "0 and d1 + -8d6  >= 0 ) or (d5  + -2 = 0 and d4  = 0 and d3  = 0 and d2 "
+      " "
       "+ -3 = 0 and d0  + -1 = 0 and d1  >= 0 and -d1  + 7999 >= 0 and -d1 + "
-      "8d6  + 7 >= 0 and d1 + -8d6  >= 0 ) or (d5  + -1 = 0 and d4  = 0 and d3  "
+      "8d6  + 7 >= 0 and d1 + -8d6  >= 0 ) or (d5  + -1 = 0 and d4  = 0 and d3 "
+      " "
       "= 0 and d2  = 0 and d0  + -1 = 0 and d1  >= 0 and -d1  + 7999 >= 0 and "
-      "-d1 + 8d6  + 7 >= 0 and d1 + -8d6  >= 0 ) or (d5  = 0 and d4  = 0 and d3  "
+      "-d1 + 8d6  + 7 >= 0 and d1 + -8d6  >= 0 ) or (d5  = 0 and d4  = 0 and "
+      "d3  "
       "= 0 and d2  + -3 = 0 and d0  + -1 = 0 and d1  >= 0 and -d1  + 7999 >= 0 "
       "and -d1 + 8d6  + 7 >= 0 and d1 + -8d6  >= 0 )");
   PresburgerSet newSet = coalesce(curr);
@@ -196,7 +200,8 @@ TEST(CoalesceTest, separate) {
 }
 
 TEST(CoalesceTest, adjEq) {
-  PresburgerSet adjEq = setFromString("(x0) : (x0 = 1) or (x0 >= 2 and x0 <= 3)");
+  PresburgerSet adjEq =
+      setFromString("(x0) : (x0 = 1) or (x0 >= 2 and x0 <= 3)");
   expectCoalesce(1, adjEq);
 }
 
@@ -231,22 +236,25 @@ TEST(CoalesceTest, multiDimContained) {
 }
 
 TEST(CoalesceTest, multiDimAdjIneq) {
-  PresburgerSet multiDimAdjIneq = setFromString(
-      " (x0, x1) : (x0 >= 0 and x0 <= 3 and x1 >= 0 and x1 <= 1) or (x0 >= 0 and "
-      "x0 <= 3 and x1 <= 2 and x1 <= 3)");
+  PresburgerSet multiDimAdjIneq =
+      setFromString(" (x0, x1) : (x0 >= 0 and x0 <= 3 and x1 >= 0 and x1 <= 1) "
+                    "or (x0 >= 0 and "
+                    "x0 <= 3 and x1 <= 2 and x1 <= 3)");
   expectCoalesce(1, multiDimAdjIneq);
 }
 
 TEST(CoalesceTest, multiDimSeparate) {
-  PresburgerSet multiDimSeparate = setFromString(
-      "(x0, x1) : (x0 >= 0 and x0 <= 1 and x1 >= 0 and x1 <= 1) or (x0 >= 2 and "
-      "x0 <= 3 and x1 >= 2 and x1 <= 3)");
+  PresburgerSet multiDimSeparate =
+      setFromString("(x0, x1) : (x0 >= 0 and x0 <= 1 and x1 >= 0 and x1 <= 1) "
+                    "or (x0 >= 2 and "
+                    "x0 <= 3 and x1 >= 2 and x1 <= 3)");
   expectCoalesce(2, multiDimSeparate);
 }
 
 TEST(CoalesceTest, multiDimCut) {
   PresburgerSet multiDimCut = setFromString(
-      "(x,y) : (4x -5y <= 0 and y <= 4 and 3x + 4y >= 0 and x - y + 7 >= 0) or ("
+      "(x,y) : (4x -5y <= 0 and y <= 4 and 3x + 4y >= 0 and x - y + 7 >= 0) or "
+      "("
       "y >= 0 and x <= 0 and y <= 4 and x - y + 9 >= 0 and 2x + 5y + 4 >= 0)");
   expectCoalesce(1, multiDimCut);
 }
@@ -281,16 +289,18 @@ TEST(CoalesceTest, multiDimAdjEqs3) {
 }
 
 TEST(CoalesceTest, multiDimAdjEqToPoly) {
-  PresburgerSet multiDimAdjEqToPoly = setFromString(
-      "(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x <= -y + 3) or (x "
-      "= 1 and y >= 0 and y <= 2)");
+  PresburgerSet multiDimAdjEqToPoly =
+      setFromString("(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x "
+                    "<= -y + 3) or (x "
+                    "= 1 and y >= 0 and y <= 2)");
   expectCoalesce(1, multiDimAdjEqToPoly);
 }
 
 TEST(CoalesceTest, multiDimAdjEqToPolyComplex) {
-  PresburgerSet multiDimAdjEqToPolyComplex = setFromString(
-      "(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x <= -y + 3) or (x "
-      "= 1 and y >= 1 and y <= 2)");
+  PresburgerSet multiDimAdjEqToPolyComplex =
+      setFromString("(x,y) :  (x <= 0 and y >= 0 and y <= 4 and x >= -8 and x "
+                    "<= -y + 3) or (x "
+                    "= 1 and y >= 1 and y <= 2)");
   expectCoalesce(1, multiDimAdjEqToPolyComplex);
 }
 
@@ -329,10 +339,37 @@ TEST(CoalesceTest, nearlyProtrusion) {
   expectCoalesce(2, nearlyProtrusion);
 }
 
+TEST(CoalesceTest, params) {
+  PresburgerSet params = setFromString("(x)[n] : (x + n = 3) or (x + n = 2)");
+  expectCoalesce(1, params);
+}
+
+TEST(CoalesceTest, existentials) {
+  PresburgerSet existentials = setFromString(
+      "(x)[y] : (exists e0, e1, e2 : e0 + e1 + 2 <= 7) or (4x <= 6)");
+  expectCoalesce(2, existentials);
+}
+
+TEST(CoalesceTest, existentials2) {
+  PresburgerSet existentials2 = setFromString(
+      "(x) : ( exists j : i = 4j and 0 <= i and i <= 100) or (exists j : 4j + "
+      "1 <= i and i <= 4j + 2 and 0 <= i and i <= 100)");
+  expectCoalesce(2, existentials2);
+}
+
+TEST(CoalesceTest, existentials3) {
+  PresburgerSet existentials2 =
+      setFromString("(x) : ( exists j : i = 4j and 0 <= i and i <= 100) or (x "
+                    "= 2) or(x = 3)");
+  expectCoalesce(2, existentials2);
+}
+
 /*TEST(CoalesceTest, twoAdj) {
   PresburgerSet twoAdj = setFromString(
-      "(x,y) : (x = 1 and y >= 0 and y <= 2) or (x = 2 and y >= 3 and y <= 5)");
-  // The result should be something like: "(x,y) : ( x >= 1 and x <= 2 and 3x -y
+      "(x,y) : (x = 1 and y >= 0 and y <= 2) or (x = 2 and y >= 3 and y <=
+5)");
+  // The result should be something like: "(x,y) : ( x >= 1 and x <= 2 and 3x
+-y
   // -3 <= 0 and 3x -y-1 >= 0)");
   expectCoalesce(1, twoAdj);
 }*/

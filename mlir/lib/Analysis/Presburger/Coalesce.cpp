@@ -268,7 +268,6 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0)
         continue;
 
-      std::cout << "hello" << std::endl;
       Info info1, info2;
       if (!classify(simplex2, inequalities1, equalities1, info1))
         continue;
