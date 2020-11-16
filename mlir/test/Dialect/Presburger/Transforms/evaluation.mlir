@@ -320,7 +320,7 @@ func @equal_multidim_neg() -> i1 {
 // CHECK-LABEL: func @coalesce
 func @coalesce() -> !presburger.set<1,0> {
   %set = presburger.set #presburger<"set(x) : (x >= 0 and x <= 10) or (x >= 11 and x <= 20)">
-  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (d0 >= 0 and d0 <= 20)">
+  // CHECK-NEXT: %[[S:.*]] = presburger.set #presburger<"set(d0) : (d0 >= 0 and -d0 + 20 >= 0)">
   // CHECK-NEXT: return %[[S]]
   %res = presburger.coalesce %set : !presburger.set<1,0>
   return %res : !presburger.set<1,0>
