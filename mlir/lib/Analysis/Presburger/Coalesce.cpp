@@ -115,9 +115,8 @@ bool stickingOut(const SmallVector<ArrayRef<int64_t>, 8> &cut,
                  const PresburgerBasicSet &bs);
 
 /// adds a PresburgerBasicSet and removes the sets at i and j.
-void addCoalescedBasicSet(
-    SmallVectorImpl<PresburgerBasicSet> &basicSetVector, unsigned i,
-    unsigned j, const PresburgerBasicSet &bs);
+void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
+                          unsigned i, unsigned j, const PresburgerBasicSet &bs);
 
 /// compute the cut case and return whether it has worked.
 ///
@@ -165,8 +164,8 @@ bool adjIneqPureCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
 ///  |     \   ==> |     \
 ///  |_____|_      |______\
 ///
-bool adjIneqCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
-                 unsigned i, unsigned j, const Info &infoA, const Info &infoB);
+bool adjIneqCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector, unsigned i,
+                 unsigned j, const Info &infoA, const Info &infoB);
 
 /// compute the pure adjEqCase and return whether it has worked.
 ///
@@ -245,8 +244,7 @@ void getBasicSetInequalities(const PresburgerBasicSet &bs,
 
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
   PresburgerSet newSet(set.getNumDims(), set.getNumSyms());
-  SmallVector<PresburgerBasicSet, 4> basicSetVector =
-      set.getBasicSets();
+  SmallVector<PresburgerBasicSet, 4> basicSetVector = set.getBasicSets();
   // TODO: find better looping strategy
   // redefine coalescing function on two BasicSets, return a BasicSet and do the
   // looping strategy in a different function?
@@ -266,6 +264,11 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       getBasicSetEqualities(bs2, equalities2);
       getBasicSetInequalities(bs2, inequalities2);
 
+      // TODO: implement the support for existentials
+      if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0)
+        continue;
+
+      std::cout << "hello" << std::endl;
       Info info1, info2;
       if (!classify(simplex2, inequalities1, equalities1, info1))
         continue;
@@ -393,7 +396,7 @@ bool adjIneqPureCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
                      unsigned i, unsigned j, const Info &infoA,
                      const Info &infoB) {
   PresburgerBasicSet newSet(basicSetVector[i].getNumTotalDims(),
-                               basicSetVector[i].getNumParams());
+                            basicSetVector[i].getNumParams());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -403,9 +406,9 @@ bool adjIneqPureCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
 /// Currently erases both i and j and the pushes the new BasicSet to the back of
 /// the vector.
 /// TODO: probably change when changing looping strategy
-void addCoalescedBasicSet(
-    SmallVectorImpl<PresburgerBasicSet> &basicSetVector, unsigned i,
-    unsigned j, const PresburgerBasicSet &bs) {
+void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
+                          unsigned i, unsigned j,
+                          const PresburgerBasicSet &bs) {
   if (i < j) {
     basicSetVector.erase(basicSetVector.begin() + j);
     basicSetVector.erase(basicSetVector.begin() + i);
@@ -541,7 +544,8 @@ bool adjEqCaseNoCut(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
   for (unsigned k = 0; k < A.getNumInequalities(); k++) {
     auto curr = llvm::to_vector<8>(A.getInequality(k).getCoeffs());
     if (!sameConstraint(t, curr)) {
-      newSetInequalities.push_back(llvm::to_vector<8>(A.getInequality(k).getCoeffs()));
+      newSetInequalities.push_back(
+          llvm::to_vector<8>(A.getInequality(k).getCoeffs()));
     }
   }
   shift(t, 1);
@@ -816,11 +820,11 @@ bool classifyIneq(Simplex &simp,
   return true;
 }
 
-bool adjIneqCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
-                 unsigned i, unsigned j, const Info &infoA, const Info &infoB) {
+bool adjIneqCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector, unsigned i,
+                 unsigned j, const Info &infoA, const Info &infoB) {
   ArrayRef<int64_t> t = infoA.adjIneq.getValue();
   PresburgerBasicSet bs(basicSetVector[i].getNumDims(),
-                           basicSetVector[i].getNumParams());
+                        basicSetVector[i].getNumParams());
   addInequalities(bs, infoA.redundant);
   addInequalities(bs, infoA.cut);
   addInequalities(bs, infoB.redundant);
@@ -843,7 +847,7 @@ bool adjIneqCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
     }
   }
   PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
-                               basicSetVector[i].getNumParams());
+                            basicSetVector[i].getNumParams());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -859,16 +863,15 @@ bool cutCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector, unsigned i,
       return false;
     }
   }
-  PresburgerBasicSet newSet(basicSetVector[i].getNumTotalDims(),
-                               basicSetVector[i].getNumParams());
+  PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
+                            basicSetVector[i].getNumParams());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
   return true;
 }
 
-bool mlir::containedFacet(ArrayRef<int64_t> ineq,
-                          const PresburgerBasicSet &bs,
+bool mlir::containedFacet(ArrayRef<int64_t> ineq, const PresburgerBasicSet &bs,
                           const SmallVector<ArrayRef<int64_t>, 8> &cut) {
   Simplex simp(bs);
   simp.addEquality(ineq);

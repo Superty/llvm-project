@@ -3,9 +3,9 @@
 func @simple_coalesce() {
 
   // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
-  %set1 = presburger.set #presburger<"set(x)[] : (x >= 0 and -x + 4>= 0)">
+  %set1 = presburger.set #presburger<"set(d0, d1, d2)[p0, p1, p2, p3] : (exists e0 : -d0 + 8192e0  + 8191 >= 0 and 32p2 + -d0 + 8192e0  + 31 >= 0 and d0 + -8192e0  >= 0 and -32p2 + d0 + -8192e0  >= 0)">
 
-  // CHECK: %{{.*}} = presburger.coalesce %[[S1]] : !presburger.set<1,0>
-  %uset = presburger.coalesce %set1 : !presburger.set<1,0>
+  // CHECK: %{{.*}} = presburger.coalesce %[[S1]] : !presburger.set<3,4>
+  %uset = presburger.coalesce %set1 : !presburger.set<3,4>
   return
 }
