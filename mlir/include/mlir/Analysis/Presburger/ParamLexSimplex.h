@@ -61,7 +61,6 @@ public:
   void addEquality(ArrayRef<int64_t> coeffs);
   void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
-
   pwaFunction findParamLexmin();
   void findParamLexminRecursively(Simplex &domainSimplex, PresburgerBasicSet &domainSet, pwaFunction &result);
 

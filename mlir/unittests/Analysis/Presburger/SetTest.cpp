@@ -47,4 +47,6 @@ TEST(PresburgerSetTest, Equality) {
               "(x) : (exists q = [(x)/2] : x = 2q)");
   expectEqual("(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)",
               "(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)");
+  expectEqual("(x) : (exists q : x = q and q <= -1)",
+              "(x) : (x <= -1)");
 }

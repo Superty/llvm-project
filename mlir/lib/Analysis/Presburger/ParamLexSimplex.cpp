@@ -9,6 +9,7 @@
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
+#include "llvm/ADT/SmallVector.h"
 
 using namespace mlir;
 using namespace analysis::presburger;
@@ -17,14 +18,14 @@ using Direction = Simplex::Direction;
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned oNParam)
-    : Simplex(nVar), nParam(oNParam), nDiv(0) {
-  for (unsigned i = 0; i < nParam; ++i) {
-    colUnknown[nCol - nParam + i] = i;
-    var[i].pos = nCol - nParam + i;
+    : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
+  for (unsigned i = 1; i <= nParam; ++i) {
+    colUnknown[nCol - nParam + i - 1] = i;
+    var[i].pos = nCol - nParam + i - 1;
   }
-  for (unsigned i = nParam; i < var.size(); ++i) {
-    colUnknown[i - nParam + 2] = i;
-    var[i].pos = i - nParam + 2; 
+  for (unsigned i = nParam + 1; i < var.size(); ++i) {
+    colUnknown[3 + i - (nParam + 1)] = i;
+    var[i].pos = 3 + i - (nParam + 1);
   }
 }
 
@@ -45,10 +46,19 @@ ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
 /// We add the inequality and mark it as restricted. We then try to make its
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
+///
+/// Our internal nonparameters are M + x1, M + x2...
+/// Such that the initial state M + x1 = 0 => x1 = -M, so x1 starts at min. val.
+/// Therefore ax1 + bx2 = a(M + x1) + b(M + x2) - (a + b)M.
 void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == var.size() + 1);
-  originalCoeffs.emplace_back(llvm::to_vector<8>(coeffs));
-  unsigned conIndex = addRow(coeffs);
+  llvm::SmallVector<int64_t, 8> newCoeffs;
+  newCoeffs.push_back(0);
+  newCoeffs.insert(newCoeffs.end(), coeffs.begin(), coeffs.end());
+  for (unsigned i = nParam - nDiv; i < coeffs.size() - 1 - nDiv; ++i) // -1 for constant at the end; - nDiv because divisions don't have M
+    newCoeffs[0] -= coeffs[i];
+
+  assert(newCoeffs.size() == var.size() + 1);
+  unsigned conIndex = addRow(newCoeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
   // restoreConsistency();
@@ -61,7 +71,7 @@ void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
 void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == var.size() + 1);
+  assert(coeffs.size() == var.size() + 1 - 1); // - 1 for M
   addInequality(coeffs);
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
@@ -81,7 +91,7 @@ void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
 void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
-  assert(coeffs.size() == var.size() + 1);
+  assert(coeffs.size() == var.size() + 1 - 1); // - 1 for M
   addVariable();
   nParam++;
   nDiv++;
@@ -114,6 +124,17 @@ void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t deno
 //
 // A change is lexicographically positive if it is not all zeros, and the
 // first non-zero value is positive.
+//
+// We don't need to care about the big param. Suppose p, q are the coeffs for
+// the big param.
+// A pivot causes the following change:
+//            pivot col   bigparam col    const col                   pivot col    bigparam col    const col
+// pivot row     a            p               b       ->   pivot row     1/a           -p/a          -b/a    
+// other row     c            q               d            other row     c/a         q - pc/a       d - bc/a
+//
+// if p is zero, no issues. otherwise, it has to be negative and behaves just
+// like b. taking (-p) as a common factor, the bigparam changes would be
+// less/greater/equal exactly when the const col changes are.
 Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
   // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
 
@@ -121,7 +142,7 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
                 -> SmallVector<Fraction, 8> {
     SmallVector<Fraction, 8> change;
     auto a = tableau(row, col);
-    for (unsigned i = 0; i < var.size(); ++i) {
+    for (unsigned i = 1; i < var.size(); ++i) {
       if (var[i].orientation == Orientation::Column) {
         if (var[i].pos == col)
           change.emplace_back(1, a);
@@ -138,7 +159,7 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
 
   Optional<unsigned> maybeColumn;
   SmallVector<Fraction, 8> change;
-  for (unsigned col = 2; col < nCol - nParam; ++col) {
+  for (unsigned col = 3; col < nCol - nParam; ++col) {
     if (tableau(row, col) <= 0)
       continue;
     // // Never remove parameters from the basis.
@@ -155,6 +176,7 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
 }
 
 LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
+  assert(tableau(row, 2) <= 0); // if bigparam is positive, moving to col is lexneg change.
   Optional<unsigned> maybeColumn = findPivot(row);
   if (!maybeColumn)
     return LogicalResult::Failure;
@@ -165,7 +187,9 @@ LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
 void ParamLexSimplex::restoreConsistency() {
   auto maybeGetViolatedRow = [this]() -> Optional<unsigned> {
     for (unsigned row = 0; row < nRow; ++row) {
-      if (tableau(row, 1) < 0)
+      if (tableau(row, 2) < 0)
+        return row;
+      if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
         return row;
     }
     return {};
@@ -229,6 +253,16 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
+
+    if (tableau(row, 2) > 0) // nonNegative
+      continue;
+    if (tableau(row, 2) < 0) { // negative
+      auto status = moveRowUnknownToColumn(row);
+      if (failed(status))
+        return;
+      findParamLexminRecursively(domainSimplex, domainSet, result);
+      return;
+    }
 
     auto paramSample = getRowParamSample(row);
     auto maybeMin = domainSimplex.computeOptimum(Direction::Down, paramSample);
@@ -310,14 +344,15 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
     // SmallVector<int64_t, 8> divCoeffs = domainDivCoeffs;
     // divCoeffs.insert(divCoeffs.end(),
     //   domainDivCoeffs.begin(), domainDivCoeffs.end());
-    domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv, var.size() - nParam, 0);
+    domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv, var.size() - nParam - 1, 0); // -1 for M
     addDivisionVariable(domainDivCoeffs, denom);
 
     addZeroConstraint();
     con.back().restricted = true;
     tableau(nRow - 1, 0) = denom;
     tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
-    for (unsigned col = 2; col < nCol - nParam; ++col)
+    tableau(nRow - 1, 2) = 0;
+    for (unsigned col = 3; col < nCol - nParam; ++col)
       tableau(nRow - 1, col) = mod(tableau(row, col), denom);
     for (unsigned col = nCol - nParam; col < nCol - 1; ++col)
       tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
@@ -338,13 +373,22 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex, Presbur
 
   result.domain.push_back(domainSet);
   SmallVector<SmallVector<int64_t, 8>, 8> lexmin;
-  for (unsigned i = nParam - nDiv; i < var.size() - nDiv; ++i) {
+  // domainSet.dump();
+  // dump();
+  for (unsigned i = 1 + nParam - nDiv; i < var.size() - nDiv; ++i) { // 1 + for bigM
     if (var[i].orientation == Orientation::Column) {
       lexmin.push_back(SmallVector<int64_t, 8>(nParam + 1, 0));
       continue;
     }
 
     unsigned row = var[i].pos;
+    assert(tableau(row, 2) <= 1); // M + x = kM + ...; x = (k-1)M + ...; k-1<=0
+    if (tableau(row, 2) <= 0) {
+      // lexmin is unbounded; we push an empty entry for this lexmin.
+      lexmin.clear();
+      break;
+    }
+    
     auto coeffs = getRowParamSample(var[i].pos);
     int64_t denom = tableau(row, 0);
     SmallVector<int64_t, 8> value;
