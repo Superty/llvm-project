@@ -265,7 +265,8 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       getBasicSetInequalities(bs2, inequalities2);
 
       // TODO: implement the support for existentials
-      if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0)
+      if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0 ||
+          bs1.getNumDivs() != 0 || bs2.getNumDivs() != 0)
         continue;
 
       Info info1, info2;
