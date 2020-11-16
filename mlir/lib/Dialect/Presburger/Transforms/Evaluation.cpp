@@ -21,6 +21,7 @@ static SetOp unionSets(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -33,6 +34,7 @@ static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -45,6 +47,7 @@ static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -58,6 +61,7 @@ static SetOp coalesceSet(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -83,6 +87,7 @@ static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -94,6 +99,7 @@ static ConstantOp areEqualSets(PatternRewriter &rewriter, Operation *op,
   IntegerType type = rewriter.getI1Type();
   IntegerAttr attr = IntegerAttr::get(type, eq);
 
+  llvm::errs() << eq << '\n';
   return rewriter.create<ConstantOp>(op->getLoc(), type, attr);
 }
 
