@@ -352,15 +352,15 @@ TEST(CoalesceTest, existentials) {
 
 TEST(CoalesceTest, existentials2) {
   PresburgerSet existentials2 = setFromString(
-      "(x) : ( exists j : i = 4j and 0 <= i and i <= 100) or (exists j : 4j + "
-      "1 <= i and i <= 4j + 2 and 0 <= i and i <= 100)");
+      "(x) : ( exists j : x = 4j and 0 <= x and x <= 100) or (exists j : 4j + "
+      "1 <= x and x <= 4j + 2 and 0 <= x and x <= 100)");
   expectCoalesce(2, existentials2);
 }
 
 TEST(CoalesceTest, existentials3) {
   PresburgerSet existentials2 =
-      setFromString("(x) : ( exists j : i = 4j and 0 <= i and i <= 100) or (x "
-                    "= 2) or(x = 3)");
+      setFromString("(x) : ( exists j : x = 4j and 0 <= x and x <= 100) or (x "
+                    "= 2) or (x = 3)");
   expectCoalesce(2, existentials2);
 }
 

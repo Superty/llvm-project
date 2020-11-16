@@ -394,7 +394,7 @@ void addEqualities(PresburgerBasicSet &bs,
 bool adjIneqPureCase(SmallVector<PresburgerBasicSet, 4> &basicSetVector,
                      unsigned i, unsigned j, const Info &infoA,
                      const Info &infoB) {
-  PresburgerBasicSet newSet(basicSetVector[i].getNumTotalDims(),
+  PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
                             basicSetVector[i].getNumParams());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
@@ -625,7 +625,7 @@ bool adjEqCaseNonPure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet newSet(b.getNumTotalDims(), b.getNumParams());
+  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<int64_t, 8> &curr : wrapped) {
@@ -679,7 +679,7 @@ bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet newSet(b.getNumTotalDims(), b.getNumParams());
+  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<int64_t, 8> &curr : wrapped) {
