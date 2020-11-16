@@ -250,7 +250,8 @@ PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs)
   for (const auto &div : bs.getDivisions()) {
     // The division variables must be in the same order they are stored in the
     // basic set.
-    paramLexSimplex.addDivisionVariable(div.getCoeffs(), div.getDenominator());
+    paramLexSimplex.addInequality(div.getInequalityLowerBound().getCoeffs());
+    paramLexSimplex.addInequality(div.getInequalityUpperBound().getCoeffs());
   }
   for (const auto &ineq : bs.getInequalities()) {
     paramLexSimplex.addInequality(ineq.getCoeffs());
