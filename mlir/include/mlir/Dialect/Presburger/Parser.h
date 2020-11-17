@@ -397,7 +397,7 @@ private:
   LogicalResult parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
                                              Token::Kind rightToken,
                                              bool allowEmpty);
-  LogicalResult parseDimAndOptionalSymbolIdList(
+  LogicalResult parseDimAndSymbolIdLists(
       std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
           &dimSymPair);
 

@@ -46,13 +46,6 @@ func @end_of_empty_set() {
 
 // -----
 
-func @empty_dims() {
-  // expected-error @+1 {{expected non empty list}}
-  %set1 = presburger.set #presburger<"set()[N] : (N = 0)">
-}
-
-// -----
-
 func @no_set_definition() {
   // expected-error @+1 {{expected ':' but got}}
   %set1 = presburger.set #presburger<"set(x)[]">

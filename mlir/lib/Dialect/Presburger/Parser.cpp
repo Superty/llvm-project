@@ -300,7 +300,7 @@ InFlightDiagnostic Lexer::emitError(const Twine &message) {
 /// TODO adapt grammar to future changes
 LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
-  if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
+  if (failed(parseDimAndSymbolIdLists(dimSymPair)))
     return failure();
 
   if (!lexer.peek().isa(Token::Kind::Colon))
@@ -330,7 +330,7 @@ LogicalResult Parser::parseSet(std::unique_ptr<SetExpr> &setExpr) {
 LogicalResult Parser::parseExpr(std::unique_ptr<PresburgerExprExpr> &expr) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
   SmallVector<std::unique_ptr<PieceExpr>, 4> pieces;
-  if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
+  if (failed(parseDimAndSymbolIdLists(dimSymPair)))
     return failure();
 
   if (!lexer.peek().isa(Token::Kind::Arrow))
@@ -410,14 +410,14 @@ LogicalResult Parser::parseCommaSeparatedListUntil(SmallVector<StringRef, 8> &l,
 ///
 /// dim-and-symbol-use-list is defined elsewhere
 ///
-LogicalResult Parser::parseDimAndOptionalSymbolIdList(
+LogicalResult Parser::parseDimAndSymbolIdLists(
     std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
         &dimSymPair) {
   if (failed(lexer.consumeKindOrError(Token::Kind::LeftParen)))
     return failure();
 
   if (failed(parseCommaSeparatedListUntil(dimSymPair.first,
-                                          Token::Kind::RightParen, false)))
+                                          Token::Kind::RightParen, true)))
     return failure();
 
   if (lexer.peek().isa(Token::Kind::LeftSquare)) {
