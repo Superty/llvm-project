@@ -10,6 +10,7 @@
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -348,6 +349,26 @@ void PresburgerBasicSet::insertDimensions(unsigned pos, unsigned count) {
     div.insertDimensions(pos, count);
 }
 
+void PresburgerBasicSet::insertParametricDimensions(unsigned pos, unsigned count) {
+  assert(pos <= nParam && "Parametric dimensions must form a prefix!");
+  insertDimensions(nDim + pos, count);
+  nParam += count;
+}
+
+void PresburgerBasicSet::swapDimensions(unsigned i, unsigned j) {
+  for (auto &ineq : ineqs)
+    ineq.swapDimensions(i, j);
+  for (auto &eq : eqs)
+    eq.swapDimensions(i, j);
+  for (auto &div : divs)
+    div.swapDimensions(i, j);
+}
+
+void PresburgerBasicSet::swapParametricDimensions(unsigned i, unsigned j) {
+  assert(i < nParam && j < nParam && "Only parametric dimensions can be swapped!");
+  swapDimensions(i, j);
+}
+
 void PresburgerBasicSet::appendDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
   assert(coeffs.size() == getNumTotalDims() + 1);
   divs.emplace_back(coeffs, denom, /*variable = */getNumTotalDims());
@@ -462,13 +483,4 @@ void PresburgerBasicSet::dumpCoeffs() const {
   for (auto &div : divs) {
     div.dumpCoeffs();
   }
-}
-
-void PresburgerBasicSet::printISL(raw_ostream &os) const {
-  printPresburgerBasicSetISL(os, *this);
-}
-
-void PresburgerBasicSet::dumpISL() const {
-  printISL(llvm::errs());
-  llvm::errs() << '\n';
 }

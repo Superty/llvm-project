@@ -5,19 +5,19 @@ using namespace analysis::presburger;
 
 namespace {
 
-void printConstraints(raw_ostream &os, const PresburgerBasicSet &bs);
+void printConstraints(raw_ostream &os, ArrayRef<std::string> paramNames, const PresburgerBasicSet &bs);
 
-void printConstraints(raw_ostream &os, const PresburgerSet &set);
-void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym);
-void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
+void printConstraints(raw_ostream &os, ArrayRef<std::string> paramNames, const PresburgerSet &set);
+void printVariableList(raw_ostream &os, ArrayRef<std::string> paramNames, unsigned nDim, unsigned nSym);
+void printExpr(raw_ostream &os, ArrayRef<std::string> paramNames, ArrayRef<int64_t> coeffs, int64_t constant,
                const PresburgerBasicSet &bs);
 bool printCoeff(raw_ostream &os, int64_t val, bool first);
-void printVarName(raw_ostream &os, int64_t i, const PresburgerBasicSet &bs);
+void printVarName(raw_ostream &os, ArrayRef<std::string> paramNames, int64_t i, const PresburgerBasicSet &bs);
 void printConst(raw_ostream &os, int64_t c, bool first);
 
 /// Prints the '(d0, ..., dN)[s0, ... ,sM]' dimension and symbol list.
 ///
-void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
+void printVariableList(raw_ostream &os, ArrayRef<std::string> paramNames, unsigned nDim, unsigned nSym) {
   os << "(";
   for (unsigned i = 0; i < nDim; i++)
     os << (i != 0 ? ", " : "") << 'd' << i;
@@ -25,8 +25,13 @@ void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
 
   if (nSym > 0) {
     os << "[";
-    for (unsigned i = 0; i < nSym; i++)
-      os << (i != 0 ? ", " : "") << 's' << i;
+    for (unsigned i = 0; i < nSym; i++) {
+      os << (i != 0 ? ", " : "");
+      if (paramNames.empty())
+        os << "s" << i;
+      else
+       os << paramNames[i];
+    }
     os << "]";
   }
 }
@@ -34,7 +39,7 @@ void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
 /// Prints the constraints of each `PresburgerBasicSet`.
 ///
 void printConstraints(
-    raw_ostream &os,
+    raw_ostream &os, ArrayRef<std::string> paramNames,
     const PresburgerSet &set) {
   bool fst = true;
   for (auto &c : set.getBasicSets()) {
@@ -42,14 +47,14 @@ void printConstraints(
       fst = false;
     else
       os << " or ";
-    printConstraints(os, c);
+    printConstraints(os, paramNames, c);
   }
 }
 
 /// Prints the constraints of the `PresburgerBasicSet`. Each constraint is
 /// printed separately and the are conjuncted with 'and'.
 ///
-void printConstraints(raw_ostream &os,
+void printConstraints(raw_ostream &os, ArrayRef<std::string> paramNames,
                                 const PresburgerBasicSet &bs) {
   os << '(';
   unsigned numTotalDims = bs.getNumTotalDims();
@@ -71,7 +76,7 @@ void printConstraints(raw_ostream &os,
         os << ", ";
       os << "q" << i << " = [(";
       auto &div = bs.getDivisions()[i];
-      printExpr(os, div.getCoeffs().take_front(numTotalDims), div.getCoeffs()[numTotalDims], bs);
+      printExpr(os, paramNames, div.getCoeffs().take_front(numTotalDims), div.getCoeffs()[numTotalDims], bs);
       os << ")/" << div.getDenominator() << "]";
     }
     os << " : ";
@@ -81,7 +86,7 @@ void printConstraints(raw_ostream &os,
     if (i != 0)
       os << " and ";
     ArrayRef<int64_t> eq = bs.getEquality(i).getCoeffs();
-    printExpr(os, eq.take_front(numTotalDims), eq[numTotalDims], bs);
+    printExpr(os, paramNames, eq.take_front(numTotalDims), eq[numTotalDims], bs);
     os << " = 0";
   }
 
@@ -92,7 +97,7 @@ void printConstraints(raw_ostream &os,
     if (i != 0)
       os << " and ";
     ArrayRef<int64_t> ineq = bs.getInequality(i).getCoeffs();
-    printExpr(os, ineq.take_front(numTotalDims), ineq[numTotalDims], bs);
+    printExpr(os, paramNames, ineq.take_front(numTotalDims), ineq[numTotalDims], bs);
     os << " >= 0";
   }
   os << ')';
@@ -133,7 +138,7 @@ bool printCoeff(raw_ostream &os, int64_t val, bool first) {
 /// dimensions and therefore prefixed with 'd', everything afterwards is a
 /// symbol with prefix 's'.
 ///
-void printVarName(raw_ostream &os, int64_t i, const PresburgerBasicSet &bs) {
+void printVarName(raw_ostream &os, ArrayRef<std::string> paramNames, int64_t i, const PresburgerBasicSet &bs) {
   if (i < bs.getNumDims()) {
     os << 'd' << i;
     return;
@@ -141,7 +146,10 @@ void printVarName(raw_ostream &os, int64_t i, const PresburgerBasicSet &bs) {
   i -= bs.getNumDims();
   
   if (i < bs.getNumParams()) {
-    os << 's' << i;
+    if (paramNames.empty())
+      os << "s" << i;
+    else
+      os << paramNames[i];
     return;
   }
   i -= bs.getNumParams();
@@ -177,13 +185,13 @@ void printConst(raw_ostream &os, int64_t c, bool first) {
 /// Prints an affine expression. `coeffs` contains all the coefficients:
 /// dimensions followed by symbols.
 ///
-void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
+void printExpr(raw_ostream &os, ArrayRef<std::string> paramNames, ArrayRef<int64_t> coeffs, int64_t constant,
                const PresburgerBasicSet &bs) {
   bool first = true;
   for (unsigned i = 0, e = coeffs.size(); i < e; ++i) {
     if (printCoeff(os, coeffs[i], first)) {
       first = false;
-      printVarName(os, i, bs);
+      printVarName(os, paramNames, i, bs);
     }
   }
 
@@ -194,20 +202,20 @@ void printExpr(raw_ostream &os, ArrayRef<int64_t> coeffs, int64_t constant,
 
 void mlir::analysis::presburger::printPresburgerSet(raw_ostream &os,
                                                     const PresburgerSet &set) {
-  printVariableList(os, set.getNumDims(), set.getNumSyms());
+  printVariableList(os, set.getParamNames(), set.getNumDims(), set.getNumSyms());
   os << " : ";
   if (set.isMarkedEmpty()) {
     os << "empty";
     return;
   }
-  printConstraints(os, set);
+  printConstraints(os, set.getParamNames(), set);
 }
 
 void mlir::analysis::presburger::printPresburgerBasicSet(
   raw_ostream &os, const PresburgerBasicSet &bs) {
-  printVariableList(os, bs.getNumDims(), bs.getNumParams());
+  printVariableList(os, {}, bs.getNumDims(), bs.getNumParams());
   os << " : ";
-  printConstraints(os, bs);
+  printConstraints(os, {}, bs);
 }
 
 void mlir::analysis::presburger::printPresburgerExpr(
@@ -217,7 +225,7 @@ void mlir::analysis::presburger::printPresburgerExpr(
   // Terrible hack to pass nDim, nSym to printExpr until the domains of Exprs
   // become basic sets.
   PresburgerBasicSet bs(nDim, nSym);
-  printVariableList(os, nDim, nSym);
+  printVariableList(os, {}, nDim, nSym);
 
   os << " -> ";
 
@@ -229,10 +237,10 @@ void mlir::analysis::presburger::printPresburgerExpr(
     // TODO change this as soon as we have a Constraint class. Try to unify the
     // handling of expression
     auto eI = expr.getExprs()[i];
-    printExpr(os, eI.second, eI.first, bs);
+    printExpr(os, {}, eI.second, eI.first, bs);
     os << ")";
     os << " : ";
-    printConstraints(os, expr.getDomains()[i]);
+    printConstraints(os, {}, expr.getDomains()[i]);
   }
 }
 

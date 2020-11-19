@@ -48,5 +48,12 @@ TEST(PresburgerSetTest, Equality) {
   expectEqual("(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)",
               "(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)");
   expectEqual("(x) : (exists q : x = q and q <= -1)",
-              "(x) : (x <= -1)");
+              "(x) : (x <= -1)");             
+}
+
+TEST(PresburgerSetTest, Params) {
+  auto s = setFromString("(x)[r, p] : (x = 2p and x = 4r)");
+  auto t = setFromString("(x)[q, r] : (x = 3q and x = 5r)");
+  s.unionSet(t);
+  // s.dumpISL();
 }

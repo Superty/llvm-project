@@ -442,7 +442,7 @@ private:
   LogicalResult parsePresburgerBasicSet(Expr *constraints,
                                            PresburgerBasicSet &bs);
   LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,
-                              StringMap<size_t> &map);
+                              StringMap<unsigned> &map);
   LogicalResult parseConstraint(ConstraintExpr *constraint, Constraint &c);
   LogicalResult parseSum(Expr *expr,
                          std::pair<int64_t, SmallVector<int64_t, 8>> &r);
@@ -452,10 +452,10 @@ private:
   InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
   InFlightDiagnostic emitError(const Twine &message = {});
 
-  StringMap<size_t> dimNameToIndex;
-  StringMap<size_t> symNameToIndex;
-  StringMap<size_t> existNameToIndex;
-  StringMap<size_t> divNameToIndex;
+  StringMap<unsigned> dimNameToIndex;
+  StringMap<unsigned> symNameToIndex;
+  StringMap<unsigned> existNameToIndex;
+  StringMap<unsigned> divNameToIndex;
   Parser parser;
 };
 
