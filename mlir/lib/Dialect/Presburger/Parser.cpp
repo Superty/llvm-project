@@ -117,9 +117,9 @@ Token Lexer::consumeInteger(unsigned start) {
 /// If the resulting string matches a keyword an according token is returned.
 Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
   char c = buffer[curPos];
-  assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
+  assert((isAlpha(c) || c == '_') && "identifier or keyword should begin with an alphabet or _");
 
-  while (isDigit(c) || isAlpha(c)) {
+  while (isDigit(c) || isAlpha(c) || c == '_') {
     ++curPos;
     if (reachedEOF())
       break;
@@ -158,7 +158,7 @@ Token Lexer::nextToken() {
   if (isDigit(c))
     return consumeInteger(tokStart);
 
-  if (isAlpha(c))
+  if (isAlpha(c) || c == '_')
     return consumeIdentifierOrKeyword(tokStart);
 
   switch (c) {

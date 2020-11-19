@@ -6,16 +6,16 @@ namespace detail {
 
 struct PresburgerSetTypeStorage : public TypeStorage {
   PresburgerSetTypeStorage(unsigned dimCount, unsigned symbolCount)
-      : dimCount(dimCount), symbolCount(symbolCount) {}
+      : dimCount(dimCount), symbolCount(0) {}
 
   using KeyTy = std::pair<unsigned, unsigned>;
 
   bool operator==(const KeyTy &key) const {
-    return key == KeyTy(dimCount, symbolCount);
+    return key == KeyTy(dimCount, 0);
   }
 
   static KeyTy getKey(unsigned dimCount, unsigned symbolCount) {
-    return KeyTy(dimCount, symbolCount);
+    return KeyTy(dimCount, 0);
   }
 
   static PresburgerSetTypeStorage *construct(TypeStorageAllocator &allocator,
@@ -29,16 +29,16 @@ struct PresburgerSetTypeStorage : public TypeStorage {
 
 struct PresburgerExprTypeStorage : public TypeStorage {
   PresburgerExprTypeStorage(unsigned dimCount, unsigned symbolCount)
-      : dimCount(dimCount), symbolCount(symbolCount) {}
+      : dimCount(dimCount), symbolCount(0) {}
 
   using KeyTy = std::pair<unsigned, unsigned>;
 
   bool operator==(const KeyTy &key) const {
-    return key == KeyTy(dimCount, symbolCount);
+    return key == KeyTy(dimCount, 0);
   }
 
   static KeyTy getKey(unsigned dimCount, unsigned symbolCount) {
-    return KeyTy(dimCount, symbolCount);
+    return KeyTy(dimCount, 0);
   }
 
   static PresburgerExprTypeStorage *construct(TypeStorageAllocator &allocator,
@@ -65,17 +65,17 @@ PresburgerSetType PresburgerSetType::get(MLIRContext *context,
 unsigned PresburgerSetType::getDimCount() const { return getImpl()->dimCount; }
 
 unsigned PresburgerSetType::getSymbolCount() const {
-  return getImpl()->symbolCount;
+  return 0;
 }
 
 PresburgerExprType PresburgerExprType::get(MLIRContext *context,
                                            unsigned dimCount,
                                            unsigned symbolCount) {
-  return Base::get(context, PresburgerTypes::Expr, dimCount, symbolCount);
+  return Base::get(context, PresburgerTypes::Expr, dimCount, 0);
 }
 
 unsigned PresburgerExprType::getDimCount() const { return getImpl()->dimCount; }
 
 unsigned PresburgerExprType::getSymbolCount() const {
-  return getImpl()->symbolCount;
+  return 0;
 }

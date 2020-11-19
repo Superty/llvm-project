@@ -68,14 +68,14 @@ void printConstraints(raw_ostream &os, ArrayRef<std::string> paramNames,
         fst = false;
       else
         os << ", ";
-      os << "e" << i;
+      os << "mlire" << i;
     }
     for (unsigned i = 0, e = bs.getNumDivs(); i < e; ++i) {
       if (fst)
         fst = false;
       else
         os << ", ";
-      os << "q" << i << " = [(";
+      os << "mlirq" << i << " = [(";
       auto &div = bs.getDivisions()[i];
       printExpr(os, paramNames, div.getCoeffs().take_front(numTotalDims), div.getCoeffs()[numTotalDims], bs);
       os << ")/" << div.getDenominator() << "]";
