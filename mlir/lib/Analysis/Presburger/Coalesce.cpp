@@ -711,7 +711,7 @@ Optional<SmallVector<int64_t, 8>>
 mlir::wrapping(const PresburgerBasicSet &bs, SmallVectorImpl<int64_t> &valid,
                SmallVectorImpl<int64_t> &invalid) {
   assert(valid.size() == invalid.size() && "dimensions must be equal");
-  unsigned n = bs.getNumDims();
+  unsigned n = bs.getNumTotalDims();
   Simplex simplex(n + 1);
 
   // for every constraint t(x) + c of bs, make it become t(x) + c*lambda
