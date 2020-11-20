@@ -106,7 +106,7 @@ static ConstantOp areEqualSets(PatternRewriter &rewriter, Operation *op,
 static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
   PresburgerSet ps = attr.getValue();
-  bool empty = !ps.findIntegerSample().hasValue();
+  bool empty = ps.isIntegerEmpty();
 
   IntegerType type = rewriter.getI1Type();
   IntegerAttr iAttr = IntegerAttr::get(type, empty);
