@@ -8,6 +8,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Support/LogicalResult.h"
 
 using namespace mlir;
 using namespace mlir::presburger;
@@ -110,6 +111,7 @@ static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
   IntegerType type = rewriter.getI1Type();
   IntegerAttr iAttr = IntegerAttr::get(type, empty);
 
+  llvm::errs() << empty << '\n';
   return rewriter.create<ConstantOp>(op->getLoc(), type, iAttr);
 }
 namespace {
