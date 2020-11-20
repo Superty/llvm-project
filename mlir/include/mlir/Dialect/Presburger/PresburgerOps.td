@@ -180,6 +180,19 @@ def Presburger_CoalesceOp : Presburger_Op<"coalesce", [NoSideEffect,
     let hasCanonicalizer = 1;
 }
 
+def Presburger_EmptyOp : Presburger_Op<"is_empty", [NoSideEffect]> {
+    let summary = "coalesce a Presburger set";
+
+    let description = [{
+        TODO
+    }];
+
+    let arguments = (ins PresburgerSetType:$set);
+
+    let results = (outs BoolLike:$res);
+}
+
+
 def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
                               SameOperandsAndResultType, ProducesPresburgerSet]> {
     let summary = "complement of a Presburger set";

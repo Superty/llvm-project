@@ -183,6 +183,36 @@ static LogicalResult verify(CoalesceOp op) {
   return verifyLocality(op.set(), op);
 }
 
+// is_empty
+static ParseResult parseEmptyOp(OpAsmParser &parser, OperationState &result) {
+  OpAsmParser::OperandType op;
+
+  if (parser.parseOperand(op))
+    return failure();
+
+  Type outType = parser.getBuilder().getI1Type();
+  parser.addTypeToList(outType, result.types);
+
+  Type type;
+
+  if (parser.parseColonType(type))
+    return failure();
+
+  if (parser.resolveOperands(op, type, result.operands))
+    return failure();
+
+  return success();
+}
+
+static void print(OpAsmPrinter &printer, EmptyOp op) {
+  printer << "presburger.is_empty ";
+  printer.printOperand(op.set());
+  printer << " : ";
+  printer.printType(op.getType());
+}
+
+static LogicalResult verify(EmptyOp op) { return verifyLocality(op.set(), op); }
+
 // complement
 
 static ParseResult parseComplementOp(OpAsmParser &parser,
