@@ -358,7 +358,6 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 void PresburgerSet::subtract(PresburgerSet set) {
   alignParams(*this, set);
   assertDimensionsCompatible(set, *this);
-
   
   if (markedEmpty)
     return;
@@ -421,7 +420,7 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
 
 bool PresburgerSet::isIntegerEmpty() {
   if (markedEmpty)
-    return false;
+    return true;
   for (PresburgerBasicSet &bs : basicSets) {
     if (!bs.isIntegerEmpty())
       return false;
