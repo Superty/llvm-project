@@ -89,9 +89,9 @@ bool PresburgerBasicSet::isIntegerEmpty() {
 
   PresburgerBasicSet cone = makeRecessionCone();
   if (cone.getNumEqualities() < getNumTotalDims())
-    return findSampleUnbounded(cone, true).hasValue();
+    return !findSampleUnbounded(cone, true).hasValue();
   else
-    return findSampleBounded().hasValue();
+    return !findSampleBounded().hasValue();
 }
 
 Optional<std::pair<int64_t, SmallVector<int64_t, 8>>>
