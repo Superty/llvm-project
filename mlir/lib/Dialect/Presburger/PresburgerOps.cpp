@@ -213,6 +213,38 @@ static void print(OpAsmPrinter &printer, EmptyOp op) {
 
 static LogicalResult verify(EmptyOp op) { return verifyLocality(op.set(), op); }
 
+// eliminate existentials
+
+static ParseResult parseEliminateExOp(OpAsmParser &parser,
+                                      OperationState &result) {
+  OpAsmParser::OperandType op;
+
+  if (parser.parseOperand(op))
+    return failure();
+
+  Type outType;
+  if (parser.parseColon() || parser.parseType(outType))
+    return failure();
+
+  parser.addTypeToList(outType, result.types);
+
+  if (parser.resolveOperands(op, outType, result.operands))
+    return failure();
+
+  return success();
+}
+
+static void print(OpAsmPrinter &printer, EliminateExOp op) {
+  printer << "presburger.eliminate_ex ";
+  printer.printOperand(op.set());
+  printer << " : ";
+  printer.printType(op.getType());
+}
+
+static LogicalResult verify(EliminateExOp op) {
+  return verifyLocality(op.set(), op);
+}
+
 // complement
 
 static ParseResult parseComplementOp(OpAsmParser &parser,

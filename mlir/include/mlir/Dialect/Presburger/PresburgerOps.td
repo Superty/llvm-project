@@ -192,6 +192,18 @@ def Presburger_EmptyOp : Presburger_Op<"is_empty", [NoSideEffect]> {
     let results = (outs BoolLike:$res);
 }
 
+def Presburger_EliminateExOp : Presburger_Op<"eliminate_ex", [NoSideEffect,
+                            SameOperandsAndResultType, ProducesPresburgerSet]> {
+    let summary = "TODO";
+
+    let description = [{
+        TODO
+    }];
+
+    let arguments = (ins PresburgerSetType:$set);
+
+    let results = (outs PresburgerSetType:$res);
+}
 
 def Presburger_ComplementOp : Presburger_Op<"complement", [NoSideEffect,
                               SameOperandsAndResultType, ProducesPresburgerSet]> {
