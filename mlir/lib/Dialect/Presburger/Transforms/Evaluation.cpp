@@ -65,6 +65,20 @@ static SetOp coalesceSet(PatternRewriter &rewriter, Operation *op,
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
+static SetOp eliminateExistentialsSet(PatternRewriter &rewriter, Operation *op,
+                                      PresburgerSetAttr attr) {
+  // TODO: change Namespace of coalesce
+  PresburgerSet in = attr.getValue();
+  PresburgerSet ps = PresburgerSet::eliminateExistentials(in);
+
+  PresburgerSetType type = PresburgerSetType::get(
+      rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
+
+  PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  ps.dumpISL();
+  return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
+}
+
 static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
   PresburgerSet ps = PresburgerSet::complement(attr.getValue());
@@ -73,7 +87,6 @@ static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -89,6 +102,16 @@ static ConstantOp areEqualSets(PatternRewriter &rewriter, Operation *op,
   return rewriter.create<ConstantOp>(op->getLoc(), type, attr);
 }
 
+static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
+                           PresburgerSetAttr attr) {
+  PresburgerSet ps = attr.getValue();
+  bool empty = !ps.findIntegerSample().hasValue();
+
+  IntegerType type = rewriter.getI1Type();
+  IntegerAttr iAttr = IntegerAttr::get(type, empty);
+
+  return rewriter.create<ConstantOp>(op->getLoc(), type, iAttr);
+}
 namespace {
 
 #include "mlir/Dialect/Presburger/Transforms/EvaluationPatterns.cpp.inc"
@@ -103,6 +126,8 @@ void mlir::populatePresburgerEvaluatePatterns(
     FoldUnionPattern,
     FoldSubtractPattern,
     FoldCoalescePattern,
+    FoldEmptyPattern,
+    FoldEliminateExPattern,
     FoldComplementPattern,
     FoldEqualPattern
     >(ctx);

@@ -325,3 +325,33 @@ func @coalesce() -> !presburger.set<1,0> {
   %res = presburger.coalesce %set : !presburger.set<1,0>
   return %res : !presburger.set<1,0>
 }
+
+// -----
+
+// CHECK-LABEL: func @not_empty
+func @not_empty() -> i1 {
+  %set = presburger.set #presburger<"set(x) : (x >= 0 and x <= 10) or (x >= 11 and x <= 20)">
+  // CHECK-NEXT: %[[S:.*]] = constant false
+  // CHECK-NEXT: return %[[S]]
+  %res = presburger.is_empty %set : !presburger.set<1,0>
+  return %res : i1
+}
+
+// CHECK-LABEL: func @empty
+func @empty() -> i1 {
+  %set = presburger.set #presburger<"set(x) : (x >= 0 and x <= -10) or (x >= 11 and x <= 10)">
+  // CHECK-NEXT: %[[S:.*]] = constant true
+  // CHECK-NEXT: return %[[S]]
+  %res = presburger.is_empty %set : !presburger.set<1,0>
+  return %res : i1
+}
+
+func @simple_ex() -> !presburger.set<3,0> {
+
+  // CHECK: %[[S1:.*]] = presburger.set #presburger<"{{.*}}">
+  %set1 = presburger.set #presburger<"set(d0, d1, d2)[p0, p1, p2, p3] : (exists e0 : 2e0 <= d0 + d1 and d0 + d1 = 0)">
+
+  // CHECK: %{{.*}} = presburger.eliminate_ex %[[S1]] : !presburger.set<3,4>
+  %uset = presburger.eliminate_ex %set1 : !presburger.set<3,0>
+  return %uset : !presburger.set<3,4>
+}

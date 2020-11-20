@@ -42,4 +42,16 @@ def EqualSets : NativeCodeCall<
 def FoldEqualPattern : Pat<
   (Presburger_EqualOp:$op (Presburger_SetOp $set1), (Presburger_SetOp $set2)),
   (EqualSets $op, $set1, $set2)>;
+
+def EmptySet : NativeCodeCall<
+    "emptySet($_builder, $0.getDefiningOp(), $1)">;
+def FoldEmptyPattern : Pat<
+  (Presburger_EmptyOp:$op (Presburger_SetOp $set)),
+  (EmptySet $op, $set)>;
+
+def EliminateExistentialsSet : NativeCodeCall<
+    "eliminateExistentialsSet($_builder, $0.getDefiningOp(), $1)">;
+def FoldEliminateExPattern : Pat<
+  (Presburger_EliminateExOp:$op (Presburger_SetOp $set)),
+  (EliminateExistentialsSet $op, $set)>;
 #endif // MLIR_DIALECT_PRESBURGER_TRANSFORMS_EVALUATION_PATTERNS
