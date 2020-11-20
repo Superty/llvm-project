@@ -10,45 +10,56 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/LogicalResult.h"
 
+#include <chrono>
+
 using namespace mlir;
 using namespace mlir::presburger;
 
 static SetOp unionSets(PatternRewriter &rewriter, Operation *op,
                        PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto start = std::chrono::system_clock::now();
   ps.unionSet(attr2.getValue());
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
 static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto start = std::chrono::system_clock::now();
   ps.intersectSet(attr2.getValue());
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
 static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
                           PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto start = std::chrono::system_clock::now();
   ps.subtract(attr2.getValue());
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -56,13 +67,18 @@ static SetOp coalesceSet(PatternRewriter &rewriter, Operation *op,
                          PresburgerSetAttr attr) {
   // TODO: change Namespace of coalesce
   PresburgerSet in = attr.getValue();
+  auto start = std::chrono::system_clock::now();
   PresburgerSet ps = coalesce(in);
 
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()<< '\n';
+
+  ps.dumpISL();
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
@@ -70,19 +86,26 @@ static SetOp eliminateExistentialsSet(PatternRewriter &rewriter, Operation *op,
                                       PresburgerSetAttr attr) {
   // TODO: change Namespace of coalesce
   PresburgerSet in = attr.getValue();
+  auto start = std::chrono::system_clock::now();
   PresburgerSet ps = PresburgerSet::eliminateExistentials(in);
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
-  ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
 
 static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
+  auto start = std::chrono::system_clock::now();
   PresburgerSet ps = PresburgerSet::complement(attr.getValue());
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   PresburgerSetType type = PresburgerSetType::get(
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
@@ -94,24 +117,37 @@ static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
 static ConstantOp areEqualSets(PatternRewriter &rewriter, Operation *op,
                                PresburgerSetAttr attr1,
                                PresburgerSetAttr attr2) {
-  bool eq = PresburgerSet::equal(attr1.getValue(), attr2.getValue());
+
+  auto s1 = attr1.getValue(); 
+  auto s2 = attr2.getValue(); 
+
+  auto start = std::chrono::system_clock::now();
+  bool eq = PresburgerSet::equal(s1, s2);
+
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   IntegerType type = rewriter.getI1Type();
   IntegerAttr attr = IntegerAttr::get(type, eq);
 
-  llvm::errs() << eq << '\n';
   return rewriter.create<ConstantOp>(op->getLoc(), type, attr);
 }
 
 static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
   PresburgerSet ps = attr.getValue();
+  auto start = std::chrono::system_clock::now();
+
   bool empty = !ps.findIntegerSample().hasValue();
+
+  auto end = std::chrono::system_clock::now();
+  llvm::errs() << 
+    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   IntegerType type = rewriter.getI1Type();
   IntegerAttr iAttr = IntegerAttr::get(type, empty);
 
-  llvm::errs() << empty << '\n';
   return rewriter.create<ConstantOp>(op->getLoc(), type, iAttr);
 }
 namespace {
