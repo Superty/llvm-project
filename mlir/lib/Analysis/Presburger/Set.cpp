@@ -391,7 +391,7 @@ bool PresburgerSet::equal(PresburgerSet s, PresburgerSet t) {
   PresburgerSet sCopy = s, tCopy = t;
   sCopy.subtract(std::move(t));
   tCopy.subtract(std::move(s));
-  return !sCopy.findIntegerSample() && !tCopy.findIntegerSample();
+  return sCopy.isIntegerEmpty() && tCopy.isIntegerEmpty();
 }
 
 Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
