@@ -415,6 +415,16 @@ Optional<SmallVector<int64_t, 8>> PresburgerSet::findIntegerSample() {
   return {};
 }
 
+bool PresburgerSet::isIntegerEmpty() {
+  if (markedEmpty)
+    return false;
+  for (PresburgerBasicSet &bs : basicSets) {
+    if (!bs.isIntegerEmpty())
+      return false;
+  }
+  return true;
+}
+
 llvm::Optional<SmallVector<int64_t, 8>>
 PresburgerSet::maybeGetCachedSample() const {
   if (isUniverse())

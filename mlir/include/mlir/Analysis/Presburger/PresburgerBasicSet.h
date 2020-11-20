@@ -73,6 +73,8 @@ public:
   /// Returns such a point if one exists, or an empty Optional otherwise.
   Optional<SmallVector<int64_t, 8>> findIntegerSample() const;
 
+  bool isIntegerEmpty();
+
   /// Get a {denominator, sample} pair representing a rational sample point in
   /// this basic set.
   Optional<std::pair<int64_t, SmallVector<int64_t, 8>>>
@@ -119,7 +121,7 @@ private:
   /// \returns the sample point or an empty llvm::Optional if the set
   /// is empty.
   Optional<SmallVector<int64_t, 8>>
-  findSampleUnbounded(PresburgerBasicSet &cone) const;
+  findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const;
 
   Matrix coefficientMatrixFromEqs() const;
 

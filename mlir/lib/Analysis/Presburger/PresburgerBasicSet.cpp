@@ -78,9 +78,20 @@ PresburgerBasicSet::findIntegerSample() const {
 
   PresburgerBasicSet cone = makeRecessionCone();
   if (cone.getNumEqualities() < getNumTotalDims())
-    return findSampleUnbounded(cone);
+    return findSampleUnbounded(cone, false);
   else
     return findSampleBounded();
+}
+
+bool PresburgerBasicSet::isIntegerEmpty() {
+  if (!isPlainBasicSet())
+    return makePlainBasicSet().isIntegerEmpty();
+
+  PresburgerBasicSet cone = makeRecessionCone();
+  if (cone.getNumEqualities() < getNumTotalDims())
+    return findSampleUnbounded(cone, true).hasValue();
+  else
+    return findSampleBounded().hasValue();
 }
 
 Optional<std::pair<int64_t, SmallVector<int64_t, 8>>>
@@ -146,7 +157,7 @@ void PresburgerBasicSet::substitute(ArrayRef<int64_t> values) {
 // found a sample x satisfying the transformed constraint matrix MU. Therefore,
 // Ux is a sample that satisfies M.
 llvm::Optional<SmallVector<int64_t, 8>>
-PresburgerBasicSet::findSampleUnbounded(PresburgerBasicSet &cone) const {
+PresburgerBasicSet::findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const {
   auto coeffMatrix = cone.coefficientMatrixFromEqs();
   LinearTransform U =
       LinearTransform::makeTransformToColumnEchelon(std::move(coeffMatrix));
@@ -155,6 +166,8 @@ PresburgerBasicSet::findSampleUnbounded(PresburgerBasicSet &cone) const {
   auto maybeBoundedSample = transformedSet.findBoundedDimensionsSample(cone);
   if (!maybeBoundedSample)
     return {};
+  if (onlyEmptiness)
+    return maybeBoundedSample;
 
   transformedSet.substitute(*maybeBoundedSample);
 
