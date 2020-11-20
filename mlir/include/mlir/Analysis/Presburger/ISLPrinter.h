@@ -14,6 +14,9 @@ namespace presburger {
 
 /// Prints the set into the stream
 void printPresburgerSetISL(raw_ostream &os, const PresburgerSet &set);
+
+/// Prints the basic set into the stream
+void printPresburgerBasicSetISL(raw_ostream &os, const PresburgerBasicSet &set);
 } // namespace presburger
 } // namespace analysis
 } // namespace mlir

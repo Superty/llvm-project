@@ -3,21 +3,15 @@
 
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 
-#include "llvm/ADT/SmallVector.h"
-
 namespace mlir {
 namespace analysis {
 namespace presburger {
 
 class PresburgerSet {
 public:
-  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false, ArrayRef<std::string> oParamNames = {})
-      : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty), paramNames(oParamNames.begin(), oParamNames.end()) {}
+  PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false)
+      : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty) {}
   PresburgerSet(PresburgerBasicSet cs);
-  PresburgerSet(unsigned nDim, unsigned nSym, llvm::SmallVector<std::string, 8> oParamNames)
-      : nDim(nDim), nSym(nSym), markedEmpty(false), paramNames(std::move(oParamNames)) {}
-  PresburgerSet(unsigned nDim, unsigned nSym, ArrayRef<std::string> oParamNames)
-      : nDim(nDim), nSym(nSym), markedEmpty(false), paramNames(oParamNames.begin(), oParamNames.end()) {}
 
   unsigned getNumBasicSets() const;
   unsigned getNumDims() const;
@@ -26,9 +20,9 @@ public:
   static PresburgerSet eliminateExistentials(const PresburgerSet &set);
   const SmallVector<PresburgerBasicSet, 4> &getBasicSets() const;
   void addBasicSet(PresburgerBasicSet cs);
-  void unionSet(PresburgerSet set);
-  void intersectSet(PresburgerSet set);
-  static bool equal(PresburgerSet s, PresburgerSet t);
+  void unionSet(const PresburgerSet &set);
+  void intersectSet(const PresburgerSet &set);
+  static bool equal(const PresburgerSet &s, const PresburgerSet &t);
   void print(raw_ostream &os) const;
   void dump() const;
   void dumpCoeffs() const;
@@ -40,15 +34,9 @@ public:
   bool isMarkedEmpty() const;
   bool isUniverse() const;
 
-  ArrayRef<std::string> getParamNames() const { return paramNames; }
-
-  void dumpParamNames() const;
-
-  static void alignParams(PresburgerSet &s, PresburgerSet &t);
-
-  static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym, ArrayRef<std::string> oParamNames = {});
+  static PresburgerSet makeEmptySet(unsigned nDim, unsigned nSym);
   static PresburgerSet complement(const PresburgerSet &set);
-  void subtract(PresburgerSet set);
+  void subtract(const PresburgerSet &set);
   static PresburgerSet subtract(PresburgerBasicSet c,
                                 const PresburgerSet &set);
 
@@ -58,10 +46,6 @@ public:
   llvm::Optional<SmallVector<int64_t, 8>> maybeGetCachedSample() const;
 
 private:
-  void insertParametricDimensions(unsigned pos, unsigned count);
-  void swapDimensions(unsigned i, unsigned j);
-
-
   unsigned nDim;
   unsigned nSym;
   SmallVector<PresburgerBasicSet, 4> basicSets;
@@ -73,7 +57,6 @@ private:
   void printBasicSet(raw_ostream &os, PresburgerBasicSet cs) const;
   void printVar(raw_ostream &os, int64_t var, unsigned i,
                 unsigned &countNonZero) const;
-  llvm::SmallVector<std::string, 8> paramNames;
 };
 
 } // namespace presburger

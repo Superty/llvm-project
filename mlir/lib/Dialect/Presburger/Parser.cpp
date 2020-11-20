@@ -9,7 +9,6 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/ErrorHandling.h"
-#include <string>
 
 using namespace mlir;
 using namespace mlir::analysis::presburger;
@@ -729,7 +728,7 @@ PresburgerParser::PresburgerParser(Parser parser) : parser(parser) {}
 /// initializes a name to id mapping for variables
 LogicalResult
 PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
-                                StringMap<unsigned> &map) {
+                                StringMap<size_t> &map) {
   map.clear();
   for (auto &name : vars) {
     auto it = map.find(name);
@@ -769,11 +768,7 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
 /// PresburgerBasicSet object
 LogicalResult PresburgerParser::parsePresburgerSet(Expr *constraints,
                                                    PresburgerSet &set) {
-  llvm::SmallVector<std::string, 8> paramNames(symNameToIndex.size());
-  for (auto it = symNameToIndex.begin(); it != symNameToIndex.end(); ++it) {
-    paramNames[it->second] = it->getKeyData();
-  }
-  set = PresburgerSet(dimNameToIndex.size(), symNameToIndex.size(), std::move(paramNames));
+  set = PresburgerSet(dimNameToIndex.size(), symNameToIndex.size());
   if (auto orConstraints = constraints->dyn_cast<OrExpr>()) {
     for (std::unique_ptr<Expr> &basicSet : orConstraints->getConstraints()) {
       PresburgerBasicSet bs;

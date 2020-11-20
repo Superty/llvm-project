@@ -243,7 +243,7 @@ void getBasicSetInequalities(const PresburgerBasicSet &bs,
 }
 
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
-  PresburgerSet newSet(set.getNumDims(), set.getNumSyms(), set.getParamNames());
+  PresburgerSet newSet(set.getNumDims(), set.getNumSyms());
   SmallVector<PresburgerBasicSet, 4> basicSetVector = set.getBasicSets();
   // TODO: find better looping strategy
   // redefine coalescing function on two BasicSets, return a BasicSet and do the

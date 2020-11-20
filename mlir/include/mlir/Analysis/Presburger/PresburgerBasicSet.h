@@ -87,6 +87,9 @@ public:
   void dump() const;
   void print(raw_ostream &os) const;
 
+  void printISL(raw_ostream &os) const;
+  void dumpISL() const;
+
 private:
   void substitute(ArrayRef<int64_t> values);
 
@@ -125,11 +128,7 @@ private:
 
   Matrix coefficientMatrixFromEqs() const;
 
-  void swapDimensions(unsigned i, unsigned j);
-  void swapParametricDimensions(unsigned i, unsigned j);
-
   void insertDimensions(unsigned pos, unsigned count);
-  void insertParametricDimensions(unsigned pos, unsigned count);
   void prependExistentialDimensions(unsigned count);
   void appendExistentialDimensions(unsigned count);
 
@@ -142,7 +141,6 @@ private:
   SmallVector<EqualityConstraint, 8> eqs;
   SmallVector<DivisionConstraint, 8> divs;
   unsigned nDim, nParam, nExist;
-
 };
 } // namespace presburger
 } // namespace analysis

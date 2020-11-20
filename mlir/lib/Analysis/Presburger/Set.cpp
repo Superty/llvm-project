@@ -4,7 +4,6 @@
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
-#include "llvm/ADT/SmallVector.h"
 
 // TODO should we change this to a storage type?
 using namespace mlir;
@@ -57,14 +56,15 @@ static void assertDimensionsCompatible(PresburgerSet set1, PresburgerSet set2) {
 
 void PresburgerSet::addBasicSet(PresburgerBasicSet cs) {
   assertDimensionsCompatible(cs, *this);
+
   markedEmpty = false;
   basicSets.push_back(cs);
 }
 
-void PresburgerSet::unionSet(PresburgerSet set) {
-  alignParams(*this, set);
+void PresburgerSet::unionSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
-  for (PresburgerBasicSet &cs : set.basicSets)
+
+  for (const PresburgerBasicSet &cs : set.basicSets)
     addBasicSet(std::move(cs));
 }
 
@@ -72,8 +72,7 @@ void PresburgerSet::unionSet(PresburgerSet set) {
 //
 // We directly compute (S_1 or S_2 ...) and (T_1 or T_2 ...)
 // as (S_1 and T_1) or (S_1 and T_2) or ...
-void PresburgerSet::intersectSet(PresburgerSet set) {
-  alignParams(*this, set);
+void PresburgerSet::intersectSet(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
 
   if (markedEmpty)
@@ -90,7 +89,7 @@ void PresburgerSet::intersectSet(PresburgerSet set) {
     return;
   }
 
-  PresburgerSet result(nDim, nSym, true, set.getParamNames());
+  PresburgerSet result(nDim, nSym, true);
   for (const PresburgerBasicSet &cs1 : basicSets) {
     for (const PresburgerBasicSet &cs2 : set.basicSets) {
       PresburgerBasicSet intersection(cs1);
@@ -101,8 +100,8 @@ void PresburgerSet::intersectSet(PresburgerSet set) {
   *this = std::move(result);
 }
 
-PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym, ArrayRef<std::string> oParamNames) {
-  PresburgerSet result(nDim, nSym, true, oParamNames);
+PresburgerSet PresburgerSet::makeEmptySet(unsigned nDim, unsigned nSym) {
+  PresburgerSet result(nDim, nSym, true);
   return result;
 }
 
@@ -270,61 +269,13 @@ PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs)
   return result;
 }
 
-void PresburgerSet::insertParametricDimensions(unsigned pos, unsigned count) {
-  for (auto &bs : basicSets)
-    bs.insertParametricDimensions(pos, count);
-  nSym += count;
-}
-
-void PresburgerSet::swapDimensions(unsigned i, unsigned j) {
-  for (auto &bs : basicSets)
-    bs.swapDimensions(i, j);
-}
-
-void PresburgerSet::alignParams(PresburgerSet &s, PresburgerSet &t) {
-  auto &sl = s.paramNames;
-  auto &tl = t.paramNames;
-  if (sl == tl)
-    return;
-  assert(sl.size() == s.nSym && tl.size() == t.nSym);
-
-  unsigned nCommon = 0;
-  for (unsigned i = 0; i < sl.size(); ++i) {
-    for (unsigned j = 0; j < tl.size(); ++j) {
-      if (sl[i] == tl[j]) {
-        s.swapDimensions(s.nDim + nCommon, s.nDim + i);
-        t.swapDimensions(t.nDim + nCommon, t.nDim + j);
-        std::swap(sl[nCommon], sl[i]);
-        std::swap(tl[nCommon], tl[j]);
-        nCommon++;
-        break;
-      }
-    }
-  }
-
-  sl.insert(sl.end(),             tl.begin() + nCommon, tl.begin() + t.nSym);
-  tl.insert(tl.begin() + nCommon, sl.begin() + nCommon, sl.begin() + s.nSym);
-  unsigned total = sl.size();
-  s.insertParametricDimensions(s.nSym,  total - s.nSym);
-  t.insertParametricDimensions(nCommon, total - t.nSym);
-}
-
-void PresburgerSet::dumpParamNames() const {
-  for (auto name : paramNames) {
-    llvm::errs() << name << ", ";
-  }
-  llvm::errs() << '\n';
-}
-
 PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerSet &set) {
-  PresburgerSet unquantifiedSet(set.getNumDims(), set.getNumSyms(), set.getParamNames());
+  PresburgerSet unquantifiedSet(set.getNumDims(), set.getNumSyms());
   for (const auto &bs : set.getBasicSets()) {
     if (bs.getNumExists() == 0) {
       unquantifiedSet.addBasicSet(bs);
     } else {
-      auto res = PresburgerSet::eliminateExistentials(bs);
-      res.paramNames = set.paramNames;
-      unquantifiedSet.unionSet(std::move(res));
+      unquantifiedSet.unionSet(PresburgerSet::eliminateExistentials(bs));
     }
   }
   return unquantifiedSet;
@@ -336,12 +287,12 @@ PresburgerSet PresburgerSet::subtract(PresburgerBasicSet cs,
   assertDimensionsCompatible(cs, set);
 
   if (set.isUniverse())
-    return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms(), set.getParamNames());
+    return PresburgerSet::makeEmptySet(set.getNumDims(), set.getNumSyms());
   if (set.isMarkedEmpty())
     return PresburgerSet(cs);
 
   Simplex simplex(cs);
-  PresburgerSet result(set.getNumDims(), set.getNumSyms(), set.getParamNames());
+  PresburgerSet result(set.getNumDims(), set.getNumSyms());
   subtractRecursively(cs, simplex, eliminateExistentials(set), 0, result);
   return result;
 }
@@ -354,10 +305,8 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 // Subtracts the set S from the current set.
 //
 // We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
-void PresburgerSet::subtract(PresburgerSet set) {
-  alignParams(*this, set);
+void PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
-  
   if (markedEmpty)
     return;
   if (set.isMarkedEmpty())
@@ -371,21 +320,19 @@ void PresburgerSet::subtract(PresburgerSet set) {
     return;
   }
 
-  PresburgerSet result = PresburgerSet::makeEmptySet(nDim, nSym, set.getParamNames());
-  for (PresburgerBasicSet &c : basicSets)
-    result.unionSet(subtract(std::move(c), set));
-  *this = std::move(result);
+  PresburgerSet result = PresburgerSet::makeEmptySet(nDim, nSym);
+  for (const PresburgerBasicSet &c : basicSets)
+    result.unionSet(subtract(c, set));
+  *this = result;
 }
 
-bool PresburgerSet::equal(PresburgerSet s, PresburgerSet t) {
+bool PresburgerSet::equal(const PresburgerSet &s, const PresburgerSet &t) {
   // TODO we cannot assert here, as equal is used by other functionality that
   // otherwise breaks here
   // assert(s.getNumSyms() + t.getNumSyms() == 0 &&
   //       "operations on sets with symbols are not yet supported");
 
-  alignParams(s, t);
   assertDimensionsCompatible(s, t);
-
   PresburgerSet sCopy = s, tCopy = t;
   sCopy.subtract(std::move(t));
   if (!sCopy.isIntegerEmpty())

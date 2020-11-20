@@ -37,11 +37,6 @@ public:
     coeffs.insert(coeffs.begin() + pos, count, 0);
   }
 
-  void swapDimensions(unsigned i, unsigned j) {
-    assert(i < getNumDims() && j < getNumDims() && "dimensions must be valid");
-    std::swap(coeffs[i], coeffs[j]);
-  }
-
   /// Erase `count` dimensions starting at the `pos`-th one.
   void eraseDimensions(unsigned pos, unsigned count) {
     assert(pos + count - 1 < getNumDims() &&
