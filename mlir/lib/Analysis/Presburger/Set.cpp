@@ -303,8 +303,7 @@ void PresburgerSet::alignParams(PresburgerSet &s, PresburgerSet &t) {
   }
 
   sl.insert(sl.end(),             tl.begin() + nCommon, tl.begin() + t.nSym);
-  tl = sl;
-  // tl.insert(tl.begin() + nCommon, sl.begin() + nCommon, sl.begin() + oldSSym);
+  tl.insert(tl.begin() + nCommon, sl.begin() + nCommon, sl.begin() + s.nSym);
   unsigned total = sl.size();
   s.insertParametricDimensions(s.nSym,  total - s.nSym);
   t.insertParametricDimensions(nCommon, total - t.nSym);

@@ -52,9 +52,8 @@ TEST(PresburgerSetTest, Equality) {
 }
 
 TEST(PresburgerSetTest, Params) {
-  auto s = setFromString("()[] : ()");
+  auto s = setFromString("(x)[r, p] : (x = 2p and x = 4r)");
   auto t = setFromString("(x)[q, r] : (x = 3q and x = 5r)");
-  PresburgerSet::alignParams(s, t);
-  s.dumpISL();
-  t.dumpISL();
+  s.unionSet(t);
+  // s.dumpISL();
 }
