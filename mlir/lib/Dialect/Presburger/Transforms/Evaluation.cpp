@@ -18,8 +18,9 @@ using namespace mlir::presburger;
 static SetOp unionSets(PatternRewriter &rewriter, Operation *op,
                        PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto a2 = attr2.getValue();
   auto start = std::chrono::system_clock::now();
-  ps.unionSet(attr2.getValue());
+  ps.unionSet(a2);
   auto end = std::chrono::system_clock::now();
   llvm::errs() << 
     std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -34,8 +35,9 @@ static SetOp unionSets(PatternRewriter &rewriter, Operation *op,
 static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto a2 = attr2.getValue();
   auto start = std::chrono::system_clock::now();
-  ps.intersectSet(attr2.getValue());
+  ps.intersectSet(a2);
   auto end = std::chrono::system_clock::now();
   llvm::errs() << 
     std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -50,8 +52,9 @@ static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
 static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
                           PresburgerSetAttr attr1, PresburgerSetAttr attr2) {
   PresburgerSet ps(attr1.getValue());
+  auto a2 = attr2.getValue();
   auto start = std::chrono::system_clock::now();
-  ps.subtract(attr2.getValue());
+  ps.subtract(a2);
   auto end = std::chrono::system_clock::now();
   llvm::errs() << 
     std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -101,8 +104,9 @@ static SetOp eliminateExistentialsSet(PatternRewriter &rewriter, Operation *op,
 
 static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
+  auto a = attr.getValue();
   auto start = std::chrono::system_clock::now();
-  PresburgerSet ps = PresburgerSet::complement(attr.getValue());
+  PresburgerSet ps = PresburgerSet::complement(a);
   auto end = std::chrono::system_clock::now();
   llvm::errs() << 
     std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -139,7 +143,7 @@ static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
   PresburgerSet ps = attr.getValue();
   auto start = std::chrono::system_clock::now();
 
-  bool empty = !ps.findIntegerSample().hasValue();
+  bool empty = ps.isIntegerEmpty();
 
   auto end = std::chrono::system_clock::now();
   llvm::errs() << 
