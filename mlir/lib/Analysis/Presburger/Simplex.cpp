@@ -1345,6 +1345,8 @@ Optional<SmallVector<int64_t, 8>> Simplex::findIntegerSample() {
   unsigned nDims = var.size();
   Matrix basis = Matrix::identity(nDims);
 
+  unsigned timesReduced = 0;
+
   unsigned level = 0;
   // The snapshot just before constraining a direction to a value at each
   // level.
@@ -1385,12 +1387,13 @@ Optional<SmallVector<int64_t, 8>> Simplex::findIntegerSample() {
       if (auto maybeSample = getSamplePointIfIntegral())
         return *maybeSample;
 
-      if (minRoundedUp < maxRoundedDown) {
+      if (timesReduced == 0 && minRoundedUp < maxRoundedDown) {
         reduceBasis(basis, level);
         basisCoeffs = llvm::to_vector<8>(basis.getRow(level));
         basisCoeffs.push_back(0);
         std::tie(minRoundedUp, maxRoundedDown) =
             computeIntegerBounds(basisCoeffs);
+        timesReduced++;
       }
 
       snapshotStack.push_back(getSnapshot());
