@@ -45,26 +45,26 @@ public:
   PresburgerParser(ParserState &state) : Parser(state){};
 
   /// Parse a Presburger set into set
-  LogicalResult parsePresburgerSet(PresburgerSet &set);
+  ParseResult parsePresburgerSet(PresburgerSet &set);
 
 private:
-  LogicalResult parseFlatAffineConstraints(FlatAffineConstraints &fac);
-  LogicalResult initVariables(const SmallVector<StringRef, 8> &vars,
-                              StringMap<unsigned> &map);
+  ParseResult parseFlatAffineConstraints(FlatAffineConstraints &fac);
+  ParseResult initVariables(const SmallVector<StringRef, 8> &vars,
+                            StringMap<unsigned> &map);
 
   StringMap<unsigned> dimNameToIndex;
   StringMap<unsigned> symNameToIndex;
 
-  LogicalResult parseDimAndOptionalSymbolIdList(
+  ParseResult parseDimAndOptionalSymbolIdList(
       std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
           &dimSymPair);
 
-  LogicalResult parsePresburgerSetConstraints(PresburgerSet &set);
+  ParseResult parsePresburgerSetConstraints(PresburgerSet &set);
 
-  LogicalResult parseConstraint(FlatAffineConstraints &fac);
-  LogicalResult parseSum(Coefficients &coefs);
-  LogicalResult parseTerm(Coefficients &coefs, bool is_negated = false);
-  LogicalResult parseVariable(StringRef &var);
+  ParseResult parseConstraint(FlatAffineConstraints &fac);
+  ParseResult parseSum(Coefficients &coefs);
+  ParseResult parseTerm(Coefficients &coefs, bool is_negated = false);
+  ParseResult parseVariable(StringRef &var);
 };
 
 //===----------------------------------------------------------------------===//
@@ -72,7 +72,7 @@ private:
 //===----------------------------------------------------------------------===//
 
 /// initializes a name to id mapping for variables
-LogicalResult
+ParseResult
 PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
                                 StringMap<unsigned> &map) {
   map.clear();
@@ -100,11 +100,11 @@ PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
 ///  pb-int        ::= digit+
 ///
 /// TODO adapt grammar to future changes
-LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
+ParseResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
   std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
 
   // TODO merge dimSymPair with the id list
-  if (failed(parseDimAndOptionalSymbolIdList(dimSymPair)))
+  if (parseDimAndOptionalSymbolIdList(dimSymPair))
     return failure();
 
   if (parseToken(Token::colon, "expected ':'"))
@@ -117,7 +117,7 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
   set =
       PresburgerSet::getUniverse(dimNameToIndex.size(), symNameToIndex.size());
 
-  if (failed(parsePresburgerSetConstraints(set)))
+  if (parsePresburgerSetConstraints(set))
     return failure();
 
   // TODO
@@ -133,7 +133,7 @@ LogicalResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
 ///
 /// dim-and-symbol-use-list is defined elsewhere
 ///
-LogicalResult PresburgerParser::parseDimAndOptionalSymbolIdList(
+ParseResult PresburgerParser::parseDimAndOptionalSymbolIdList(
     std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
         &dimSymPair) {
   // TODO refactor this method!
@@ -179,7 +179,7 @@ LogicalResult PresburgerParser::parseDimAndOptionalSymbolIdList(
 ///
 ///  pb-or-expr ::= pb-and-expr (`or` pb-and-expr)*
 ///
-LogicalResult
+ParseResult
 PresburgerParser::parsePresburgerSetConstraints(PresburgerSet &set) {
   if (parseToken(Token::l_paren, "expected '('"))
     return failure();
@@ -188,13 +188,13 @@ PresburgerParser::parsePresburgerSetConstraints(PresburgerSet &set) {
     return success();
 
   FlatAffineConstraints fac;
-  if (failed(parseFlatAffineConstraints(fac)))
+  if (parseFlatAffineConstraints(fac))
     return failure();
 
   set.unionFACInPlace(fac);
 
   while (consumeIf(Token::kw_or)) {
-    if (failed(parseFlatAffineConstraints(fac)))
+    if (parseFlatAffineConstraints(fac))
       return failure();
     set.unionFACInPlace(fac);
   }
@@ -209,15 +209,15 @@ PresburgerParser::parsePresburgerSetConstraints(PresburgerSet &set) {
 ///
 ///  pb-and-expr ::= pb-constraint (`and` pb-constraint)*
 ///
-LogicalResult
+ParseResult
 PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
   fac = FlatAffineConstraints(dimNameToIndex.size(), symNameToIndex.size());
 
-  if (failed(parseConstraint(fac)))
+  if (parseConstraint(fac))
     return failure();
 
   while (consumeIf(Token::kw_and)) {
-    if (failed(parseConstraint(fac)))
+    if (parseConstraint(fac))
       return failure();
   }
 
@@ -228,10 +228,10 @@ PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
 ///
 ///  pb-constraint ::= pb-expr (`>=` | `=` | `<=`) pb-expr
 ///
-LogicalResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
+ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
   Coefficients left;
   Coefficients right;
-  if (failed(parseSum(left)))
+  if (parseSum(left))
     return failure();
 
   ConstraintKind kind;
@@ -264,7 +264,7 @@ LogicalResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
     return emitError("expected comparison operator");
   }
 
-  if (failed(parseSum(right)))
+  if (parseSum(right))
     return failure();
 
   int64_t constant;
@@ -300,18 +300,18 @@ LogicalResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
 ///
 ///  pb-sum ::= pb-term (('+' | '-') pb-term)*
 ///
-LogicalResult PresburgerParser::parseSum(Coefficients &coeffs) {
+ParseResult PresburgerParser::parseSum(Coefficients &coeffs) {
   unsigned size = dimNameToIndex.size() + symNameToIndex.size();
   coeffs = {0, SmallVector<int64_t, 8>(size, 0)};
 
-  if (failed(parseTerm(coeffs)))
+  if (parseTerm(coeffs))
     return failure();
 
   while (getToken().isAny(Token::plus, Token::minus)) {
     bool isMinus = getToken().is(Token::minus);
     consumeToken();
 
-    if (failed(parseTerm(coeffs, isMinus)))
+    if (parseTerm(coeffs, isMinus))
       return failure();
   }
 
@@ -323,8 +323,7 @@ LogicalResult PresburgerParser::parseSum(Coefficients &coeffs) {
 ///  pb-term       ::= '-'? pb-int? pb-var
 ///                ::= '-'? pb-int
 ///
-LogicalResult PresburgerParser::parseTerm(Coefficients &coeffs,
-                                          bool isNegated) {
+ParseResult PresburgerParser::parseTerm(Coefficients &coeffs, bool isNegated) {
   if (consumeIf(Token::minus))
     isNegated = !isNegated;
 
@@ -343,7 +342,7 @@ LogicalResult PresburgerParser::parseTerm(Coefficients &coeffs,
   }
 
   if (getToken().is(Token::bare_identifier)) {
-    if (failed(parseVariable(identifier)))
+    if (parseVariable(identifier))
       return failure();
     varFound = true;
   }
@@ -376,7 +375,7 @@ LogicalResult PresburgerParser::parseTerm(Coefficients &coeffs,
 ///
 ///  pb-var ::= letter (digit | letter)*
 ///
-LogicalResult PresburgerParser::parseVariable(StringRef &var) {
+ParseResult PresburgerParser::parseVariable(StringRef &var) {
   if (getToken().isNot(Token::bare_identifier))
     return failure();
   var = getTokenSpelling();
@@ -395,7 +394,7 @@ FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
   ParserState state(sourceMgr, ctx, symbols);
   PresburgerParser parser(state);
   PresburgerSet set = PresburgerSet::getUniverse(1, 1);
-  if (failed(parser.parsePresburgerSet(set)))
+  if (parser.parsePresburgerSet(set))
     return failure();
   return set;
 }
