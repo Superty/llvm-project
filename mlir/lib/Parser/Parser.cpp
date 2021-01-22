@@ -95,7 +95,7 @@ ParseResult Parser::parseToken(Token::Kind expectedToken,
 }
 
 /// Parse an optional integer value from the stream.
-OptionalParseResult Parser::parseOptionalInteger(uint64_t &result) {
+OptionalParseResult Parser::parseOptionalInteger(int64_t &result) {
   Token curToken = getToken();
   if (curToken.isNot(Token::integer, Token::minus))
     return llvm::None;
@@ -1128,7 +1128,7 @@ public:
   }
 
   /// Parse an optional integer value from the stream.
-  OptionalParseResult parseOptionalInteger(uint64_t &result) override {
+  OptionalParseResult parseOptionalInteger(int64_t &result) override {
     return parser.parseOptionalInteger(result);
   }
 

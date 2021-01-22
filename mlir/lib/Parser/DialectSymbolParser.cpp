@@ -81,7 +81,7 @@ public:
   }
 
   /// Parse an optional integer value from the stream.
-  OptionalParseResult parseOptionalInteger(uint64_t &result) override {
+  OptionalParseResult parseOptionalInteger(int64_t &result) override {
     return parser.parseOptionalInteger(result);
   }
 

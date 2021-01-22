@@ -423,7 +423,7 @@ public:
   }
 
   /// Parse an optional integer value from the stream.
-  virtual OptionalParseResult parseOptionalInteger(uint64_t &result) = 0;
+  virtual OptionalParseResult parseOptionalInteger(int64_t &result) = 0;
 
   template <typename IntT>
   OptionalParseResult parseOptionalInteger(IntT &result) {

@@ -128,7 +128,7 @@ public:
   ParseResult parseToken(Token::Kind expectedToken, const Twine &message);
 
   /// Parse an optional integer value from the stream.
-  OptionalParseResult parseOptionalInteger(uint64_t &result);
+  OptionalParseResult parseOptionalInteger(int64_t &result);
 
   //===--------------------------------------------------------------------===//
   // Type Parsing
