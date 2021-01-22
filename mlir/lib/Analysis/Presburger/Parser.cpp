@@ -38,8 +38,7 @@ struct Coefficients {
 
 enum class ConstraintKind { LE, GE, EQ };
 
-/// Uses the Lexer to transform a token stream into an AST representing
-/// different Presburger constructs.
+/// This is a specialized parser for Presburger structures (Presburger set)
 class PresburgerParser : public Parser {
 public:
   PresburgerParser(ParserState &state) : Parser(state){};
@@ -49,15 +48,14 @@ public:
 
 private:
   ParseResult parseFlatAffineConstraints(FlatAffineConstraints &fac);
-  ParseResult initVariables(const SmallVector<StringRef, 8> &vars,
-                            StringMap<unsigned> &map);
 
-  StringMap<unsigned> dimNameToIndex;
-  StringMap<unsigned> symNameToIndex;
-
+  ParseResult parseDimIdList(unsigned &numDims);
+  ParseResult parseSymbolIdList(unsigned &numSymbols);
   ParseResult parseDimAndOptionalSymbolIdList(
       std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
           &dimSymPair);
+  ParseResult parseDimAndOptionalSymbolIdList(unsigned &numDims,
+                                              unsigned &numSymbols);
 
   ParseResult parsePresburgerSetConstraints(PresburgerSet &set);
 
@@ -65,27 +63,15 @@ private:
   ParseResult parseSum(Coefficients &coefs);
   ParseResult parseTerm(Coefficients &coefs, bool is_negated = false);
   ParseResult parseVariable(StringRef &var);
+
+  /// Mapping from names to ids
+  StringMap<unsigned> dimNameToIndex;
+  StringMap<unsigned> symNameToIndex;
 };
 
 //===----------------------------------------------------------------------===//
 // PresburgerParser
 //===----------------------------------------------------------------------===//
-
-/// initializes a name to id mapping for variables
-ParseResult
-PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
-                                StringMap<unsigned> &map) {
-  map.clear();
-  for (auto &name : vars) {
-    auto it = map.find(name);
-    if (it != map.end())
-      return emitError(
-          "repeated variable names in the tuple are not yet supported");
-
-    map.insert_or_assign(name, map.size());
-  }
-  return success();
-}
 
 /// Parse a Presburger set.
 ///
@@ -101,18 +87,13 @@ PresburgerParser::initVariables(const SmallVector<StringRef, 8> &vars,
 ///
 /// TODO adapt grammar to future changes
 ParseResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
-  std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>> dimSymPair;
+  unsigned numDims = 0, numSymbols = 0;
 
-  // TODO merge dimSymPair with the id list
-  if (parseDimAndOptionalSymbolIdList(dimSymPair))
+  if (parseDimAndOptionalSymbolIdList(numDims, numSymbols))
     return failure();
 
   if (parseToken(Token::colon, "expected ':'"))
     return failure();
-
-  // init the name to id bindings
-  initVariables(dimSymPair.first, dimNameToIndex);
-  initVariables(dimSymPair.second, symNameToIndex);
 
   set =
       PresburgerSet::getUniverse(dimNameToIndex.size(), symNameToIndex.size());
@@ -129,50 +110,69 @@ ParseResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
   return success();
 }
 
-/// Parse the list of symbolic identifiers
-///
-/// dim-and-symbol-use-list is defined elsewhere
-///
-ParseResult PresburgerParser::parseDimAndOptionalSymbolIdList(
-    std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
-        &dimSymPair) {
-  // TODO refactor this method!
+/// Parse the list of dimensional identifiers to an affine map.
+ParseResult PresburgerParser::parseDimIdList(unsigned &numDims) {
   if (parseToken(Token::l_paren,
                  "expected '(' at start of dimensional identifiers list")) {
     return failure();
   }
 
   auto parseElt = [&]() -> ParseResult {
-    // TODO base this on AffineParser?
+    StringRef name;
+    if (parseVariable(name))
+      return failure();
 
-    if (getToken().isNot(Token::bare_identifier))
-      return emitError("expected bare identifier");
+    auto it = dimNameToIndex.find(name);
+    if (it != dimNameToIndex.end())
+      return emitError(
+          "repeated variable names in the tuple are not yet supported");
 
-    auto name = getTokenSpelling();
-    dimSymPair.first.push_back(name);
-    consumeToken(Token::bare_identifier);
-
+    dimNameToIndex.insert_or_assign(name, numDims++);
     return success();
   };
-  if (parseCommaSeparatedListUntil(Token::r_paren, parseElt, false))
+  return parseCommaSeparatedListUntil(Token::r_paren, parseElt);
+}
+
+/// Parse the list of symbolic identifiers to an affine map.
+ParseResult PresburgerParser::parseSymbolIdList(unsigned &numSymbols) {
+  consumeToken(Token::l_square);
+  auto parseElt = [&]() -> ParseResult {
+    StringRef name;
+    if (parseVariable(name))
+      return failure();
+
+    // TODO what should we report in this case?
+    auto it = dimNameToIndex.find(name);
+    if (it != dimNameToIndex.end())
+      return emitError(
+          "repeated variable names in the tuple are not yet supported");
+
+    auto it = symNameToIndex.find(name);
+    if (it != symNameToIndex.end())
+      return emitError(
+          "repeated variable names in the tuple are not yet supported");
+
+    symNameToIndex.insert_or_assign(name, numSymbols++);
+    return success();
+  };
+  return parseCommaSeparatedListUntil(Token::r_square, parseElt);
+}
+
+/// Parse the list of symbolic identifiers
+///
+/// dim-and-symbol-use-list is defined elsewhere
+///
+ParseResult
+PresburgerParser::parseDimAndOptionalSymbolIdList(unsigned &numDims,
+                                                  unsigned &numSymbols) {
+  if (parseDimIdList(numDims)) {
     return failure();
-
-  if (getToken().is(Token::l_square)) {
-    consumeToken(Token::l_square);
-    auto parseElt = [&]() -> ParseResult {
-      if (getToken().isNot(Token::bare_identifier))
-        return emitError("expected bare identifier");
-
-      auto name = getTokenSpelling();
-      dimSymPair.second.push_back(name);
-      consumeToken(Token::bare_identifier);
-
-      return success();
-    };
-    return parseCommaSeparatedListUntil(Token::r_square, parseElt);
   }
-
-  return success();
+  if (!getToken().is(Token::l_square)) {
+    numSymbols = 0;
+    return success();
+  }
+  return parseSymbolIdList(numSymbols);
 }
 
 /// Parse an or expression.
