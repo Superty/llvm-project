@@ -64,7 +64,6 @@ private:
   LogicalResult parseConstraint(FlatAffineConstraints &fac);
   LogicalResult parseSum(Coefficients &coefs);
   LogicalResult parseTerm(Coefficients &coefs, bool is_negated = false);
-  LogicalResult parseInteger(int64_t &val, bool is_negated = false);
   LogicalResult parseVariable(StringRef &var);
 };
 
@@ -334,11 +333,10 @@ LogicalResult PresburgerParser::parseTerm(Coefficients &coeffs,
   bool intFound = false;
   bool varFound = false;
 
-  if (getToken().is(Token::integer)) {
-    if (failed(parseInteger(coeff, isNegated)))
-      return failure();
-    consumeIf(Token::star);
+  if (parseOptionalInteger(coeff).hasValue()) {
     intFound = true;
+    if (isNegated)
+      coeff = -coeff;
   } else if (isNegated) {
     coeff = -1;
     intFound = true;
@@ -385,29 +383,6 @@ LogicalResult PresburgerParser::parseVariable(StringRef &var) {
   consumeToken();
   return success();
 }
-
-/// Parse a signless integer.
-///
-///  pb-int ::= digit+
-/// TODO do we really need this?
-LogicalResult PresburgerParser::parseInteger(int64_t &value, bool isNegated) {
-  bool negativ = isNegated ^ consumeIf(Token::minus);
-
-  if (getToken().isNot(Token::integer))
-    return failure();
-  auto valueOpt = getToken().getUInt64IntegerValue();
-  if (!valueOpt.hasValue() || (int64_t)valueOpt.getValue() < 0)
-    return emitError("constant too large for index");
-
-  consumeToken(Token::integer);
-  if (negativ)
-    value = -valueOpt.getValue();
-  else
-    value = valueOpt.getValue();
-
-  return success();
-}
-
 } // namespace
 
 /// Parse an PresburgerSet from a given StringRef
