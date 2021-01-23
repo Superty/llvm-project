@@ -11,6 +11,9 @@
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 #include "mlir/Support/MathExtras.h"
 
+static int cnt = 0;
+int loglevel = 3;
+
 using namespace mlir;
 using namespace analysis::presburger;
 
@@ -1028,6 +1031,13 @@ public:
     assert(
         std::any_of(dir.begin(), dir.end(), [](int64_t x) { return x != 0; }) &&
         "Direction passed is the zero vector!");
+    if (loglevel >= 2) {
+      llvm::errs() << "adding equality for dir: ";
+      for (auto x : dir) {
+        llvm::errs() << x << ' ';
+      }
+      llvm::errs() << '\n';
+    }
     snapshotStack.push_back(simplex.getSnapshot());
     simplex.addEquality(getCoeffsForDirection(dir));
   }
@@ -1037,6 +1047,13 @@ public:
   Fraction computeWidthAndDuals(ArrayRef<int64_t> dir,
                                 SmallVectorImpl<int64_t> &dual,
                                 int64_t &dualDenom) {
+    if (loglevel >= 0) {
+      llvm::errs() << "Solving: ";
+      for (auto x : dir) {
+        llvm::errs() << x << ' ';
+      }
+      llvm::errs() << '\n';
+    }
     unsigned snap = simplex.getSnapshot();
     unsigned conIndex = simplex.addRow(getCoeffsForDirection(dir));
     unsigned row = simplex.con[conIndex].pos;
@@ -1199,6 +1216,8 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       int64_t candidateDualDenom[2];
       Fraction widthI[2];
 
+      if (loglevel >= 2)
+        llvm::errs() << "u candidates: " << u << ", " << u + 1 << '\n';
       // Initially u is floor(dual) and basis reflects this.
       widthI[0] = gbrSimplex.computeWidthAndDuals(
           basis.getRow(i + 1), candidateDual[0], candidateDualDenom[0]);
@@ -1210,11 +1229,26 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
           basis.getRow(i + 1), candidateDual[1], candidateDualDenom[1]);
 
       unsigned j = widthI[0] < widthI[1] ? 0 : 1;
+      if (loglevel >= 2)
+        llvm::errs() << "widths: " << widthI[0].num << '/' << widthI[0].den
+                     << ", " << widthI[1].num << '/' << widthI[1].den << "\n";
       if (j == 0)
         // Subtract 1 to go from u = ceil(dual) back to floor(dual).
         basis.addToRow(i, i + 1, -1);
       dual = std::move(candidateDual[j]);
       dualDenom = candidateDualDenom[j];
+      if (loglevel >= 3) {
+        llvm::errs() << "duals: ";
+        for (auto x : dual) {
+          llvm::errs() << x << "/" << dualDenom << " ";
+        }
+        llvm::errs() << '\n';
+      }
+      if (loglevel >= -1) {
+        llvm::errs() << cnt++ << ") ";
+        llvm::errs() << "R" << i + 1 << " += " << u - 1 + j << "*R" << i
+                     << "\n";
+      }
       // width_i(b{i+1} + u*b_i) should be minimized at our value of u.
       // Check that this holds by comparing with width_i
 #ifndef NDEBUG
@@ -1228,6 +1262,10 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       basis.addToRow(i, i + 1, j == 0 ? +1 : -1);
 #endif
       return widthI[j];
+    }
+    if (loglevel >= -1) {
+      llvm::errs() << cnt++ << ") ";
+      llvm::errs() << "R" << i + 1 << " += " << u << "*R" << i << "\n";
     }
     assert(i + 1 - level < width.size() && "width_{i+1} wasn't saved");
     // When dual minimizes f_i(b_{i+1} + dual*b_i), this is equal to
@@ -1260,6 +1298,13 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       assert(i == level && "This case should only occur when i == level");
       width.push_back(
           gbrSimplex.computeWidthAndDuals(basis.getRow(i), dual, dualDenom));
+      if (loglevel >= 2) {
+        llvm::errs() << "width: ";
+        for (auto x : width) {
+          llvm::errs() << x.num << '/' << x.den << ' ';
+        }
+        llvm::errs() << '\n';
+      }
     }
 
     if (i >= level + dual.size()) {
@@ -1269,6 +1314,20 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       gbrSimplex.addEqualityForDirection(basis.getRow(i));
       width.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), dual,
                                                       dualDenom));
+      if (loglevel >= 3) {
+        llvm::errs() << "duals: ";
+        for (auto x : dual) {
+          llvm::errs() << x << "/" << dualDenom << " ";
+        }
+        llvm::errs() << '\n';
+      }
+      if (loglevel >= 2) {
+        llvm::errs() << "width: ";
+        for (auto x : width) {
+          llvm::errs() << x.num << '/' << x.den << ' ';
+        }
+        llvm::errs() << '\n';
+      }
       gbrSimplex.removeLastEquality();
     }
 
@@ -1276,6 +1335,8 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
     Fraction widthICandidate = updateBasisWithUAndGetFCandidate(i);
     if (widthICandidate < epsilon * width[i - level]) {
       basis.swapRows(i, i + 1);
+      if (loglevel >= -1)
+        llvm::errs() << "swapping " << i << ", " << i + 1 << '\n';
       width[i - level] = widthICandidate;
       // The values of width_{i+1}(b_{i+1}) and higher may change after the
       // swap, so we remove the cached values here.
@@ -1284,9 +1345,18 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
         dual.clear();
         continue;
       }
+      if (loglevel >= 2) {
+        llvm::errs() << "width: ";
+        for (auto x : width) {
+          llvm::errs() << x.num << '/' << x.den << ' ';
+        }
+        llvm::errs() << '\n';
+      }
 
       gbrSimplex.removeLastEquality();
       i--;
+      if (loglevel >= 0)
+        llvm::errs() << "Going down to " << i << '\n';
       continue;
     }
 
@@ -1295,6 +1365,8 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
     dual.clear();
     gbrSimplex.addEqualityForDirection(basis.getRow(i));
     i++;
+    if (loglevel >= 0)
+      llvm::errs() << "Going up to " << i << '\n';
   }
 }
 
@@ -1327,6 +1399,11 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
 /// To avoid potentially arbitrarily large recursion depths leading to stack
 /// overflows, this algorithm is implemented iteratively.
 Optional<SmallVector<int64_t, 8>> Simplex::findIntegerSample() {
+  // detectRedundant();
+  // for (unsigned i = 0; i < con.size(); ++i) {
+  //   llvm::errs() << isMarkedRedundant(i) << '\n';
+  // }
+
   if (empty)
     return {};
 
@@ -1346,6 +1423,23 @@ Optional<SmallVector<int64_t, 8>> Simplex::findIntegerSample() {
   upperBoundStack.reserve(basis.getNumRows());
   nextValueStack.reserve(basis.getNumRows());
   while (level != -1u) {
+    if (loglevel >= 4) {
+      for (auto x : nextValueStack) {
+        llvm::errs() << x << '\t';
+      }
+      if (!upperBoundStack.empty())
+        llvm::errs() << '/' << upperBoundStack.back() << '\n';
+      basis.dump();
+    }
+    PresburgerBasicSet set(nDims);
+    for (unsigned i = 0; i < nextValueStack.size(); ++i) {
+      auto row = basis.getRow(i);
+      SmallVector<int64_t, 8> vec(row.begin(), row.end());
+      vec.push_back(-(nextValueStack[i] - 1));
+      set.addEquality(vec);
+    }
+    if (loglevel >= 0)
+      set.dump();
     if (level == basis.getNumRows()) {
       // We've assigned values to all variables. Return if we have a sample,
       // or go back up to the previous level otherwise.
@@ -1368,13 +1462,25 @@ Optional<SmallVector<int64_t, 8>> Simplex::findIntegerSample() {
       std::tie(minRoundedUp, maxRoundedDown) =
           computeIntegerBounds(basisCoeffs);
 
-      // Heuristic: if the sample point is integral at this point, just return
-      // it.
-      if (auto maybeSample = getSamplePointIfIntegral())
-        return *maybeSample;
+      if (loglevel >= 0) {
+        llvm::errs() << "dir=";
+        for (auto x : basisCoeffs)
+          llvm::errs() << x << ' ';
+        llvm::errs() << '\n';
+        llvm::errs() << "min = " << minRoundedUp << ", max = " << maxRoundedDown
+                     << "\n";
+      }
+
+      // // Heuristic: if the sample point is integral at this point, just
+      // return
+      // // it.
+      // if (auto maybeSample = getSamplePointIfIntegral())
+      //   return *maybeSample;
 
       if (minRoundedUp < maxRoundedDown) {
         reduceBasis(basis, level);
+        if (loglevel >= 0)
+          basis.dump();
         basisCoeffs = llvm::to_vector<8>(basis.getRow(level));
         basisCoeffs.push_back(0);
         std::tie(minRoundedUp, maxRoundedDown) =
