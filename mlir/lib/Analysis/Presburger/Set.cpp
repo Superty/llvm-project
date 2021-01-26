@@ -1,9 +1,9 @@
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Constraint.h"
-#include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
-#include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
+#include "mlir/Analysis/Presburger/Printer.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
 
 // TODO should we change this to a storage type?
 using namespace mlir;
@@ -14,15 +14,15 @@ PresburgerSet::PresburgerSet(PresburgerBasicSet cs)
   addBasicSet(cs);
 }
 
-unsigned PresburgerSet::getNumBasicSets() const {
-  return basicSets.size();
-}
+unsigned PresburgerSet::getNumBasicSets() const { return basicSets.size(); }
 
 unsigned PresburgerSet::getNumDims() const { return nDim; }
 
 unsigned PresburgerSet::getNumSyms() const { return nSym; }
 
-bool PresburgerSet::isMarkedEmpty() const { return markedEmpty || basicSets.empty(); }
+bool PresburgerSet::isMarkedEmpty() const {
+  return markedEmpty || basicSets.empty();
+}
 
 bool PresburgerSet::isUniverse() const {
   if (markedEmpty || basicSets.empty())
@@ -34,8 +34,7 @@ bool PresburgerSet::isUniverse() const {
   return false;
 }
 
-const SmallVector<PresburgerBasicSet, 4> &
-PresburgerSet::getBasicSets() const {
+const SmallVector<PresburgerBasicSet, 4> &PresburgerSet::getBasicSets() const {
   return basicSets;
 }
 
@@ -162,7 +161,8 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
   for (unsigned j = 0; j < numSIDivs; ++j)
     simplex.addVariable();
 
-  for (unsigned j = sI.getNumDivs() - numSIDivs, e = sI.getNumDivs(); j < e; ++j) {
+  for (unsigned j = sI.getNumDivs() - numSIDivs, e = sI.getNumDivs(); j < e;
+       ++j) {
     const DivisionConstraint &div = sI.getDivisions()[j];
     simplex.addInequality(div.getInequalityLowerBound().getCoeffs());
     simplex.addInequality(div.getInequalityUpperBound().getCoeffs());
@@ -245,8 +245,10 @@ void subtractRecursively(PresburgerBasicSet &b, Simplex &simplex,
   b = oldB;
 }
 
-PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs) {
-  ParamLexSimplex paramLexSimplex(bs.getNumTotalDims(), bs.getNumParams() + bs.getNumDims());
+PresburgerSet
+PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs) {
+  ParamLexSimplex paramLexSimplex(bs.getNumTotalDims(),
+                                  bs.getNumParams() + bs.getNumDims());
   for (const auto &div : bs.getDivisions()) {
     // The division variables must be in the same order they are stored in the
     // basic set.
@@ -263,7 +265,7 @@ PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerBasicSet &bs)
   PresburgerSet result(bs.getNumDims(), bs.getNumParams());
   for (auto &b : paramLexSimplex.findParamLexmin().domain) {
     b.nParam = bs.nParam;
-    b.nDim = bs.nDim; 
+    b.nDim = bs.nDim;
     result.addBasicSet(b);
   }
   return result;
@@ -307,7 +309,7 @@ PresburgerSet PresburgerSet::complement(const PresburgerSet &set) {
 // We compute (U_i T_i) - (U_i S_i) as U_i (T_i - U_i S_i).
 void PresburgerSet::subtract(const PresburgerSet &set) {
   assertDimensionsCompatible(set, *this);
-  
+
   if (markedEmpty)
     return;
   if (set.isMarkedEmpty())
@@ -387,13 +389,19 @@ void PresburgerSet::printISL(raw_ostream &os) const {
   printPresburgerSetISL(os, *this);
 }
 
-void PresburgerSet::dumpISL() const { printISL(llvm::errs()); llvm::errs() << '\n'; }
+void PresburgerSet::dumpISL() const {
+  printISL(llvm::errs());
+  llvm::errs() << '\n';
+}
 
 void PresburgerSet::print(raw_ostream &os) const {
   printPresburgerSet(os, *this);
 }
 
-void PresburgerSet::dump() const { print(llvm::errs()); llvm::errs() << '\n'; }
+void PresburgerSet::dump() const {
+  print(llvm::errs());
+  llvm::errs() << '\n';
+}
 
 void PresburgerSet::dumpCoeffs() const {
   llvm::errs() << "nBasicSets = " << basicSets.size() << '\n';

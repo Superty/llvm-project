@@ -89,6 +89,27 @@ bool PresburgerBasicSet::isIntegerEmpty() {
   else
     return !findSampleBounded().hasValue();
 }
+bool PresburgerBasicSet::satisfiesDual(ArrayRef<int64_t> duals) const {
+  SmallVector<int64_t, 8> c;
+  for (unsigned i = 0; i <= nDim; ++i) {
+    int64_t value = 0;
+    assert(duals.size() == ineqs.size());
+    for (unsigned j = 0; j < ineqs.size(); ++j) {
+      llvm::errs() << ineqs[j].getCoeffs()[i] << '\t';
+      value += duals[j] * ineqs[j].getCoeffs()[i];
+    }
+    llvm::errs() << '\n';
+    for (auto x : duals)
+      llvm::errs() << x << '\t';
+    c.push_back(value);
+    llvm::errs() << '\n';
+    llvm::errs() << '\n';
+  }
+  for (auto x : c)
+    llvm::errs() << x << ' ';
+  llvm::errs() << '\n';
+  return true;
+}
 
 Optional<std::pair<int64_t, SmallVector<int64_t, 8>>>
 PresburgerBasicSet::findRationalSample() const {

@@ -31,11 +31,14 @@ class PresburgerBasicSet {
 public:
   friend class PresburgerSet;
 
-  PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0, unsigned oNExist = 0)
-    : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
+  PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0,
+                     unsigned oNExist = 0)
+      : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
   unsigned getNumDims() const { return nDim; }
-  unsigned getNumTotalDims() const { return nParam + nDim + nExist + divs.size(); }
+  unsigned getNumTotalDims() const {
+    return nParam + nDim + nExist + divs.size();
+  }
   unsigned getNumParams() const { return nParam; }
   unsigned getNumExists() const { return nExist; }
   unsigned getNumDivs() const { return divs.size(); }
@@ -79,6 +82,7 @@ public:
   /// this basic set.
   Optional<std::pair<int64_t, SmallVector<int64_t, 8>>>
   findRationalSample() const;
+  bool satisfiesDual(ArrayRef<int64_t> duals) const;
 
   PresburgerBasicSet makeRecessionCone() const;
 

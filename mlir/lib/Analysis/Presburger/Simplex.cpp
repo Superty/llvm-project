@@ -1054,7 +1054,8 @@ public:
       // Note that the second inequality for the equality is negated.
       //
       // We want the dual for the original equality. If the positive
-      // inequality is in column position, the negative of its row coefficient
+      // inequality is in column position, the negative of its row
+      // coefficient
       // is the desired dual. If the negative inequality is in column
       // position, its row coefficient is the desired dual. (its coefficients
       // are already the negated coefficients of the original equality, so we
@@ -1093,6 +1094,27 @@ public:
         dual.push_back(simplex.tableau(row, simplex.con[i + 1].pos));
       }
     }
+    assert(Fraction(simplex.tableau(row, 1), simplex.tableau(row, 0)) ==
+           *maybeWidth);
+    dual.clear();
+    for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2) {
+      if (simplex.con[i].orientation == Orientation::Column) {
+        assert(simplex.con[i + 1].orientation == Orientation::Row);
+        dual.push_back(-simplex.tableau(row, simplex.con[i].pos));
+      } else if (simplex.con[i + 1].orientation == Orientation::Column) {
+        dual.push_back(simplex.tableau(row, simplex.con[i + 1].pos));
+      } else {
+        dual.push_back(0);
+      }
+    }
+    llvm::errs() << "All duals: ";
+    for (unsigned i = 0; i < conIndex; ++i) {
+      if (simplex.con[i].orientation == Orientation::Column)
+        llvm::errs() << -simplex.tableau(row, simplex.con[i].pos) << ' ';
+      else
+        llvm::errs() << "0 ";
+    }
+    llvm::errs() << '\n';
     simplex.rollback(snap);
     return *maybeWidth;
   }
@@ -1224,6 +1246,8 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
   auto updateBasisWithUAndGetFCandidate = [&](unsigned i) -> Fraction {
     assert(i < level + dual.size() && "dual_i is not known!");
 
+    llvm::errs() << "using dual " << i << " = " << dual[i - level] << '/'
+                 << dualDenom << '\n';
     int64_t u = floorDiv(dual[i - level], dualDenom);
     basis.addToRow(i, i + 1, u);
     if (dual[i - level] % dualDenom != 0) {
@@ -1247,6 +1271,11 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
         basis.addToRow(i, i + 1, -1);
       dual = std::move(candidateDual[j]);
       dualDenom = candidateDualDenom[j];
+      basis.dump();
+      llvm::errs() << "recomputed duals at " << i << ": ";
+      for (auto x : dual)
+        llvm::errs() << x << '/' << dualDenom << '\t';
+      llvm::errs() << '\n';
       // width_i(b{i+1} + u*b_i) should be minimized at our value of u.
       // Check that this holds by comparing with width_i
       basis.addToRow(i, i + 1, j == 0 ? -1 : +1);
@@ -1260,12 +1289,16 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       return widthI[j];
     }
     assert(i + 1 - level < width.size() && "width_{i+1} wasn't saved");
+    llvm::errs() << "duals fell through\n";
     // When dual minimizes f_i(b_{i+1} + dual*b_i), this is equal to
     // width_{i+1}(b_{i+1}).
     int64_t unusedDualDenom;
     SmallVector<int64_t, 8> unusedDuals;
     Fraction otherWidth = gbrSimplex.computeWidthAndDuals(
         basis.getRow(i + 1), unusedDuals, unusedDualDenom);
+    llvm::errs() << "width = " << width[i + 1 - level].num << '/'
+                 << width[i + 1 - level].den << " vs " << otherWidth.num << '/'
+                 << otherWidth.den << '\n';
     assert(otherWidth == width[i + 1 - level]);
     return width[i + 1 - level];
   };
@@ -1288,6 +1321,10 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       assert(i == level && "This case should only occur when i == level");
       width.push_back(
           gbrSimplex.computeWidthAndDuals(basis.getRow(i), dual, dualDenom));
+      llvm::errs() << "recomputed unused duals at " << i << ": ";
+      for (auto x : dual)
+        llvm::errs() << x << '/' << dualDenom << '\t';
+      llvm::errs() << '\n';
     }
 
     if (i >= level + dual.size()) {
@@ -1297,6 +1334,11 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       gbrSimplex.addEqualityForDirection(basis.getRow(i));
       width.push_back(gbrSimplex.computeWidthAndDuals(basis.getRow(i + 1), dual,
                                                       dualDenom));
+      basis.dump();
+      llvm::errs() << "recomputed duals at " << i << ": ";
+      for (auto x : dual)
+        llvm::errs() << x << '/' << dualDenom << '\t';
+      llvm::errs() << '\n';
       gbrSimplex.removeLastEquality();
     }
 
@@ -1309,6 +1351,7 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
       // swap, so we remove the cached values here.
       width.resize(i - level + 1);
       if (i == level) {
+        llvm::errs() << "cleared duals!\n";
         dual.clear();
         continue;
       }
@@ -1320,6 +1363,7 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
 
     // Invalidate duals since the higher level needs to recompute its own
     // duals.
+    llvm::errs() << "cleared duals!\n";
     dual.clear();
     gbrSimplex.addEqualityForDirection(basis.getRow(i));
     i++;
