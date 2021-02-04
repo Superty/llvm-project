@@ -12,12 +12,8 @@
 
 #include "mlir/Analysis/Presburger/Parser.h"
 #include "../../Parser/Parser.h"
-#include "mlir/IR/Diagnostics.h"
-#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringMap.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/SMLoc.h"
 #include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
@@ -51,9 +47,6 @@ private:
 
   ParseResult parseDimIdList(unsigned &numDims);
   ParseResult parseSymbolIdList(unsigned &numSymbols);
-  ParseResult parseDimAndOptionalSymbolIdList(
-      std::pair<SmallVector<StringRef, 8>, SmallVector<StringRef, 8>>
-          &dimSymPair);
   ParseResult parseDimAndOptionalSymbolIdList(unsigned &numDims,
                                               unsigned &numSymbols);
 
@@ -147,7 +140,7 @@ ParseResult PresburgerParser::parseSymbolIdList(unsigned &numSymbols) {
       return emitError(
           "repeated variable names in the tuple are not yet supported");
 
-    auto it = symNameToIndex.find(name);
+    it = symNameToIndex.find(name);
     if (it != symNameToIndex.end())
       return emitError(
           "repeated variable names in the tuple are not yet supported");
@@ -267,6 +260,7 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
   if (parseSum(right))
     return failure();
 
+  // TODO move to separate function, check if we can reuse one of the vectors.
   int64_t constant;
   SmallVector<int64_t, 8> coeffs;
 
@@ -384,7 +378,7 @@ ParseResult PresburgerParser::parseVariable(StringRef &var) {
 }
 } // namespace
 
-/// Parse an PresburgerSet from a given StringRef
+/// Parse a PresburgerSet from a given StringRef
 FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
                                                   MLIRContext *ctx) {
   SourceMgr sourceMgr;
