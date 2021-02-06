@@ -37,7 +37,8 @@ enum class ConstraintKind { LE, GE, EQ };
 /// This is a specialized parser for Presburger structures (Presburger set)
 class PresburgerParser : public Parser {
 public:
-  PresburgerParser(ParserState &state) : Parser(state){};
+  PresburgerParser(ParserState &state)
+      : Parser(state), numDims(0), numSymbols(0){};
 
   /// Parse a Presburger set into set
   ParseResult parsePresburgerSet(PresburgerSet &set);
@@ -45,10 +46,10 @@ public:
 private:
   ParseResult parseFlatAffineConstraints(FlatAffineConstraints &fac);
 
-  ParseResult parseDimIdList(unsigned &numDims);
-  ParseResult parseSymbolIdList(unsigned &numSymbols);
-  ParseResult parseDimAndOptionalSymbolIdList(unsigned &numDims,
-                                              unsigned &numSymbols);
+  ParseResult parseIdList(unsigned &numVar, Token::Kind rightToken);
+  ParseResult parseDimIdList();
+  ParseResult parseSymbolIdList();
+  ParseResult parseDimAndOptionalSymbolIdList();
 
   ParseResult parsePresburgerSetConstraints(PresburgerSet &set);
 
@@ -58,8 +59,9 @@ private:
   ParseResult parseVariable(StringRef &var);
 
   /// Mapping from names to ids
-  StringMap<unsigned> dimNameToIndex;
-  StringMap<unsigned> symNameToIndex;
+  unsigned numDims;
+  unsigned numSymbols;
+  StringMap<unsigned> dimAndSymNameToIndex;
 };
 
 //===----------------------------------------------------------------------===//
@@ -68,104 +70,81 @@ private:
 
 /// Parse a Presburger set.
 ///
-///  pb-set        ::= dim-and-symbol-use-list `:` `(` pb-or-expr? `)`
+///  pb-set        ::= dim-and-symbol-use-list `:` pb-or-expr
 ///  pb-or-expr    ::= pb-and-expr (`or` pb-and-expr)*
-///  pb-and-expr   ::= pb-constraint (`and` pb-constraint)*
+///  pb-and-expr   ::= `(` `)`
+///                  | `(` pb-constraint (`and` pb-constraint)* `)`
 ///  pb-constraint ::= pb-sum (`>=` | `=` | `<=`) pb-sum
-///  pb-sum        ::= pb-term (('+' | '-') pb-term)*
-///  pb-term       ::= '-'? pb-int? pb-var
-///                ::= '-'? pb-int
-///  pb-var        ::= letter (digit | letter)*
-///  pb-int        ::= digit+
+///  pb-sum        ::= pb-term ((`+` | `-`) pb-term)*
+///  pb-term       ::= `-`? integer-literal? bare-id
+///                  | `-`? integer-literal
 ///
-/// TODO adapt grammar to future changes
 ParseResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
-  unsigned numDims = 0, numSymbols = 0;
-
-  if (parseDimAndOptionalSymbolIdList(numDims, numSymbols))
+  if (parseDimAndOptionalSymbolIdList())
     return failure();
 
   if (parseToken(Token::colon, "expected ':'"))
     return failure();
 
-  set =
-      PresburgerSet::getUniverse(dimNameToIndex.size(), symNameToIndex.size());
+  set = PresburgerSet::getEmptySet(numDims, numSymbols);
 
   if (parsePresburgerSetConstraints(set))
     return failure();
 
-  // TODO
   // checks that we are at the end of the string
-  // if (lexer.reachedEOF())
-  //  return success();
-  // return emitErrorForToken(lexer.peek(),
-  //                         "expected to be at the end of the set");
+  if (!getToken().is(Token::eof))
+    return emitError("expected to be at the end of the set");
   return success();
 }
 
-/// Parse the list of dimensional identifiers to an affine map.
-ParseResult PresburgerParser::parseDimIdList(unsigned &numDims) {
+/// Helper to parse a list of identifiers
+ParseResult PresburgerParser::parseIdList(unsigned &numVar,
+                                          Token::Kind rightToken) {
+  auto parseElt = [&]() -> ParseResult {
+    StringRef name;
+    if (parseVariable(name))
+      return failure();
+
+    auto it = dimAndSymNameToIndex.find(name);
+    if (it != dimAndSymNameToIndex.end())
+      return emitError(
+          "repeated variable names in the tuple are not yet supported");
+
+    dimAndSymNameToIndex.insert_or_assign(name, numVar++);
+    return success();
+  };
+  return parseCommaSeparatedListUntil(rightToken, parseElt);
+}
+
+/// Parse the list of dimensional identifiers to a Presburger set
+ParseResult PresburgerParser::parseDimIdList() {
   if (parseToken(Token::l_paren,
                  "expected '(' at start of dimensional identifiers list")) {
     return failure();
   }
 
-  auto parseElt = [&]() -> ParseResult {
-    StringRef name;
-    if (parseVariable(name))
-      return failure();
-
-    auto it = dimNameToIndex.find(name);
-    if (it != dimNameToIndex.end())
-      return emitError(
-          "repeated variable names in the tuple are not yet supported");
-
-    dimNameToIndex.insert_or_assign(name, numDims++);
-    return success();
-  };
-  return parseCommaSeparatedListUntil(Token::r_paren, parseElt);
+  return parseIdList(numDims, Token::r_paren);
 }
 
 /// Parse the list of symbolic identifiers to an affine map.
-ParseResult PresburgerParser::parseSymbolIdList(unsigned &numSymbols) {
+ParseResult PresburgerParser::parseSymbolIdList() {
   consumeToken(Token::l_square);
-  auto parseElt = [&]() -> ParseResult {
-    StringRef name;
-    if (parseVariable(name))
-      return failure();
-
-    // TODO what should we report in this case?
-    auto it = dimNameToIndex.find(name);
-    if (it != dimNameToIndex.end())
-      return emitError(
-          "repeated variable names in the tuple are not yet supported");
-
-    it = symNameToIndex.find(name);
-    if (it != symNameToIndex.end())
-      return emitError(
-          "repeated variable names in the tuple are not yet supported");
-
-    symNameToIndex.insert_or_assign(name, numSymbols++);
-    return success();
-  };
-  return parseCommaSeparatedListUntil(Token::r_square, parseElt);
+  return parseIdList(numSymbols, Token::r_square);
 }
 
 /// Parse the list of symbolic identifiers
 ///
-/// dim-and-symbol-use-list is defined elsewhere
+/// dim-and-symbol-use-list is defined in the AffineParser
 ///
-ParseResult
-PresburgerParser::parseDimAndOptionalSymbolIdList(unsigned &numDims,
-                                                  unsigned &numSymbols) {
-  if (parseDimIdList(numDims)) {
+ParseResult PresburgerParser::parseDimAndOptionalSymbolIdList() {
+  if (parseDimIdList()) {
     return failure();
   }
   if (!getToken().is(Token::l_square)) {
     numSymbols = 0;
     return success();
   }
-  return parseSymbolIdList(numSymbols);
+  return parseSymbolIdList();
 }
 
 /// Parse an or expression.
@@ -174,12 +153,6 @@ PresburgerParser::parseDimAndOptionalSymbolIdList(unsigned &numDims,
 ///
 ParseResult
 PresburgerParser::parsePresburgerSetConstraints(PresburgerSet &set) {
-  if (parseToken(Token::l_paren, "expected '('"))
-    return failure();
-
-  if (getToken().is(Token::r_paren))
-    return success();
-
   FlatAffineConstraints fac;
   if (parseFlatAffineConstraints(fac))
     return failure();
@@ -192,19 +165,24 @@ PresburgerParser::parsePresburgerSetConstraints(PresburgerSet &set) {
     set.unionFACInPlace(fac);
   }
 
-  if (parseToken(Token::r_paren, "expected ')'"))
-    return failure();
-
   return success();
 }
 
 /// Parse an and expression.
 ///
-///  pb-and-expr ::= pb-constraint (`and` pb-constraint)*
+///  pb-and-expr ::= `(` `)`
+///                | `(` pb-constraint (`and` pb-constraint)* `)`
 ///
 ParseResult
 PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
-  fac = FlatAffineConstraints(dimNameToIndex.size(), symNameToIndex.size());
+  if (parseToken(Token::l_paren, "expected '('"))
+    return failure();
+
+  fac = FlatAffineConstraints(numDims, numSymbols);
+
+  if (consumeIf(Token::r_paren)) {
+    return success();
+  }
 
   if (parseConstraint(fac))
     return failure();
@@ -213,6 +191,9 @@ PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
     if (parseConstraint(fac))
       return failure();
   }
+
+  if (parseToken(Token::r_paren, "expected ')'"))
+    return failure();
 
   return success();
 }
@@ -292,10 +273,10 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
 
 /// Parse a Presburger sum.
 ///
-///  pb-sum ::= pb-term (('+' | '-') pb-term)*
+///  pb-sum ::= pb-term ((`+` | `-`) pb-term)*
 ///
 ParseResult PresburgerParser::parseSum(Coefficients &coeffs) {
-  unsigned size = dimNameToIndex.size() + symNameToIndex.size();
+  unsigned size = dimAndSymNameToIndex.size();
   coeffs = {0, SmallVector<int64_t, 8>(size, 0)};
 
   if (parseTerm(coeffs))
@@ -314,8 +295,8 @@ ParseResult PresburgerParser::parseSum(Coefficients &coeffs) {
 
 /// Parse a Presburger term.
 ///
-///  pb-term       ::= '-'? pb-int? pb-var
-///                ::= '-'? pb-int
+///  pb-term ::= `-`? integer-literal? bare-id
+///            | `-`? integer-literal
 ///
 ParseResult PresburgerParser::parseTerm(Coefficients &coeffs, bool isNegated) {
   if (consumeIf(Token::minus))
@@ -350,25 +331,16 @@ ParseResult PresburgerParser::parseTerm(Coefficients &coeffs, bool isNegated) {
     return success();
   }
 
-  auto it = dimNameToIndex.find(identifier);
-  if (it != dimNameToIndex.end()) {
+  auto it = dimAndSymNameToIndex.find(identifier);
+  if (it != dimAndSymNameToIndex.end()) {
     coeffs.coeffs[it->second] += coeff;
-    return success();
-  }
-
-  it = symNameToIndex.find(identifier);
-  if (it != symNameToIndex.end()) {
-    coeffs.coeffs[dimNameToIndex.size() + it->second] += coeff;
     return success();
   }
 
   return emitError("encountered unknown variable name: " + identifier);
 }
 
-/// Parse a variable.
-///
-///  pb-var ::= letter (digit | letter)*
-///
+/// Parse a bare-identifier
 ParseResult PresburgerParser::parseVariable(StringRef &var) {
   if (getToken().isNot(Token::bare_identifier))
     return failure();
