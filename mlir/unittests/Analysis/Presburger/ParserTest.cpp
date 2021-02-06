@@ -13,13 +13,45 @@
 
 namespace mlir {
 
-TEST(ParserTest, emptySet) {
+/// Construct a FlatAffineConstraints from a set of inequality and
+/// equality constraints.
+static FlatAffineConstraints
+makeFACFromConstraints(unsigned dims, unsigned syms,
+                       ArrayRef<SmallVector<int64_t, 4>> ineqs,
+                       ArrayRef<SmallVector<int64_t, 4>> eqs) {
+  FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + syms + 1, dims,
+                            syms);
+  for (const SmallVector<int64_t, 4> &eq : eqs)
+    fac.addEquality(eq);
+  for (const SmallVector<int64_t, 4> &ineq : ineqs)
+    fac.addInequality(ineq);
+  return fac;
+}
+
+static FlatAffineConstraints
+makeFACFromIneqs(unsigned dims, unsigned syms,
+                 ArrayRef<SmallVector<int64_t, 4>> ineqs) {
+  return makeFACFromConstraints(dims, syms, ineqs, {});
+}
+
+static PresburgerSet makeSetFromFACs(unsigned dims, unsigned syms,
+                                     ArrayRef<FlatAffineConstraints> facs) {
+  PresburgerSet set = PresburgerSet::getEmptySet(dims, syms);
+  for (const FlatAffineConstraints &fac : facs)
+    set.unionFACInPlace(fac);
+  return set;
+}
+
+TEST(ParserTest, universeSet) {
   MLIRContext ctx;
   auto str = "(i)[] : ()";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
 
   EXPECT_TRUE(succeeded(set));
+
+  auto u = PresburgerSet::getUniverse(1, 0);
+  EXPECT_TRUE(set->isEqual(u));
 }
 
 TEST(ParserTest, invalid) {
@@ -27,17 +59,42 @@ TEST(ParserTest, invalid) {
   auto str = "(i)[] : (i = )";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
 
+  // The complete StringRef should be checked.
+  str = "(i)[] : () )";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  // `and` is only allowed inside a convex set.
+  str = "(i)[] : (i <= 2) and (i >= 3)";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  // Reused variable names are not supported
+  str = "(i,i)[] : (i <= 2) or (i >= 3)";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  str = "(i)[i] : (i <= 2) or (i >= 3)";
+
+  set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set));
 }
 
 TEST(ParserTest, simpleEq) {
   MLIRContext ctx;
-  auto str = "(i)[] : (i = 0)";
+  auto str = "(i) : (i = 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-
   EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex =
+      makeSetFromFACs(1, 0, {makeFACFromConstraints(1, 0, {}, {{1, 0}})});
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, simpleIneq) {
@@ -45,8 +102,10 @@ TEST(ParserTest, simpleIneq) {
   auto str = "(i)[] : (i >= 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-
   EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex = makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{1, 0}})});
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, simpleAnd) {
@@ -54,16 +113,48 @@ TEST(ParserTest, simpleAnd) {
   auto str = "(i)[] : (i >= 0 and i <= 3)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-
   EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex =
+      makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{1, 0}, {-1, 3}})});
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, simpleOr) {
   MLIRContext ctx;
-  auto str = "(i)[] : (i >= 0 or i <= 3)";
+  auto str = "(i)[] : (i >= 0) or (i <= 3)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-
   EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex = makeSetFromFACs(
+      1, 0,
+      {makeFACFromIneqs(1, 0, {{1, 0}}), makeFACFromIneqs(1, 0, {{-1, 3}})});
+  EXPECT_TRUE(set->isEqual(ex));
 }
+
+TEST(ParserTest, higherDim) {
+  MLIRContext ctx;
+  auto str = "(x,y)[] : (x >= 2 and y >= 2 and x <= 10 and y <= 10 and x + y "
+             ">= 2 and x + y <= 30 and x - y >= 0 and x -y <= 10)";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex =
+      makeSetFromFACs(2, 0,
+                      {makeFACFromIneqs(2, 0,
+                                        {
+                                            {1, 0, -2},   // x >= 2.
+                                            {0, 1, -2},   // y >= 2.
+                                            {-1, 0, 10},  // x <= 10.
+                                            {0, -1, 10},  // y <= 10.
+                                            {1, 1, -2},   // x + y >= 2.
+                                            {-1, -1, 30}, // x + y <= 30.
+                                            {1, -1, 0},   // x - y >= 0.
+                                            {-1, 1, 10},  // x - y <= 10.
+                                        })});
+  EXPECT_TRUE(set->isEqual(ex));
+}
+
 } // namespace mlir
