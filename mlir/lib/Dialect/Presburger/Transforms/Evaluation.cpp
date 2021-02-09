@@ -23,13 +23,15 @@ static SetOp unionSets(PatternRewriter &rewriter, Operation *op,
   PresburgerSet ps(attr1.getValue());
 
   if (printPresburgerRuntimes()) {
-    PresburgerSet set1(attr1.getValue());
-    PresburgerSet set2(attr2.getValue());
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    set1.unionSet(std::move(set2));
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      PresburgerSet set1(attr1.getValue());
+      PresburgerSet set2(attr2.getValue());
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      set1.unionSet(std::move(set2));
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps.unionSet(attr2.getValue());
   }
@@ -50,11 +52,15 @@ static SetOp intersectSets(PatternRewriter &rewriter, Operation *op,
   PresburgerSet ps(attr1.getValue());
 
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    ps.intersectSet(attr2.getValue());
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      ps = PresburgerSet(attr1.getValue());
+      PresburgerSet qs(attr2.getValue());
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      ps.intersectSet(qs);
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps.intersectSet(attr2.getValue());
   }
@@ -74,11 +80,15 @@ static SetOp subtractSets(PatternRewriter &rewriter, Operation *op,
   PresburgerSet ps(attr1.getValue());
 
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    ps.subtract(attr2.getValue());
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      ps = PresburgerSet(attr1.getValue());
+      PresburgerSet qs(attr2.getValue());
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      ps.subtract(qs);
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps.subtract(attr2.getValue());
   }
@@ -99,11 +109,14 @@ static SetOp coalesceSet(PatternRewriter &rewriter, Operation *op,
   PresburgerSet in = attr.getValue();
   PresburgerSet ps;
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    ps = coalesce(in);
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      PresburgerSet in = attr.getValue();
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      ps = coalesce(in);
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps = coalesce(in);
   }
@@ -125,12 +138,14 @@ static SetOp eliminateExistentialsSet(PatternRewriter &rewriter, Operation *op,
 
   PresburgerSet ps;
   if (printPresburgerRuntimes()) {
-    PresburgerSet in2 = attr.getValue();
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    ps = PresburgerSet::eliminateExistentials(std::move(in2));
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      PresburgerSet in2 = attr.getValue();
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      ps = PresburgerSet::eliminateExistentials(std::move(in2));
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps = PresburgerSet::eliminateExistentials(in);
   }
@@ -150,11 +165,14 @@ static SetOp complementSet(PatternRewriter &rewriter, Operation *op,
                            PresburgerSetAttr attr) {
   PresburgerSet ps;
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    ps = PresburgerSet::complement(attr.getValue());
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      PresburgerSet in(attr.getValue());
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      ps = PresburgerSet::complement(in);
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     ps = PresburgerSet::complement(attr.getValue());
   }
@@ -174,11 +192,13 @@ static ConstantOp areEqualSets(PatternRewriter &rewriter, Operation *op,
                                PresburgerSetAttr attr2) {
   bool eq = PresburgerSet::equal(attr1.getValue(), attr2.getValue());
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    eq = PresburgerSet::equal(attr1.getValue(), attr2.getValue());
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      eq = PresburgerSet::equal(attr1.getValue(), attr2.getValue());
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     eq = PresburgerSet::equal(attr1.getValue(), attr2.getValue());
   }
@@ -197,11 +217,14 @@ static ConstantOp emptySet(PatternRewriter &rewriter, Operation *op,
   PresburgerSet ps = attr.getValue();
   bool empty;
   if (printPresburgerRuntimes()) {
-    unsigned int dummy;
-    unsigned long long start = __rdtscp(&dummy);
-    empty = ps.isIntegerEmpty();
-    unsigned long long end = __rdtscp(&dummy);
-    llvm::errs() << end - start << '\n';
+    for (unsigned i = 0; i < 5; ++i) {
+      ps = attr.getValue();
+      unsigned int dummy;
+      unsigned long long start = __rdtscp(&dummy);
+      empty = ps.isIntegerEmpty();
+      unsigned long long end = __rdtscp(&dummy);
+      llvm::errs() << end - start << '\n';
+    }
   } else {
     empty = ps.isIntegerEmpty();
   }
