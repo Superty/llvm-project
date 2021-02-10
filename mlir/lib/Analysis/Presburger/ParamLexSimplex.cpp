@@ -300,6 +300,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(paramSample);
     domainSet.addInequality(paramSample);
+    auto idx = rowUnknown[row];
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
@@ -317,8 +318,10 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     domainSimplex.addInequality(complementIneq);
     domainSet.addInequality(complementIneq);
     rowSign[row] = -1;
-
-    findParamLexminRecursively(domainSimplex, domainSet, result);
+    auto &u = unknownFromIndex(idx);
+    assert(u.orientation == Orientation::Row);
+    if (succeeded(moveRowUnknownToColumn(u.pos)))
+      findParamLexminRecursively(domainSimplex, domainSet, result);
 
     domainSet.removeLastInequality();
     domainSimplex.rollback(domainSnapshot);
