@@ -62,6 +62,7 @@ void ParamLexSimplex::addInequality(ArrayRef<SafeInteger> coeffs) {
 
   assert(newCoeffs.size() == var.size() + 1);
   unsigned conIndex = addRow(newCoeffs);
+  rowSign.push_back(0);
   Unknown &u = con[conIndex];
   u.restricted = true;
   // restoreConsistency();
@@ -193,6 +194,14 @@ LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn = findPivot(row);
   if (!maybeColumn)
     return LogicalResult::Failure;
+  for (unsigned i = 0; i < nRow; ++i) {
+    if (i == row)
+      continue;
+    auto sgn = sign(tableau(i, *maybeColumn));
+    if (rowSign[i] != sgn)
+      rowSign[i] = 0;
+  }
+  rowSign[row] = 0;
   pivot(row, *maybeColumn);
   return LogicalResult::Success;
 }
@@ -279,16 +288,25 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       return;
     }
 
+    bool negative;
     auto paramSample = getRowParamSample(row);
-    auto maybeMin = domainSimplex.computeOptimum(Direction::Down, paramSample);
-    bool nonNegative = maybeMin.hasValue() && *maybeMin >= Fraction(0, 1);
-    if (nonNegative)
-      continue;
-
-    auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
-    bool negative = maybeMax.hasValue() && *maybeMax < Fraction(0, 1);
+    if (rowSign[row] != 0) {
+      if (rowSign[row] == +1)
+        continue;
+      negative = true;
+    } else {
+      auto maybeMin = domainSimplex.computeOptimum(Direction::Down, paramSample);
+      bool nonNegative  = maybeMin.hasValue() && *maybeMin >= Fraction(0, 1);
+      if (nonNegative) {
+        rowSign[row] = +1;
+        continue;
+      }
+      auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
+      negative = maybeMax.hasValue() && *maybeMax < Fraction(0, 1);
+    }
 
     if (negative) {
+      rowSign[row] = -1;
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
@@ -443,11 +461,13 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     for (unsigned col = nCol - nParam; col < nCol - 1; ++col)
       tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
     tableau(nRow - 1, nCol - 1) = denom;
+    rowSign.push_back(-1);
     moveRowUnknownToColumn(nRow - 1);
     // restoreConsistency();
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
+    rowSign.pop_back();
     domainSimplex.rollback(domainSnapshot);
     domainSet.removeLastDivision();
     nParam--;

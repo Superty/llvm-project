@@ -77,6 +77,7 @@ private:
 
   unsigned nParam, nDiv;
   SmallVector<SmallVector<SafeInteger, 8>, 8> originalCoeffs;
+  SmallVector<int, 4> rowSign;
 };
 } // namespace presburger
 } // namespace analysis
