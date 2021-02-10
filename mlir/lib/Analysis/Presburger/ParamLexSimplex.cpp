@@ -316,12 +316,14 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(complementIneq);
     domainSet.addInequality(complementIneq);
+    rowSign[row] = -1;
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
     domainSet.removeLastInequality();
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
+    rowSign = oldRowSign;
 
     return;
   }

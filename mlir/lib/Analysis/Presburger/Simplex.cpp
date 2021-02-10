@@ -677,7 +677,8 @@ unsigned Simplex::getSnapshotBasis() {
   }
   savedBases.push_back(std::move(basis));
 
-  return getSnapshot();
+  undoLog.emplace_back(UndoLogEntry::RestoreBasis, Optional<int>());
+  return undoLog.size() - 1;
 }
 
 void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
@@ -768,7 +769,7 @@ void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
       for (unsigned col = 0; col < nCol; col++) {
         if (colUnknown[col] == nullIndex)
           continue;
-        if (std::count(basis.begin(), basis.end(), colUnknown[col]) == 0)
+        if (std::count(basis.begin(), basis.end(), colUnknown[col]) != 0)
           continue;
         if (tableau(u.pos, col) == 0)
           continue;
