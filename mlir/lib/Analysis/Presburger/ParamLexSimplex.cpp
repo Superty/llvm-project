@@ -278,9 +278,14 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     if (!unknownFromRow(row).restricted)
       continue;
 
-    if (tableau(row, 2) > 0) // nonNegative
+    if (tableau(row, 2) > 0) { // nonNegative
+      // assert(rowSign[row] != -1);
+      rowSign[row] = +1;
       continue;
+    }
     if (tableau(row, 2) < 0) { // negative
+      // assert(rowSign[row] != +1);
+      rowSign[row] = -1;
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
@@ -290,22 +295,25 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
     bool negative;
     auto paramSample = getRowParamSample(row);
-    if (rowSign[row] != 0) {
-      if (rowSign[row] == +1)
-        continue;
-      negative = true;
-    } else {
+    // if (rowSign[row] != 0) {
+    //   if (rowSign[row] == +1)
+    //     continue;
+    //   negative = true;
+    // } else {
       auto maybeMin = domainSimplex.computeOptimum(Direction::Down, paramSample);
       bool nonNegative  = maybeMin.hasValue() && *maybeMin >= Fraction(0, 1);
       if (nonNegative) {
+        // assert(rowSign[row] != -1);
         rowSign[row] = +1;
         continue;
       }
       auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
       negative = maybeMax.hasValue() && *maybeMax < Fraction(0, 1);
-    }
+    // }
+    // 
 
     if (negative) {
+      // assert(rowSign[row] != +1);
       rowSign[row] = -1;
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
@@ -314,17 +322,20 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       return;
     }
 
+    auto oldRowSign = rowSign;
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(paramSample);
     domainSet.addInequality(paramSample);
     auto idx = rowUnknown[row];
+    rowSign[row] = +1;
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
     domainSet.removeLastInequality();
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
+    rowSign = oldRowSign;
 
     SmallVector<SafeInteger, 8> complementIneq;
     for (SafeInteger coeff : paramSample)
@@ -421,7 +432,9 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       }
       tableau(row, nCol - 1) += 1;
 
+      auto oldRowSign = rowSign;
       findParamLexminRecursively(domainSimplex, domainSet, result);
+      rowSign = std::move(oldRowSign);
 
       domainSet.removeLastInequality();
       domainSet.removeLastDivision();
