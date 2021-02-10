@@ -142,6 +142,7 @@ static SetOp eliminateExistentialsSet(PatternRewriter &rewriter, Operation *op,
       rewriter.getContext(), ps.getNumDims(), ps.getNumSyms());
 
   PresburgerSetAttr newAttr = PresburgerSetAttr::get(type, ps);
+  in.dumpISL();
   ps.dumpISL();
   return rewriter.create<SetOp>(op->getLoc(), type, newAttr);
 }
