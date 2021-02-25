@@ -234,6 +234,9 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
+  /// Check if the given constraint is redundant
+  bool isRedundant(ArrayRef<int64_t> coeffs);
+
 private:
   friend class GBRSimplex;
 
