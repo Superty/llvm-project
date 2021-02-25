@@ -40,11 +40,12 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
         marked[j] = true;
       }
     }
-
-    if (!marked[i]) {
-      newSet.unionFACInPlace(bs1);
-    }
   }
 
+  for (unsigned i = 0; i < basicSetVector.size(); ++i) {
+    if (!marked[i]) {
+      newSet.unionFACInPlace(basicSetVector[i]);
+    }
+  }
   return newSet;
 }
