@@ -410,4 +410,17 @@ TEST(SimplexTest, appendVariable) {
   EXPECT_EQ(simplex.getNumConstraints(), 0u);
 }
 
+TEST(SimplexTest, isRedundant) {
+  Simplex simplex(2);
+  simplex.addInequality({0, -1, 1}); // [0]: y <= 1.
+  simplex.addInequality({1, 0, -1}); // [1]: x >= 1.
+  simplex.addEquality({-1, 1, 0});   // [2]: y = x.
+
+  EXPECT_TRUE(simplex.isRedundant({-1, 0, 2})); // x <= 2.
+  EXPECT_TRUE(simplex.isRedundant({0, 1, 0}));  // y >= 0.
+
+  EXPECT_FALSE(simplex.isRedundant({-1, 0, -1})); // x <= -1.
+  EXPECT_FALSE(simplex.isRedundant({0, 1, -2}));  // y >= 2.
+}
+
 } // namespace mlir

@@ -1240,4 +1240,9 @@ void Simplex::print(raw_ostream &os) const {
 
 void Simplex::dump() const { print(llvm::errs()); }
 
+bool Simplex::isRedundant(ArrayRef<int64_t> coeffs) {
+  Optional<Fraction> minimum = computeOptimum(Direction::Down, coeffs);
+  return minimum && *minimum >= Fraction(0, 1);
+}
+
 } // namespace mlir
