@@ -26,15 +26,9 @@ using llvm::StringMap;
 
 namespace {
 
-// TODO: renaming and comments
-struct Coefficients {
-  int64_t constant;
-  SmallVector<int64_t, 8> coeffs;
-};
-
 enum class ConstraintKind { LE, GE, EQ };
 
-/// This is a specialized parser for Presburger structures (Presburger set)
+/// This is a specialized parser for Presburger structures (Presburger set).
 class PresburgerParser : public Parser {
 public:
   PresburgerParser(ParserState &state)
@@ -54,8 +48,9 @@ private:
   ParseResult parsePresburgerSetConstraints(PresburgerSet &set);
 
   ParseResult parseConstraint(FlatAffineConstraints &fac);
-  ParseResult parseSum(Coefficients &coefs);
-  ParseResult parseTerm(Coefficients &coefs, bool is_negated = false);
+  ParseResult parseSum(SmallVector<int64_t, 8> &coefs);
+  ParseResult parseTerm(SmallVector<int64_t, 8> &coefs,
+                        bool is_negated = false);
   ParseResult parseVariable(StringRef &var);
 
   /// Mapping from names to ids
@@ -107,8 +102,7 @@ ParseResult PresburgerParser::parseIdList(unsigned &numVar,
 
     auto it = dimAndSymNameToIndex.find(name);
     if (it != dimAndSymNameToIndex.end())
-      return emitError(
-          "repeated variable names in the tuple are not yet supported");
+      return emitError("repeated variable names in the tuple are not allowed");
 
     dimAndSymNameToIndex.insert_or_assign(name, numVar++);
     return success();
@@ -203,8 +197,11 @@ PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
 ///  pb-constraint ::= pb-expr (`>=` | `=` | `<=`) pb-expr
 ///
 ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
-  Coefficients left;
-  Coefficients right;
+  // space for constant
+  unsigned size = dimAndSymNameToIndex.size() + 1;
+  SmallVector<int64_t, 8> left(size, 0);
+  SmallVector<int64_t, 8> right(size, 0);
+
   if (parseSum(left))
     return failure();
 
@@ -242,26 +239,21 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
     return failure();
 
   // TODO move to separate function, check if we can reuse one of the vectors.
-  int64_t constant;
+  // TODO can we use std::move?
   SmallVector<int64_t, 8> coeffs;
 
   switch (kind) {
   case ConstraintKind::LE:
-    constant = right.constant - left.constant;
-    for (unsigned i = 0; i < left.coeffs.size(); i++)
-      coeffs.push_back(right.coeffs[i] - left.coeffs[i]);
+    for (unsigned i = 0; i < left.size(); i++)
+      coeffs.push_back(right[i] - left[i]);
     break;
 
   case ConstraintKind::GE:
   case ConstraintKind::EQ:
-    constant = left.constant - right.constant;
-    for (unsigned i = 0; i < left.coeffs.size(); i++)
-      coeffs.push_back(left.coeffs[i] - right.coeffs[i]);
+    for (unsigned i = 0; i < left.size(); i++)
+      coeffs.push_back(left[i] - right[i]);
     break;
   }
-
-  // FACs have the constant at the end of the coefficients
-  coeffs.push_back(constant);
 
   if (kind == ConstraintKind::EQ)
     fac.addEquality(coeffs);
@@ -275,10 +267,7 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
 ///
 ///  pb-sum ::= pb-term ((`+` | `-`) pb-term)*
 ///
-ParseResult PresburgerParser::parseSum(Coefficients &coeffs) {
-  unsigned size = dimAndSymNameToIndex.size();
-  coeffs = {0, SmallVector<int64_t, 8>(size, 0)};
-
+ParseResult PresburgerParser::parseSum(SmallVector<int64_t, 8> &coeffs) {
   if (parseTerm(coeffs))
     return failure();
 
@@ -298,42 +287,36 @@ ParseResult PresburgerParser::parseSum(Coefficients &coeffs) {
 ///  pb-term ::= `-`? integer-literal? bare-id
 ///            | `-`? integer-literal
 ///
-ParseResult PresburgerParser::parseTerm(Coefficients &coeffs, bool isNegated) {
+ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
+                                        bool isNegated) {
   if (consumeIf(Token::minus))
     isNegated = !isNegated;
 
   int64_t coeff = 1;
-  StringRef identifier;
   bool intFound = false;
-  bool varFound = false;
 
   if (parseOptionalInteger(coeff).hasValue()) {
     intFound = true;
-    if (isNegated)
-      coeff = -coeff;
-  } else if (isNegated) {
-    coeff = -1;
-    intFound = true;
+  }
+  if (isNegated) {
+    coeff = -coeff;
   }
 
-  if (getToken().is(Token::bare_identifier)) {
-    if (parseVariable(identifier))
-      return failure();
-    varFound = true;
-  }
-
-  if (!intFound && !varFound)
-    return emitError("expected non empty term");
-
-  // add term to coeffs
-  if (!varFound) {
-    coeffs.constant += coeff;
+  if (intFound && getToken().isNot(Token::bare_identifier)) {
+    if (!intFound)
+      return emitError("expected non empty term");
+    coeffs[coeffs.size() - 1] += coeff;
     return success();
   }
 
+  StringRef identifier;
+  if (parseVariable(identifier))
+    return failure();
+
+  // add term to coeffs
   auto it = dimAndSymNameToIndex.find(identifier);
   if (it != dimAndSymNameToIndex.end()) {
-    coeffs.coeffs[it->second] += coeff;
+    coeffs[it->second] += coeff;
     return success();
   }
 
@@ -359,6 +342,8 @@ FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
   SymbolState symbols;
   ParserState state(sourceMgr, ctx, symbols);
   PresburgerParser parser(state);
+
+  // This set will be overwritten
   PresburgerSet set = PresburgerSet::getUniverse(1, 1);
   if (parser.parsePresburgerSet(set))
     return failure();
