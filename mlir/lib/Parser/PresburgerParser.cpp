@@ -284,25 +284,28 @@ ParseResult PresburgerParser::parseSum(SmallVector<int64_t, 8> &coeffs) {
 
 /// Parse a Presburger term.
 ///
-///  pb-term ::= `-`? integer-literal? bare-id
-///            | `-`? integer-literal
+///  pb-term ::= integer-literal? bare-id
+///            | `-`? bare-id
+///            | integer-literal
 ///
 ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
                                         bool isNegated) {
   if (consumeIf(Token::minus))
     isNegated = !isNegated;
 
-  int64_t coeff = 1;
-  bool intFound = false;
+  // needed as parseOptionalInteger would consume this even on failure.
+  // TODO fix this as soon as parseOptionalInteger works as expected
+  if (getToken().is(Token::minus))
+    return emitError("expected integer literal or identifier");
 
-  if (parseOptionalInteger(coeff).hasValue()) {
-    intFound = true;
-  }
+  int64_t coeff = 1;
+  bool intFound = parseOptionalInteger(coeff).hasValue();
+
   if (isNegated) {
     coeff = -coeff;
   }
 
-  if (intFound && getToken().isNot(Token::bare_identifier)) {
+  if (getToken().isNot(Token::bare_identifier)) {
     if (!intFound)
       return emitError("expected non empty term");
     coeffs[coeffs.size() - 1] += coeff;

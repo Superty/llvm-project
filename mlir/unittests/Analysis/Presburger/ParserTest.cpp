@@ -83,6 +83,26 @@ TEST(ParserTest, invalid) {
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set));
+
+  str = "(i) : ";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  str = "(i) : (i - >= 2) ";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  str = "(i) : (1i >= -) ";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
+
+  str = "(i) : (-i - -2 >= - -2) ";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set));
 }
 
 TEST(ParserTest, simpleEq) {
@@ -133,6 +153,20 @@ TEST(ParserTest, simpleOr) {
   EXPECT_TRUE(set->isEqual(ex));
 }
 
+TEST(ParserTest, andOr) {
+  MLIRContext ctx;
+  auto str = "(x) : (x >= 0 and x <= 5) or (x >= -2 and x <= -5)";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex =
+      makeSetFromFACs(1, 0,
+                      {makeFACFromIneqs(1, 0, {{1, 0}, {-1, 5}}),
+                       makeFACFromIneqs(1, 0, {{1, -2}, {-1, -5}})});
+  EXPECT_TRUE(set->isEqual(ex));
+}
+
 TEST(ParserTest, higherDim) {
   MLIRContext ctx;
   auto str = "(x,y)[] : (x >= 2 and y >= 2 and x <= 10 and y <= 10 and x + y "
@@ -154,6 +188,29 @@ TEST(ParserTest, higherDim) {
                                             {1, -1, 0},   // x - y >= 0.
                                             {-1, 1, 10},  // x - y <= 10.
                                         })});
+  EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, coeff1) {
+  MLIRContext ctx;
+  auto str = "(x) : (1x -2 >= -2)";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex = makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{1, 0}})});
+  EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, plusMinus) {
+  MLIRContext ctx;
+  auto str = "(x) : (-1x + -2 >= 2)";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  PresburgerSet ex =
+      makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{-1, -4}})});
   EXPECT_TRUE(set->isEqual(ex));
 }
 
