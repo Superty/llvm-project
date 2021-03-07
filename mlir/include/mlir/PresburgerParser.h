@@ -10,8 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PRESBURGER_PARSER_H
-#define PRESBURGER_PARSER_H
+#ifndef MLIR_PRESBURGER_PARSER_H
+#define MLIR_PRESBURGER_PARSER_H
 
 #include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/Support/LogicalResult.h"
@@ -24,4 +24,4 @@ FailureOr<PresburgerSet> parsePresburgerSet(StringRef str, MLIRContext *ctx);
 
 }; // namespace mlir
 
-#endif // PRESBURGER_PARSER_H
+#endif // MLIR_PRESBURGER_PARSER_H

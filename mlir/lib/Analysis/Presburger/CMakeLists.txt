@@ -1,8 +1,4 @@
 add_mlir_library(MLIRPresburger
   Simplex.cpp
   Matrix.cpp
-  Parser.cpp
-
-  LINK_LIBS PUBLIC
-  MLIRParser
   )
