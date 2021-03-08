@@ -19,6 +19,7 @@ using Direction = Simplex::Direction;
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned oNParam)
     : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
+  fnTimer timer;
   for (unsigned i = 1; i <= nParam; ++i) {
     colUnknown[nCol - nParam + i - 1] = i;
     var[i].pos = nCol - nParam + i - 1;
@@ -218,6 +219,7 @@ void ParamLexSimplex::restoreConsistency() {
 }
 
 pwaFunction ParamLexSimplex::findParamLexmin() {
+  fnTimer timer;
   pwaFunction result;
   PresburgerBasicSet domainSet(nParam, 0, 0);
   Simplex domainSimplex(nParam);

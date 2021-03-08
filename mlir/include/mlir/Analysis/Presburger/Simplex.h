@@ -23,6 +23,7 @@
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/raw_ostream.h"
+#include <x86intrin.h>
 
 namespace mlir {
 namespace analysis {
@@ -132,6 +133,8 @@ public:
   enum class Direction { Up, Down };
 
   enum class IneqType { Redundant, Separate, Cut, AdjEq, AdjIneq };
+
+  static unsigned long long time;
 
   Simplex() = delete;
   explicit Simplex(unsigned nVar);
@@ -502,6 +505,25 @@ protected:
 
   /// These hold information about each unknown.
   SmallVector<Unknown, 8> con, var;
+};
+
+class fnTimer {
+public:
+  fnTimer() {
+    unsigned int dummy;
+    start = __rdtscp(&dummy);
+    timerDepth++;
+  };
+  ~fnTimer() {
+    unsigned int dummy;
+    unsigned long long end = __rdtscp(&dummy);
+    timerDepth--;
+    if (timerDepth == 0)
+      Simplex::time += end - start;
+  }
+private:
+  unsigned long long start;
+  static unsigned timerDepth;
 };
 
 } // namespace presburger
