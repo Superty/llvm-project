@@ -4,6 +4,4 @@ add_mlir_unittest(MLIRPresburgerTests
 )
 
 target_link_libraries(MLIRPresburgerTests
-  PRIVATE MLIRPresburger
-  MLIRLoopAnalysis)
-
+  PRIVATE MLIRPresburger)
