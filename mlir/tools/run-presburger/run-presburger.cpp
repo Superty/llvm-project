@@ -1,6 +1,6 @@
 #include "mlir/Analysis/Presburger/Coalesce.h"
-#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Dialect/Presburger/Parser.h"
 #include <iostream>
 #include <string>
@@ -34,8 +34,13 @@ PresburgerSet getSetFromInput() {
 }
 
 unsigned long long getTime(unsigned long long start, unsigned long long end) {
+  fnTimer<Simplex>::time += fnTimer<PivotKey>::time;
+
   auto ret = fnTimer<PivotKey>::time;
+
+  fnTimer<Simplex>::time = 0;
   fnTimer<PivotKey>::time = 0;
+  fnTimer<LinearTransform>::time = 0;
   return ret;
 }
 
