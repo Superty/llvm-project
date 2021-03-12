@@ -1,5 +1,6 @@
 #include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/Presburger/Set.h"
+#include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Dialect/Presburger/Parser.h"
 #include <iostream>
 #include <string>
@@ -32,6 +33,12 @@ PresburgerSet getSetFromInput() {
   return setFromString(str);
 }
 
+unsigned long long getTime(unsigned long long start, unsigned long long end) {
+  auto ret = fnTimer<PivotKey>::time;
+  fnTimer<PivotKey>::time = 0;
+  return ret;
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     std::cerr << "usage: ./run-presburger <op>\nPass input to stdin.\n";
@@ -48,7 +55,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = a.isIntegerEmpty();
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         std::cerr << res << '\n';
     }
@@ -62,7 +69,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::equal(a, b);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         llvm::errs() << res << '\n';
     }
@@ -76,7 +83,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.unionSet(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -90,7 +97,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.intersectSet(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -104,7 +111,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.subtract(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -116,7 +123,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = coalesce(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         res.dumpISL();
     }
@@ -128,7 +135,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::complement(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         res.dumpISL();
     }
@@ -140,7 +147,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::eliminateExistentials(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << Simplex::time << '\n';
+      std::cerr << getTime(start, end) << '\n';
       if (i == numRuns - 1)
         a.dumpISL();
     }

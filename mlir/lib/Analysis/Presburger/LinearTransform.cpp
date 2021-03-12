@@ -47,6 +47,7 @@ T extendedEuclid(T a, T b, T &x, T &y) {
 // But at some point we need the pre-multiply version as well, so optimisation
 // doesn't help in that case or only helps 1/3rd of the time (when we need both)
 LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType &m) {
+  fnTimer<LinearTransform> timer;
   // Padding of one is required by the LinearTransform constructor.
   MatrixType resultMatrix = MatrixType::identity(m.getNumColumns());
 
@@ -132,6 +133,7 @@ LinearTransform LinearTransform::makeTransformToColumnEchelon(MatrixType &m) {
 
 SmallVector<SafeInteger, 8>
 LinearTransform::postMultiplyRow(ArrayRef<SafeInteger> row) {
+  fnTimer<LinearTransform> timer;
   assert(row.size() == matrix.getNumRows() &&
          "row vector dimension should be matrix output dimension");
 
@@ -147,6 +149,7 @@ LinearTransform::postMultiplyRow(ArrayRef<SafeInteger> row) {
 
 SmallVector<SafeInteger, 8>
 LinearTransform::preMultiplyColumn(ArrayRef<SafeInteger> col) {
+  fnTimer<LinearTransform> timer;
   assert(matrix.getNumColumns() == col.size() &&
          "row vector dimension should be matrix output dimension");
 
@@ -162,6 +165,7 @@ LinearTransform::preMultiplyColumn(ArrayRef<SafeInteger> col) {
 
 PresburgerBasicSet
 LinearTransform::postMultiplyBasicSet(const PresburgerBasicSet &bs) {
+  fnTimer<LinearTransform> timer;
   PresburgerBasicSet result(bs.getNumTotalDims(), 0, 0);
 
   for (unsigned i = 0; i < bs.getNumEqualities(); ++i) {

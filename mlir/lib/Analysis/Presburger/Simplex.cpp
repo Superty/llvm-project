@@ -15,10 +15,6 @@
 using namespace mlir;
 using namespace analysis::presburger;
 
-unsigned long long Simplex::time = 0;
-
-unsigned fnTimer::timerDepth = 0;
-
 using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
@@ -88,7 +84,7 @@ void Simplex::addZeroConstraint() {
 
 void Simplex::addDivisionVariable(ArrayRef<SafeInteger> coeffs,
                                   SafeInteger denom) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   addVariable();
 
   SmallVector<SafeInteger, 8> ineq(coeffs.begin(), coeffs.end());
@@ -266,7 +262,7 @@ inline Simplex::IneqType Simplex::separationType(unsigned row) {
 /// If the tableau is empty the behaviour is exactly that of isl, and is left
 /// unspecified for isl-parity.
 Simplex::IneqType Simplex::ineqType(ArrayRef<SafeInteger> coeffs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   extendConstraints(1);
   unsigned snap = getSnapshot();
   unsigned con_index = addRow(coeffs);
@@ -394,6 +390,7 @@ void Simplex::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
+  fnTimer<PivotKey> timer;
   assert((pivotRow >= nRedundant && pivotCol >= liveColBegin) &&
          "Refusing to pivot redundant row or invalid column");
 
@@ -663,7 +660,7 @@ bool Simplex::isMarkedRedundant(int conIndex) const {
 /// The constraint is an equality if it has been marked zero, if it is a dead
 /// column, or if the row is obviously equal to zero.
 bool Simplex::constraintIsEquality(int conIndex) const {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   const Unknown &u = con[conIndex];
   if (u.zero)
     return true;
@@ -682,7 +679,7 @@ bool Simplex::constraintIsEquality(int conIndex) const {
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
 void Simplex::addInequality(ArrayRef<SafeInteger> coeffs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
@@ -698,7 +695,7 @@ void Simplex::addInequality(ArrayRef<SafeInteger> coeffs) {
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
 void Simplex::addEquality(ArrayRef<SafeInteger> coeffs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   addInequality(coeffs);
   SmallVector<SafeInteger, 8> negatedCoeffs;
   for (SafeInteger coeff : coeffs)
@@ -731,7 +728,7 @@ bool Simplex::markRedundant(unsigned row) {
 /// Now for each constraint that hasn't already been marked redundant, we check
 /// if it is redundant via constraintIsRedundant, and if it is, mark it as such.
 void Simplex::detectRedundant() {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   if (empty)
     return;
   for (int i = con.size() - 1; i >= 0; i--) {
@@ -879,7 +876,7 @@ void Simplex::undo(UndoLogEntry entry, Optional<int> index) {
 /// We undo all the log entries until the log size when the snapshot was taken
 /// is reached.
 void Simplex::rollback(unsigned snapshot) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   while (undoLog.size() > snapshot) {
     auto entry = undoLog.back();
     undoLog.pop_back();
@@ -889,7 +886,7 @@ void Simplex::rollback(unsigned snapshot) {
 
 Optional<Fraction> Simplex::computeRowOptimum(Direction direction,
                                               unsigned row) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   // Keep trying to find a pivot for the row in the specified direction.
   while (Optional<Pivot> maybePivot = findPivot(row, direction)) {
     // If findPivot returns a pivot involving the row itself, then the optimum
@@ -909,7 +906,7 @@ Optional<Fraction> Simplex::computeRowOptimum(Direction direction,
 /// or None if it is unbounded.
 Optional<Fraction> Simplex::computeOptimum(Direction direction,
                                            ArrayRef<SafeInteger> coeffs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   assert(!empty && "Tableau should not be empty");
 
   unsigned snapshot = getSnapshot();
@@ -921,7 +918,7 @@ Optional<Fraction> Simplex::computeOptimum(Direction direction,
 }
 
 bool Simplex::isUnbounded() {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   if (empty)
     return false;
 
@@ -957,7 +954,7 @@ bool Simplex::isUnbounded() {
 /// from this function, so we can safely drop redundant constraints from the
 /// original simplex.
 Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   unsigned numVar = a.numVariables() + b.numVariables();
   unsigned numCon = a.numConstraints() + b.numConstraints();
   Simplex result(numVar);
@@ -1075,7 +1072,7 @@ void Simplex::addFlatAffineConstraints(const FlatAffineConstraints &cs) {
 }
 
 void Simplex::addBasicSet(const PresburgerBasicSet &bs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   assert(bs.getNumTotalDims() == numVariables() &&
          "BasicSet must have same dimensionality as simplex");
   unsigned totNewCons = bs.getNumInequalities() + bs.getNumEqualities() + 2*bs.getNumDivs();
@@ -1434,7 +1431,7 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
 /// To avoid potentially arbitrarily large recursion depths leading to stack
 /// overflows, this algorithm is implemented iteratively.
 Optional<SmallVector<SafeInteger, 8>> Simplex::findIntegerSample() {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   if (empty)
     return {};
   if (auto maybeSample = getSamplePointIfIntegral())
@@ -1627,7 +1624,7 @@ Simplex::findRationalSample() const {
 /// compute each separately.
 std::pair<SafeInteger, SafeInteger>
 Simplex::computeIntegerBounds(ArrayRef<SafeInteger> coeffs) {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   SafeInteger minRoundedUp;
   if (Optional<Fraction> maybeMin =
           computeOptimum(Simplex::Direction::Down, coeffs))
@@ -1982,7 +1979,7 @@ inline void Simplex::cutToHyperplane(int conIndex) {
 /// indicative than equality. And 'detect' sounds more passive than what we're
 /// doing (adding constraints, closing rows).
 void Simplex::detectImplicitEqualities() {
-  fnTimer timer;
+  fnTimer<Simplex> timer;
   if (empty)
     return;
   if (liveColBegin == nCol)

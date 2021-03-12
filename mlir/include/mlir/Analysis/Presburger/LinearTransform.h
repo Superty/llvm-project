@@ -19,6 +19,7 @@ namespace presburger {
 // algebraic terms
 class LinearTransform {
 public:
+  static unsigned long long time;
   using MatrixType = Matrix;
   // Return a unimodular transform which, when postmultiplied to M, brings M to
   // column echelon form.
