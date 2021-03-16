@@ -103,6 +103,7 @@ void Simplex::addDivisionVariable(ArrayRef<SafeInteger> coeffs,
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
 unsigned Simplex::addRow(ArrayRef<SafeInteger> coeffs) {
+  fnTimer<AddRowKey> timer;
   assert(coeffs.size() == 1 + var.size() &&
          "Incorrect number of coefficients!");
 
@@ -325,6 +326,7 @@ bool Simplex::rowIsAtLeastZero(Unknown &unknown) {
 /// ordering where we prefer unknowns with lower index.
 Optional<Simplex::Pivot> Simplex::findPivot(int row,
                                             Direction direction) const {
+  fnTimer<FindPivotKey> timer;
   Optional<unsigned> col;
 
   for (unsigned j = liveColBegin; j < nCol; ++j) {

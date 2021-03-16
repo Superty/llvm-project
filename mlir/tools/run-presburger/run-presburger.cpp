@@ -37,6 +37,8 @@ unsigned long long getTime(unsigned long long start, unsigned long long end) {
   auto ret = fnTimer<PivotKey>::time;
 
   fnTimer<Simplex>::time = 0;
+  fnTimer<FindPivotKey>::time = 0;
+  fnTimer<AddRowKey>::time = 0;
   fnTimer<PivotKey>::time = 0;
   fnTimer<LinearTransform>::time = 0;
   return ret;

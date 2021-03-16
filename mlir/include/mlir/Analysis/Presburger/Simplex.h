@@ -30,6 +30,8 @@ namespace analysis {
 namespace presburger {
 
 struct PivotKey {};
+struct FindPivotKey {};
+struct AddRowKey {};
 class GBRSimplex;
 class PresburgerBasicSet;
 
