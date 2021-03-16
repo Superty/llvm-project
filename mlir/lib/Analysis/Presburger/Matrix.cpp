@@ -8,11 +8,18 @@
 
 #include "mlir/Analysis/Presburger/Matrix.h"
 
+#include <algorithm>
+
 using namespace mlir;
 using namespace analysis::presburger;
 
 Matrix::Matrix(unsigned rows, unsigned columns)
-    : nRows(rows), nColumns(columns), data(nRows * MATRIX_COLUMN_COUNT) {}
+    : nRows(rows), nColumns(columns) {
+	    data.resize(256);
+	    std::fill(data.begin(), data.end(), 0);
+    }
+
+std::vector<SafeInteger, AlignedAllocator<SafeInteger, 64>> Matrix::data;
 
 Matrix Matrix::identity(unsigned dimension) {
   Matrix matrix(dimension, dimension);
@@ -26,6 +33,7 @@ unsigned Matrix::getNumRows() const { return nRows; }
 unsigned Matrix::getNumColumns() const { return nColumns; }
 
 void Matrix::resize(unsigned newNRows, unsigned newNColumns) {
+  return;	
   nRows = newNRows;
   data.resize(nRows * MATRIX_COLUMN_COUNT);
   if (newNColumns < nColumns) {

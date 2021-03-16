@@ -27,7 +27,7 @@ namespace mlir {
 namespace analysis {
 namespace presburger {
 
-#define MATRIX_COLUMN_COUNT 32
+#define MATRIX_COLUMN_COUNT 16
 
 typedef int16_t Vector __attribute__((ext_vector_type(MATRIX_COLUMN_COUNT)));
 
@@ -116,7 +116,7 @@ private:
   unsigned nRows, nColumns;
 
   /// Stores the data. data.size() is equal to nRows * nColumns.
-  std::vector<SafeInteger, AlignedAllocator<SafeInteger, 64>> data;
+  static std::vector<SafeInteger, AlignedAllocator<SafeInteger, 64>> data;
 };
 
 } // namespace presburger
