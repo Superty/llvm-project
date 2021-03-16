@@ -38,20 +38,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  const unsigned numRuns = 5;
+  const unsigned numRuns = 50000;
   std::string op = argv[1];
   if (op == "empty") {
     PresburgerSet setA = getSetFromInput();
+    unsigned int dummy;
+    unsigned long long start = __rdtscp(&dummy);
     for (unsigned i = 0; i < numRuns; ++i) {
-      auto a = setA;
-      unsigned int dummy;
-      unsigned long long start = __rdtscp(&dummy);
-      auto res = a.isIntegerEmpty();
-      unsigned long long end = __rdtscp(&dummy);
-      std::cerr << end - start << '\n';
-      if (i == numRuns - 1)
-        std::cerr << res << '\n';
+      auto res = setA.isIntegerEmpty();
     }
+    unsigned long long end = __rdtscp(&dummy);
+    std::cerr << (end - start) / (1024 * 1024) << '\n';
   } else if (op == "equal") {
     PresburgerSet setA = getSetFromInput();
     PresburgerSet setB = getSetFromInput();
