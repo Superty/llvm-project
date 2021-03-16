@@ -37,7 +37,7 @@ struct AlignedAllocator {
   AlignedAllocator() = default;
   template <class U, size_t Y>
   constexpr AlignedAllocator(const AlignedAllocator<U, Y> &) noexcept {}
-  [[nodiscard]] T *allocate(std::size_t Elements) {
+  T *allocate(std::size_t Elements) {
     if (auto p = static_cast<T *>(aligned_alloc(
             Alignment,
             to_next_alignment_multiple(Alignment, Elements * sizeof(T)))))
