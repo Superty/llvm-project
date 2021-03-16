@@ -34,8 +34,6 @@ PresburgerSet getSetFromInput() {
 }
 
 unsigned long long getTime(unsigned long long start, unsigned long long end) {
-  fnTimer<Simplex>::time += fnTimer<PivotKey>::time;
-
   auto ret = fnTimer<PivotKey>::time;
 
   fnTimer<Simplex>::time = 0;
