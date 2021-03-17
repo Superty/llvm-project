@@ -33,15 +33,19 @@ PresburgerSet getSetFromInput() {
   return setFromString(str);
 }
 
-unsigned long long getTime(unsigned long long start, unsigned long long end) {
-  auto ret = fnTimer<PivotKey>::time;
+void printTime(unsigned long long start, unsigned long long end) {
+  std::cerr << fnTimer<Simplex>::time << '\n';
+  std::cerr << fnTimer<FindPivotKey>::time << '\n';
+  std::cerr << fnTimer<AddRowKey>::time << '\n';
+  std::cerr << fnTimer<PivotKey>::time << '\n';
+  std::cerr << fnTimer<LinearTransform>::time << '\n';
+  std::cerr << end - start << '\n';
 
   fnTimer<Simplex>::time = 0;
   fnTimer<FindPivotKey>::time = 0;
   fnTimer<AddRowKey>::time = 0;
   fnTimer<PivotKey>::time = 0;
   fnTimer<LinearTransform>::time = 0;
-  return ret;
 }
 
 int main(int argc, char **argv) {
@@ -60,7 +64,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = a.isIntegerEmpty();
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         std::cerr << res << '\n';
     }
@@ -74,7 +78,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::equal(a, b);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         llvm::errs() << res << '\n';
     }
@@ -88,7 +92,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.unionSet(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -102,7 +106,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.intersectSet(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -116,7 +120,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       a.subtract(std::move(b));
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         a.dumpISL();
     }
@@ -128,7 +132,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = coalesce(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         res.dumpISL();
     }
@@ -140,7 +144,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::complement(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         res.dumpISL();
     }
@@ -152,7 +156,7 @@ int main(int argc, char **argv) {
       unsigned long long start = __rdtscp(&dummy);
       auto res = PresburgerSet::eliminateExistentials(a);
       unsigned long long end = __rdtscp(&dummy);
-      std::cerr << getTime(start, end) << '\n';
+      printTime(start, end);
       if (i == numRuns - 1)
         a.dumpISL();
     }
