@@ -429,22 +429,19 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
   // }
 
   Vector &pivotRowVec = tableau.getRowVector(pivotRow);
+
   // swap pivotRowVec[0], pivotRowVec[pivotCol]
+  // and negate the whole pivot row except for the pivot column.
+  // (implemented as only flipping the pivot coloum and the denominator)
+  // We merge sign flipping into the swap for improved performance.
   auto tmp = pivotRowVec[0];
-  pivotRowVec[0] = pivotRowVec[pivotCol];
-  pivotRowVec[pivotCol] = tmp;
-  // We need to negate the whole pivot row except for the pivot column.
-  if (pivotRowVec[0] < 0) {
-    // If the denominator is negative, we negate the row by simply negating the
-    // denominator.
-    pivotRowVec[0] = -pivotRowVec[0];
-    pivotRowVec[pivotCol] = -pivotRowVec[pivotCol];
-  } else {
-    Vector &vec = tableau.getRowVector(pivotRow);
-    vec = -vec;
-    vec[0] = -vec[0];
-    vec[pivotCol] = -vec[pivotCol];
-  }
+  pivotRowVec[0] = -pivotRowVec[pivotCol];
+  pivotRowVec[pivotCol] = -tmp;
+
+    // If the denominator is negative, we canonicalize the row.
+  if (pivotRowVec[0] < 0)
+    pivotRowVec = -pivotRowVec;
+
   normalizeRow(pivotRow);
 
   Int a = pivotRowVec[0];
