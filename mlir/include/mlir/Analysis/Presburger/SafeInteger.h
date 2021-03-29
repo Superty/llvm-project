@@ -39,8 +39,8 @@ inline void overflowErrorIf(bool overflow) {
 struct SafeInteger {
   /// Construct a SafeInteger from a numerator and denominator.
   SafeInteger(__int128_t oVal) {
-    overflowErrorIf(!(std::numeric_limits<Int>::min() <= oVal &&
-                      oVal <= std::numeric_limits<Int>::max()));
+    // overflowErrorIf(!(std::numeric_limits<Int>::min() <= oVal &&
+    //                   oVal <= std::numeric_limits<Int>::max()));
     val = oVal;
   }
 
