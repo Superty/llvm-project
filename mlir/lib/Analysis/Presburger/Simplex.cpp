@@ -383,9 +383,6 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert((pivotRow >= nRedundant && pivotCol >= liveColBegin) &&
          "Refusing to pivot redundant row or invalid column");
 
-  static unsigned count = 0;
-  count++;
-
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
   // We need to negate the whole pivot row except for the pivot column.
@@ -419,8 +416,6 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
     tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
     normalizeRow(row);
   }
-  llvm::errs() << count << '\n';
-  dump();
 }
 
 /// Perform pivots until the unknown has a non-negative sample value or until
