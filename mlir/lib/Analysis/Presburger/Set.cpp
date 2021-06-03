@@ -408,3 +408,9 @@ llvm::hash_code PresburgerSet::hash_value() const {
   // private vars?
   return llvm::hash_combine(nDim, nSym);
 }
+
+void PresburgerSet::normalizeDivisions() {
+  for (auto &set : basicSets) {
+    set.normalizeDivisions();
+  } 
+}

@@ -82,6 +82,11 @@ public:
 
   PresburgerBasicSet makeRecessionCone() const;
 
+  /// Normalizes each Divsion Constraints
+  /// Converts each coefficient c in the division numberator to
+  /// be in the range -denominator < 2 * c <= denominator
+  void normalizeDivisions();
+
   void dumpCoeffs() const;
 
   void dump() const;

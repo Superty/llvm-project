@@ -492,3 +492,54 @@ void PresburgerBasicSet::dumpISL() const {
   printISL(llvm::errs());
   llvm::errs() << '\n';
 }
+
+void PresburgerBasicSet::normalizeDivisions() {
+  for (unsigned divi = 0; divi < divs.size(); divi++) {
+    auto div = divs[divi];
+    auto coeffs = div.getCoeffs();
+    auto denom = div.getDenominator();
+
+    SmallVector<int64_t, 8> shiftCoeffs, shiftResidue;
+
+    for (unsigned i = 0; i < coeffs.size(); i++) {
+      auto coeff = coeffs[i];
+      auto newCoeff = coeff;
+
+      // TODO: Allocate this statically. Learn how to do it.
+      shiftCoeffs.push_back(0);
+      shiftResidue.push_back(0);
+
+      // TODO: Are denominators surely positive?
+      // Shift the coefficent to be in the range (-d, d]
+      if (std::abs(2 * coeff) >= denom and 2 * coeff != denom) {
+        newCoeff = ((coeff % denom) + denom) % denom;
+        if (2 * (coeff % denom) > denom) {
+          newCoeff -= denom;
+        }
+
+        shiftCoeffs.back() = newCoeff - coeff;
+        shiftResidue.back() = (coeff - newCoeff) / denom;
+      }
+    }
+
+    // Get index of the current division
+    // TODO: This way is somewhat hacky, think of a better way
+    //       this one is based on order of variables.
+    auto divDimension = getNumTotalDims() - (divs.size() - divi);
+
+    // Shift all constraints by the shifts calculated above
+    for (auto &eq : eqs) {
+      eq.shiftCoeffs(shiftResidue, eq.getCoeffs()[divDimension]);
+    }
+
+    for (auto &ineq : ineqs) {
+      ineq.shiftCoeffs(shiftResidue, ineq.getCoeffs()[divDimension]);
+    }
+
+    for (auto &div : divs) {
+      div.shiftCoeffs(shiftResidue, div.getCoeffs()[divDimension]);
+    }
+
+    divs[divi].shiftCoeffs(shiftCoeffs, 1);
+  }
+}

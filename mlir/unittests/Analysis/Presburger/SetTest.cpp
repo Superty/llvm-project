@@ -50,3 +50,20 @@ TEST(PresburgerSetTest, Equality) {
   expectEqual("(x) : (exists q : x = q and q <= -1)",
               "(x) : (x <= -1)");
 }
+
+void expectEqualAfterNormalization(PresburgerSet &set) {
+  auto newSet = set;
+  newSet.normalizeDivisions();
+  set.dump();
+  newSet.dump();
+  EXPECT_TRUE(PresburgerSet::equal(set, newSet));
+  // TODO: Maybe add a normalization check too
+}
+
+TEST(PresburgerSetTest, normalize1) {
+  PresburgerSet normalize1 = setFromString(
+      "(x) : (exists q = [(5x + 2)/3], p = [(x - 5)/2] : x - 1 <= 3q "
+      "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
+      "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
+  expectEqualAfterNormalization(normalize1);
+}

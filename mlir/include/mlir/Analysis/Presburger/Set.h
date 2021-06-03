@@ -45,6 +45,11 @@ public:
   // bool containsPoint(const std::vector<INT> &values) const;
   llvm::Optional<SmallVector<int64_t, 8>> maybeGetCachedSample() const;
 
+  /// Normalizes each Divsion Constraints in each PresburgerBasicSet
+  /// Converts each coefficient c in the division numberator to
+  /// be in the range -denominator < 2 * c <= denominator
+  void normalizeDivisions();
+
 private:
   unsigned nDim;
   unsigned nSym;

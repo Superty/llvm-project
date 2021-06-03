@@ -64,6 +64,16 @@ public:
     coeffs.back() += x;
   }
 
+  // Shift each coefficent by coeffShifts[i] * constant
+  void shiftCoeffs(const ArrayRef<int64_t> &coeffShifts, int64_t constant) {
+    assert(coeffShifts.size() - 1 == getNumDims() &&
+           "Incorrect number of dimensions");
+
+      for (unsigned i = 0; i <= getNumDims(); i++) {
+        coeffs[i] += coeffShifts[i] * constant;
+      }
+  }
+
   void appendDimension() {
     insertDimensions(getNumDims(), 1);
   }
