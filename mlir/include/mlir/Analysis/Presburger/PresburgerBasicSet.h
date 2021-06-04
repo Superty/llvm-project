@@ -82,10 +82,7 @@ public:
 
   PresburgerBasicSet makeRecessionCone() const;
 
-  /// Normalizes each Divsion Constraints
-  /// Converts each coefficient c in the division numberator to
-  /// be in the range -denominator < 2 * c <= denominator
-  void normalizeDivisions();
+  void simplify();
 
   void dumpCoeffs() const;
 
@@ -130,6 +127,24 @@ private:
   /// is empty.
   Optional<SmallVector<int64_t, 8>>
   findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const;
+
+  /// 1. Converts each coefficient c in the division numberator to
+  /// be in the range -denominator < 2 * c <= denominator
+  /// 2. Divides numerator and denominator by their gcd
+  void normalizeDivisions();
+
+  /// Orders divisions such that a division only depends on division
+  /// before it.
+  void orderDivisions();
+
+  /// Swap division variables at indexes vari and varj
+  /// vari and varj are indexes in the divs vector
+  void swapDivisions(unsigned vari, unsigned varj);
+
+  /// Get the index of first division variable.
+  /// If no divisions are present, it will return
+  /// the index of constant
+  unsigned getDivisionOffset();
 
   Matrix coefficientMatrixFromEqs() const;
 

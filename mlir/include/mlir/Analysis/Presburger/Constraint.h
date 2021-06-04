@@ -74,6 +74,11 @@ public:
       }
   }
 
+  /// Swap coefficients at position vari, varj
+  void swapCoeffs(unsigned vari, unsigned varj) {
+    std::swap(coeffs[vari], coeffs[varj]);
+  }
+
   void appendDimension() {
     insertDimensions(getNumDims(), 1);
   }
@@ -191,6 +196,15 @@ public:
 
   void substitute(ArrayRef<int64_t> values) {
     assert(variable >= values.size() && "Not yet implemented");
+  }
+ 
+  /// Swaps the "variable" property of two division constraints
+  static void swapVariable(DivisionConstraint &diva, DivisionConstraint &divb) {
+    std::swap(diva.variable, divb.variable);
+  }
+
+  void printVar() {
+    llvm::errs() << variable << "\n";
   }
 
   void dump() const { print(llvm::errs()); }

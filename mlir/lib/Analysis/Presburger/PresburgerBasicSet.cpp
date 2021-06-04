@@ -493,7 +493,40 @@ void PresburgerBasicSet::dumpISL() const {
   llvm::errs() << '\n';
 }
 
+void PresburgerBasicSet::simplify() {
+  orderDivisions();
+  normalizeDivisions();
+}
+
+void PresburgerBasicSet::swapDivisions(unsigned vari, unsigned varj) {
+  // Swap the constraints
+  std::swap(divs[vari], divs[varj]);
+  DivisionConstraint::swapVariable(divs[vari], divs[varj]);
+
+  unsigned divOffset = getDivisionOffset();
+
+  // Swap the coefficents in every constraint
+  for (auto &eq: eqs) {
+    eq.swapCoeffs(divOffset + vari, divOffset + varj);
+  }
+
+  for (auto &ineq: ineqs) {
+    ineq.swapCoeffs(divOffset + vari, divOffset + varj);
+  }
+
+  for (auto &div: divs) {
+    div.swapCoeffs(divOffset + vari, divOffset + varj);
+  }
+}
+
+unsigned PresburgerBasicSet::getDivisionOffset() {
+  // coeffs should never be 0 so no need to check for unsigned overflow really
+  return getNumTotalDims() - divs.size();
+}
+
 void PresburgerBasicSet::normalizeDivisions() {
+  unsigned divOffset = getDivisionOffset();
+
   for (unsigned divi = 0; divi < divs.size(); divi++) {
     auto div = divs[divi];
     auto coeffs = div.getCoeffs();
@@ -523,9 +556,7 @@ void PresburgerBasicSet::normalizeDivisions() {
     }
 
     // Get index of the current division
-    // TODO: This way is somewhat hacky, think of a better way
-    //       this one is based on order of variables.
-    auto divDimension = getNumTotalDims() - (divs.size() - divi);
+    auto divDimension = divOffset + divi;
 
     // Shift all constraints by the shifts calculated above
     for (auto &eq : eqs) {
@@ -541,5 +572,30 @@ void PresburgerBasicSet::normalizeDivisions() {
     }
 
     divs[divi].shiftCoeffs(shiftCoeffs, 1);
+  }
+
+  // Take out gcd
+}
+
+void PresburgerBasicSet::orderDivisions() {
+  unsigned divOffset = getDivisionOffset();
+  unsigned nDivs = divs.size();
+
+  for (unsigned i = 0; i < divs.size();) {
+    const ArrayRef<int64_t> &coeffs = divs[i].getCoeffs();
+    bool foundDependency = false;
+
+    // Get the first division on which this division is dependent
+    for (unsigned j = i + 1; j < nDivs; j++) {
+      if (coeffs[j + divOffset] != 0) {
+        foundDependency = true;
+        swapDivisions(i, j);
+        break;
+      }
+    }
+
+    if (not foundDependency) {
+      i++;
+    }
   }
 }
