@@ -53,17 +53,37 @@ TEST(PresburgerSetTest, Equality) {
 
 void expectEqualAfterNormalization(PresburgerSet &set) {
   auto newSet = set;
-  newSet.normalizeDivisions();
+  newSet.simplify();
   set.dump();
   newSet.dump();
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
-  // TODO: Maybe add a normalization check too
+
+  // Normalization check
+  bool correctlyModed = true;
+  for (const PresburgerBasicSet &pbs : newSet.getBasicSets()) {
+    for (const DivisionConstraint &div : pbs.getDivisions()) {
+      int64_t denom = div.getDenominator();
+      for (const int64_t &coeff : div.getCoeffs()) {
+        correctlyModed = correctlyModed and ((std::abs(2 * coeff) < denom) or
+                                             (2 * coeff == denom));
+      }
+    }
+  }
+  EXPECT_TRUE(correctlyModed);
 }
 
-TEST(PresburgerSetTest, normalize1) {
-  PresburgerSet normalize1 = setFromString(
-      "(x) : (exists q = [(5x + 2)/3], p = [(x - 5)/2] : x - 1 <= 3q "
+TEST(PresburgerSetTest, simplify1) {
+  PresburgerSet simplify1 = setFromString(
+      "(x) : (exists q = [(5x - 15) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
       "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
       "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
-  expectEqualAfterNormalization(normalize1);
+  expectEqualAfterNormalization(simplify1);
+}
+
+TEST(PresburgerSetTest, divisionOrder1) {
+  PresburgerSet divisionOrder1 = setFromString(
+      "(x) : (exists q = [(5p - 15) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
+      "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
+      "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
+  expectEqualAfterNormalization(divisionOrder1);
 }
