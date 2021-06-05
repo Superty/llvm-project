@@ -16,6 +16,7 @@
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
@@ -201,6 +202,22 @@ public:
   /// Swaps the "variable" property of two division constraints
   static void swapVariable(DivisionConstraint &diva, DivisionConstraint &divb) {
     std::swap(diva.variable, divb.variable);
+  }
+
+  /// Divide both numerator and denominator by their gcd
+  void removeCommonFactor() {
+    int64_t currGcd = 0; 
+    for (unsigned i = 0; i < coeffs.size(); i++) {
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeffs[i]));
+    }
+    currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(denom));
+
+    if (currGcd != 1) {
+      for (unsigned i = 0; i < coeffs.size(); i++) {
+        coeffs[i] /= currGcd;
+      }
+      denom /= currGcd;
+    }
   }
 
   void printVar() {

@@ -524,6 +524,8 @@ unsigned PresburgerBasicSet::getDivisionOffset() {
   return getNumTotalDims() - divs.size();
 }
 
+// TODO: Maybe shift functionality of this function as a member of
+// DivisionConstraint
 void PresburgerBasicSet::normalizeDivisions() {
   unsigned divOffset = getDivisionOffset();
 
@@ -575,6 +577,9 @@ void PresburgerBasicSet::normalizeDivisions() {
   }
 
   // Take out gcd
+  for (DivisionConstraint &div : divs) {
+    div.removeCommonFactor();
+  }
 }
 
 void PresburgerBasicSet::orderDivisions() {
