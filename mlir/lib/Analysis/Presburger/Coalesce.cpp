@@ -239,6 +239,15 @@ void getBasicSetInequalities(const PresburgerBasicSet &bs,
   }
 }
 
+/// Adds all division constraints as inequalities in the sets
+void addDivisionIneqs(PresburgerBasicSet &bs) {
+  // TODO: Dont add redundant constraints
+  for (auto &div : bs.getDivisions()) {
+    bs.addInequality(div.getInequalityLowerBound().getCoeffs());
+    bs.addInequality(div.getInequalityUpperBound().getCoeffs());
+  }
+}
+
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
   PresburgerSet newSet(set.getNumDims(), set.getNumSyms());
   SmallVector<PresburgerBasicSet, 4> basicSetVector = set.getBasicSets();
@@ -247,6 +256,14 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
   // looping strategy in a different function?
   for (unsigned i = 0; i < basicSetVector.size(); i++) {
     for (unsigned j = i + 1; j < basicSetVector.size(); j++) {
+
+      // TODO: Try to remove as many existentials as possible in simplify
+      basicSetVector[i].simplify();
+      basicSetVector[j].simplify();
+
+      addDivisionIneqs(basicSetVector[i]);
+      addDivisionIneqs(basicSetVector[j]);
+
       PresburgerBasicSet bs1 = basicSetVector[i];
       Simplex simplex1(bs1);
       SmallVector<ArrayRef<int64_t>, 8> equalities1, inequalities1;
@@ -259,9 +276,9 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       getBasicSetEqualities(bs2, equalities2);
       getBasicSetInequalities(bs2, inequalities2);
 
-      // TODO: implement the support for existentials
-      if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0 ||
-          bs1.getNumDivs() != 0 || bs2.getNumDivs() != 0)
+      // TODO: Add case when variables are not equivalent
+      if (bs1.getNumExists() + bs1.getNumDivs() !=
+          bs2.getNumExists() + bs2.getNumDivs())
         continue;
 
       Info info1, info2;
@@ -274,12 +291,12 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
           !info2.t) {
         // contained 2 in 1
-        basicSetVector.erase(basicSetVector.begin() + j);
-        j--;
+        addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
+        i--;
       } else if (!info2.redundant.empty() && info2.cut.empty() &&
                  !info2.adjIneq && !info1.t) {
         // contained 1 in 2
-        basicSetVector.erase(basicSetVector.begin() + i);
+        addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
         i--;
         break;
       } else if (!info1.redundant.empty() && !info1.cut.empty() &&
@@ -390,8 +407,10 @@ void addEqualities(PresburgerBasicSet &bs,
 bool adjIneqPureCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                      unsigned i, unsigned j, const Info &infoA,
                      const Info &infoB) {
-  PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -404,6 +423,19 @@ bool adjIneqPureCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
 void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                           unsigned i, unsigned j,
                           const PresburgerBasicSet &bs) {
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(bs.getNumDims(), bs.getNumParams(),
+                            basicSetVector[i].getNumDivs() +
+                                basicSetVector[i].getNumExists());
+
+  for (auto &eq: bs.getEqualities()) {
+    newSet.addEquality(eq.getCoeffs());
+  }
+
+  for (auto &ineq: bs.getInequalities()) {
+    newSet.addInequality(ineq.getCoeffs());
+  }
+
   if (i < j) {
     basicSetVector.erase(basicSetVector.begin() + j);
     basicSetVector.erase(basicSetVector.begin() + i);
@@ -411,7 +443,7 @@ void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     basicSetVector.erase(basicSetVector.begin() + i);
     basicSetVector.erase(basicSetVector.begin() + j);
   }
-  basicSetVector.push_back(bs);
+  basicSetVector.push_back(newSet);
 }
 
 bool protrusionCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
@@ -428,8 +460,10 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
   for (unsigned l = 0; l < infoA.cut.size(); l++) {
     auto t = llvm::to_vector<8>(infoA.cut[l]);
-    PresburgerBasicSet bPrime =
-        PresburgerBasicSet(b.getNumDims(), b.getNumParams());
+
+    // TODO: Divs + Exists
+    PresburgerBasicSet bPrime = PresburgerBasicSet(
+        b.getNumDims(), b.getNumParams(), b.getNumDivs() + b.getNumExists());
     addInequalities(bPrime, constraintsB);
     shift(t, 1);
     Simplex simp(bPrime);
@@ -464,7 +498,9 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams());
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
+                            b.getNumDivs() + b.getNumExists());
   // If all the wrappings were succesfull, the two polytopes can be replaced by
   // a polytope with all of the redundant constraints and the wrapped
   // constraints.
@@ -545,7 +581,10 @@ bool adjEqCaseNoCut(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
   }
   shift(t, 1);
   newSetInequalities.push_back(t);
-  PresburgerBasicSet newSet(A.getNumDims(), A.getNumParams());
+
+  // TODO : Exists + Divs
+  PresburgerBasicSet newSet(A.getNumDims(), A.getNumParams(),
+                            A.getNumDivs() + A.getNumExists());
   for (const SmallVector<int64_t, 8> &curr : newSetInequalities) {
     newSet.addInequality(curr);
   }
@@ -621,7 +660,9 @@ bool adjEqCaseNonPure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams());
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
+                            b.getNumExists() + b.getNumDivs());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<int64_t, 8> &curr : wrapped) {
@@ -675,7 +716,9 @@ bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams());
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
+                            b.getNumDivs() + b.getNumExists());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<int64_t, 8> &curr : wrapped) {
@@ -839,8 +882,10 @@ bool adjIneqCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
       return false;
     }
   }
-  PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  // TODO: Divs + Exists
+  PresburgerBasicSet newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[j].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -856,8 +901,11 @@ bool cutCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector, unsigned i,
       return false;
     }
   }
-  PresburgerBasicSet newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  
+  // TODO: Exists + Divs
+  PresburgerBasicSet newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);

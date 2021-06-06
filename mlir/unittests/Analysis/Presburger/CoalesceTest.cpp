@@ -350,18 +350,40 @@ TEST(CoalesceTest, existentials) {
   expectCoalesce(2, existentials);
 }
 
-TEST(CoalesceTest, existentials2) {
-  PresburgerSet existentials2 = setFromString(
-      "(x) : ( exists j : x = 4j and 0 <= x and x <= 100) or (exists j : 4j + "
-      "1 <= x and x <= 4j + 2 and 0 <= x and x <= 100)");
-  expectCoalesce(2, existentials2);
-}
-
 TEST(CoalesceTest, existentials3) {
   PresburgerSet existentials2 =
       setFromString("(x) : ( exists j : x = 4j and 0 <= x and x <= 100) or (x "
                     "= 2) or (x = 3)");
   expectCoalesce(2, existentials2);
+}
+
+TEST(CoalesceTest, divisonsNonMatch1) {
+  PresburgerSet set = setFromString(
+      "(x) : (exists j : x = 4j and 0 <= x and x <= 100) or (exists j : 4j + 1 "
+      "<= x and x <= 4j + 2 and 0 <= x and x <= 100)");
+  expectCoalesce(1, set);
+}
+
+TEST(CoalesceTest, divisionAdjEq) {
+  PresburgerSet division1 =
+      setFromString("(x) : ( exists j : x - 1 <= 3j and 3j <= x ) or ( exists "
+                    "j : x - 2 = 3j )");
+  expectCoalesce(1, division1);
+}
+
+TEST(CoalesceTest, divisionAdjEq2) {
+  PresburgerSet division2 =
+      setFromString("(x) : (exists q = [(x + 1)/3] : x - 1 <= 3q and 3q <= x) "
+                    "or (exists q = [(x - 2)/3] : x - 2 = 3q)");
+  expectCoalesce(1, division2);
+}
+
+TEST(CoalesceTest, divisionProtrusion) {
+  PresburgerSet set =
+      setFromString("(x) : (exists y : x >= 0 and y >= 0 and y <= 3 and x <= "
+                    "9) or (exists y : y >= 1 "
+                    "and y <= 4 and y <= x - 1 and x + y - 11 <= 0)");
+  expectCoalesce(1, set);
 }
 
 /*TEST(CoalesceTest, twoAdj) {
