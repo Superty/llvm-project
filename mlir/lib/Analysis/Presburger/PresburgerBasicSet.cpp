@@ -493,9 +493,22 @@ void PresburgerBasicSet::dumpISL() const {
   llvm::errs() << '\n';
 }
 
+// TODO: Try to remove as many existentials as possible in simplify
 void PresburgerBasicSet::simplify() {
   orderDivisions();
   normalizeDivisions();
+
+  // TODO: Remove existentials and divisions that do not occur anywhere
+  removeRedundantVars();
+  
+  // TODO: Try to recover divisions from equalities and inequalties
+}
+
+// TODO: How efficent is this?
+void PresburgerBasicSet::removeRedundantConstraints() {
+  Simplex simplex(*this);
+  simplex.detectRedundant();
+  this->updateFromSimplex(simplex);
 }
 
 void PresburgerBasicSet::swapDivisions(unsigned vari, unsigned varj) {
@@ -503,7 +516,7 @@ void PresburgerBasicSet::swapDivisions(unsigned vari, unsigned varj) {
   std::swap(divs[vari], divs[varj]);
   DivisionConstraint::swapVariable(divs[vari], divs[varj]);
 
-  unsigned divOffset = getDivisionOffset();
+  unsigned divOffset = getDivOffset();
 
   // Swap the coefficents in every constraint
   for (auto &eq: eqs) {
@@ -519,15 +532,24 @@ void PresburgerBasicSet::swapDivisions(unsigned vari, unsigned varj) {
   }
 }
 
-unsigned PresburgerBasicSet::getDivisionOffset() {
-  // coeffs should never be 0 so no need to check for unsigned overflow really
-  return getNumTotalDims() - divs.size();
+unsigned PresburgerBasicSet::getDivOffset() {
+  if (divs.size() == 0) {
+    return -1;
+  }
+  return nParam + nDim + nExist;
+}
+
+unsigned PresburgerBasicSet::getExistOffset() {
+  if (nExist == 0) {
+    return -1;
+  }
+  return nParam + nDim;
 }
 
 // TODO: Maybe shift functionality of this function as a member of
-// DivisionConstraint
+//       DivisionConstraint
 void PresburgerBasicSet::normalizeDivisions() {
-  unsigned divOffset = getDivisionOffset();
+  unsigned divOffset = getDivOffset();
 
   for (unsigned divi = 0; divi < divs.size(); divi++) {
     auto div = divs[divi];
@@ -583,7 +605,7 @@ void PresburgerBasicSet::normalizeDivisions() {
 }
 
 void PresburgerBasicSet::orderDivisions() {
-  unsigned divOffset = getDivisionOffset();
+  unsigned divOffset = getDivOffset();
   unsigned nDivs = divs.size();
 
   for (unsigned i = 0; i < divs.size();) {
@@ -603,4 +625,112 @@ void PresburgerBasicSet::orderDivisions() {
       i++;
     }
   }
+}
+
+bool PresburgerBasicSet::redundantVar(unsigned var) {
+  // TODO: Probably add a member function in constraint to get that particular
+  // value for speed instead of getting the whole coefficent array
+  for (auto &con : eqs) {
+    if (con.getCoeffs()[var] != 0) {
+      return false;
+    }
+  }
+
+  for (auto &con : ineqs) {
+    if (con.getCoeffs()[var] != 0) {
+      return false;
+    }
+  }
+
+  for (auto &con : divs) {
+    if (con.getCoeffs()[var] != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+SmallVector<int64_t, 8>
+PresburgerBasicSet::copyWithNonRedundant(std::vector<unsigned> &nrExists,
+                                         std::vector<unsigned> &nrDiv,
+                                         const ArrayRef<int64_t> &ogCoeffs) {
+  SmallVector<int64_t, 8> newCoeffs;
+
+  for (unsigned i = 0; i < nDim + nParam; i++) {
+    newCoeffs.push_back(ogCoeffs[i]);
+  }
+
+  for (unsigned i : nrExists) {
+    newCoeffs.push_back(ogCoeffs[i]);
+  }
+
+  for (unsigned i : nrDiv) {
+    newCoeffs.push_back(ogCoeffs[i]);
+  }
+
+  newCoeffs.push_back(ogCoeffs.back());
+
+  return newCoeffs;
+}
+
+void PresburgerBasicSet::removeRedundantVars() {
+  std::vector<unsigned> nonRedundantExist, nonRedundantDivs;
+
+  // Check for redundant existentials
+  unsigned existOffset = getExistOffset();
+
+  for (unsigned i = 0; i < nExist; i++) {
+    unsigned var = existOffset + i;
+    if (!redundantVar(var)) {
+      nonRedundantExist.push_back(var);
+    }
+  }
+
+  // Check for redundant divisions
+  unsigned divOffset = getDivOffset();
+
+  for (unsigned i = 0; i < divs.size(); i++) {
+    unsigned var = divOffset + i;
+    if (!redundantVar(var)) {
+      nonRedundantDivs.push_back(var);
+    }
+  }
+
+  SmallVector<InequalityConstraint, 8> newIneqs;
+  SmallVector<EqualityConstraint, 8> newEqs;
+  SmallVector<DivisionConstraint, 8> newDivs;
+
+  for (InequalityConstraint &ineq : ineqs) {
+    SmallVector<int64_t, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, ineq.getCoeffs());
+
+    newIneqs.push_back(InequalityConstraint(coeffs));
+  }
+
+  for (EqualityConstraint &eq : eqs) {
+    SmallVector<int64_t, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, eq.getCoeffs());
+
+    newEqs.push_back(EqualityConstraint(coeffs));
+  }
+
+  unsigned variableOffset = nDim + nParam + nonRedundantExist.size();
+  for (unsigned i : nonRedundantDivs) {
+    DivisionConstraint div = divs[i - divOffset];
+
+    SmallVector<int64_t, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, div.getCoeffs());
+
+    newDivs.push_back(DivisionConstraint(coeffs, div.getDenominator(),
+                                         variableOffset + newDivs.size()));
+  }
+
+  // Assign new vectors
+  ineqs = newIneqs;
+  eqs = newEqs;
+  divs = newDivs;
+
+  // Change dimensions
+  nExist = nonRedundantExist.size();
 }

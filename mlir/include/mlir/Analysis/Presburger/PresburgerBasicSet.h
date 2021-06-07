@@ -82,6 +82,9 @@ public:
 
   PresburgerBasicSet makeRecessionCone() const;
 
+  /// Uses simplex to remove redundant constraints
+  void removeRedundantConstraints();
+
   void simplify();
 
   void dumpCoeffs() const;
@@ -137,14 +140,29 @@ private:
   /// before it.
   void orderDivisions();
 
+  /// Return true if the variable is redundant in the set
+  bool redundantVar(unsigned var);
+
+  /// Creates new coeffs from ogCoeffs, keeping only the exists in 
+  /// nrExists and divs in nrDiv and removing the rest
+  SmallVector<int64_t, 8> copyWithNonRedundant(std::vector<unsigned> &nrExists,
+                                         std::vector<unsigned> &nrDiv,
+                                         const ArrayRef<int64_t> &ogCoeffs);
+
+  /// Remove variables that do not occur in any constraint
+  void removeRedundantVars();
+
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector
   void swapDivisions(unsigned vari, unsigned varj);
 
   /// Get the index of first division variable.
-  /// If no divisions are present, it will return
-  /// the index of constant
-  unsigned getDivisionOffset();
+  /// If no divisions, this will return a -1
+  unsigned getDivOffset();
+
+  /// Get the index of first existential variable.
+  /// If no existentials, this will return a -1
+  unsigned getExistOffset();
 
   Matrix coefficientMatrixFromEqs() const;
 

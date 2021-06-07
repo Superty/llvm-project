@@ -87,3 +87,22 @@ TEST(PresburgerSetTest, divisionOrder1) {
       "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
   expectEqualAfterNormalization(divisionOrder1);
 }
+
+TEST(PresburgerSetTest, existentialTest) {
+  PresburgerSet set = setFromString("(x) : (exists a, b = [(x + 1) / 2], c : a + x >= 5)");
+  set.dump();
+  set.simplify();
+  set.dump();
+
+  auto bs = set.getBasicSets()[0];
+
+  EXPECT_TRUE(bs.getNumExists() == 1);
+  EXPECT_TRUE(bs.getNumDivs() == 0);
+}
+
+TEST(PresburgerSetTest, existentialTest2) {
+  PresburgerSet divisionOrder1 = setFromString(
+      "(d0) : (exists q0 = [(d0 + 1)/3] : -d0 + 3q0 + 1 >= 0 and d0 - 3q0 >= "
+      "0) or (exists q0 = [(d0 - 2)/3] : d0 - 3q0 - 2 = 0)");
+  expectEqualAfterNormalization(divisionOrder1);
+}
