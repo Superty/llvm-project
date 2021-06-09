@@ -17,6 +17,17 @@ using namespace mlir;
 using namespace mlir::analysis;
 using namespace mlir::analysis::presburger;
 
+PresburgerBasicSet::PresburgerBasicSet(unsigned oNDim, unsigned oNParam,
+                                       unsigned oNExist,
+                                       ArrayRef<DivisionConstraint> oDivs)
+    : nDim(oNDim), nParam(oNParam), nExist(oNExist) {
+
+  for (DivisionConstraint div : oDivs) {
+    divs.push_back(DivisionConstraint(div.getCoeffs(), div.getDenominator(),
+                                      div.getVariable()));
+  }
+}
+
 void PresburgerBasicSet::addInequality(ArrayRef<int64_t> coeffs) {
   ineqs.emplace_back(coeffs);
 }
@@ -504,7 +515,6 @@ void PresburgerBasicSet::simplify() {
   // TODO: Try to recover divisions from equalities and inequalties
 }
 
-// TODO: How efficent is this?
 void PresburgerBasicSet::removeRedundantConstraints() {
   Simplex simplex(*this);
   simplex.detectRedundant();
@@ -562,7 +572,7 @@ void PresburgerBasicSet::normalizeDivisions() {
       auto coeff = coeffs[i];
       auto newCoeff = coeff;
 
-      // TODO: Allocate this statically. Learn how to do it.
+      // TODO: Allocate this statically?
       shiftCoeffs.push_back(0);
       shiftResidue.push_back(0);
 
@@ -629,7 +639,7 @@ void PresburgerBasicSet::orderDivisions() {
 
 bool PresburgerBasicSet::redundantVar(unsigned var) {
   // TODO: Probably add a member function in constraint to get that particular
-  // value for speed instead of getting the whole coefficent array
+  // coeff instead of getting the whole coefficent array
   for (auto &con : eqs) {
     if (con.getCoeffs()[var] != 0) {
       return false;
@@ -733,4 +743,71 @@ void PresburgerBasicSet::removeRedundantVars() {
 
   // Change dimensions
   nExist = nonRedundantExist.size();
+}
+
+void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
+                                          PresburgerBasicSet &bs2) {
+  // Assert that bs1 has more divisions than bs2
+  if (bs1.getNumDivs() < bs2.getNumDivs()) {
+    alignDivs(bs2, bs1);
+    return;
+  }
+
+  bs1.simplify();
+  bs2.simplify();
+
+  // TODO: Is there a better stratergy than this ?
+  // Append extra existentials
+  if (bs1.nExist > bs2.nExist) {
+    bs2.appendExistentialDimensions(bs1.nExist - bs2.nExist);
+  } else {
+    bs1.appendExistentialDimensions(bs2.nExist - bs1.nExist);
+  }
+
+  // TODO: Is there a better stratergy than this ? 
+  // Add the extra divisions from bs1 to bs2
+  unsigned extraDivs = bs1.divs.size() - bs2.divs.size();
+  bs2.insertDimensions(bs2.getNumDims() - 1, extraDivs);
+  for (unsigned i = 0; i < extraDivs; i++) {
+    DivisionConstraint &div = bs1.divs[bs2.getNumDivs()];
+    bs2.divs.push_back(DivisionConstraint(div.getCoeffs(), div.getDenominator(),
+                                          div.getVariable()));
+  }
+
+  // Loop over divs and find the equal ones
+  // This requires that divs in divs1 are ordered, which we ensured in
+  // simplify calls.
+  //
+  // Ordering ensures that divisions at index will not depend on any division
+  // at index >= i. This allows us to check same divisions easier, as well as
+  // Swaping will not cause any 
+  for (unsigned i = 0; i < bs2.divs.size(); i++) {
+    bool foundMatch = false;
+    for (unsigned j = i; j < bs1.divs.size(); j++) {
+      if (DivisionConstraint::sameDivision(bs1.divs[i], bs2.divs[j])) {
+        foundMatch = true;
+        if (i != j) {
+          bs2.swapDivisions(i, j);
+          break;
+        }
+      }
+    }
+
+    // Match not found, convert to existential
+    // Convert by swapping this division with this with the first division,
+    // removing this division, and incrementing nExist.
+    //
+    // This part leverages the order of variables in coefficients: Existentials,
+    // Divisions, Constant
+    if (not foundMatch) {
+      bs1.swapDivisions(bs1.getDivOffset(), i);
+      bs2.swapDivisions(bs2.getDivOffset(), i);
+
+      bs1.divs.erase(bs1.divs.begin());
+      bs2.divs.erase(bs2.divs.begin());
+
+      bs1.nExist++;
+      bs2.nExist++;
+    }
+  }
 }

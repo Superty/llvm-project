@@ -34,6 +34,9 @@ public:
   PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0, unsigned oNExist = 0)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
+  PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist,
+                     ArrayRef<DivisionConstraint> divs);
+
   unsigned getNumDims() const { return nDim; }
   unsigned getNumTotalDims() const { return nParam + nDim + nExist + divs.size(); }
   unsigned getNumParams() const { return nParam; }
@@ -84,6 +87,10 @@ public:
 
   /// Uses simplex to remove redundant constraints
   void removeRedundantConstraints();
+
+  /// Align equivalent divs PresburgerBasicSets bs1 and bs2
+  /// Converts non matching divisions to existentials
+  static void alignDivs(PresburgerBasicSet &bs1, PresburgerBasicSet &bs2);
 
   void simplify();
 

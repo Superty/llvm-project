@@ -241,7 +241,7 @@ void getBasicSetInequalities(const PresburgerBasicSet &bs,
 
 /// Adds all division constraints as inequalities in the sets
 void addDivisionIneqs(PresburgerBasicSet &bs) {
-  // TODO: Dont add redundant constraints
+  // TODO: Dont add redundant constraints that match
   for (auto &div : bs.getDivisions()) {
     bs.addInequality(div.getInequalityLowerBound().getCoeffs());
     bs.addInequality(div.getInequalityUpperBound().getCoeffs());
@@ -256,30 +256,28 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
   // looping strategy in a different function?
   for (unsigned i = 0; i < basicSetVector.size(); i++) {
     for (unsigned j = i + 1; j < basicSetVector.size(); j++) {
+      PresburgerBasicSet &bs1 = basicSetVector[i];
+      PresburgerBasicSet &bs2 = basicSetVector[j];
 
-      // TODO: Try to remove as many existentials as possible in simplify
-      basicSetVector[i].simplify();
-      basicSetVector[j].simplify();
+      // Divisions needs to be added before alignment since non matching
+      // divisions will convert to existentials
+      addDivisionIneqs(bs1);
+      addDivisionIneqs(bs2);
 
-      addDivisionIneqs(basicSetVector[i]);
-      addDivisionIneqs(basicSetVector[j]);
+      PresburgerBasicSet::alignDivs(bs1, bs2);
 
-      PresburgerBasicSet bs1 = basicSetVector[i];
+      bs1.removeRedundantConstraints();
+      bs2.removeRedundantConstraints();
+
       Simplex simplex1(bs1);
       SmallVector<ArrayRef<int64_t>, 8> equalities1, inequalities1;
       getBasicSetEqualities(bs1, equalities1);
       getBasicSetInequalities(bs1, inequalities1);
 
-      PresburgerBasicSet bs2 = basicSetVector[j];
       Simplex simplex2(bs2);
       SmallVector<ArrayRef<int64_t>, 8> equalities2, inequalities2;
       getBasicSetEqualities(bs2, equalities2);
       getBasicSetInequalities(bs2, inequalities2);
-
-      // TODO: Add case when variables are not equivalent
-      if (bs1.getNumExists() + bs1.getNumDivs() !=
-          bs2.getNumExists() + bs2.getNumDivs())
-        continue;
 
       Info info1, info2;
       if (!classify(simplex2, inequalities1, equalities1, info1))
@@ -384,7 +382,9 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
       }
     }
   }
-  for (const PresburgerBasicSet &curr : basicSetVector) {
+  
+  for (PresburgerBasicSet &curr : basicSetVector) {
+    curr.removeRedundantConstraints();
     newSet.addBasicSet(curr);
   }
   return newSet;
@@ -407,7 +407,6 @@ void addEqualities(PresburgerBasicSet &bs,
 bool adjIneqPureCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                      unsigned i, unsigned j, const Info &infoA,
                      const Info &infoB) {
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(
       basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
       basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
@@ -423,10 +422,9 @@ bool adjIneqPureCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
 void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                           unsigned i, unsigned j,
                           const PresburgerBasicSet &bs) {
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(bs.getNumDims(), bs.getNumParams(),
-                            basicSetVector[i].getNumDivs() +
-                                basicSetVector[i].getNumExists());
+                            basicSetVector[i].getNumExists(), 
+                            basicSetVector[i].getDivisions());
 
   for (auto &eq: bs.getEqualities()) {
     newSet.addEquality(eq.getCoeffs());
@@ -461,7 +459,6 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
   for (unsigned l = 0; l < infoA.cut.size(); l++) {
     auto t = llvm::to_vector<8>(infoA.cut[l]);
 
-    // TODO: Divs + Exists
     PresburgerBasicSet bPrime = PresburgerBasicSet(
         b.getNumDims(), b.getNumParams(), b.getNumDivs() + b.getNumExists());
     addInequalities(bPrime, constraintsB);
@@ -498,7 +495,6 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
                             b.getNumDivs() + b.getNumExists());
   // If all the wrappings were succesfull, the two polytopes can be replaced by
@@ -582,7 +578,6 @@ bool adjEqCaseNoCut(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
   shift(t, 1);
   newSetInequalities.push_back(t);
 
-  // TODO : Exists + Divs
   PresburgerBasicSet newSet(A.getNumDims(), A.getNumParams(),
                             A.getNumDivs() + A.getNumExists());
   for (const SmallVector<int64_t, 8> &curr : newSetInequalities) {
@@ -660,7 +655,6 @@ bool adjEqCaseNonPure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
                             b.getNumExists() + b.getNumDivs());
   // The new polytope consists of all the wrapped constraints and all the
@@ -716,7 +710,6 @@ bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     }
   }
 
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(b.getNumDims(), b.getNumParams(),
                             b.getNumDivs() + b.getNumExists());
   // The new polytope consists of all the wrapped constraints and all the
@@ -882,10 +875,10 @@ bool adjIneqCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
       return false;
     }
   }
-  // TODO: Divs + Exists
   PresburgerBasicSet newSet(
       basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
       basicSetVector[i].getNumDivs() + basicSetVector[j].getNumExists());
+
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -902,7 +895,6 @@ bool cutCase(SmallVectorImpl<PresburgerBasicSet> &basicSetVector, unsigned i,
     }
   }
   
-  // TODO: Exists + Divs
   PresburgerBasicSet newSet(
       basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
       basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());

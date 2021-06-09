@@ -167,6 +167,10 @@ public:
     return denom;
   }
 
+  unsigned getVariable() const {
+    return variable;
+  }
+
   InequalityConstraint getInequalityLowerBound() const {
     SmallVector<int64_t, 8> ineqCoeffs = coeffs;
     ineqCoeffs[variable] -= denom;
@@ -218,6 +222,23 @@ public:
       }
       denom /= currGcd;
     }
+  }
+
+  /// Checks if coefficients of two divisions are same. Assumes that the
+  /// divisions were normalized before.
+  /// This function is only useful if the divisions are ordered.
+  static bool sameDivision(DivisionConstraint &div1, DivisionConstraint &div2) {
+    if (div1.getDenominator() != div2.getDenominator()) {
+      return false;
+    }
+
+    for (unsigned i = 0; i < div1.coeffs.size(); i++) {
+      if (div1.coeffs[i] != div2.coeffs[i]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   void printVar() {
