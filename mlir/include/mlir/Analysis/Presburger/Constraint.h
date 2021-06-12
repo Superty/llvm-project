@@ -70,9 +70,8 @@ public:
     assert(coeffShifts.size() - 1 == getNumDims() &&
            "Incorrect number of dimensions");
 
-      for (unsigned i = 0; i <= getNumDims(); i++) {
-        coeffs[i] += coeffShifts[i] * constant;
-      }
+    for (unsigned i = 0; i < coeffs.size(); ++i)
+      coeffs[i] += coeffShifts[i] * constant;
   }
 
   /// Swap coefficients at position vari, varj
@@ -204,22 +203,20 @@ public:
   }
  
   /// Swaps the "variable" property of two division constraints
-  static void swapVariable(DivisionConstraint &diva, DivisionConstraint &divb) {
+  static void swapVariables(DivisionConstraint &diva,
+                            DivisionConstraint &divb) {
     std::swap(diva.variable, divb.variable);
   }
 
   /// Divide both numerator and denominator by their gcd
   void removeCommonFactor() {
-    int64_t currGcd = 0; 
-    for (unsigned i = 0; i < coeffs.size(); i++) {
-      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeffs[i]));
-    }
-    currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(denom));
+    int64_t currGcd = std::abs(denom);
+    for (int64_t &coeff : coeffs)
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
 
     if (currGcd != 1) {
-      for (unsigned i = 0; i < coeffs.size(); i++) {
-        coeffs[i] /= currGcd;
-      }
+      for (int64_t &coeff : coeffs)
+        coeff /= currGcd;
       denom /= currGcd;
     }
   }
@@ -228,14 +225,12 @@ public:
   /// divisions were normalized before.
   /// This function is only useful if the divisions are ordered.
   static bool sameDivision(DivisionConstraint &div1, DivisionConstraint &div2) {
-    if (div1.getDenominator() != div2.getDenominator()) {
+    if (div1.getDenominator() != div2.getDenominator())
       return false;
-    }
 
     for (unsigned i = 0; i < div1.coeffs.size(); i++) {
-      if (div1.coeffs[i] != div2.coeffs[i]) {
+      if (div1.coeffs[i] != div2.coeffs[i])
         return false;
-      }
     }
 
     return true;

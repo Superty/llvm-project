@@ -138,9 +138,10 @@ private:
   Optional<SmallVector<int64_t, 8>>
   findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const;
 
-  /// 1. Converts each coefficient c in the division numberator to
+  /// 1. Converts each coefficient c in the division numerator to
   /// be in the range -denominator < 2 * c <= denominator
   /// 2. Divides numerator and denominator by their gcd
+  /// Assumes that divisions are ordered before this function is called.
   void normalizeDivisions();
 
   /// Orders divisions such that a division only depends on division
@@ -156,7 +157,7 @@ private:
                                          std::vector<unsigned> &nrDiv,
                                          const ArrayRef<int64_t> &ogCoeffs);
 
-  /// Remove variables that do not occur in any constraint
+  /// Remove divisions and existentials that do not occur in any constraint
   void removeRedundantVars();
 
   /// Swap division variables at indexes vari and varj
@@ -164,11 +165,9 @@ private:
   void swapDivisions(unsigned vari, unsigned varj);
 
   /// Get the index of first division variable.
-  /// If no divisions, this will return a -1
   unsigned getDivOffset();
 
   /// Get the index of first existential variable.
-  /// If no existentials, this will return a -1
   unsigned getExistOffset();
 
   Matrix coefficientMatrixFromEqs() const;

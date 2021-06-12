@@ -241,8 +241,7 @@ void getBasicSetInequalities(const PresburgerBasicSet &bs,
 
 /// Adds all division constraints as inequalities in the sets
 void addDivisionIneqs(PresburgerBasicSet &bs) {
-  // TODO: Dont add redundant constraints that match
-  for (auto &div : bs.getDivisions()) {
+  for (const DivisionConstraint &div : bs.getDivisions()) {
     bs.addInequality(div.getInequalityLowerBound().getCoeffs());
     bs.addInequality(div.getInequalityUpperBound().getCoeffs());
   }
@@ -254,8 +253,8 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
   // TODO: find better looping strategy
   // redefine coalescing function on two BasicSets, return a BasicSet and do the
   // looping strategy in a different function?
-  for (unsigned i = 0; i < basicSetVector.size(); i++) {
-    for (unsigned j = i + 1; j < basicSetVector.size(); j++) {
+  for (unsigned i = 0; i < basicSetVector.size(); ++i) {
+    for (unsigned j = i + 1; j < basicSetVector.size(); ++j) {
       PresburgerBasicSet &bs1 = basicSetVector[i];
       PresburgerBasicSet &bs2 = basicSetVector[j];
 
@@ -423,16 +422,14 @@ void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                           unsigned i, unsigned j,
                           const PresburgerBasicSet &bs) {
   PresburgerBasicSet newSet(bs.getNumDims(), bs.getNumParams(),
-                            basicSetVector[i].getNumExists(), 
+                            basicSetVector[i].getNumExists(),
                             basicSetVector[i].getDivisions());
 
-  for (auto &eq: bs.getEqualities()) {
+  for (const EqualityConstraint &eq : bs.getEqualities())
     newSet.addEquality(eq.getCoeffs());
-  }
 
-  for (auto &ineq: bs.getInequalities()) {
+  for (const InequalityConstraint &ineq : bs.getInequalities())
     newSet.addInequality(ineq.getCoeffs());
-  }
 
   if (i < j) {
     basicSetVector.erase(basicSetVector.begin() + j);

@@ -19,13 +19,9 @@ using namespace mlir::analysis::presburger;
 
 PresburgerBasicSet::PresburgerBasicSet(unsigned oNDim, unsigned oNParam,
                                        unsigned oNExist,
-                                       ArrayRef<DivisionConstraint> oDivs)
+                                       const ArrayRef<DivisionConstraint> oDivs)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {
-
-  for (DivisionConstraint div : oDivs) {
-    divs.push_back(DivisionConstraint(div.getCoeffs(), div.getDenominator(),
-                                      div.getVariable()));
-  }
+  divs = llvm::to_vector<8>(oDivs);
 }
 
 void PresburgerBasicSet::addInequality(ArrayRef<int64_t> coeffs) {
@@ -504,15 +500,12 @@ void PresburgerBasicSet::dumpISL() const {
   llvm::errs() << '\n';
 }
 
-// TODO: Try to remove as many existentials as possible in simplify
+  
+// TODO: Try to recover divisions from equalities and inequalties
 void PresburgerBasicSet::simplify() {
   orderDivisions();
   normalizeDivisions();
-
-  // TODO: Remove existentials and divisions that do not occur anywhere
   removeRedundantVars();
-  
-  // TODO: Try to recover divisions from equalities and inequalties
 }
 
 void PresburgerBasicSet::removeRedundantConstraints() {
@@ -524,106 +517,89 @@ void PresburgerBasicSet::removeRedundantConstraints() {
 void PresburgerBasicSet::swapDivisions(unsigned vari, unsigned varj) {
   // Swap the constraints
   std::swap(divs[vari], divs[varj]);
-  DivisionConstraint::swapVariable(divs[vari], divs[varj]);
+  DivisionConstraint::swapVariables(divs[vari], divs[varj]);
 
   unsigned divOffset = getDivOffset();
 
   // Swap the coefficents in every constraint
-  for (auto &eq: eqs) {
+  for (EqualityConstraint &eq : eqs)
     eq.swapCoeffs(divOffset + vari, divOffset + varj);
-  }
 
-  for (auto &ineq: ineqs) {
+  for (InequalityConstraint &ineq : ineqs)
     ineq.swapCoeffs(divOffset + vari, divOffset + varj);
-  }
 
-  for (auto &div: divs) {
+  for (DivisionConstraint &div : divs)
     div.swapCoeffs(divOffset + vari, divOffset + varj);
-  }
 }
 
 unsigned PresburgerBasicSet::getDivOffset() {
-  if (divs.size() == 0) {
-    return -1;
-  }
   return nParam + nDim + nExist;
 }
 
 unsigned PresburgerBasicSet::getExistOffset() {
-  if (nExist == 0) {
-    return -1;
-  }
   return nParam + nDim;
 }
 
-// TODO: Maybe shift functionality of this function as a member of
-//       DivisionConstraint
 void PresburgerBasicSet::normalizeDivisions() {
   unsigned divOffset = getDivOffset();
 
-  for (unsigned divi = 0; divi < divs.size(); divi++) {
-    auto div = divs[divi];
-    auto coeffs = div.getCoeffs();
-    auto denom = div.getDenominator();
+  for (unsigned divi = 0; divi < divs.size(); ++divi) {
+    DivisionConstraint div = divs[divi];
+    const ArrayRef<int64_t> coeffs = div.getCoeffs();
+    int64_t denom = div.getDenominator();
 
-    SmallVector<int64_t, 8> shiftCoeffs, shiftResidue;
+    SmallVector<int64_t, 8> shiftCoeffs(coeffs.size(), 0),
+        shiftResidue(coeffs.size(), 0);
 
-    for (unsigned i = 0; i < coeffs.size(); i++) {
-      auto coeff = coeffs[i];
-      auto newCoeff = coeff;
+    for (unsigned i = 0; i < coeffs.size(); ++i) {
+      int64_t coeff = coeffs[i];
+      int64_t newCoeff = coeff;
 
-      // TODO: Allocate this statically?
-      shiftCoeffs.push_back(0);
-      shiftResidue.push_back(0);
-
-      // TODO: Are denominators surely positive?
-      // Shift the coefficent to be in the range (-d, d]
-      if (std::abs(2 * coeff) >= denom and 2 * coeff != denom) {
+      // Shift the coefficent to be in the range (-d/2, d/2]
+      if ((-denom >= 2 * coeff) || (2 * coeff > denom)) {
         newCoeff = ((coeff % denom) + denom) % denom;
-        if (2 * (coeff % denom) > denom) {
+        if (2 * (coeff % denom) > denom)
           newCoeff -= denom;
-        }
 
-        shiftCoeffs.back() = newCoeff - coeff;
-        shiftResidue.back() = (coeff - newCoeff) / denom;
+        shiftCoeffs[i] = newCoeff - coeff;
+        shiftResidue[i] = (coeff - newCoeff) / denom;
       }
     }
 
     // Get index of the current division
-    auto divDimension = divOffset + divi;
+    unsigned divDimension = divOffset + divi;
 
     // Shift all constraints by the shifts calculated above
-    for (auto &eq : eqs) {
+    for (EqualityConstraint &eq : eqs)
       eq.shiftCoeffs(shiftResidue, eq.getCoeffs()[divDimension]);
-    }
 
-    for (auto &ineq : ineqs) {
+    for (InequalityConstraint &ineq : ineqs)
       ineq.shiftCoeffs(shiftResidue, ineq.getCoeffs()[divDimension]);
-    }
 
-    for (auto &div : divs) {
-      div.shiftCoeffs(shiftResidue, div.getCoeffs()[divDimension]);
-    }
+    // Ordering of divs ensures that a division is only dependent
+    // on divs before it.
+    for (unsigned i = divi + 1; i < divs.size(); ++i)
+      divs[i].shiftCoeffs(shiftResidue, divs[i].getCoeffs()[divDimension]);
 
+    // Shift the current division by the extra coefficients
     divs[divi].shiftCoeffs(shiftCoeffs, 1);
   }
 
   // Take out gcd
-  for (DivisionConstraint &div : divs) {
+  for (DivisionConstraint &div : divs)
     div.removeCommonFactor();
-  }
 }
 
 void PresburgerBasicSet::orderDivisions() {
   unsigned divOffset = getDivOffset();
   unsigned nDivs = divs.size();
 
-  for (unsigned i = 0; i < divs.size();) {
+  for (unsigned i = 0; i < nDivs;) {
     const ArrayRef<int64_t> &coeffs = divs[i].getCoeffs();
     bool foundDependency = false;
 
     // Get the first division on which this division is dependent
-    for (unsigned j = i + 1; j < nDivs; j++) {
+    for (unsigned j = i + 1; j < nDivs; ++j) {
       if (coeffs[j + divOffset] != 0) {
         foundDependency = true;
         swapDivisions(i, j);
@@ -631,33 +607,26 @@ void PresburgerBasicSet::orderDivisions() {
       }
     }
 
-    if (not foundDependency) {
-      i++;
-    }
+    if (!foundDependency)
+      ++i;
   }
 }
 
 bool PresburgerBasicSet::redundantVar(unsigned var) {
-  // TODO: Probably add a member function in constraint to get that particular
-  // coeff instead of getting the whole coefficent array
   for (auto &con : eqs) {
-    if (con.getCoeffs()[var] != 0) {
+    if (con.getCoeffs()[var] != 0)
       return false;
-    }
   }
 
   for (auto &con : ineqs) {
-    if (con.getCoeffs()[var] != 0) {
+    if (con.getCoeffs()[var] != 0)
       return false;
-    }
   }
 
   for (auto &con : divs) {
-    if (con.getCoeffs()[var] != 0) {
+    if (con.getCoeffs()[var] != 0)
       return false;
-    }
   }
-
   return true;
 }
 
@@ -667,18 +636,12 @@ PresburgerBasicSet::copyWithNonRedundant(std::vector<unsigned> &nrExists,
                                          const ArrayRef<int64_t> &ogCoeffs) {
   SmallVector<int64_t, 8> newCoeffs;
 
-  for (unsigned i = 0; i < nDim + nParam; i++) {
+  for (unsigned i = 0; i < nDim + nParam; ++i)
     newCoeffs.push_back(ogCoeffs[i]);
-  }
-
-  for (unsigned i : nrExists) {
+  for (unsigned i : nrExists)
     newCoeffs.push_back(ogCoeffs[i]);
-  }
-
-  for (unsigned i : nrDiv) {
+  for (unsigned i : nrDiv)
     newCoeffs.push_back(ogCoeffs[i]);
-  }
-
   newCoeffs.push_back(ogCoeffs.back());
 
   return newCoeffs;
@@ -690,21 +653,19 @@ void PresburgerBasicSet::removeRedundantVars() {
   // Check for redundant existentials
   unsigned existOffset = getExistOffset();
 
-  for (unsigned i = 0; i < nExist; i++) {
+  for (unsigned i = 0; i < nExist; ++i) {
     unsigned var = existOffset + i;
-    if (!redundantVar(var)) {
+    if (!redundantVar(var))
       nonRedundantExist.push_back(var);
-    }
   }
 
   // Check for redundant divisions
   unsigned divOffset = getDivOffset();
 
-  for (unsigned i = 0; i < divs.size(); i++) {
+  for (unsigned i = 0; i < divs.size(); ++i) {
     unsigned var = divOffset + i;
-    if (!redundantVar(var)) {
+    if (!redundantVar(var))
       nonRedundantDivs.push_back(var);
-    }
   }
 
   SmallVector<InequalityConstraint, 8> newIneqs;
@@ -768,22 +729,25 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
   // Add the extra divisions from bs1 to bs2
   unsigned extraDivs = bs1.divs.size() - bs2.divs.size();
   bs2.insertDimensions(bs2.getNumDims() - 1, extraDivs);
-  for (unsigned i = 0; i < extraDivs; i++) {
+  for (unsigned i = 0; i < extraDivs; ++i) {
     DivisionConstraint &div = bs1.divs[bs2.getNumDivs()];
-    bs2.divs.push_back(DivisionConstraint(div.getCoeffs(), div.getDenominator(),
-                                          div.getVariable()));
+    bs2.divs.push_back(div);
   }
 
   // Loop over divs and find the equal ones
-  // This requires that divs in divs1 are ordered, which we ensured in
+  // This requires that divs in divs1 are ordered, which was ensured in
   // simplify calls.
   //
   // Ordering ensures that divisions at index will not depend on any division
-  // at index >= i. This allows us to check same divisions easier, as well as
-  // Swaping will not cause any 
-  for (unsigned i = 0; i < bs2.divs.size(); i++) {
+  // at index >= i. This allows us to check same divisions easier.
+  //
+  // Ordering makes swapping easier since if two divisions at i, j match (j >=
+  // i), any divisions at index >= i cannot depend on these two divisions
+  // This ensures that any further swap will not affect these divisions in any
+  // way.
+  for (unsigned i = 0; i < bs1.divs.size(); ++i) {
     bool foundMatch = false;
-    for (unsigned j = i; j < bs1.divs.size(); j++) {
+    for (unsigned j = i; j < bs2.divs.size(); ++j) {
       if (DivisionConstraint::sameDivision(bs1.divs[i], bs2.divs[j])) {
         foundMatch = true;
         if (i != j) {
@@ -799,9 +763,13 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
     //
     // This part leverages the order of variables in coefficients: Existentials,
     // Divisions, Constant
-    if (not foundMatch) {
-      bs1.swapDivisions(bs1.getDivOffset(), i);
-      bs2.swapDivisions(bs2.getDivOffset(), i);
+    if (!foundMatch) {
+      // TODO: Add the division ineqs here when you remove the divs
+      //       Currently the division inequalities are added in coalesce before
+      //       this function is called.
+      
+      bs1.swapDivisions(0, i);
+      bs2.swapDivisions(0, i);
 
       bs1.divs.erase(bs1.divs.begin());
       bs2.divs.erase(bs2.divs.begin());
