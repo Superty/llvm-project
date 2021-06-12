@@ -208,11 +208,19 @@ public:
     std::swap(diva.variable, divb.variable);
   }
 
-  /// Divide both numerator and denominator by their gcd
+  /// Remove common factor in numerator and denominator not taking into account
+  /// the constant term.
+  /// 
+  /// Given divisions: [m * (f(x) + c) / m * d]
+  /// Replace it by: [f(x) + floor(c/m) / d]
+  /// 
+  /// The constant term need not have the same common factor since the
+  /// difference is (c / m) / d which satisfies 0 <= (c / m) / d < 1 / d 
+  /// and therefore cannot influence the result.
   void removeCommonFactor() {
     int64_t currGcd = std::abs(denom);
-    for (int64_t &coeff : coeffs)
-      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeffs[i]));
 
     if (currGcd != 1) {
       for (int64_t &coeff : coeffs)

@@ -70,7 +70,7 @@ void expectEqualAfterNormalization(PresburgerSet &set) {
 
 TEST(PresburgerSetTest, simplify1) {
   PresburgerSet simplify1 = setFromString(
-      "(x) : (exists q = [(5x - 15) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
+      "(x) : (exists q = [(5x - 9) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
       "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
       "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
   expectEqualAfterNormalization(simplify1);
