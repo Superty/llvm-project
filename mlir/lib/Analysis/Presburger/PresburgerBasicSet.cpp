@@ -360,6 +360,9 @@ void PresburgerBasicSet::removeEquality(unsigned i) {
 }
 
 void PresburgerBasicSet::insertDimensions(unsigned pos, unsigned count) {
+  if (count == 0)
+    return;
+
   for (auto &ineq : ineqs)
     ineq.insertDimensions(pos, count);
   for (auto &eq : eqs)

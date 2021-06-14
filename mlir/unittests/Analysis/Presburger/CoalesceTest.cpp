@@ -406,12 +406,14 @@ TEST(CoalesceTest, existsDontMatch) {
   expectCoalesce(1, set);
 }
 
-/* TEST(CoalesceTest, buggyTest) { */
-/*   PresburgerSet set = */
-/*       setFromString("(x, q, j) : (x - 1 <= 3q and 3q <= x and 4j = x) or (x - " */
-/*                     "2 = 3q and 4j + 1 <= x and x <= 4j + 2)"); */
-/*   expectCoalesce(1, set); */
-/* } */
+// Case when trying to coalesce two sets both of which have an equality adjacent
+// to an inequality in other set.
+TEST(CoalesceTest, eqAdjtoIneqTwice) {
+  PresburgerSet set =
+      setFromString("(x, q, j) : (x - 1 <= 3q and 3q <= x and 4j = x) or (x - "
+                    "2 = 3q and 4j + 1 <= x and x <= 4j + 2)");
+  expectCoalesce(2, set);
+}
 
 /* TEST(CoalesceTest, divsCase3) { */
 /*   PresburgerSet set = setFromString( */

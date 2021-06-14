@@ -671,6 +671,10 @@ bool adjEqCaseNonPure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
 bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
                    unsigned i, unsigned j, const Info &infoA,
                    const Info &infoB) {
+
+  if (infoA.adjIneq && infoB.adjIneq)
+    return false;
+
   PresburgerBasicSet &a = basicSetVector[i];
   PresburgerBasicSet &b = basicSetVector[j];
   SmallVector<SmallVector<int64_t, 8>, 8> wrapped;
