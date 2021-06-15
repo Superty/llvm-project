@@ -731,7 +731,7 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
   // TODO: Is there a better stratergy than this ? 
   // Add the extra divisions from bs1 to bs2
   unsigned extraDivs = bs1.divs.size() - bs2.divs.size();
-  bs2.insertDimensions(bs2.getNumDims() - 1, extraDivs);
+  bs2.insertDimensions(bs2.getDivOffset() + bs2.getNumDivs(), extraDivs);
   for (unsigned i = 0; i < extraDivs; ++i) {
     DivisionConstraint &div = bs1.divs[bs2.getNumDivs()];
     bs2.divs.push_back(div);
