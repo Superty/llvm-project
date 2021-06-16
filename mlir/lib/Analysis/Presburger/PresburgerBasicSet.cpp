@@ -767,15 +767,21 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
     // This part leverages the order of variables in coefficients: Existentials,
     // Divisions, Constant
     if (!foundMatch) {
-      // TODO: Add the division ineqs here when you remove the divs
-      //       Currently the division inequalities are added in coalesce before
-      //       this function is called.
-      
+      // Add division inequalties
+      bs1.addInequality(bs1.divs[i].getInequalityUpperBound().getCoeffs());
+      bs1.addInequality(bs1.divs[i].getInequalityLowerBound().getCoeffs());
+      bs2.addInequality(bs2.divs[i].getInequalityUpperBound().getCoeffs());
+      bs2.addInequality(bs2.divs[i].getInequalityLowerBound().getCoeffs());
+
+      // Swap the divisions
       bs1.swapDivisions(0, i);
       bs2.swapDivisions(0, i);
 
       bs1.divs.erase(bs1.divs.begin());
       bs2.divs.erase(bs2.divs.begin());
+
+      // Div deleted before this index
+      i--;
 
       bs1.nExist++;
       bs2.nExist++;

@@ -400,6 +400,20 @@ TEST(CoalesceTest, divisionProtrusion) {
   expectCoalesce(1, set);
 }
 
+TEST(CoalesceTest, nonEqualDivs) {
+  PresburgerSet set =
+      setFromString("(x) : (exists j = [(x + 1)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(2, set);
+}
+
+TEST(CoalesceTest, nonEqualDivs2) {
+  PresburgerSet set =
+      setFromString("(x) : (exists j = [(x)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(2, set);
+}
+
 TEST(CoalesceTest, existsDontMatch) {
   PresburgerSet set = setFromString("(x) : (x >= 0 and x <= 100) or (exists a "
                                     ": x >= 5 and x <= 40 and x = 5a)");

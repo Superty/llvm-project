@@ -260,9 +260,6 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
 
       // Divisions needs to be added before alignment since non matching
       // divisions will convert to existentials
-      addDivisionIneqs(bs1);
-      addDivisionIneqs(bs2);
-
       PresburgerBasicSet::alignDivs(bs1, bs2);
 
       bs1.removeRedundantConstraints();
