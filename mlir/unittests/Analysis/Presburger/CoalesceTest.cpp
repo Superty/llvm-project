@@ -122,8 +122,6 @@ TEST(CoalesceTest, combineConstraint) {
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
   PresburgerSet newSet = coalesce(set);
-  set.dump();
-  newSet.dump();
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
   EXPECT_TRUE(expectedNumBasicSets == newSet.getBasicSets().size());
 }

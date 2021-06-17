@@ -54,8 +54,6 @@ TEST(PresburgerSetTest, Equality) {
 void expectEqualAfterNormalization(PresburgerSet &set) {
   auto newSet = set;
   newSet.simplify();
-  set.dump();
-  newSet.dump();
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
 
   // Normalization check
@@ -86,12 +84,9 @@ TEST(PresburgerSetTest, simplify2) {
 
 TEST(PresburgerSetTest, existentialTest) {
   PresburgerSet set = setFromString("(x) : (exists a, b = [(x + 1) / 2], c : a + x >= 5)");
-  set.dump();
   set.simplify();
-  set.dump();
 
   auto bs = set.getBasicSets()[0];
-
   EXPECT_TRUE(bs.getNumExists() == 1);
   EXPECT_TRUE(bs.getNumDivs() == 0);
 }
