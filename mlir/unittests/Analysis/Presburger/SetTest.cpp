@@ -97,3 +97,9 @@ TEST(PresburgerSetTest, existentialTest2) {
       "0) or (exists q0 = [(d0 - 2)/3] : d0 - 3q0 - 2 = 0)");
   expectEqualAfterNormalization(divisionOrder1);
 }
+
+TEST(PresburgerSetTest, recoverDivisionTest1) {
+  PresburgerSet set = setFromString(
+      "(x) : (exists a : x - 1 <= 3a and 3a <= x) or (exists a : x - 2 = 3a)");
+  expectEqualAfterNormalization(set);
+}

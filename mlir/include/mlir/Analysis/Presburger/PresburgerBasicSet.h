@@ -138,6 +138,9 @@ private:
   Optional<SmallVector<int64_t, 8>>
   findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const;
 
+  /// Factor out greatest commond divisor from each equality and inequality
+  void normalizeConstraints();
+
   /// 1. Converts each coefficient c in the division numerator to
   /// be in the range -denominator < 2 * c <= denominator
   /// 2. Divides numerator and denominator by their gcd
@@ -159,6 +162,12 @@ private:
 
   /// Remove divisions and existentials that do not occur in any constraint
   void removeRedundantVars();
+
+  /// Convert existentials to divisions using inequalities
+  void recoverDivisionsFromInequalities();
+
+  /// Convert existentials to divisions using equalities
+  void recoverDivisionsFromEqualities();
 
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector

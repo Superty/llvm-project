@@ -79,6 +79,18 @@ public:
     std::swap(coeffs[vari], coeffs[varj]);
   }
 
+  /// Factor out the greatest common divisor of coefficents
+  void normalizeCoeffs() {
+    int64_t currGcd = 0;
+    for (int64_t &coeff : coeffs)
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
+
+    if (currGcd != 1) {
+      for (int64_t &coeff : coeffs) 
+        coeff /= currGcd;
+    }
+  }
+
   void appendDimension() {
     insertDimensions(getNumDims(), 1);
   }

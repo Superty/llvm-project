@@ -502,13 +502,14 @@ void PresburgerBasicSet::dumpISL() const {
   printISL(llvm::errs());
   llvm::errs() << '\n';
 }
-
-  
-// TODO: Try to recover divisions from equalities and inequalties
+ 
 void PresburgerBasicSet::simplify() {
+  normalizeConstraints();
+  removeRedundantVars();
+  recoverDivisionsFromInequalities();
+  recoverDivisionsFromEqualities();
   orderDivisions();
   normalizeDivisions();
-  removeRedundantVars();
 }
 
 void PresburgerBasicSet::removeRedundantConstraints() {
@@ -711,14 +712,16 @@ void PresburgerBasicSet::removeRedundantVars() {
 
 void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
                                           PresburgerBasicSet &bs2) {
+
+  // TODO: simplify is called twice if bs2 size is greater
+  bs1.simplify();
+  bs2.simplify();
+
   // Assert that bs1 has more divisions than bs2
   if (bs1.getNumDivs() < bs2.getNumDivs()) {
     alignDivs(bs2, bs1);
     return;
   }
-
-  bs1.simplify();
-  bs2.simplify();
 
   // TODO: Is there a better stratergy than this ?
   // Append extra existentials
@@ -786,5 +789,217 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
       bs1.nExist++;
       bs2.nExist++;
     }
+  }
+}
+
+void PresburgerBasicSet::normalizeConstraints() {
+  for (EqualityConstraint &eq : eqs)
+    eq.normalizeCoeffs();
+  for (InequalityConstraint &ineq : ineqs)
+    ineq.normalizeCoeffs();
+}
+
+/// Creates div coefficents using coefficients "ineq" of a lower bound
+/// inequality for the existential at index "varIdx"
+SmallVector<int64_t, 8> createDivFromLowerBound(const ArrayRef<int64_t> &ineq,
+                                                unsigned varIdx) {
+  // Remove existential from coefficents
+  SmallVector<int64_t, 8> newCoeffs(ineq.size());
+  for (unsigned i = 0; i < ineq.size(); ++i)
+    newCoeffs[i] = -ineq[i];
+  newCoeffs[varIdx] = 0;
+
+  // Add (d - 1) to coefficents where d is the denominator
+  newCoeffs.back() += ineq[varIdx] - 1;
+
+  return newCoeffs;
+}
+
+/// Return whether any division depends variable at index "varIdx"
+bool divsDependOnExist(SmallVector<DivisionConstraint, 8> &divs, unsigned varIdx) {
+  for (unsigned i = 0; i < divs.size(); ++i) {
+    if (divs[i].getCoeffs()[varIdx] != 0)
+      return true;
+  }
+  return false;
+}
+
+/// Return whether constraint "con" depends on existentials other than "exist"
+bool coeffDependsOnExist(Constraint &con, unsigned exist,
+                         unsigned existOffset, unsigned nExist) {
+
+  const ArrayRef<int64_t> &coeffs = con.getCoeffs();
+  for (unsigned i = 0; i < nExist; ++i) {
+    if (i == exist)
+      continue;
+
+    if (coeffs[i + existOffset] != 0)
+      return true;
+  }
+
+  return false;
+}
+
+void PresburgerBasicSet::recoverDivisionsFromInequalities() {
+  for (unsigned k = 0; k < ineqs.size(); ++k) {
+    for (unsigned l = k + 1; l < ineqs.size(); ++l) {
+      const ArrayRef<int64_t> &coeffs1 = ineqs[k].getCoeffs();
+      const ArrayRef<int64_t> &coeffs2 = ineqs[l].getCoeffs();
+
+      bool oppositeCoeffs = true;
+      for (unsigned i = 0; i < coeffs1.size() - 1; ++i) {
+        if (coeffs1[i] != -coeffs2[i]) {
+          oppositeCoeffs = false;
+          break;
+        }
+      }
+
+      if (!oppositeCoeffs)
+        continue;
+
+      // Sum of constants < 0 : Denominator cannot be zero
+      // Sum of constants = 0 : Inequalities represent equalities
+      // Sum of constants > 0 : Inequalities may be converted to divisions
+      int64_t constantSum = coeffs1.back() + coeffs2.back();
+      if (constantSum < 0)
+        continue;
+      if (constantSum == 0) {
+        // TODO: Convert to equality
+        continue;
+      }
+
+      unsigned existOffset = getExistOffset();
+      for (unsigned exist = 0; exist < nExist; ++exist) {
+        // Check if this existential can be recovered from these two divisions
+        // 1. The exist should appear in the inequalities?
+        // 2. coefficent of the exist in the inequalities should be strictly
+        //    greater than sum of constants of inequalities?
+        // 3. The inequalities should not depend on any other exist to prevent
+        //    circular division definations
+        // 4. Any other division should not be defined in terms of this
+        //    exist to prevent circular division definations
+        //
+        unsigned existIdx = existOffset + exist;
+        if (coeffs1[existIdx] == 0)
+          continue;
+        if (constantSum >= std::abs(coeffs1[existIdx]))
+          continue;
+        if (coeffDependsOnExist(ineqs[k], exist, existOffset, nExist))
+          continue;
+        if (divsDependOnExist(divs, existIdx)) 
+          continue;
+
+        // Convert existential to division based on lower bound inequality
+        SmallVector<int64_t, 8> newCoeffs;
+        if (coeffs1[existOffset + exist] > 0)
+          newCoeffs = createDivFromLowerBound(coeffs1, existIdx);
+        else
+          newCoeffs = createDivFromLowerBound(coeffs2, existIdx);
+
+        // Insert the new division at starting of divs
+        DivisionConstraint newDiv(newCoeffs, std::abs(coeffs1[existIdx]),
+                                  getDivOffset() - 1);
+        divs.insert(divs.begin(), newDiv);
+
+        // Swap first and last existential
+        // The last existential is treated as a division after this change
+        for (auto &con : eqs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+        for (auto &con : ineqs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+        for (auto &con : divs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+
+        // Try using these two inequalities again for some other existential
+        l--;
+
+        // Reduce number of existentials and repeat again
+        nExist--;
+        break;
+
+        // TODO: One of these inequalities is not needed after finding this.
+        //       Remove it.
+        // TODO: Remove both of these inequalities if the division exactly
+        // matches.
+      }
+    }
+  }
+}
+
+/// Convert given equality constraint to a division
+/// The equality constraints are of the form
+///
+///          f(x) + n e >= 0
+///
+/// The division obtained from this if of the form
+///
+///          e = [-f(x) / n]
+///
+/// Returns the coefficents for the new division
+SmallVector<int64_t, 8> createDivisionFromEq(const ArrayRef<int64_t> &coeffs,
+                                             unsigned varIdx) {
+  SmallVector<int64_t, 8> newCoeffs(coeffs.size());
+  for (unsigned i = 0; i < coeffs.size(); ++i)
+    newCoeffs[i] = coeffs[i];
+
+  if (coeffs[varIdx] > 0) {
+    for (int64_t &coeff : newCoeffs)
+      coeff = -coeff;
+  }
+
+  newCoeffs[varIdx] = 0;
+
+  return newCoeffs;
+}
+
+// TODO: Are the division loop prevention conditions too strict?
+void PresburgerBasicSet::recoverDivisionsFromEqualities() {
+  for (unsigned k = 0; k < eqs.size(); ++k) {
+    const ArrayRef<int64_t> &coeffs = eqs[k].getCoeffs();
+
+    // Check if equality depends only on one exitential, and get that
+    // existential
+    unsigned exist = nExist;
+    unsigned existOffset = getExistOffset();
+    bool canConvert = true;
+    for (unsigned i = 0; i < nExist; ++i) {
+      if (coeffs[i + existOffset] != 0) {
+
+        if (exist != nExist) {
+          canConvert = false;
+          break;
+        } else {
+          exist = i;
+        }
+      }
+    }
+    if (!canConvert || exist == nExist)
+      continue;
+
+    // Don't convert to division if any division depends on this existential
+    if (coeffDependsOnExist(eqs[k], exist, existOffset, nExist))
+      continue;
+
+    SmallVector<int64_t, 8> newCoeffs =
+        createDivisionFromEq(coeffs, exist + existOffset);
+
+    // Convert equality to division
+    DivisionConstraint newDiv(newCoeffs, std::abs(coeffs[exist + existOffset]),
+                              getDivOffset() - 1);
+    divs.insert(divs.begin(), newDiv);
+
+    // Swap first and last existential
+    // The last existential is treated as a division after this change
+    for (auto &con : eqs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+    for (auto &con : ineqs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+    for (auto &con : divs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+
+    // Reduce number of existentials
+    nExist--;
+
+    // TODO: Check if equality can be removed
   }
 }
