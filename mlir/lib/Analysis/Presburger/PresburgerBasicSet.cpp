@@ -861,7 +861,15 @@ void PresburgerBasicSet::recoverDivisionsFromInequalities() {
       if (constantSum < 0)
         continue;
       if (constantSum == 0) {
-        // TODO: Convert to equality
+        addEquality(coeffs1);
+
+        // Order of remove of inequalities is important. 
+        // Inequality with greater index should be removed first.
+        removeInequality(l);
+        removeInequality(k);
+
+        // Decrement k to reflect deletion of inequality
+        k--;
         continue;
       }
 

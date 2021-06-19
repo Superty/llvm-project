@@ -103,3 +103,10 @@ TEST(PresburgerSetTest, recoverDivisionTest1) {
       "(x) : (exists a : x - 1 <= 3a and 3a <= x) or (exists a : x - 2 = 3a)");
   expectEqualAfterNormalization(set);
 }
+
+TEST(PresburgerSetTest, recoverDivisionTest2) {
+  PresburgerSet set =
+      setFromString("(x) : (exists a, b, c : x - 1 <= 3a and 3a <= x and 3b = "
+                    "4x and 5c >= 4x and 5c <= 4x)");
+  expectEqualAfterNormalization(set);
+}

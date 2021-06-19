@@ -164,6 +164,7 @@ private:
   void removeRedundantVars();
 
   /// Convert existentials to divisions using inequalities
+  /// Also converts inequalities that can from an equality to equalities
   void recoverDivisionsFromInequalities();
 
   /// Convert existentials to divisions using equalities
