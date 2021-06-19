@@ -506,6 +506,7 @@ void PresburgerBasicSet::dumpISL() const {
 void PresburgerBasicSet::simplify() {
   normalizeConstraints();
   removeRedundantVars();
+  removeRedundantConstraints();
   recoverDivisionsFromInequalities();
   recoverDivisionsFromEqualities();
   orderDivisions();
@@ -712,10 +713,6 @@ void PresburgerBasicSet::removeRedundantVars() {
 
 void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
                                           PresburgerBasicSet &bs2) {
-
-  // TODO: simplify is called twice if bs2 size is greater
-  bs1.simplify();
-  bs2.simplify();
 
   // Assert that bs1 has more divisions than bs2
   if (bs1.getNumDivs() < bs2.getNumDivs()) {

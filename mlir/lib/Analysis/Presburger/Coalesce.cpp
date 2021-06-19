@@ -247,142 +247,147 @@ void addDivisionIneqs(PresburgerBasicSet &bs) {
   }
 }
 
+/// Tries to coalesce BasicSets are index i, j in basicSetVector
+/// If coalescing can be done, it is done in place
+///
+/// Return true if coalescing was succesful
+bool coalescePair(unsigned i, unsigned j,
+                  SmallVector<PresburgerBasicSet, 4> &basicSetVector) {
+  PresburgerBasicSet &bs1 = basicSetVector[i];
+  PresburgerBasicSet &bs2 = basicSetVector[j];
+
+  Simplex simplex1(bs1);
+  SmallVector<ArrayRef<int64_t>, 8> equalities1, inequalities1;
+  getBasicSetEqualities(bs1, equalities1);
+  getBasicSetInequalities(bs1, inequalities1);
+
+  Simplex simplex2(bs2);
+  SmallVector<ArrayRef<int64_t>, 8> equalities2, inequalities2;
+  getBasicSetEqualities(bs2, equalities2);
+  getBasicSetInequalities(bs2, inequalities2);
+
+  Info info1, info2;
+  if (!classify(simplex2, inequalities1, equalities1, info1))
+    return false;
+  if (!classify(simplex1, inequalities2, equalities2, info2))
+    return false;
+  // TODO: find better strategy than i--; break;
+  // change indices when changing vector?
+  if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
+      !info2.t) {
+    // contained 2 in 1
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
+    return true;
+  } else if (!info2.redundant.empty() && info2.cut.empty() && !info2.adjIneq &&
+             !info1.t) {
+    // contained 1 in 2
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
+    return true;
+  } else if (!info1.redundant.empty() && !info1.cut.empty() && !info1.adjIneq &&
+             !info2.t) {
+    // cut or protrusion case 1
+    if (cutCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    } else if (stickingOut(info1.cut, bs2) &&
+               protrusionCase(basicSetVector, info1, info2, i, j)) {
+      // protrusion
+      return true;
+    }
+  } else if (!info2.redundant.empty() && !info2.cut.empty() && !info2.adjIneq &&
+             !info1.t) {
+    // cut or protrusion case 2
+    if (cutCase(basicSetVector, j, i, info2, info1)) {
+      return true;
+    } else if (stickingOut(info2.cut, bs1) &&
+               protrusionCase(basicSetVector, info2, info1, j, i)) {
+      // protrusion case
+      return true;
+    }
+  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
+             !info2.t && !info2.redundant.empty() && info2.adjIneq &&
+             info2.cut.empty() && !info1.t) {
+    // adjIneq, pure case
+    if (adjIneqPureCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
+             !info1.t && !info2.t) {
+    // adjIneq complex case 1
+    if (adjIneqCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (!info2.redundant.empty() && info2.adjIneq && info2.cut.empty() &&
+             !info2.t && !info1.t) {
+    // adjIneq complex case 2
+    if (adjIneqCase(basicSetVector, j, i, info2, info1)) {
+      return true;
+    }
+  } else if (info1.t && info2.t) {
+    // adjEq for two equalities
+    if (adjEqCasePure(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (info1.t && info2.cut.empty()) {
+    // adjEq Case for one equality 1
+    // compute the inequality, that is adjacent to an equality by computing
+    // the complement of the inequality part of an equality
+    SmallVector<int64_t, 8> adjEq = complement(info1.t.getValue());
+    if (adjEqCaseNoCut(basicSetVector, i, j, adjEq, info2)) {
+      // adjEq noCut case
+      return true;
+    } else if (info1.t &&
+               adjEqCaseNonPure(basicSetVector, j, i, info2, info1)) {
+      // adjEq case
+      return true;
+    }
+  } else if (info2.t && info1.cut.empty()) {
+    // adjEq Case for one equality 2
+    // compute the inequality, that is adjacent to an equality by computing
+    // the complement of the inequality part of an equality
+    SmallVector<int64_t, 8> adjEq = complement(info2.t.getValue());
+    if (adjEqCaseNoCut(basicSetVector, j, i, adjEq, info1)) {
+      // adjEq noCut case
+      return true;
+    } else if (info2.t &&
+               adjEqCaseNonPure(basicSetVector, i, j, info1, info2)) {
+      // adjEq case
+      return true;
+    }
+  }
+
+  return false;
+}
+
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
+  set.simplify();
+
   PresburgerSet newSet(set.getNumDims(), set.getNumSyms());
   SmallVector<PresburgerBasicSet, 4> basicSetVector = set.getBasicSets();
-  // TODO: find better looping strategy
-  // redefine coalescing function on two BasicSets, return a BasicSet and do the
-  // looping strategy in a different function?
+
   for (unsigned i = 0; i < basicSetVector.size(); ++i) {
     for (unsigned j = i + 1; j < basicSetVector.size(); ++j) {
+
       PresburgerBasicSet &bs1 = basicSetVector[i];
       PresburgerBasicSet &bs2 = basicSetVector[j];
 
-      // Divisions needs to be added before alignment since non matching
-      // divisions will convert to existentials
       PresburgerBasicSet::alignDivs(bs1, bs2);
 
-      bs1.removeRedundantConstraints();
-      bs2.removeRedundantConstraints();
-
-      Simplex simplex1(bs1);
-      SmallVector<ArrayRef<int64_t>, 8> equalities1, inequalities1;
-      getBasicSetEqualities(bs1, equalities1);
-      getBasicSetInequalities(bs1, inequalities1);
-
-      Simplex simplex2(bs2);
-      SmallVector<ArrayRef<int64_t>, 8> equalities2, inequalities2;
-      getBasicSetEqualities(bs2, equalities2);
-      getBasicSetInequalities(bs2, inequalities2);
-
-      Info info1, info2;
-      if (!classify(simplex2, inequalities1, equalities1, info1))
-        continue;
-      if (!classify(simplex1, inequalities2, equalities2, info2))
-        continue;
-      // TODO: find better strategy than i--; break;
-      // change indices when changing vector?
-      if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
-          !info2.t) {
-        // contained 2 in 1
-        addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
-        i--;
-      } else if (!info2.redundant.empty() && info2.cut.empty() &&
-                 !info2.adjIneq && !info1.t) {
-        // contained 1 in 2
-        addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
+      bool coalesceStatus = coalescePair(i, j, basicSetVector);
+      if (coalesceStatus) {
         i--;
         break;
-      } else if (!info1.redundant.empty() && !info1.cut.empty() &&
-                 !info1.adjIneq && !info2.t) {
-        // cut or protrusion case 1
-        if (cutCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        } else if (stickingOut(info1.cut, bs2) &&
-                   protrusionCase(basicSetVector, info1, info2, i, j)) {
-          // protrusion
-          i--;
-          break;
-        }
-      } else if (!info2.redundant.empty() && !info2.cut.empty() &&
-                 !info2.adjIneq && !info1.t) {
-        // cut or protrusion case 2
-        if (cutCase(basicSetVector, j, i, info2, info1)) {
-          i--;
-          break;
-        } else if (stickingOut(info2.cut, bs1) &&
-                   protrusionCase(basicSetVector, info2, info1, j, i)) {
-          // protrusion case
-          i--;
-          break;
-        }
-      } else if (!info1.redundant.empty() && info1.adjIneq &&
-                 info1.cut.empty() && !info2.t && !info2.redundant.empty() &&
-                 info2.adjIneq && info2.cut.empty() && !info1.t) {
-        // adjIneq, pure case
-        if (adjIneqPureCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (!info1.redundant.empty() && info1.adjIneq &&
-                 info1.cut.empty() && !info1.t && !info2.t) {
-        // adjIneq complex case 1
-        if (adjIneqCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (!info2.redundant.empty() && info2.adjIneq &&
-                 info2.cut.empty() && !info2.t && !info1.t) {
-        // adjIneq complex case 2
-        if (adjIneqCase(basicSetVector, j, i, info2, info1)) {
-          i--;
-          break;
-        }
-      } else if (info1.t && info2.t) {
-        // adjEq for two equalities
-        if (adjEqCasePure(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (info1.t && info2.cut.empty()) {
-        // adjEq Case for one equality 1
-        // compute the inequality, that is adjacent to an equality by computing
-        // the complement of the inequality part of an equality
-        SmallVector<int64_t, 8> adjEq = complement(info1.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq, info2)) {
-          // adjEq noCut case
-          i--;
-          break;
-        } else if (info1.t &&
-                   adjEqCaseNonPure(basicSetVector, j, i, info2, info1)) {
-          // adjEq case
-          i--;
-          break;
-        }
-      } else if (info2.t && info1.cut.empty()) {
-        // adjEq Case for one equality 2
-        // compute the inequality, that is adjacent to an equality by computing
-        // the complement of the inequality part of an equality
-        SmallVector<int64_t, 8> adjEq = complement(info2.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, j, i, adjEq, info1)) {
-          // adjEq noCut case
-          i--;
-          break;
-        } else if (info2.t &&
-                   adjEqCaseNonPure(basicSetVector, i, j, info1, info2)) {
-          // adjEq case
-          i--;
-          break;
-        }
+      } else {
+        // Simplify changes made by alignment of divisions
+        // No need to simplify if coalesced since it is simplified during its
+        // creation
+        bs1.simplify();
+        bs2.simplify();
       }
     }
   }
-  
-  for (PresburgerBasicSet &curr : basicSetVector) {
-    curr.removeRedundantConstraints();
+
+  for (PresburgerBasicSet &curr : basicSetVector)
     newSet.addBasicSet(curr);
-  }
   return newSet;
 }
 
@@ -435,6 +440,9 @@ void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet> &basicSetVector,
     basicSetVector.erase(basicSetVector.begin() + i);
     basicSetVector.erase(basicSetVector.begin() + j);
   }
+  
+  // Simplify the newly created set
+  newSet.simplify();
   basicSetVector.push_back(newSet);
 }
 
