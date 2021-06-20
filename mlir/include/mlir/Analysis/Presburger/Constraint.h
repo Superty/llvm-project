@@ -65,6 +65,10 @@ public:
     coeffs.back() += x;
   }
 
+  void shiftCoeff(unsigned var, int64_t constant) {
+    coeffs[var] += constant;
+  }
+
   // Shift each coefficent by coeffShifts[i] * constant
   void shiftCoeffs(const ArrayRef<int64_t> &coeffShifts, int64_t constant) {
     assert(coeffShifts.size() - 1 == getNumDims() &&
@@ -207,6 +211,8 @@ public:
   void eraseDimensions(unsigned pos, unsigned count) {
     assert(!(pos <= variable && variable < pos + count) &&
            "cannot erase division variable!");
+    if (pos < count)
+      variable -= count;
     Constraint::eraseDimensions(pos, count);
   }
 
@@ -248,7 +254,7 @@ public:
     if (div1.getDenominator() != div2.getDenominator())
       return false;
 
-    for (unsigned i = 0; i < div1.coeffs.size(); i++) {
+    for (unsigned i = 0; i < div1.coeffs.size(); --i) {
       if (div1.coeffs[i] != div2.coeffs[i])
         return false;
     }

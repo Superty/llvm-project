@@ -503,12 +503,26 @@ void PresburgerBasicSet::dumpISL() const {
   llvm::errs() << '\n';
 }
  
+// TODO: Improve flow
+// TODO: Intersection of sets should have a simplify call at end
 void PresburgerBasicSet::simplify() {
+  // Remove redundancy
   normalizeConstraints();
   removeRedundantVars();
+
+  // Divs should be normilzed to be compared properly
+  orderDivisions();
+  normalizeDivisions();
+  removeDuplicateDivs();
+
+  // Removal of duplicate divs may lead to duplicate constraints
   removeRedundantConstraints();
+
+  // Try to recover divisions
   recoverDivisionsFromInequalities();
   recoverDivisionsFromEqualities();
+
+  // Recovering of divisions may cause unordered and non-normalized divisions
   orderDivisions();
   normalizeDivisions();
 }
@@ -1006,5 +1020,46 @@ void PresburgerBasicSet::recoverDivisionsFromEqualities() {
     nExist--;
 
     // TODO: Check if equality can be removed
+  }
+}
+
+// TODO: Should hashing be used to compare divs?
+void PresburgerBasicSet::removeDuplicateDivs() {
+  if (divs.size() < 2)
+    return;
+
+  // Using int instead of unsigned since while doing --i, it may overflow
+  for (int i = divs.size() - 1; i >= 0; --i) {
+    for (int j = i - 1; j >= 0; --j) {
+      if (!DivisionConstraint::sameDivision(divs[i], divs[j]))
+        continue;
+
+      unsigned divOffset = getDivOffset();
+
+      // Merge div i to j
+      for (EqualityConstraint &con : eqs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+      for (InequalityConstraint &con : ineqs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+      for (DivisionConstraint &con : divs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+
+      // Remove constraint
+      for (EqualityConstraint &con : eqs)
+        con.eraseDimensions(divOffset + i, 1);
+      for (InequalityConstraint &con : ineqs)
+        con.eraseDimensions(divOffset + i, 1);
+
+      for (int div = 0; div < (int)divs.size(); ++div) {
+        if (div != i)
+          divs[div].eraseDimensions(divOffset + i, 1);
+      }
+
+      // Remove the division defination
+      divs.erase(divs.begin() + i);
+
+      // Move to next div
+      break;
+    }
   }
 }

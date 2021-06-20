@@ -170,6 +170,9 @@ private:
   /// Convert existentials to divisions using equalities
   void recoverDivisionsFromEqualities();
 
+  /// Remove duplicate divisions
+  void removeDuplicateDivs();
+
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector
   void swapDivisions(unsigned vari, unsigned varj);
