@@ -751,6 +751,7 @@ void PresburgerBasicSet::alignDivs(PresburgerBasicSet &bs1,
     bs2.divs.push_back(div);
   }
 
+  // TODO: Does there exist a better way to match divs?
   // Loop over divs and find the equal ones
   // This requires that divs in divs1 are ordered, which was ensured in
   // simplify calls.

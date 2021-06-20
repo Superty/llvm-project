@@ -345,7 +345,7 @@ TEST(CoalesceTest, params) {
 TEST(CoalesceTest, existentials) {
   PresburgerSet existentials = setFromString(
       "(x)[y] : (exists e0, e1, e2 : e0 + e1 + 2 <= 7) or (4x <= 6)");
-  expectCoalesce(2, existentials);
+  expectCoalesce(1, existentials);
 }
 
 TEST(CoalesceTest, existentials3) {
@@ -402,14 +402,14 @@ TEST(CoalesceTest, nonEqualDivs) {
   PresburgerSet set =
       setFromString("(x) : (exists j = [(x + 1)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
                     "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
-  expectCoalesce(2, set);
+  expectCoalesce(1, set);
 }
 
 TEST(CoalesceTest, nonEqualDivs2) {
   PresburgerSet set =
       setFromString("(x) : (exists j = [(x)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
                     "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
-  expectCoalesce(2, set);
+  expectCoalesce(1, set);
 }
 
 TEST(CoalesceTest, existsDontMatch) {
@@ -427,16 +427,17 @@ TEST(CoalesceTest, eqAdjtoIneqTwice) {
   expectCoalesce(2, set);
 }
 
-/* TEST(CoalesceTest, divsCase3) { */
-/*   PresburgerSet set = setFromString( */
-/*       "(x, y) : (exists a = [(x)/2], b = [(y)/2] : x = 2a and y = " */
-/*       "2b) or (exists a = [(x)/2] : x = 2a and y = x)"); */
-/*   expectCoalesce(1, set); */
-/* } */
+TEST(CoalesceTest, divsCase3) {
+  PresburgerSet set = setFromString(
+      "(x, y) : (exists a = [(x)/2], b = [(y)/2] : x = 2a and y = "
+      "2b) or (exists a = [(x)/2] : x = 2a and y = x)");
+  expectCoalesce(1, set);
+}
 
 /* TEST(CoalesceTest, divsCase4) { */
-/*   PresburgerSet set = setFromString( */
-/*       "(x) : (exists a = [(x)/2] : x = 2a and x >= 0 and x <= 10) or (x = 12)"); */
+/*   PresburgerSet set = */
+/*       setFromString("(x) : (exists a = [(x)/2] : x = 2a and x >= 0 and x <= " */
+/*                     "10) or (x = 12)"); */
 /*   expectCoalesce(1, set); */
 /* } */
 

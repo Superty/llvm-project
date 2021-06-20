@@ -256,6 +256,8 @@ bool coalescePair(unsigned i, unsigned j,
   PresburgerBasicSet &bs1 = basicSetVector[i];
   PresburgerBasicSet &bs2 = basicSetVector[j];
 
+  PresburgerBasicSet::alignDivs(bs1, bs2);
+
   Simplex simplex1(bs1);
   SmallVector<ArrayRef<int64_t>, 8> equalities1, inequalities1;
   getBasicSetEqualities(bs1, equalities1);
@@ -358,6 +360,31 @@ bool coalescePair(unsigned i, unsigned j,
   return false;
 }
 
+/// Intersect the two basic sets and drop the subset if one is a subset of
+/// another
+bool coalesceDivs(unsigned i, unsigned j,
+                  SmallVector<PresburgerBasicSet, 4> &basicSetVector) {
+  PresburgerBasicSet bs1 = basicSetVector[i];
+  PresburgerBasicSet bs2 = basicSetVector[j];
+
+  PresburgerBasicSet intersect = bs1;
+  intersect.intersect(bs2);
+  intersect.simplify();
+
+// TODO : Equal is very expensive, try to use something else
+  if (PresburgerSet::equal(PresburgerSet(intersect), PresburgerSet(bs2))) {
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
+    return true;
+  }
+
+  if (PresburgerSet::equal(PresburgerSet(intersect), PresburgerSet(bs1))) {
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
+    return true;
+  }
+
+  return false;
+}
+
 PresburgerSet mlir::coalesce(PresburgerSet &set) {
   set.simplify();
 
@@ -367,21 +394,32 @@ PresburgerSet mlir::coalesce(PresburgerSet &set) {
   for (unsigned i = 0; i < basicSetVector.size(); ++i) {
     for (unsigned j = i + 1; j < basicSetVector.size(); ++j) {
 
-      PresburgerBasicSet &bs1 = basicSetVector[i];
-      PresburgerBasicSet &bs2 = basicSetVector[j];
-
-      PresburgerBasicSet::alignDivs(bs1, bs2);
+      PresburgerBasicSet bs1 = basicSetVector[i];
+      PresburgerBasicSet bs2 = basicSetVector[j];
 
       bool coalesceStatus = coalescePair(i, j, basicSetVector);
       if (coalesceStatus) {
         i--;
         break;
       } else {
-        // Simplify changes made by alignment of divisions
-        // No need to simplify if coalesced since it is simplified during its
-        // creation
-        bs1.simplify();
-        bs2.simplify();
+        // Revert changes
+        basicSetVector[i] = bs1;
+        basicSetVector[j] = bs2;
+      }
+
+      // If no existentials or divisions, there is no point in checking ahead
+      if (bs1.getNumDivs() + bs1.getNumExists() == 0 &&
+          bs2.getNumDivs() + bs2.getNumExists() == 0)
+        continue;
+
+      coalesceStatus = coalesceDivs(i, j, basicSetVector);
+      if (coalesceStatus) {
+        i--;
+        break;
+      } else {
+        // Revert changes
+        basicSetVector[i] = bs1;
+        basicSetVector[j] = bs2;
       }
     }
   }
