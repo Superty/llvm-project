@@ -122,8 +122,6 @@ TEST(CoalesceTest, combineConstraint) {
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
   PresburgerSet newSet = coalesce(set);
-  set.dump();
-  newSet.dump();
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
   EXPECT_TRUE(expectedNumBasicSets == newSet.getBasicSets().size());
 }
@@ -347,14 +345,7 @@ TEST(CoalesceTest, params) {
 TEST(CoalesceTest, existentials) {
   PresburgerSet existentials = setFromString(
       "(x)[y] : (exists e0, e1, e2 : e0 + e1 + 2 <= 7) or (4x <= 6)");
-  expectCoalesce(2, existentials);
-}
-
-TEST(CoalesceTest, existentials2) {
-  PresburgerSet existentials2 = setFromString(
-      "(x) : ( exists j : x = 4j and 0 <= x and x <= 100) or (exists j : 4j + "
-      "1 <= x and x <= 4j + 2 and 0 <= x and x <= 100)");
-  expectCoalesce(2, existentials2);
+  expectCoalesce(1, existentials);
 }
 
 TEST(CoalesceTest, existentials3) {
@@ -364,12 +355,96 @@ TEST(CoalesceTest, existentials3) {
   expectCoalesce(2, existentials2);
 }
 
-/*TEST(CoalesceTest, twoAdj) {
-  PresburgerSet twoAdj = setFromString(
-      "(x,y) : (x = 1 and y >= 0 and y <= 2) or (x = 2 and y >= 3 and y <=
-5)");
-  // The result should be something like: "(x,y) : ( x >= 1 and x <= 2 and 3x
--y
-  // -3 <= 0 and 3x -y-1 >= 0)");
-  expectCoalesce(1, twoAdj);
-}*/
+TEST(CoalesceTest, divisonsNonMatch1) {
+  PresburgerSet set = setFromString(
+      "(x) : (exists j : x = 4j and 0 <= x and x <= 100) or (exists j : 4j + 1 "
+      "<= x and x <= 4j + 2 and 0 <= x and x <= 100)");
+  expectCoalesce(1, set);
+}
+
+TEST(CoalesceTest, divisionAdjEq) {
+  PresburgerSet division1 =
+      setFromString("(x) : ( exists j : x - 1 <= 3j and 3j <= x ) or ( exists "
+                    "j : x - 2 = 3j )");
+  expectCoalesce(1, division1);
+}
+
+TEST(CoalesceTest, divisionAdjEq2) {
+  PresburgerSet division2 =
+      setFromString("(x) : (exists q = [(x + 1)/3] : x - 1 <= 3q and 3q <= x) "
+                    "or (exists q = [(x - 2)/3] : x - 2 = 3q)");
+  expectCoalesce(1, division2);
+}
+
+TEST(CoalesceTest, multipleDivs) {
+  PresburgerSet division2 =
+      setFromString("(x) : (exists q = [(x + 1)/3], j = [(x)/5] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(1, division2);
+}
+
+TEST(CoalesceTest, nonMatchedDivs) {
+  PresburgerSet division2 =
+      setFromString("(x) : (exists j = [(x)/5], q = [(x + 1)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(1, division2);
+}
+
+TEST(CoalesceTest, divisionProtrusion) {
+  PresburgerSet set =
+      setFromString("(x) : (exists y : x >= 0 and y >= 0 and y <= 3 and x <= "
+                    "9) or (exists y : y >= 1 "
+                    "and y <= 4 and y <= x - 1 and x + y - 11 <= 0)");
+  expectCoalesce(1, set);
+}
+
+TEST(CoalesceTest, nonEqualDivs) {
+  PresburgerSet set =
+      setFromString("(x) : (exists j = [(x + 1)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(1, set);
+}
+
+TEST(CoalesceTest, nonEqualDivs2) {
+  PresburgerSet set =
+      setFromString("(x) : (exists j = [(x)/5], q = [(x + 2)/3] : x - 1 <= 3q and 3q <= x and j = 5x) "
+                    "or (exists q = [(x - 2)/3], j = [(x)/5]: x - 2 = 3q and j = 5x)");
+  expectCoalesce(1, set);
+}
+
+TEST(CoalesceTest, existsDontMatch) {
+  PresburgerSet set = setFromString("(x) : (x >= 0 and x <= 100) or (exists a "
+                                    ": x >= 5 and x <= 40 and x = 5a)");
+  expectCoalesce(1, set);
+}
+
+// Case when trying to coalesce two sets both of which have an equality adjacent
+// to an inequality in other set.
+TEST(CoalesceTest, eqAdjtoIneqTwice) {
+  PresburgerSet set =
+      setFromString("(x, q, j) : (x - 1 <= 3q and 3q <= x and 4j = x) or (x - "
+                    "2 = 3q and 4j + 1 <= x and x <= 4j + 2)");
+  expectCoalesce(2, set);
+}
+
+TEST(CoalesceTest, divsCase3) {
+  PresburgerSet set = setFromString(
+      "(x, y) : (exists a = [(x)/2], b = [(y)/2] : x = 2a and y = "
+      "2b) or (exists a = [(x)/2] : x = 2a and y = x)");
+  expectCoalesce(1, set);
+}
+
+/* TEST(CoalesceTest, divsCase4) { */
+/*   PresburgerSet set = */
+/*       setFromString("(x) : (exists a = [(x)/2] : x = 2a and x >= 0 and x <= " */
+/*                     "10) or (x = 12)"); */
+/*   expectCoalesce(1, set); */
+/* } */
+
+/* TEST(CoalesceTest, twoAdj) { */
+/*   PresburgerSet twoAdj = setFromString( */
+/*       "(x,y) : (x = 1 and y >= 0 and y <= 2) or (x = 2 and y >= 3 and y <= 5)"); */
+/*   // The result should be something like: "(x,y) : ( x >= 1 and x <= 2 and 3x */
+/*   // -y -3 <= 0 and 3x -y-1 >= 0)"); */
+/*   expectCoalesce(1, twoAdj); */
+/* } */

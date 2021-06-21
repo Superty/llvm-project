@@ -34,6 +34,9 @@ public:
   PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0, unsigned oNExist = 0)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
+  PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist,
+                     ArrayRef<DivisionConstraint> divs);
+
   unsigned getNumDims() const { return nDim; }
   unsigned getNumTotalDims() const { return nParam + nDim + nExist + divs.size(); }
   unsigned getNumParams() const { return nParam; }
@@ -82,6 +85,15 @@ public:
 
   PresburgerBasicSet makeRecessionCone() const;
 
+  /// Uses simplex to remove redundant constraints
+  void removeRedundantConstraints();
+
+  /// Align equivalent divs PresburgerBasicSets bs1 and bs2
+  /// Converts non matching divisions to existentials
+  static void alignDivs(PresburgerBasicSet &bs1, PresburgerBasicSet &bs2);
+
+  void simplify();
+
   void dumpCoeffs() const;
 
   void dump() const;
@@ -125,6 +137,51 @@ private:
   /// is empty.
   Optional<SmallVector<int64_t, 8>>
   findSampleUnbounded(PresburgerBasicSet &cone, bool onlyEmptiness) const;
+
+  /// Factor out greatest commond divisor from each equality and inequality
+  void normalizeConstraints();
+
+  /// 1. Converts each coefficient c in the division numerator to
+  /// be in the range -denominator < 2 * c <= denominator
+  /// 2. Divides numerator and denominator by their gcd
+  /// Assumes that divisions are ordered before this function is called.
+  void normalizeDivisions();
+
+  /// Orders divisions such that a division only depends on division
+  /// before it.
+  void orderDivisions();
+
+  /// Return true if the variable is redundant in the set
+  bool redundantVar(unsigned var);
+
+  /// Creates new coeffs from ogCoeffs, keeping only the exists in 
+  /// nrExists and divs in nrDiv and removing the rest
+  SmallVector<int64_t, 8> copyWithNonRedundant(std::vector<unsigned> &nrExists,
+                                         std::vector<unsigned> &nrDiv,
+                                         const ArrayRef<int64_t> &ogCoeffs);
+
+  /// Remove divisions and existentials that do not occur in any constraint
+  void removeRedundantVars();
+
+  /// Convert existentials to divisions using inequalities
+  /// Also converts inequalities that can from an equality to equalities
+  void recoverDivisionsFromInequalities();
+
+  /// Convert existentials to divisions using equalities
+  void recoverDivisionsFromEqualities();
+
+  /// Remove duplicate divisions
+  void removeDuplicateDivs();
+
+  /// Swap division variables at indexes vari and varj
+  /// vari and varj are indexes in the divs vector
+  void swapDivisions(unsigned vari, unsigned varj);
+
+  /// Get the index of first division variable.
+  unsigned getDivOffset();
+
+  /// Get the index of first existential variable.
+  unsigned getExistOffset();
 
   Matrix coefficientMatrixFromEqs() const;
 

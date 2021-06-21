@@ -45,6 +45,9 @@ public:
   // bool containsPoint(const std::vector<INT> &values) const;
   llvm::Optional<SmallVector<int64_t, 8>> maybeGetCachedSample() const;
 
+  /// Simplfies each DivisionConstraint in each PresburgerBasicSet
+  void simplify();
+
 private:
   unsigned nDim;
   unsigned nSym;

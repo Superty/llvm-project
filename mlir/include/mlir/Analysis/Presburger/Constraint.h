@@ -16,6 +16,7 @@
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
@@ -62,6 +63,36 @@ public:
 
   void shift(int64_t x) {
     coeffs.back() += x;
+  }
+
+  void shiftCoeff(unsigned var, int64_t constant) {
+    coeffs[var] += constant;
+  }
+
+  // Shift each coefficent by coeffShifts[i] * constant
+  void shiftCoeffs(const ArrayRef<int64_t> &coeffShifts, int64_t constant) {
+    assert(coeffShifts.size() - 1 == getNumDims() &&
+           "Incorrect number of dimensions");
+
+    for (unsigned i = 0; i < coeffs.size(); ++i)
+      coeffs[i] += coeffShifts[i] * constant;
+  }
+
+  /// Swap coefficients at position vari, varj
+  void swapCoeffs(unsigned vari, unsigned varj) {
+    std::swap(coeffs[vari], coeffs[varj]);
+  }
+
+  /// Factor out the greatest common divisor of coefficents
+  void normalizeCoeffs() {
+    int64_t currGcd = 0;
+    for (int64_t &coeff : coeffs)
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
+
+    if (currGcd != 1) {
+      for (int64_t &coeff : coeffs) 
+        coeff /= currGcd;
+    }
   }
 
   void appendDimension() {
@@ -151,6 +182,10 @@ public:
     return denom;
   }
 
+  unsigned getVariable() const {
+    return variable;
+  }
+
   InequalityConstraint getInequalityLowerBound() const {
     SmallVector<int64_t, 8> ineqCoeffs = coeffs;
     ineqCoeffs[variable] -= denom;
@@ -176,11 +211,59 @@ public:
   void eraseDimensions(unsigned pos, unsigned count) {
     assert(!(pos <= variable && variable < pos + count) &&
            "cannot erase division variable!");
+    if (pos < count)
+      variable -= count;
     Constraint::eraseDimensions(pos, count);
   }
 
   void substitute(ArrayRef<int64_t> values) {
     assert(variable >= values.size() && "Not yet implemented");
+  }
+ 
+  /// Swaps the "variable" property of two division constraints
+  static void swapVariables(DivisionConstraint &diva,
+                            DivisionConstraint &divb) {
+    std::swap(diva.variable, divb.variable);
+  }
+
+  /// Remove common factor in numerator and denominator not taking into account
+  /// the constant term.
+  /// 
+  /// Given divisions: [m * (f(x) + c) / m * d]
+  /// Replace it by: [f(x) + floor(c/m) / d]
+  /// 
+  /// The constant term need not have the same common factor since the
+  /// difference is (c / m) / d which satisfies 0 <= (c / m) / d < 1 / d 
+  /// and therefore cannot influence the result.
+  void removeCommonFactor() {
+    int64_t currGcd = std::abs(denom);
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeffs[i]));
+
+    if (currGcd != 1) {
+      for (int64_t &coeff : coeffs)
+        coeff /= currGcd;
+      denom /= currGcd;
+    }
+  }
+
+  /// Checks if coefficients of two divisions are same. Assumes that the
+  /// divisions were normalized before.
+  /// This function is only useful if the divisions are ordered.
+  static bool sameDivision(DivisionConstraint &div1, DivisionConstraint &div2) {
+    if (div1.getDenominator() != div2.getDenominator())
+      return false;
+
+    for (unsigned i = 0; i < div1.coeffs.size(); --i) {
+      if (div1.coeffs[i] != div2.coeffs[i])
+        return false;
+    }
+
+    return true;
+  }
+
+  void printVar() {
+    llvm::errs() << variable << "\n";
   }
 
   void dump() const { print(llvm::errs()); }

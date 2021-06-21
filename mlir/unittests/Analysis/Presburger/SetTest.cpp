@@ -50,3 +50,63 @@ TEST(PresburgerSetTest, Equality) {
   expectEqual("(x) : (exists q : x = q and q <= -1)",
               "(x) : (x <= -1)");
 }
+
+void expectEqualAfterNormalization(PresburgerSet &set) {
+  auto newSet = set;
+  newSet.simplify();
+  EXPECT_TRUE(PresburgerSet::equal(set, newSet));
+
+  // Normalization check
+  for (const PresburgerBasicSet &pbs : newSet.getBasicSets()) {
+    for (const DivisionConstraint &div : pbs.getDivisions()) {
+      int64_t denom = div.getDenominator();
+      for (const int64_t &coeff : div.getCoeffs())
+        EXPECT_TRUE((std::abs(2 * coeff) < denom) || (2 * coeff == denom));
+    }
+  }
+}
+
+TEST(PresburgerSetTest, simplify1) {
+  PresburgerSet simplify1 = setFromString(
+      "(x) : (exists q = [(5x - 9) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
+      "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
+      "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
+  expectEqualAfterNormalization(simplify1);
+}
+
+TEST(PresburgerSetTest, simplify2) {
+  PresburgerSet set = setFromString(
+      "(x) : (exists q = [(5p - 15) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
+      "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
+      "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
+  expectEqualAfterNormalization(set);
+}
+
+TEST(PresburgerSetTest, existentialTest) {
+  PresburgerSet set = setFromString("(x) : (exists a, b = [(x + 1) / 2], c : a + x >= 5)");
+  set.simplify();
+
+  auto bs = set.getBasicSets()[0];
+  EXPECT_TRUE(bs.getNumExists() == 1);
+  EXPECT_TRUE(bs.getNumDivs() == 0);
+}
+
+TEST(PresburgerSetTest, existentialTest2) {
+  PresburgerSet divisionOrder1 = setFromString(
+      "(d0) : (exists q0 = [(d0 + 1)/3] : -d0 + 3q0 + 1 >= 0 and d0 - 3q0 >= "
+      "0) or (exists q0 = [(d0 - 2)/3] : d0 - 3q0 - 2 = 0)");
+  expectEqualAfterNormalization(divisionOrder1);
+}
+
+TEST(PresburgerSetTest, recoverDivisionTest1) {
+  PresburgerSet set = setFromString(
+      "(x) : (exists a : x - 1 <= 3a and 3a <= x) or (exists a : x - 2 = 3a)");
+  expectEqualAfterNormalization(set);
+}
+
+TEST(PresburgerSetTest, recoverDivisionTest2) {
+  PresburgerSet set =
+      setFromString("(x) : (exists a, b, c : x - 1 <= 3a and 3a <= x and 3b = "
+                    "4x and 5c >= 4x and 5c <= 4x)");
+  expectEqualAfterNormalization(set);
+}
