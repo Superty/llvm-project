@@ -314,137 +314,183 @@ void getBasicSetInequalities(const PresburgerBasicSet<Int> &bs,
 }
 
 template <typename Int>
+bool coalescePair(unsigned i, unsigned j,
+                  SmallVector<PresburgerBasicSet<Int>, 4> &basicSetVector) {
+  PresburgerBasicSet<Int> &bs1 = basicSetVector[i];
+  PresburgerBasicSet<Int> &bs2 = basicSetVector[j];
+
+  PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
+
+  Simplex simplex1(bs1);
+  SmallVector<ArrayRef<Int>, 8> equalities1, inequalities1;
+  getBasicSetEqualities(bs1, equalities1);
+  getBasicSetInequalities(bs1, inequalities1);
+
+  Simplex simplex2(bs2);
+  SmallVector<ArrayRef<Int>, 8> equalities2, inequalities2;
+  getBasicSetEqualities(bs2, equalities2);
+  getBasicSetInequalities(bs2, inequalities2);
+
+  Info<Int> info1, info2;
+  if (!classify(simplex2, inequalities1, equalities1, info1))
+    return false;
+  if (!classify(simplex1, inequalities2, equalities2, info2))
+    return false;
+  // TODO: find better strategy than i--; break;
+  // change indices when changing vector?
+  if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
+      !info2.t) {
+    // contained 2 in 1
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
+    return true;
+  } else if (!info2.redundant.empty() && info2.cut.empty() && !info2.adjIneq &&
+             !info1.t) {
+    // contained 1 in 2
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
+    return true;
+  } else if (!info1.redundant.empty() && !info1.cut.empty() && !info1.adjIneq &&
+             !info2.t) {
+    // cut or protrusion case 1
+    if (cutCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    } else if (stickingOut(info1.cut, bs2) &&
+               protrusionCase(basicSetVector, info1, info2, i, j)) {
+      // protrusion
+      return true;
+    }
+  } else if (!info2.redundant.empty() && !info2.cut.empty() && !info2.adjIneq &&
+             !info1.t) {
+    // cut or protrusion case 2
+    if (cutCase(basicSetVector, j, i, info2, info1)) {
+      return true;
+    } else if (stickingOut(info2.cut, bs1) &&
+               protrusionCase(basicSetVector, info2, info1, j, i)) {
+      // protrusion case
+      return true;
+    }
+  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
+             !info2.t && !info2.redundant.empty() && info2.adjIneq &&
+             info2.cut.empty() && !info1.t) {
+    // adjIneq, pure case
+    if (adjIneqPureCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
+             !info1.t && !info2.t) {
+    // adjIneq complex case 1
+    if (adjIneqCase(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (!info2.redundant.empty() && info2.adjIneq && info2.cut.empty() &&
+             !info2.t && !info1.t) {
+    // adjIneq complex case 2
+    if (adjIneqCase(basicSetVector, j, i, info2, info1)) {
+      return true;
+    }
+  } else if (info1.t && info2.t) {
+    // adjEq for two equalities
+    if (adjEqCasePure(basicSetVector, i, j, info1, info2)) {
+      return true;
+    }
+  } else if (info1.t && info2.cut.empty()) {
+    // adjEq Case for one equality 1
+    // compute the inequality, that is adjacent to an equality by computing
+    // the complement of the inequality part of an equality
+    SmallVector<Int, 8> adjEq = complement(info1.t.getValue());
+    if (adjEqCaseNoCut(basicSetVector, i, j, adjEq, info2)) {
+      // adjEq noCut case
+      return true;
+    } else if (info1.t &&
+               adjEqCaseNonPure(basicSetVector, j, i, info2, info1)) {
+      // adjEq case
+      return true;
+    }
+  } else if (info2.t && info1.cut.empty()) {
+    // adjEq Case for one equality 2
+    // compute the inequality, that is adjacent to an equality by computing
+    // the complement of the inequality part of an equality
+    SmallVector<Int, 8> adjEq = complement(info2.t.getValue());
+    if (adjEqCaseNoCut(basicSetVector, j, i, adjEq, info1)) {
+      // adjEq noCut case
+      return true;
+    } else if (info2.t &&
+               adjEqCaseNonPure(basicSetVector, i, j, info1, info2)) {
+      // adjEq case
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Intersect the two basic sets and drop the subset if one is a subset of
+/// another
+template <typename Int>
+bool coalesceDivs(unsigned i, unsigned j,
+                  SmallVector<PresburgerBasicSet<Int>, 4> &basicSetVector) {
+  PresburgerBasicSet<Int> bs1 = basicSetVector[i];
+  PresburgerBasicSet<Int> bs2 = basicSetVector[j];
+
+  PresburgerBasicSet<Int> intersect = bs1;
+  intersect.intersect(bs2);
+  intersect.simplify();
+
+// TODO : Equal is very expensive, try to use something else
+  if (PresburgerSet<Int>::equal(PresburgerSet(intersect), PresburgerSet(bs2))) {
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
+    return true;
+  }
+
+  if (PresburgerSet<Int>::equal(PresburgerSet(intersect), PresburgerSet(bs1))) {
+    addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
+    return true;
+  }
+
+  return false;
+}
+
+template <typename Int>
 PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set) {
+  set.simplify();
+
   PresburgerSet<Int> newSet(set.getNumDims(), set.getNumSyms());
   SmallVector<PresburgerBasicSet<Int>, 4> basicSetVector = set.getBasicSets();
-  // TODO: find better looping strategy
-  // redefine coalescing function on two BasicSets, return a BasicSet and do the
-  // looping strategy in a different function?
-  for (unsigned i = 0; i < basicSetVector.size(); i++) {
-    for (unsigned j = i + 1; j < basicSetVector.size(); j++) {
+
+  for (unsigned i = 0; i < basicSetVector.size(); ++i) {
+    for (unsigned j = i + 1; j < basicSetVector.size(); ++j) {
+
       PresburgerBasicSet<Int> bs1 = basicSetVector[i];
-      Simplex<Int> simplex1(bs1);
-      SmallVector<ArrayRef<Int>, 8> equalities1, inequalities1;
-      getBasicSetEqualities(bs1, equalities1);
-      getBasicSetInequalities(bs1, inequalities1);
-
       PresburgerBasicSet<Int> bs2 = basicSetVector[j];
-      Simplex<Int> simplex2(bs2);
-      SmallVector<ArrayRef<Int>, 8> equalities2, inequalities2;
-      getBasicSetEqualities(bs2, equalities2);
-      getBasicSetInequalities(bs2, inequalities2);
 
-      // TODO: implement the support for existentials
-      if (bs1.getNumExists() != 0 || bs2.getNumExists() != 0 ||
-          bs1.getNumDivs() != 0 || bs2.getNumDivs() != 0)
-        continue;
-
-      Info<Int> info1, info2;
-      if (!classify(simplex2, inequalities1, equalities1, info1))
-        continue;
-      if (!classify(simplex1, inequalities2, equalities2, info2))
-        continue;
-      // TODO: find better strategy than i--; break;
-      // change indices when changing vector?
-      if (!info1.redundant.empty() && info1.cut.empty() && !info1.adjIneq &&
-          !info2.t) {
-        // contained 2 in 1
-        basicSetVector.erase(basicSetVector.begin() + j);
-        j--;
-      } else if (!info2.redundant.empty() && info2.cut.empty() &&
-                 !info2.adjIneq && !info1.t) {
-        // contained 1 in 2
-        basicSetVector.erase(basicSetVector.begin() + i);
+      bool coalesceStatus = coalescePair(i, j, basicSetVector);
+      if (coalesceStatus) {
         i--;
         break;
-      } else if (!info1.redundant.empty() && !info1.cut.empty() &&
-                 !info1.adjIneq && !info2.t) {
-        // cut or protrusion case 1
-        if (cutCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        } else if (stickingOut(info1.cut, bs2) &&
-                   protrusionCase(basicSetVector, info1, info2, i, j)) {
-          // protrusion
-          i--;
-          break;
-        }
-      } else if (!info2.redundant.empty() && !info2.cut.empty() &&
-                 !info2.adjIneq && !info1.t) {
-        // cut or protrusion case 2
-        if (cutCase(basicSetVector, j, i, info2, info1)) {
-          i--;
-          break;
-        } else if (stickingOut(info2.cut, bs1) &&
-                   protrusionCase(basicSetVector, info2, info1, j, i)) {
-          // protrusion case
-          i--;
-          break;
-        }
-      } else if (!info1.redundant.empty() && info1.adjIneq &&
-                 info1.cut.empty() && !info2.t && !info2.redundant.empty() &&
-                 info2.adjIneq && info2.cut.empty() && !info1.t) {
-        // adjIneq, pure case
-        if (adjIneqPureCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (!info1.redundant.empty() && info1.adjIneq &&
-                 info1.cut.empty() && !info1.t && !info2.t) {
-        // adjIneq complex case 1
-        if (adjIneqCase(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (!info2.redundant.empty() && info2.adjIneq &&
-                 info2.cut.empty() && !info2.t && !info1.t) {
-        // adjIneq complex case 2
-        if (adjIneqCase(basicSetVector, j, i, info2, info1)) {
-          i--;
-          break;
-        }
-      } else if (info1.t && info2.t) {
-        // adjEq for two equalities
-        if (adjEqCasePure(basicSetVector, i, j, info1, info2)) {
-          i--;
-          break;
-        }
-      } else if (info1.t && info2.cut.empty()) {
-        // adjEq Case for one equality 1
-        // compute the inequality, that is adjacent to an equality by computing
-        // the complement of the inequality part of an equality
-        SmallVector<Int, 8> adjEq = complement(info1.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, i, j, adjEq, info2)) {
-          // adjEq noCut case
-          i--;
-          break;
-        } else if (info1.t &&
-                   adjEqCaseNonPure(basicSetVector, j, i, info2, info1)) {
-          // adjEq case
-          i--;
-          break;
-        }
-      } else if (info2.t && info1.cut.empty()) {
-        // adjEq Case for one equality 2
-        // compute the inequality, that is adjacent to an equality by computing
-        // the complement of the inequality part of an equality
-        SmallVector<Int, 8> adjEq = complement(info2.t.getValue());
-        if (adjEqCaseNoCut(basicSetVector, j, i, adjEq, info1)) {
-          // adjEq noCut case
-          i--;
-          break;
-        } else if (info2.t &&
-                   adjEqCaseNonPure(basicSetVector, i, j, info1, info2)) {
-          // adjEq case
-          i--;
-          break;
-        }
+      } else {
+        // Revert changes
+        basicSetVector[i] = bs1;
+        basicSetVector[j] = bs2;
+      }
+
+      // If no existentials or divisions, there is no point in checking ahead
+      if (bs1.getNumDivs() + bs1.getNumExists() == 0 &&
+          bs2.getNumDivs() + bs2.getNumExists() == 0)
+        continue;
+
+      coalesceStatus = coalesceDivs(i, j, basicSetVector);
+      if (coalesceStatus) {
+        i--;
+        break;
+      } else {
+        // Revert changes
+        basicSetVector[i] = bs1;
+        basicSetVector[j] = bs2;
       }
     }
   }
-  for (const PresburgerBasicSet<Int> &curr : basicSetVector) {
+
+  for (PresburgerBasicSet<Int> &curr : basicSetVector)
     newSet.addBasicSet(curr);
-  }
   return newSet;
 }
 
@@ -468,8 +514,9 @@ template <typename Int>
 bool adjIneqPureCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
                      unsigned i, unsigned j, const Info<Int> &infoA,
                      const Info<Int> &infoB) {
-  PresburgerBasicSet<Int> newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  PresburgerBasicSet<Int> newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -483,6 +530,16 @@ template <typename Int>
 void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
                           unsigned i, unsigned j,
                           const PresburgerBasicSet<Int> &bs) {
+  PresburgerBasicSet newSet(bs.getNumDims(), bs.getNumParams(),
+                          basicSetVector[i].getNumExists(),
+                          basicSetVector[i].getDivisions());
+
+  for (const EqualityConstraint<Int> &eq : bs.getEqualities())
+    newSet.addEquality(eq.getCoeffs());
+
+  for (const InequalityConstraint<Int> &ineq : bs.getInequalities())
+    newSet.addInequality(ineq.getCoeffs());
+
   if (i < j) {
     basicSetVector.erase(basicSetVector.begin() + j);
     basicSetVector.erase(basicSetVector.begin() + i);
@@ -490,7 +547,10 @@ void addCoalescedBasicSet(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVect
     basicSetVector.erase(basicSetVector.begin() + i);
     basicSetVector.erase(basicSetVector.begin() + j);
   }
-  basicSetVector.push_back(bs);
+  
+  // Simplify the newly created set
+  newSet.simplify();
+  basicSetVector.push_back(newSet);
 }
 
 template <typename Int>
@@ -508,8 +568,9 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
   SmallVector<SmallVector<Int, 8>, 8> wrapped;
   for (unsigned l = 0; l < infoA.cut.size(); l++) {
     auto t = llvm::to_vector<8>(infoA.cut[l]);
-    PresburgerBasicSet<Int> bPrime =
-        PresburgerBasicSet<Int>(b.getNumDims(), b.getNumParams());
+    PresburgerBasicSet<Int> bPrime = PresburgerBasicSet<Int>(
+        b.getNumDims(), b.getNumParams(), b.getNumDivs() + b.getNumExists());
+
     addInequalities(bPrime, constraintsB);
     shift(t, 1);
     Simplex<Int> simp(bPrime);
@@ -544,7 +605,8 @@ bool protrusionCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams());
+  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams(),
+                                 b.getNumDivs() + b.getNumExists());
   // If all the wrappings were succesfull, the two polytopes can be replaced by
   // a polytope with all of the redundant constraints and the wrapped
   // constraints.
@@ -628,7 +690,8 @@ bool adjEqCaseNoCut(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
   }
   shift(t, 1);
   newSetInequalities.push_back(t);
-  PresburgerBasicSet<Int> newSet(A.getNumDims(), A.getNumParams());
+  PresburgerBasicSet<Int> newSet(A.getNumDims(), A.getNumParams(),
+                                 A.getNumDivs() + A.getNumExists());
   for (const SmallVector<Int, 8> &curr : newSetInequalities) {
     newSet.addInequality(curr);
   }
@@ -705,7 +768,8 @@ bool adjEqCaseNonPure(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams());
+  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams(),
+                                 b.getNumDivs() + b.getNumExists());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<Int, 8> &curr : wrapped) {
@@ -764,7 +828,8 @@ bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
     }
   }
 
-  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams());
+  PresburgerBasicSet<Int> newSet(b.getNumDims(), b.getNumParams(),
+                                 b.getNumDivs() + b.getNumExists());
   // The new polytope consists of all the wrapped constraints and all the
   // redundant constraints
   for (const SmallVector<Int, 8> &curr : wrapped) {
@@ -911,8 +976,9 @@ template <typename Int>
 bool adjIneqCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
                  unsigned i, unsigned j, const Info<Int> &infoA, const Info<Int> &infoB) {
   ArrayRef<Int> t = infoA.adjIneq.getValue();
-  PresburgerBasicSet<Int> bs(basicSetVector[i].getNumDims(),
-                        basicSetVector[i].getNumParams());
+  PresburgerBasicSet<Int> bs(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(bs, infoA.redundant);
   addInequalities(bs, infoA.cut);
   addInequalities(bs, infoB.redundant);
@@ -934,8 +1000,9 @@ bool adjIneqCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
       return false;
     }
   }
-  PresburgerBasicSet<Int> newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  PresburgerBasicSet<Int> newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
@@ -952,8 +1019,9 @@ bool cutCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector, unsigned 
       return false;
     }
   }
-  PresburgerBasicSet<Int> newSet(basicSetVector[i].getNumDims(),
-                            basicSetVector[i].getNumParams());
+  PresburgerBasicSet<Int> newSet(
+      basicSetVector[i].getNumDims(), basicSetVector[i].getNumParams(),
+      basicSetVector[i].getNumDivs() + basicSetVector[i].getNumExists());
   addInequalities(newSet, infoA.redundant);
   addInequalities(newSet, infoB.redundant);
   addCoalescedBasicSet(basicSetVector, i, j, newSet);
