@@ -29,6 +29,14 @@ PresburgerBasicSet<Int>::PresburgerBasicSet(const PresburgerBasicSet<OInt> &o) :
   nDim(o.nDim), nParam(o.nParam), nExist(o.nExist) {}
 
 template <typename Int>
+PresburgerBasicSet<Int>::PresburgerBasicSet(
+    unsigned oNDim, unsigned oNParam, unsigned oNExist,
+    const ArrayRef<DivisionConstraint<Int>> oDivs)
+    : nDim(oNDim), nParam(oNParam), nExist(oNExist) {
+  divs = llvm::to_vector<8>(oDivs);
+}
+
+template <typename Int>
 void PresburgerBasicSet<Int>::addInequality(ArrayRef<Int> coeffs) {
   ineqs.emplace_back(coeffs);
 }
@@ -589,6 +597,587 @@ template <typename Int>
 void PresburgerBasicSet<Int>::dumpISL() const {
   printISL(llvm::errs());
   llvm::errs() << '\n';
+}
+
+// TODO: Improve flow
+// TODO: Intersection of sets should have a simplify call at end
+template <typename Int>
+void PresburgerBasicSet<Int>::simplify() {
+  // Remove redundancy
+  normalizeConstraints();
+  removeRedundantVars();
+
+  // Divs should be normilzed to be compared properly
+  orderDivisions();
+  normalizeDivisions();
+  removeDuplicateDivs();
+
+  // Removal of duplicate divs may lead to duplicate constraints
+  removeRedundantConstraints();
+
+  // Try to recover divisions
+  recoverDivisionsFromInequalities();
+  recoverDivisionsFromEqualities();
+
+  // Recovering of divisions may cause unordered and non-normalized divisions
+  orderDivisions();
+  normalizeDivisions();
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::removeRedundantConstraints() {
+  Simplex<Int> simplex(*this);
+  simplex.detectRedundant();
+  this->updateFromSimplex(simplex);
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::swapDivisions(unsigned vari, unsigned varj) {
+  // Swap the constraints
+  std::swap(divs[vari], divs[varj]);
+  DivisionConstraint<Int>::swapVariables(divs[vari], divs[varj]);
+
+  unsigned divOffset = getDivOffset();
+
+  // Swap the coefficents in every constraint
+  for (EqualityConstraint<Int> &eq : eqs)
+    eq.swapCoeffs(divOffset + vari, divOffset + varj);
+
+  for (InequalityConstraint<Int> &ineq : ineqs)
+    ineq.swapCoeffs(divOffset + vari, divOffset + varj);
+
+  for (DivisionConstraint<Int> &div : divs)
+    div.swapCoeffs(divOffset + vari, divOffset + varj);
+}
+
+template <typename Int>
+unsigned PresburgerBasicSet<Int>::getDivOffset() {
+  return nParam + nDim + nExist;
+}
+
+template <typename Int>
+unsigned PresburgerBasicSet<Int>::getExistOffset() {
+  return nParam + nDim;
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::normalizeDivisions() {
+  unsigned divOffset = getDivOffset();
+
+  for (unsigned divi = 0; divi < divs.size(); ++divi) {
+    DivisionConstraint div = divs[divi];
+    const ArrayRef<Int> coeffs = div.getCoeffs();
+    Int denom = div.getDenominator();
+
+    SmallVector<Int, 8> shiftCoeffs(coeffs.size(), 0),
+        shiftResidue(coeffs.size(), 0);
+
+    for (unsigned i = 0; i < coeffs.size(); ++i) {
+      Int coeff = coeffs[i];
+      Int newCoeff = coeff;
+
+      // Shift the coefficent to be in the range (-d/2, d/2]
+      if ((-denom >= 2 * coeff) || (2 * coeff > denom)) {
+        newCoeff = ((coeff % denom) + denom) % denom;
+        if (2 * (coeff % denom) > denom)
+          newCoeff -= denom;
+
+        shiftCoeffs[i] = newCoeff - coeff;
+        shiftResidue[i] = (coeff - newCoeff) / denom;
+      }
+    }
+
+    // Get index of the current division
+    unsigned divDimension = divOffset + divi;
+
+    // Shift all constraints by the shifts calculated above
+    for (EqualityConstraint<Int> &eq : eqs)
+      eq.shiftCoeffs(shiftResidue, eq.getCoeffs()[divDimension]);
+
+    for (InequalityConstraint<Int> &ineq : ineqs)
+      ineq.shiftCoeffs(shiftResidue, ineq.getCoeffs()[divDimension]);
+
+    // Ordering of divs ensures that a division is only dependent
+    // on divs before it.
+    for (unsigned i = divi + 1; i < divs.size(); ++i)
+      divs[i].shiftCoeffs(shiftResidue, divs[i].getCoeffs()[divDimension]);
+
+    // Shift the current division by the extra coefficients
+    divs[divi].shiftCoeffs(shiftCoeffs, 1);
+  }
+
+  // Take out gcd
+  for (DivisionConstraint<Int> &div : divs)
+    div.removeCommonFactor();
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::orderDivisions() {
+  unsigned divOffset = getDivOffset();
+  unsigned nDivs = divs.size();
+
+  for (unsigned i = 0; i < nDivs;) {
+    const ArrayRef<Int> &coeffs = divs[i].getCoeffs();
+    bool foundDependency = false;
+
+    // Get the first division on which this division is dependent
+    for (unsigned j = i + 1; j < nDivs; ++j) {
+      if (coeffs[j + divOffset] != 0) {
+        foundDependency = true;
+        swapDivisions(i, j);
+        break;
+      }
+    }
+
+    if (!foundDependency)
+      ++i;
+  }
+}
+
+template <typename Int>
+bool PresburgerBasicSet<Int>::redundantVar(unsigned var) {
+  for (auto &con : eqs) {
+    if (con.getCoeffs()[var] != 0)
+      return false;
+  }
+
+  for (auto &con : ineqs) {
+    if (con.getCoeffs()[var] != 0)
+      return false;
+  }
+
+  for (auto &con : divs) {
+    if (con.getCoeffs()[var] != 0)
+      return false;
+  }
+  return true;
+}
+
+template <typename Int>
+SmallVector<Int, 8>
+PresburgerBasicSet<Int>::copyWithNonRedundant(std::vector<unsigned> &nrExists,
+                                        std::vector<unsigned> &nrDiv,
+                                         const ArrayRef<Int> &ogCoeffs) {
+  SmallVector<Int, 8> newCoeffs;
+
+  for (unsigned i = 0; i < nDim + nParam; ++i)
+    newCoeffs.push_back(ogCoeffs[i]);
+  for (unsigned i : nrExists)
+    newCoeffs.push_back(ogCoeffs[i]);
+  for (unsigned i : nrDiv)
+    newCoeffs.push_back(ogCoeffs[i]);
+  newCoeffs.push_back(ogCoeffs.back());
+
+  return newCoeffs;
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::removeRedundantVars() {
+  std::vector<unsigned> nonRedundantExist, nonRedundantDivs;
+
+  // Check for redundant existentials
+  unsigned existOffset = getExistOffset();
+
+  for (unsigned i = 0; i < nExist; ++i) {
+    unsigned var = existOffset + i;
+    if (!redundantVar(var))
+      nonRedundantExist.push_back(var);
+  }
+
+  // Check for redundant divisions
+  unsigned divOffset = getDivOffset();
+
+  for (unsigned i = 0; i < divs.size(); ++i) {
+    unsigned var = divOffset + i;
+    if (!redundantVar(var))
+      nonRedundantDivs.push_back(var);
+  }
+
+  SmallVector<InequalityConstraint<Int>, 8> newIneqs;
+  SmallVector<EqualityConstraint<Int>, 8> newEqs;
+  SmallVector<DivisionConstraint<Int>, 8> newDivs;
+
+  for (InequalityConstraint<Int> &ineq : ineqs) {
+    SmallVector<Int, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, ineq.getCoeffs());
+
+    newIneqs.push_back(InequalityConstraint<Int>(coeffs));
+  }
+
+  for (EqualityConstraint<Int> &eq : eqs) {
+    SmallVector<Int, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, eq.getCoeffs());
+
+    newEqs.push_back(EqualityConstraint<Int>(coeffs));
+  }
+
+  unsigned variableOffset = nDim + nParam + nonRedundantExist.size();
+  for (unsigned i : nonRedundantDivs) {
+    DivisionConstraint<Int> div = divs[i - divOffset];
+
+    SmallVector<Int, 8> coeffs = copyWithNonRedundant(
+        nonRedundantExist, nonRedundantDivs, div.getCoeffs());
+
+    newDivs.push_back(DivisionConstraint<Int>(coeffs, div.getDenominator(),
+                                         variableOffset + newDivs.size()));
+  }
+
+  // Assign new vectors
+  ineqs = newIneqs;
+  eqs = newEqs;
+  divs = newDivs;
+
+  // Change dimensions
+  nExist = nonRedundantExist.size();
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::alignDivs(PresburgerBasicSet<Int> &bs1,
+                                          PresburgerBasicSet<Int> &bs2) {
+
+  // Assert that bs1 has more divisions than bs2
+  if (bs1.getNumDivs() < bs2.getNumDivs()) {
+    alignDivs(bs2, bs1);
+    return;
+  }
+
+  // TODO: Is there a better stratergy than this ?
+  // Append extra existentials
+  if (bs1.nExist > bs2.nExist) {
+    bs2.appendExistentialDimensions(bs1.nExist - bs2.nExist);
+  } else {
+    bs1.appendExistentialDimensions(bs2.nExist - bs1.nExist);
+  }
+
+  // TODO: Is there a better stratergy than this ? 
+  // Add the extra divisions from bs1 to bs2
+  unsigned extraDivs = bs1.divs.size() - bs2.divs.size();
+  bs2.insertDimensions(bs2.getDivOffset() + bs2.getNumDivs(), extraDivs);
+  for (unsigned i = 0; i < extraDivs; ++i) {
+    DivisionConstraint<Int> &div = bs1.divs[bs2.getNumDivs()];
+    bs2.divs.push_back(div);
+  }
+
+  // TODO: Does there exist a better way to match divs?
+  // Loop over divs and find the equal ones
+  // This requires that divs in divs1 are ordered, which was ensured in
+  // simplify calls.
+  //
+  // Ordering ensures that divisions at index will not depend on any division
+  // at index >= i. This allows us to check same divisions easier.
+  //
+  // Ordering makes swapping easier since if two divisions at i, j match (j >=
+  // i), any divisions at index >= i cannot depend on these two divisions
+  // This ensures that any further swap will not affect these divisions in any
+  // way.
+  for (unsigned i = 0; i < bs1.divs.size(); ++i) {
+    bool foundMatch = false;
+    for (unsigned j = i; j < bs2.divs.size(); ++j) {
+      if (DivisionConstraint<Int>::sameDivision(bs1.divs[i], bs2.divs[j])) {
+        foundMatch = true;
+        if (i != j) {
+          bs2.swapDivisions(i, j);
+          break;
+        }
+      }
+    }
+
+    // Match not found, convert to existential
+    // Convert by swapping this division with this with the first division,
+    // removing this division, and incrementing nExist.
+    //
+    // This part leverages the order of variables in coefficients: Existentials,
+    // Divisions, Constant
+    if (!foundMatch) {
+      // Add division inequalties
+      bs1.addInequality(bs1.divs[i].getInequalityUpperBound().getCoeffs());
+      bs1.addInequality(bs1.divs[i].getInequalityLowerBound().getCoeffs());
+      bs2.addInequality(bs2.divs[i].getInequalityUpperBound().getCoeffs());
+      bs2.addInequality(bs2.divs[i].getInequalityLowerBound().getCoeffs());
+
+      // Swap the divisions
+      bs1.swapDivisions(0, i);
+      bs2.swapDivisions(0, i);
+
+      bs1.divs.erase(bs1.divs.begin());
+      bs2.divs.erase(bs2.divs.begin());
+
+      // Div deleted before this index
+      i--;
+
+      bs1.nExist++;
+      bs2.nExist++;
+    }
+  }
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::normalizeConstraints() {
+  for (EqualityConstraint<Int> &eq : eqs)
+    eq.normalizeCoeffs();
+  for (InequalityConstraint<Int> &ineq : ineqs)
+    ineq.normalizeCoeffs();
+}
+
+/// Creates div coefficents using coefficients "ineq" of a lower bound
+/// inequality for the existential at index "varIdx"
+template <typename Int>
+SmallVector<Int, 8> createDivFromLowerBound(const ArrayRef<Int> &ineq,
+                                                unsigned varIdx) {
+  // Remove existential from coefficents
+  SmallVector<Int, 8> newCoeffs(ineq.size());
+  for (unsigned i = 0; i < ineq.size(); ++i)
+    newCoeffs[i] = -ineq[i];
+  newCoeffs[varIdx] = 0;
+
+  // Add (d - 1) to coefficents where d is the denominator
+  newCoeffs.back() += ineq[varIdx] - 1;
+
+  return newCoeffs;
+}
+
+/// Return whether any division depends variable at index "varIdx"
+template <typename Int>
+bool divsDependOnExist(SmallVector<DivisionConstraint<Int>, 8> &divs, unsigned varIdx) {
+  for (unsigned i = 0; i < divs.size(); ++i) {
+    if (divs[i].getCoeffs()[varIdx] != 0)
+      return true;
+  }
+  return false;
+}
+
+/// Return whether constraint "con" depends on existentials other than "exist"
+template <typename Int>
+bool coeffDependsOnExist(Constraint<Int> &con, unsigned exist,
+                         unsigned existOffset, unsigned nExist) {
+
+  const ArrayRef<Int> &coeffs = con.getCoeffs();
+  for (unsigned i = 0; i < nExist; ++i) {
+    if (i == exist)
+      continue;
+
+    if (coeffs[i + existOffset] != 0)
+      return true;
+  }
+
+  return false;
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::recoverDivisionsFromInequalities() {
+  for (unsigned k = 0; k < ineqs.size(); ++k) {
+    for (unsigned l = k + 1; l < ineqs.size(); ++l) {
+      const ArrayRef<Int> &coeffs1 = ineqs[k].getCoeffs();
+      const ArrayRef<Int> &coeffs2 = ineqs[l].getCoeffs();
+
+      bool oppositeCoeffs = true;
+      for (unsigned i = 0; i < coeffs1.size() - 1; ++i) {
+        if (coeffs1[i] != -coeffs2[i]) {
+          oppositeCoeffs = false;
+          break;
+        }
+      }
+
+      if (!oppositeCoeffs)
+        continue;
+
+      // Sum of constants < 0 : Denominator cannot be zero
+      // Sum of constants = 0 : Inequalities represent equalities
+      // Sum of constants > 0 : Inequalities may be converted to divisions
+      Int constantSum = coeffs1.back() + coeffs2.back();
+      if (constantSum < 0)
+        continue;
+      if (constantSum == 0) {
+        addEquality(coeffs1);
+
+        // Order of remove of inequalities is important. 
+        // Inequality with greater index should be removed first.
+        removeInequality(l);
+        removeInequality(k);
+
+        // Decrement k to reflect deletion of inequality
+        k--;
+        continue;
+      }
+
+      unsigned existOffset = getExistOffset();
+      for (unsigned exist = 0; exist < nExist; ++exist) {
+        // Check if this existential can be recovered from these two divisions
+        // 1. The exist should appear in the inequalities?
+        // 2. coefficent of the exist in the inequalities should be strictly
+        //    greater than sum of constants of inequalities?
+        // 3. The inequalities should not depend on any other exist to prevent
+        //    circular division definations
+        // 4. Any other division should not be defined in terms of this
+        //    exist to prevent circular division definations
+        //
+        unsigned existIdx = existOffset + exist;
+        if (coeffs1[existIdx] == 0)
+          continue;
+        if (constantSum >= std::abs(coeffs1[existIdx]))
+          continue;
+        if (coeffDependsOnExist(ineqs[k], exist, existOffset, nExist))
+          continue;
+        if (divsDependOnExist(divs, existIdx)) 
+          continue;
+
+        // Convert existential to division based on lower bound inequality
+        SmallVector<Int, 8> newCoeffs;
+        if (coeffs1[existOffset + exist] > 0)
+          newCoeffs = createDivFromLowerBound(coeffs1, existIdx);
+        else
+          newCoeffs = createDivFromLowerBound(coeffs2, existIdx);
+
+        // Insert the new division at starting of divs
+        DivisionConstraint<Int> newDiv(newCoeffs, std::abs(coeffs1[existIdx]),
+                                  getDivOffset() - 1);
+        divs.insert(divs.begin(), newDiv);
+
+        // Swap first and last existential
+        // The last existential is treated as a division after this change
+        for (auto &con : eqs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+        for (auto &con : ineqs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+        for (auto &con : divs)
+          con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+
+        // Try using these two inequalities again for some other existential
+        l--;
+
+        // Reduce number of existentials and repeat again
+        nExist--;
+        break;
+
+        // TODO: One of these inequalities is not needed after finding this.
+        //       Remove it.
+        // TODO: Remove both of these inequalities if the division exactly
+        // matches.
+      }
+    }
+  }
+}
+
+/// Convert given equality constraint to a division
+/// The equality constraints are of the form
+///
+///          f(x) + n e >= 0
+///
+/// The division obtained from this if of the form
+///
+///          e = [-f(x) / n]
+///
+/// Returns the coefficents for the new division
+template <typename Int>
+SmallVector<Int, 8> createDivisionFromEq(const ArrayRef<Int> &coeffs,
+                                             unsigned varIdx) {
+  SmallVector<Int, 8> newCoeffs(coeffs.size());
+  for (unsigned i = 0; i < coeffs.size(); ++i)
+    newCoeffs[i] = coeffs[i];
+
+  if (coeffs[varIdx] > 0) {
+    for (Int &coeff : newCoeffs)
+      coeff = -coeff;
+  }
+
+  newCoeffs[varIdx] = 0;
+
+  return newCoeffs;
+}
+
+// TODO: Are the division loop prevention conditions too strict?
+template <typename Int>
+void PresburgerBasicSet<Int>::recoverDivisionsFromEqualities() {
+  for (unsigned k = 0; k < eqs.size(); ++k) {
+    const ArrayRef<Int> &coeffs = eqs[k].getCoeffs();
+
+    // Check if equality depends only on one exitential, and get that
+    // existential
+    unsigned exist = nExist;
+    unsigned existOffset = getExistOffset();
+    bool canConvert = true;
+    for (unsigned i = 0; i < nExist; ++i) {
+      if (coeffs[i + existOffset] != 0) {
+
+        if (exist != nExist) {
+          canConvert = false;
+          break;
+        } else {
+          exist = i;
+        }
+      }
+    }
+    if (!canConvert || exist == nExist)
+      continue;
+
+    // Don't convert to division if any division depends on this existential
+    if (coeffDependsOnExist(eqs[k], exist, existOffset, nExist))
+      continue;
+
+    SmallVector<Int, 8> newCoeffs =
+        createDivisionFromEq(coeffs, exist + existOffset);
+
+    // Convert equality to division
+    DivisionConstraint<Int> newDiv(newCoeffs, std::abs(coeffs[exist + existOffset]),
+                              getDivOffset() - 1);
+    divs.insert(divs.begin(), newDiv);
+
+    // Swap first and last existential
+    // The last existential is treated as a division after this change
+    for (auto &con : eqs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+    for (auto &con : ineqs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+    for (auto &con : divs)
+      con.swapCoeffs(exist + existOffset, existOffset + nExist - 1);
+
+    // Reduce number of existentials
+    nExist--;
+
+    // TODO: Check if equality can be removed
+  }
+}
+
+// TODO: Should hashing be used to compare divs?
+template <typename Int>
+void PresburgerBasicSet<Int>::removeDuplicateDivs() {
+  if (divs.size() < 2)
+    return;
+
+  // Using int instead of unsigned since while doing --i, it may overflow
+  for (int i = divs.size() - 1; i >= 0; --i) {
+    for (int j = i - 1; j >= 0; --j) {
+      if (!DivisionConstraint<Int>::sameDivision(divs[i], divs[j]))
+        continue;
+
+      unsigned divOffset = getDivOffset();
+
+      // Merge div i to j
+      for (EqualityConstraint<Int> &con : eqs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+      for (InequalityConstraint<Int> &con : ineqs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+      for (DivisionConstraint<Int> &con : divs)
+        con.shiftCoeff(divOffset + j, con.getCoeffs()[divOffset + i]);
+
+      // Remove constraint
+      for (EqualityConstraint<Int> &con : eqs)
+        con.eraseDimensions(divOffset + i, 1);
+      for (InequalityConstraint<Int> &con : ineqs)
+        con.eraseDimensions(divOffset + i, 1);
+
+      for (int div = 0; div < (int)divs.size(); ++div) {
+        if (div != i)
+          divs[div].eraseDimensions(divOffset + i, 1);
+      }
+
+      // Remove the division defination
+      divs.erase(divs.begin() + i);
+
+      // Move to next div
+      break;
+    }
+  }
 }
 
 #endif // MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
