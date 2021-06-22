@@ -513,4 +513,11 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
   return llvm::hash_combine(nDim, nSym);
 }
 
+template <typename Int>
+void PresburgerSet<Int>::simplify() {
+  for (auto &set : basicSets) {
+    set.simplify();
+  } 
+}
+
 #endif // MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
