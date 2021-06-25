@@ -507,3 +507,10 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
   // private vars?
   return llvm::hash_combine(nDim, nSym);
 }
+
+template <typename Int>
+void PresburgerSet<Int>::simplify() {
+  for (auto &set : basicSets) {
+    set.simplify();
+  } 
+}
