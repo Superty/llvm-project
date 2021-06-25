@@ -677,9 +677,9 @@ void PresburgerBasicSet<Int>::normalizeDivisions() {
       Int newCoeff = coeff;
 
       // Shift the coefficent to be in the range (-d/2, d/2]
-      if ((-denom >= 2 * coeff) || (2 * coeff > denom)) {
+      if ((-denom >= (Int)2 * coeff) || ((Int)2 * coeff > denom)) {
         newCoeff = ((coeff % denom) + denom) % denom;
-        if (2 * (coeff % denom) > denom)
+        if ((Int)2 * (coeff % denom) > denom)
           newCoeff -= denom;
 
         shiftCoeffs[i] = newCoeff - coeff;
