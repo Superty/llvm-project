@@ -368,20 +368,19 @@ bool coalescePair(unsigned i, unsigned j,
       // protrusion case
       return true;
     }
-  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
-             !info2.t && !info2.redundant.empty() && info2.adjIneq &&
+  } else if (info1.adjIneq && info1.cut.empty() && !info2.t && info2.adjIneq &&
              info2.cut.empty() && !info1.t) {
     // adjIneq, pure case
     if (adjIneqPureCase(basicSetVector, i, j, info1, info2)) {
       return true;
     }
-  } else if (!info1.redundant.empty() && info1.adjIneq && info1.cut.empty() &&
+  } else if (info1.adjIneq && info1.cut.empty() &&
              !info1.t && !info2.t) {
     // adjIneq complex case 1
     if (adjIneqCase(basicSetVector, i, j, info1, info2)) {
       return true;
     }
-  } else if (!info2.redundant.empty() && info2.adjIneq && info2.cut.empty() &&
+  } else if (info2.adjIneq && info2.cut.empty() &&
              !info2.t && !info1.t) {
     // adjIneq complex case 2
     if (adjIneqCase(basicSetVector, j, i, info2, info1)) {
@@ -423,25 +422,29 @@ bool coalescePair(unsigned i, unsigned j,
   return false;
 }
 
-// Intersect the two basic sets and drop the subset if one is a subset of
+/// Intersect the two basic sets and drop the subset if one is a subset of
 /// another
 template <typename Int>
 bool coalesceDivs(unsigned i, unsigned j,
                   SmallVector<PresburgerBasicSet<Int>, 4> &basicSetVector) {
-  PresburgerBasicSet<Int> bs1 = basicSetVector[i];
-  PresburgerBasicSet<Int> bs2 = basicSetVector[j];
+  PresburgerBasicSet<Int> &bs1 = basicSetVector[i];
+  PresburgerBasicSet<Int> &bs2 = basicSetVector[j];
 
   PresburgerBasicSet<Int> intersect = bs1;
   intersect.intersect(bs2);
   intersect.simplify();
 
-// TODO : Equal is very expensive, try to use something else
-  if (PresburgerSet<Int>::equal(PresburgerSet(intersect), PresburgerSet(bs2))) {
+  // TODO : Equal is very expensive, try to use something else
+  if (PresburgerSet<Int>::equal(PresburgerSet<Int>(intersect),
+                                PresburgerSet<Int>(bs2))) {
+    PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
     addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[i]);
     return true;
   }
 
-  if (PresburgerSet<Int>::equal(PresburgerSet(intersect), PresburgerSet(bs1))) {
+  if (PresburgerSet<Int>::equal(PresburgerSet<Int>(intersect),
+                                PresburgerSet<Int>(bs1))) {
+    PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
     addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
     return true;
   }
@@ -477,15 +480,17 @@ PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set) {
           bs2.getNumDivs() + bs2.getNumExists() == 0)
         continue;
 
-      coalesceStatus = coalesceDivs(i, j, basicSetVector);
-      if (coalesceStatus) {
-        i--;
-        break;
-      } else {
-        // Revert changes
-        basicSetVector[i] = bs1;
-        basicSetVector[j] = bs2;
-      }
+      // TODO: Too expensive and not of much use for now.
+      
+      /* coalesceStatus = coalesceDivs(i, j, basicSetVector); */
+      /* if (coalesceStatus) { */
+      /*   i--; */
+      /*   break; */
+      /* } else { */
+      /*   // Revert changes */
+      /*   basicSetVector[i] = bs1; */
+      /*   basicSetVector[j] = bs2; */
+      /* } */
     }
   }
 
@@ -934,7 +939,7 @@ bool classify(Simplex<Int> &simp, ArrayRef<ArrayRef<Int>> inequalities,
       info.t = currentConstraint;
       break;
     case Simplex<Int>::IneqType::Separate:
-      // coalescing always failes when a separate constraint is encountered.
+      // coalescing always fails when a separate constraint is encountered.
       return false;
     }
   }
@@ -965,7 +970,7 @@ bool classifyIneq(Simplex<Int> &simp, ArrayRef<ArrayRef<Int>> constraints,
       // equality
       break;
     case Simplex<Int>::IneqType::Separate:
-      // coalescing always failes when a separate constraint is encountered.
+      // coalescing always fails when a separate constraint is encountered.
       return false;
     }
   }
