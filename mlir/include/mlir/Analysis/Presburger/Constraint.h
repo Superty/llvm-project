@@ -232,6 +232,12 @@ public:
   void substitute(ArrayRef<Int> values) {
     assert(variable >= values.size() && "Not yet implemented");
   }
+  
+  /// Swaps the "variable" property of two division constraints
+  static void swapVariables(DivisionConstraint<Int> &diva,
+                            DivisionConstraint<Int> &divb) {
+    std::swap(diva.variable, divb.variable);
+  }
 
   /// Remove common factor in numerator and denominator not taking into account
   /// the constant term.
