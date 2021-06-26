@@ -40,8 +40,8 @@ Optional<PresburgerSet<SafeInt<Int>>> setFromString(StringRef string) {
 }
 
 void dumpStats(TransprecSet &a) {
-  a.dumpISL();
-  return;
+  // a.dumpISL();
+  // return;
   std::visit([&](auto &&set) {
     unsigned ids = set.getNumDims() + set.getNumSyms(), nDivs = 0, nEqs = 0, nIneqs = 0, nBS = 0;
     for (auto &bs : set.getBasicSets()) {
@@ -51,7 +51,7 @@ void dumpStats(TransprecSet &a) {
       nIneqs += bs.getNumInequalities();
       nBS += 1;
     }
-    std::cerr << ids << ' ' << nBS << ' ' << nDivs << ' ' << nIneqs << ' ' << nEqs << '\n';
+    std::cout << ids << ' ' << nBS << ' ' << nDivs << ' ' << nIneqs << ' ' << nEqs << '\n';
   }, a.setvar);
 }
 
@@ -90,21 +90,36 @@ void consumeNewline() {
   }
 }
 
+const bool mustPrintTimes = true;
+const bool mustDumpStats = false;
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     std::cerr << "usage: ./run-presburger <op>\nPass input to stdin.\n";
     return 1;
   }
 
-  const unsigned numRuns = 5;
+  if (!mustPrintTimes && !mustDumpStats) {
+    std::cerr << "Nothing to do! Enable either printing time or dumping stats.\n";
+  }
+
+  const unsigned numRunsForTiming = 5;
   std::string op = argv[1];
+  if (mustDumpStats && (op == "empty" || op == "equal")) {
+    std::cerr << "No stats to dump for " << op << "!\n";
+    return 1;
+  }
+
   unsigned numCases;
   std::cin >> numCases;
   consumeNewline();
+
   for (unsigned i = 0; i < numCases; ++i) {
-    int times[numRuns];
+    int times[numRunsForTiming];
     if (i % 50000 == 0)
       std::cerr << "i = " << i << '\n';
+
+    const unsigned numRuns = mustPrintTimes ? numRunsForTiming : 1;
     if (op == "empty") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
@@ -116,10 +131,11 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
         }
-        // std::cout << res << '\n';
       }
     } else if (op == "equal") {
       TransprecSet setA = getSetFromInput();
@@ -134,10 +150,11 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
         }
-        // llvm::errs() << res << '\n';
       }
     } else if (op == "union") {
       TransprecSet setA = getSetFromInput();
@@ -151,10 +168,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(a);
         }
-        // dumpStats(a);
       }
     } else if (op == "intersect") {
       TransprecSet setA = getSetFromInput();
@@ -168,10 +188,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(a);
         }
-        // dumpStats(a);
       }
     } else if (op == "subtract") {
       TransprecSet setA = getSetFromInput();
@@ -185,10 +208,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(a);
         }
-        // dumpStats(a);
       }
     } else if (op == "coalesce") {
       TransprecSet setA = getSetFromInput();
@@ -200,10 +226,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(res);
         }
-        // dumpStats(res);
       }
     } else if (op == "complement") {
       TransprecSet setA = getSetFromInput();
@@ -215,10 +244,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(a);
         }
-        // dumpStats(res);
       }
     } else if (op == "eliminate") {
       TransprecSet setA = getSetFromInput();
@@ -230,10 +262,13 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          std::sort(times, times + numRuns);
-          std::cout << times[numRuns/2] << '\n';
+          if (mustPrintTimes) {
+            std::sort(times, times + numRuns);
+            std::cout << times[numRuns/2] << '\n';
+          }
+          if (mustDumpStats)
+            dumpStats(a);
         }
-        // dumpStats(a);
       }
     } else {
       std::cerr << "Unsupported operation " << op << "!\n";
