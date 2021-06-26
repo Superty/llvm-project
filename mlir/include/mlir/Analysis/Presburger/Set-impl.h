@@ -326,7 +326,7 @@ PresburgerSet<Int>::eliminateExistentials(const PresburgerBasicSet<Int> &bs) {
     b.nDim = bs.nDim;
     result.addBasicSet(std::move(b));
   }
-  return result;
+  return coalesce(result);
 }
 
 template <typename Int>
