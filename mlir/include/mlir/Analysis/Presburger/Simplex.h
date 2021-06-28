@@ -387,6 +387,9 @@ protected:
   /// \returns True if \p unknown is obviously non-integral, False otherwise.
   bool rowIsObviouslyNonIntegral(unsigned row) const;
 
+  /// Return true if row "row" represents an obviously redundant inequality.
+  bool rowIsObviouslyRedundant(unsigned row) const;
+
   int indexFromUnknown(const Unknown &u) const;
 
   /// Called by ineqType. Checks for special cases of separate inequalities for

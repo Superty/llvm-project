@@ -737,6 +737,9 @@ bool Simplex<Int>::constraintIsRedundant(unsigned conIndex) {
     pivot(*maybeRow, col);
   }
 
+  if (rowIsObviouslyRedundant(conIndex))
+    return true;
+
   while (tableau(con[conIndex].pos, 1) >= 0) {
     auto maybePivot = findPivot(con[conIndex].pos, Direction::Down);
     if (!maybePivot)
@@ -1862,6 +1865,27 @@ inline bool Simplex<Int>::rowIsObviouslyNonIntegral(unsigned row) const {
       return false;
   }
   return tableau(row, 1) % tableau(row, 0) != 0;
+}
+
+/// A row is in obviously redundant inequality of:
+///  - it represents an inequality or a variable
+///  - that is the sum of a non-negative sample value and a positive
+///    combination of zero or more non-negative constraints.
+template <typename Int>
+inline bool Simplex<Int>::rowIsObviouslyRedundant(unsigned row) const {
+  if (tableau(row, 1) < 0)
+    return false;
+
+  for (unsigned col = liveColBegin; col < nCol; col++) {
+    if (tableau(row, col) == 0)
+      continue;
+    if (tableau(row, col) < 0)
+      return false;
+    if (!unknownFromColumn(col).restricted)
+      return false;
+  }
+
+  return true;
 }
 
 /// Pivot the unknown to row position in the specified direction. If no
