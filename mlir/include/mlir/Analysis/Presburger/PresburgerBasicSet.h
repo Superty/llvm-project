@@ -105,7 +105,9 @@ public:
   static void alignDivs(PresburgerBasicSet<Int> &bs1,
                         PresburgerBasicSet<Int> &bs2);
 
-  void simplify();
+  /// Simplify the basic set. If aggresive is true, then uses more expensive 
+  /// (in terms of performance) hueristics to simplify the basicset.
+  void simplify(bool aggresive = true);
 
   void dumpCoeffs() const;
 
@@ -189,6 +191,9 @@ private:
 
   /// Remove duplicate divisions
   void removeDuplicateDivs();
+
+  /// Remove duplicate equalities and inequalities
+  void removeDuplicateConstraints();
 
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector

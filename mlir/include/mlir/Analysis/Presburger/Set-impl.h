@@ -509,8 +509,8 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
 }
 
 template <typename Int>
-void PresburgerSet<Int>::simplify() {
+void PresburgerSet<Int>::simplify(bool aggresive) {
   for (auto &set : basicSets) {
-    set.simplify();
+    set.simplify(aggresive);
   } 
 }

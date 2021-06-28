@@ -97,6 +97,17 @@ public:
     }
   }
 
+  static bool sameConstraint(const Constraint &a, const Constraint &b) {
+    if (a.coeffs.size() != b.coeffs.size())
+      return false;
+    for (unsigned i = 0; i < a.coeffs.size(); ++i) {
+      if (a.coeffs[i] != b.coeffs[i])
+        return false;
+    }
+
+    return true;
+  }
+
   void appendDimension() { insertDimensions(getNumDims(), 1); }
 
   void removeLastDimension() { eraseDimensions(getNumDims() - 1, 1); }
