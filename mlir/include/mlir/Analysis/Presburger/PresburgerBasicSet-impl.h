@@ -10,6 +10,7 @@
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Printer.h"
+#include "mlir/Analysis/Presburger/Constraint.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -602,7 +603,7 @@ void PresburgerBasicSet<Int>::dumpISL() const {
 // TODO: Improve flow
 // TODO: Intersection of sets should have a simplify call at end
 template <typename Int>
-void PresburgerBasicSet<Int>::simplify() {
+void PresburgerBasicSet<Int>::simplify(bool aggresive) {
   // Remove redundancy
   normalizeConstraints();
   if (nExist != 0 || divs.size() != 0)
@@ -615,8 +616,11 @@ void PresburgerBasicSet<Int>::simplify() {
     removeDuplicateDivs();
   }
 
+  removeDuplicateConstraints();
+
   // Removal of duplicate divs may lead to duplicate constraints
-  removeRedundantConstraints();
+  if (aggresive)
+    removeRedundantConstraints();
 
   // Try to recover divisions
   recoverDivisionsFromInequalities();
@@ -1179,6 +1183,27 @@ void PresburgerBasicSet<Int>::removeDuplicateDivs() {
 
       // Move to next div
       break;
+    }
+  }
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::removeDuplicateConstraints() {
+  for (unsigned k = 0; k < ineqs.size(); ++k) {
+    for (unsigned l = k + 1; l < ineqs.size(); ++l) {
+      if (Constraint<Int>::sameConstraint(ineqs[k], ineqs[l])) {
+        removeInequality(l);
+        l--;
+      }
+    }
+  }
+
+  for (unsigned k = 0; k < eqs.size(); ++k) {
+    for (unsigned l = k + 1; l < eqs.size(); ++l) {
+      if (Constraint<Int>::sameConstraint(eqs[k], eqs[l])) {
+        removeEquality(l);
+        l--;
+      }
     }
   }
 }
