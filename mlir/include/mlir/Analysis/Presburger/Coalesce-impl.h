@@ -319,7 +319,8 @@ bool coalescePair(unsigned i, unsigned j,
   PresburgerBasicSet<Int> &bs1 = basicSetVector[i];
   PresburgerBasicSet<Int> &bs2 = basicSetVector[j];
 
-  PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
+  if (bs1.getNumExists() + bs1.getNumDivs() != 0 || bs2.getNumExists() + bs2.getNumDivs() != 0)
+    PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
 
   Simplex simplex1(bs1);
   SmallVector<ArrayRef<Int>, 8> equalities1, inequalities1;
@@ -476,9 +477,9 @@ PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set) {
       }
 
       // If no existentials or divisions, there is no point in checking ahead
-      if (bs1.getNumDivs() + bs1.getNumExists() == 0 &&
-          bs2.getNumDivs() + bs2.getNumExists() == 0)
-        continue;
+      /* if (bs1.getNumDivs() + bs1.getNumExists() == 0 && */ 
+      /*     bs2.getNumDivs() + bs2.getNumExists() == 0)   */ 
+      /*   continue;                                       */ 
 
       // TODO: Too expensive and not of much use for now.
       

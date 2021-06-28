@@ -605,12 +605,15 @@ template <typename Int>
 void PresburgerBasicSet<Int>::simplify() {
   // Remove redundancy
   normalizeConstraints();
-  removeRedundantVars();
+  if (nExist != 0 || divs.size() != 0)
+    removeRedundantVars();
 
   // Divs should be normilzed to be compared properly
-  orderDivisions();
-  normalizeDivisions();
-  removeDuplicateDivs();
+  if (divs.size() != 0) {
+    orderDivisions();
+    normalizeDivisions();
+    removeDuplicateDivs();
+  }
 
   // Removal of duplicate divs may lead to duplicate constraints
   removeRedundantConstraints();
