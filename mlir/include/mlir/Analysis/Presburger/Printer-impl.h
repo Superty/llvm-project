@@ -1,5 +1,8 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_PRINTER_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_PRINTER_IMPL_H
+
 using namespace mlir;
 using namespace analysis::presburger;
 
@@ -248,3 +251,4 @@ void mlir::analysis::presburger::printPresburgerBasicSet(
 //     printConstraints(os, expr.getDomains()[i]);
 //   }
 // }
+#endif // MLIR_ANALYSIS_PRESBURGER_PRINTER_IMPL_H

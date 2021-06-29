@@ -8,6 +8,9 @@
 using namespace mlir;
 using namespace analysis::presburger;
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
+
 template <typename Int>
 LinearTransform<Int>::LinearTransform(Matrix<Int> oMatrix)
     : matrix(std::move(oMatrix)) {}
@@ -193,3 +196,5 @@ LinearTransform<Int>::postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs) {
   // bs.simplify(); // isl does this here
   return result;
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H

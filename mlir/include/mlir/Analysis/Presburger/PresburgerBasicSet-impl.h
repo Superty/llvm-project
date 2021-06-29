@@ -13,6 +13,9 @@
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
+
 using namespace mlir;
 using namespace mlir::analysis;
 using namespace mlir::analysis::presburger;
@@ -587,3 +590,5 @@ void PresburgerBasicSet<Int>::dumpISL() const {
   printISL(llvm::errs());
   llvm::errs() << '\n';
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H

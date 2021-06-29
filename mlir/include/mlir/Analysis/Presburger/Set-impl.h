@@ -5,6 +5,9 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+
 // TODO should we change this to a storage type?
 using namespace mlir;
 using namespace analysis::presburger;
@@ -507,3 +510,5 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
   // private vars?
   return llvm::hash_combine(nDim, nSym);
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
