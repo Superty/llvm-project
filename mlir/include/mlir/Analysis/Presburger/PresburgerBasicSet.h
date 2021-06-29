@@ -102,12 +102,17 @@ public:
 
   /// Align equivalent divs PresburgerBasicSets bs1 and bs2
   /// Converts non matching divisions to existentials
-  static void alignDivs(PresburgerBasicSet<Int> &bs1,
-                        PresburgerBasicSet<Int> &bs2);
+  /// 
+  /// If preserve is set, does not add additional existentials
+  ///
+  /// Returns true if the alignment was succesfull.
+  static bool alignDivs(PresburgerBasicSet<Int> &bs1,
+                        PresburgerBasicSet<Int> &bs2, 
+                        bool preserve);
 
-  /// Simplify the basic set. If aggresive is true, then uses more expensive 
+  /// Simplify the basic set. If aggressive is true, then uses more expensive 
   /// (in terms of performance) hueristics to simplify the basicset.
-  void simplify(bool aggresive = true);
+  void simplify(bool aggressive = true);
 
   void dumpCoeffs() const;
 

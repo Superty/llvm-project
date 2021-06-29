@@ -14,8 +14,12 @@ namespace mlir {
 /// convex hull of those two BasicSets is the same integer set as the union of
 /// those two BasicSets and if so, tries to come up with a BasicSet
 /// corresponding to this convex hull.
+///
+/// If preserve is true, then does not add additional existentials in attempt to
+/// coalesce.
 template <typename Int>
-PresburgerSet<Int> coalesce(PresburgerSet<Int> &set);
+PresburgerSet<Int> coalesce(PresburgerSet<Int> &set,
+                            bool preserve = false);
 
 template <typename Int>
 void dump(ArrayRef<Int> cons);
