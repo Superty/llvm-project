@@ -8,6 +8,9 @@
 
 #include "mlir/Analysis/Presburger/Matrix.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_MATRIX_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_MATRIX_IMPL_H
+
 using namespace mlir;
 using namespace analysis::presburger;
 
@@ -157,3 +160,5 @@ void Matrix<Int>::print(raw_ostream &os) const {
 
 template <typename Int>
 void Matrix<Int>::dump() const { print(llvm::errs()); }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_MATRIX_IMPL_H

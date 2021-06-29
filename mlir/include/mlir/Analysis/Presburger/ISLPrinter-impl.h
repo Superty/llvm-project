@@ -3,6 +3,9 @@
 using namespace mlir;
 using namespace analysis::presburger;
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
+
 namespace islprinter {
 
 template <typename Int>
@@ -231,3 +234,4 @@ void mlir::analysis::presburger::printPresburgerBasicSetISL(
   islprinter::printConstraints(os, bs);
   os << "}";
 }
+#endif // MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H

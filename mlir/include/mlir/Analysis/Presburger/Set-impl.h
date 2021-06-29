@@ -5,6 +5,9 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+
 // TODO should we change this to a storage type?
 using namespace mlir;
 using namespace analysis::presburger;
@@ -516,3 +519,5 @@ void PresburgerSet<Int>::simplify(bool aggressive) {
     set.simplify(aggressive);
   } 
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H

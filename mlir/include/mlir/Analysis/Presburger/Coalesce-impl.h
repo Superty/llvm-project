@@ -3,6 +3,9 @@
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include <iostream>
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
+
 using namespace mlir;
 
 template <typename Int>
@@ -1081,3 +1084,5 @@ void mlir::dump(ArrayRef<Int> cons) {
   }
   llvm::errs() << " >= 0\n";
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H

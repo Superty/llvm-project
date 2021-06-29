@@ -6,6 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_SIMPLEX_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_SIMPLEX_IMPL_H
+
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
@@ -2221,3 +2224,5 @@ void Simplex<Int>::print(raw_ostream &os) const {
 
 template <typename Int>
 void Simplex<Int>::dump() const { print(llvm::errs()); }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_SIMPLEX_IMPL_H

@@ -11,6 +11,9 @@
 #include "mlir/Support/MathExtras.h"
 #include "llvm/ADT/SmallVector.h"
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
+
 using namespace mlir;
 using namespace analysis::presburger;
 
@@ -498,3 +501,5 @@ void ParamLexSimplex<Int>::findParamLexminRecursively(Simplex<Int> &domainSimple
   result.value.push_back(lexmin);
   // result.dump();
 }
+
+#endif // MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
