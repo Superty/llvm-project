@@ -54,7 +54,7 @@ public:
   llvm::Optional<SmallVector<Int, 8>> maybeGetCachedSample() const;
 
   /// Simplfies each DivisionConstraint in each PresburgerBasicSet
-  void simplify(bool aggresive = true);
+  void simplify(bool aggressive = true);
 
   template <typename OInt>
   friend class PresburgerSet;

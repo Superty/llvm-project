@@ -603,7 +603,7 @@ void PresburgerBasicSet<Int>::dumpISL() const {
 // TODO: Improve flow
 // TODO: Intersection of sets should have a simplify call at end
 template <typename Int>
-void PresburgerBasicSet<Int>::simplify(bool aggresive) {
+void PresburgerBasicSet<Int>::simplify(bool aggressive) {
   // Remove redundancy
   normalizeConstraints();
   if (nExist != 0 || divs.size() != 0)
@@ -619,7 +619,7 @@ void PresburgerBasicSet<Int>::simplify(bool aggresive) {
   removeDuplicateConstraints();
 
   // Removal of duplicate divs may lead to duplicate constraints
-  if (aggresive)
+  if (aggressive)
     removeRedundantConstraints();
 
   // Try to recover divisions
@@ -839,24 +839,23 @@ void PresburgerBasicSet<Int>::removeRedundantVars() {
 }
 
 template <typename Int>
-void PresburgerBasicSet<Int>::alignDivs(PresburgerBasicSet<Int> &bs1,
-                                          PresburgerBasicSet<Int> &bs2) {
+bool PresburgerBasicSet<Int>::alignDivs(PresburgerBasicSet<Int> &bs1,
+                                        PresburgerBasicSet<Int> &bs2,
+                                        bool preserve) {
 
   // Assert that bs1 has more divisions than bs2
-  if (bs1.getNumDivs() < bs2.getNumDivs()) {
-    alignDivs(bs2, bs1);
-    return;
-  }
+  if (bs1.getNumDivs() < bs2.getNumDivs())
+    return alignDivs(bs2, bs1, preserve);
 
-  // TODO: Is there a better stratergy than this ?
-  // Append extra existentials
+  // Append extra existentials if preserve is not set
+  if (preserve && bs1.nExist != bs2.nExist)
+    return false;
   if (bs1.nExist > bs2.nExist) {
     bs2.appendExistentialDimensions(bs1.nExist - bs2.nExist);
   } else {
     bs1.appendExistentialDimensions(bs2.nExist - bs1.nExist);
   }
 
-  // TODO: Is there a better stratergy than this ? 
   // Add the extra divisions from bs1 to bs2
   unsigned extraDivs = bs1.divs.size() - bs2.divs.size();
   bs2.insertDimensions(bs2.getDivOffset() + bs2.getNumDivs(), extraDivs);
@@ -889,13 +888,18 @@ void PresburgerBasicSet<Int>::alignDivs(PresburgerBasicSet<Int> &bs1,
       }
     }
 
-    // Match not found, convert to existential
+    // Match not found, convert to existential if preserve is false
     // Convert by swapping this division with this with the first division,
     // removing this division, and incrementing nExist.
     //
     // This part leverages the order of variables in coefficients: Existentials,
     // Divisions, Constant
     if (!foundMatch) {
+
+      // Cannot convert to existential if preserve is set
+      if (preserve)
+        return false;
+
       // Add division inequalties
       bs1.addInequality(bs1.divs[i].getInequalityUpperBound().getCoeffs());
       bs1.addInequality(bs1.divs[i].getInequalityLowerBound().getCoeffs());
@@ -916,6 +920,8 @@ void PresburgerBasicSet<Int>::alignDivs(PresburgerBasicSet<Int> &bs1,
       bs2.nExist++;
     }
   }
+
+  return true;
 }
 
 template <typename Int>

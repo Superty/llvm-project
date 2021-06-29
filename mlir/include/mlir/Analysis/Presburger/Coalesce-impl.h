@@ -1,4 +1,3 @@
-#include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
@@ -18,13 +17,14 @@ bool containedFacet(ArrayRef<Int> ineq, const PresburgerBasicSet<Int> &bs,
 namespace mlir {
 template <typename Int>
 SmallVector<Int, 8> combineConstraint(const SmallVectorImpl<Int> &c1,
-                                              const SmallVectorImpl<Int> &c2,
-                                              Fraction<Int> &ratio) {
+                                      const SmallVectorImpl<Int> &c2,
+                                      Fraction<Int> &ratio) {
   return combineConstraint(makeArrayRef(c1), makeArrayRef(c2), ratio);
 }
 
 template <typename Int>
-bool sameConstraint(const SmallVectorImpl<Int> &c1, const SmallVectorImpl<Int> &c2) {
+bool sameConstraint(const SmallVectorImpl<Int> &c1,
+                    const SmallVectorImpl<Int> &c2) {
   return sameConstraint(makeArrayRef(c1), makeArrayRef(c2));
 }
 
@@ -32,7 +32,7 @@ template <typename Int>
 bool sameConstraint(const SmallVectorImpl<Int> &c1, ArrayRef<Int> c2) {
   return sameConstraint(makeArrayRef(c1), c2);
 }
-}
+} // namespace mlir
 
 /// TODO: look at MutableArrayRef
 /// struct for classified constraints
@@ -315,12 +315,16 @@ void getBasicSetInequalities(const PresburgerBasicSet<Int> &bs,
 
 template <typename Int>
 bool coalescePair(unsigned i, unsigned j,
-                  SmallVector<PresburgerBasicSet<Int>, 4> &basicSetVector) {
+                  SmallVector<PresburgerBasicSet<Int>, 4> &basicSetVector,
+                  bool preserve) {
   PresburgerBasicSet<Int> &bs1 = basicSetVector[i];
   PresburgerBasicSet<Int> &bs2 = basicSetVector[j];
 
-  if (bs1.getNumExists() + bs1.getNumDivs() != 0 || bs2.getNumExists() + bs2.getNumDivs() != 0)
-    PresburgerBasicSet<Int>::alignDivs(bs1, bs2);
+  if (bs1.getNumExists() + bs1.getNumDivs() != 0 ||
+      bs2.getNumExists() + bs2.getNumDivs() != 0) {
+    if (!PresburgerBasicSet<Int>::alignDivs(bs1, bs2, preserve))
+      return false;
+  }
 
   Simplex simplex1(bs1);
   SmallVector<ArrayRef<Int>, 8> equalities1, inequalities1;
@@ -454,8 +458,9 @@ bool coalesceDivs(unsigned i, unsigned j,
 }
 
 template <typename Int>
-PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set) {
-  set.simplify();
+PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set,
+                                  bool preserve) {
+  set.simplify(false);
 
   PresburgerSet<Int> newSet(set.getNumDims(), set.getNumSyms());
   SmallVector<PresburgerBasicSet<Int>, 4> basicSetVector = set.getBasicSets();
@@ -466,7 +471,9 @@ PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set) {
       PresburgerBasicSet<Int> bs1 = basicSetVector[i];
       PresburgerBasicSet<Int> bs2 = basicSetVector[j];
 
-      bool coalesceStatus = coalescePair(i, j, basicSetVector);
+      bool coalesceStatus =
+          coalescePair(i, j, basicSetVector, preserve);
+
       if (coalesceStatus) {
         i--;
         break;

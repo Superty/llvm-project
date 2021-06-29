@@ -326,7 +326,9 @@ PresburgerSet<Int>::eliminateExistentials(const PresburgerBasicSet<Int> &bs) {
     b.nDim = bs.nDim;
     result.addBasicSet(std::move(b));
   }
-  return coalesce(result);
+
+  // Coalesce with preserve so as to not add additional existentials
+  return coalesce(result, true);
 }
 
 template <typename Int>
@@ -514,9 +516,9 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
 }
 
 template <typename Int>
-void PresburgerSet<Int>::simplify(bool aggresive) {
+void PresburgerSet<Int>::simplify(bool aggressive) {
   for (auto &set : basicSets) {
-    set.simplify(aggresive);
+    set.simplify(aggressive);
   } 
 }
 

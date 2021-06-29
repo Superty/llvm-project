@@ -2,7 +2,6 @@
 #define MLIR_ANALYSIS_TRANSPREC_SET_H
 
 #include "mlir/Analysis/Presburger/Set.h"
-#include "mlir/Analysis/Presburger/Coalesce.h"
 
 namespace mlir {
 namespace analysis {
