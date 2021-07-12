@@ -58,19 +58,19 @@ struct Info {
   void dump() {
     std::cout << "red:" << std::endl;
     for (ArrayRef<Int> curr : this->redundant) {
-      mlir::dump(curr);
+      dump(curr);
     }
     std::cout << "cut:" << std::endl;
     for (ArrayRef<Int> curr : this->cut) {
-      mlir::dump(curr);
+      dump(curr);
     }
     if (this->adjIneq) {
       std::cout << "adjIneq:" << std::endl;
-      mlir::dump(this->adjIneq.getValue());
+      dump(this->adjIneq.getValue());
     }
     if (this->t) {
       std::cout << "t:" << std::endl;
-      mlir::dump(this->t.getValue());
+      dump(this->t.getValue());
     }
   }
 };
@@ -458,7 +458,7 @@ bool coalesceDivs(unsigned i, unsigned j,
 }
 
 template <typename Int>
-PresburgerSet<Int> mlir::coalesce(PresburgerSet<Int> &set,
+PresburgerSet<Int> coalesce(PresburgerSet<Int> &set,
                                   bool preserve) {
   set.simplify(false);
 
@@ -660,7 +660,7 @@ bool stickingOut(ArrayRef<ArrayRef<Int>> cut,
 }
 
 template <typename Int>
-bool mlir::sameConstraint(ArrayRef<Int> c1, ArrayRef<Int> c2) {
+bool sameConstraint(ArrayRef<Int> c1, ArrayRef<Int> c2) {
   Fraction<Int> ratio(0, 1);
   assert(c1.size() == c2.size() && "the constraints have different dimensions");
   // if c1 = a*c2, this iterates over the vector trying to find a as soon as
@@ -857,7 +857,7 @@ bool adjEqCasePure(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector,
 }
 
 template <typename Int>
-SmallVector<Int, 8> mlir::combineConstraint(ArrayRef<Int> c1,
+SmallVector<Int, 8> combineConstraint(ArrayRef<Int> c1,
                                                     ArrayRef<Int> c2,
                                                     Fraction<Int> &ratio) {
   assert(c1.size() == c2.size() && "dimensions must be equal");
@@ -872,7 +872,7 @@ SmallVector<Int, 8> mlir::combineConstraint(ArrayRef<Int> c1,
 
 template <typename Int>
 Optional<SmallVector<Int, 8>>
-mlir::wrapping(const PresburgerBasicSet<Int> &bs,
+wrapping(const PresburgerBasicSet<Int> &bs,
                SmallVectorImpl<Int> &valid,
                SmallVectorImpl<Int> &invalid) {
   assert(valid.size() == invalid.size() && "dimensions must be equal");
@@ -1042,7 +1042,7 @@ bool cutCase(SmallVectorImpl<PresburgerBasicSet<Int>> &basicSetVector, unsigned 
 }
 
 template <typename Int>
-bool mlir::containedFacet(ArrayRef<Int> ineq,
+bool containedFacet(ArrayRef<Int> ineq,
                           const PresburgerBasicSet<Int> &bs,
                           ArrayRef<ArrayRef<Int>> cut) {
   Simplex<Int> simp(bs);
@@ -1073,7 +1073,7 @@ void addEqualitiesAsInequalities(ArrayRef<ArrayRef<Int>> eq,
 }
 
 template <typename Int>
-void mlir::dump(ArrayRef<Int> cons) {
+void dump(ArrayRef<Int> cons) {
   llvm::errs() << cons[cons.size() - 1] << " + ";
   for (unsigned i = 1; i < cons.size(); i++) {
     llvm::errs() << cons[i - 1] << "x" << i - 1;
