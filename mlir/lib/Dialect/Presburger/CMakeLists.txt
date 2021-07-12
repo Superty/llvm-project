@@ -11,6 +11,7 @@ add_mlir_dialect_library(MLIRPresburgerDialect
   ${MLIR_MAIN_INCLUDE_DIR}/include
 
   DEPENDS
+  MLIRStandardOpsIncGen
   MLIRPresburgerOpsIncGen
   MLIRPresburgerPassIncGen
   MLIRPresburgerEvaluationPatterns
