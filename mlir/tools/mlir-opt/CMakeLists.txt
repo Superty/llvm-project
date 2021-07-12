@@ -55,7 +55,7 @@ add_llvm_tool(mlir-opt
   DEPENDS
   ${LIBS}
   )
-target_link_libraries(mlir-opt PRIVATE ${LIBS} /usr/lib/llvm-11/lib/clang/11.0.0/lib/linux/libclang_rt.builtins-x86_64.a)
+target_link_libraries(mlir-opt PRIVATE ${LIBS})
 llvm_update_compile_flags(mlir-opt)
 
 mlir_check_all_link_libraries(mlir-opt)
