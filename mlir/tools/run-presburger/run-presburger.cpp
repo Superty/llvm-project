@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
   for (unsigned i = 0; i < numCases; ++i) {
     int times[numRunsForTiming];
     if (i % 50000 == 0)
-      std::cerr << op << numCases << '/' << i << '\n';
+      std::cerr << op << ' ' << i << '/' << numCases << '\n';
 
     const unsigned numRuns = mustPrintTimes ? numRunsForTiming : 1;
     if (op == "empty") {
