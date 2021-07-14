@@ -109,11 +109,11 @@ int main(int argc, char **argv) {
   std::ofstream fstat("data/stats_fpl_" + op + ".txt");
   std::error_code EC;
   llvm::raw_fd_ostream fout("data/outputs_fpl_" + op + ".txt", EC);
-  fout << numCases << '\n';
   if (EC) {
     std::cerr << "Could not open outputs_fpl_" + op + ".txt!\n";
     return 1;
   }
+  fout << numCases << '\n';
 
   for (unsigned j = 0; j < numCases; ++j) {
     int times[numRuns];
@@ -215,9 +215,6 @@ int main(int argc, char **argv) {
           dumpStats(fstat, a);
           a.printISL(fout);
           fout << '\n';
-
-
-          }
         }
       }
     } else if (op == "coalesce") {
@@ -252,7 +249,7 @@ int main(int argc, char **argv) {
           std::sort(times, times + numRuns);
           fruntime << times[numRuns/2] << '\n';
           dumpStats(fstat, a);
-          a.printISL(fout);
+          res.printISL(fout);
           fout << '\n';
         }
       }
