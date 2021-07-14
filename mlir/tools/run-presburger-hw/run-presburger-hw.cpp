@@ -99,21 +99,21 @@ int main(int argc, char **argv) {
     if (op == "empty") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         volatile auto res = a.isIntegerEmpty();
         res = res;
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "equal") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
@@ -121,92 +121,91 @@ int main(int argc, char **argv) {
         volatile auto res = a.equal(b);
         res = res;
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "union") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
         a.unionSet(b);
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "intersect") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
         a.intersectSet(b);
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "subtract") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
         a.subtract(b);
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "coalesce") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto res = a.coalesce();
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "complement") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto res = a.complement();
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else if (op == "eliminate") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == num_runs - 1)
+        if (i == numRuns - 1)
           reset_and_enable_all();
 
         auto a = setA;
         auto res = a.eliminateExistentials();
 
-        if (i == num_runs - 1)
-          disable_all_and_print_counts();
+        if (i == numRuns - 1)
+          disable_all_and_print_counts(stdout);
       }
     } else {
       std::cerr << "Unsupported operation " << op << "!\n";
       return 1;
     }
-    disable_all_and_print_counts(stdout);
     consumeLine();
   }
 }
