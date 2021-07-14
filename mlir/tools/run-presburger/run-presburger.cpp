@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <x86intrin.h>
+#include <fstream>
 
 using namespace mlir;
 using namespace mlir::presburger;
@@ -39,7 +40,7 @@ Optional<PresburgerSet<SafeInt<Int>>> setFromString(StringRef string) {
   return res;
 }
 
-void dumpStats(TransprecSet &a) {
+void dumpStats(std::ofstream &f, TransprecSet &a) {
   // a.dumpISL();
   // return;
   std::visit([&](auto &&set) {
@@ -51,7 +52,7 @@ void dumpStats(TransprecSet &a) {
       nIneqs += bs.getNumInequalities();
       nBS += 1;
     }
-    std::cout << ids << ' ' << nBS << ' ' << nDivs << ' ' << nIneqs << ' ' << nEqs << '\n';
+    f << ids << ' ' << nBS << ' ' << nDivs << ' ' << nIneqs << ' ' << nEqs << '\n';
   }, a.setvar);
 }
 
@@ -90,36 +91,36 @@ void consumeNewline() {
   }
 }
 
-const bool mustPrintTimes = true;
-const bool mustDumpStats = false;
-
 int main(int argc, char **argv) {
   if (argc != 2) {
     std::cerr << "usage: ./run-presburger <op>\nPass input to stdin.\n";
     return 1;
   }
 
-  if (!mustPrintTimes && !mustDumpStats) {
-    std::cerr << "Nothing to do! Enable either printing time or dumping stats.\n";
-  }
-
-  const unsigned numRunsForTiming = 5;
+  const unsigned numRuns = 5;
   std::string op = argv[1];
-  if (mustDumpStats && (op == "empty" || op == "equal")) {
-    std::cerr << "No stats to dump for " << op << "!\n";
-    return 1;
-  }
 
   unsigned numCases;
   std::cin >> numCases;
   consumeNewline();
 
-  for (unsigned i = 0; i < numCases; ++i) {
-    int times[numRunsForTiming];
-    if (i % 50000 == 0)
-      std::cerr << op << ' ' << i << '/' << numCases << '\n';
+  std::ofstream fruntime("data/runtime_fpl_" + op + ".txt");
+  std::ofstream fwaterline("data/waterline_fpl_" + op + ".txt");
+  std::ofstream fstat("data/stats_fpl_" + op + ".txt");
+  std::error_code EC;
+  llvm::raw_fd_ostream fout("data/outputs_fpl_" + op + ".txt", EC);
+  fout << numCases << '\n';
+  if (EC) {
+    std::cerr << "Could not open outputs_fpl_" + op + ".txt!\n";
+    return 1;
+  }
 
-    const unsigned numRuns = mustPrintTimes ? numRunsForTiming : 1;
+  for (unsigned j = 0; j < numCases; ++j) {
+    int times[numRuns];
+    if (j % 50000 == 0)
+      std::cerr << op << ' ' << j << '/' << numCases << '\n';
+
+    TransprecSet::waterline = 0;
     if (op == "empty") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
@@ -131,10 +132,10 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          fout << res << '\n';
         }
       }
     } else if (op == "equal") {
@@ -150,10 +151,10 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          fout << res << '\n';
         }
       }
     } else if (op == "union") {
@@ -168,12 +169,12 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
-          if (mustDumpStats)
-            dumpStats(a);
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, a);
+          a.printISL(fout);
+          fout << '\n';
         }
       }
     } else if (op == "intersect") {
@@ -188,12 +189,12 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
-          if (mustDumpStats)
-            dumpStats(a);
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, a);
+          a.printISL(fout);
+          fout << '\n';
         }
       }
     } else if (op == "subtract") {
@@ -208,12 +209,15 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, a);
+          a.printISL(fout);
+          fout << '\n';
+
+
           }
-          if (mustDumpStats)
-            dumpStats(a);
         }
       }
     } else if (op == "coalesce") {
@@ -226,12 +230,12 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
-          if (mustDumpStats)
-            dumpStats(res);
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, res);
+          res.printISL(fout);
+          fout << '\n';
         }
       }
     } else if (op == "complement") {
@@ -244,12 +248,12 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
-          if (mustDumpStats)
-            dumpStats(a);
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, a);
+          a.printISL(fout);
+          fout << '\n';
         }
       }
     } else if (op == "eliminate") {
@@ -262,12 +266,12 @@ int main(int argc, char **argv) {
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
         if (i == numRuns - 1) {
-          if (mustPrintTimes) {
-            std::sort(times, times + numRuns);
-            std::cout << times[numRuns/2] << '\n';
-          }
-          if (mustDumpStats)
-            dumpStats(a);
+          fwaterline << TransprecSet::waterline << '\n';
+          std::sort(times, times + numRuns);
+          fruntime << times[numRuns/2] << '\n';
+          dumpStats(fstat, a);
+          a.printISL(fout);
+          fout << '\n';
         }
       }
     } else {
