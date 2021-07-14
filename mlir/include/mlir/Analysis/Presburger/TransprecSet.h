@@ -163,6 +163,10 @@ public:
     std::visit([](auto &&set) { set.dumpISL(); }, setvar);
   }
 
+  void printISL(raw_ostream &os) {
+    std::visit([&](auto &&set) { set.printISL(os); }, setvar);
+  }
+
   std::variant<PresburgerSet<SafeInteger<int16_t>>, PresburgerSet<SafeInteger<int64_t>>, PresburgerSet<SafeInteger<__int128_t>>, PresburgerSet<BigInt>> setvar;
 };
 
