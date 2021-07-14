@@ -2,6 +2,7 @@
 #define MLIR_ANALYSIS_PRESBURGER_SET_H
 
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
+#include "mlir/Analysis/Presburger/Coalesce.h"
 #include <variant>
 
 namespace mlir {
