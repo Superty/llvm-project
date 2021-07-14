@@ -4,6 +4,7 @@
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/Presburger/Coalesce-impl.h"
 
 #ifndef MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
 #define MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
@@ -383,8 +384,9 @@ PresburgerSet<Int> PresburgerSet<Int>::subtract(PresburgerBasicSet<Int> cs,
 
 template <typename Int>
 PresburgerSet<Int> PresburgerSet<Int>::complement(const PresburgerSet<Int> &set) {
-  return subtract(PresburgerBasicSet<Int>(set.getNumDims(), set.getNumSyms(), 0),
+  auto res = subtract(PresburgerBasicSet<Int>(set.getNumDims(), set.getNumSyms(), 0),
                   set);
+  return coalesce(res);
 }
 
 // Subtracts the set S from the current set.
