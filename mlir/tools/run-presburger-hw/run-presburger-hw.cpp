@@ -91,7 +91,6 @@ int main(int argc, char **argv) {
   init_perf_fds();
   consumeNewline();
   for (unsigned j = 0; j < numCases; ++j) {
-    int times[numRuns];
     if (j % 50000 == 0)
       std::cerr << op << ' ' << j << '/' << numCases << '\n';
 
@@ -99,40 +98,40 @@ int main(int argc, char **argv) {
     if (op == "empty") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         volatile auto res = a.isIntegerEmpty();
-        res = res;
-
         if (i == numRuns - 1)
           disable_all_and_print_counts(stdout);
+        res = res;
+
       }
     } else if (op == "equal") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         volatile auto res = a.equal(b);
-        res = res;
-
         if (i == numRuns - 1)
           disable_all_and_print_counts(stdout);
+        res = res;
+
       }
     } else if (op == "union") {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         a.unionSet(b);
 
         if (i == numRuns - 1)
@@ -142,11 +141,11 @@ int main(int argc, char **argv) {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         a.intersectSet(b);
 
         if (i == numRuns - 1)
@@ -156,11 +155,11 @@ int main(int argc, char **argv) {
       TransprecSet setA = getSetFromInput();
       TransprecSet setB = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
         auto b = setB;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         a.subtract(b);
 
         if (i == numRuns - 1)
@@ -169,10 +168,10 @@ int main(int argc, char **argv) {
     } else if (op == "coalesce") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         auto res = a.coalesce();
 
         if (i == numRuns - 1)
@@ -181,10 +180,10 @@ int main(int argc, char **argv) {
     } else if (op == "complement") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         auto res = a.complement();
 
         if (i == numRuns - 1)
@@ -193,10 +192,10 @@ int main(int argc, char **argv) {
     } else if (op == "eliminate") {
       TransprecSet setA = getSetFromInput();
       for (unsigned i = 0; i < numRuns; ++i) {
-        if (i == numRuns - 1)
-          reset_and_enable_all();
 
         auto a = setA;
+        if (i == numRuns - 1)
+          reset_and_enable_all();
         auto res = a.eliminateExistentials();
 
         if (i == numRuns - 1)
