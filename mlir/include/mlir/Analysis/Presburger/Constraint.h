@@ -69,6 +69,14 @@ public:
     coeffs[var] += constant;
   }
 
+  /// Swaps the elements in the range [first, last) in such a way that the
+  /// element n_first becomes the first element of the new range and n_first - 1
+  /// becomes the last element.
+  void rotate(unsigned first, unsigned n_first, unsigned last) {
+    std::rotate(coeffs.begin() + first, coeffs.begin() + n_first,
+                coeffs.begin() + last);
+  }
+
   // Shift each coefficent by coeffShifts[i] * constant
   void shiftCoeffs(const ArrayRef<int64_t> &coeffShifts, int64_t constant) {
     assert(coeffShifts.size() - 1 == getNumDims() &&

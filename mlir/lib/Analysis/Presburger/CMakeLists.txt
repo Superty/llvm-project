@@ -3,6 +3,7 @@ add_mlir_library(MLIRPresburger
   Set.cpp
   ParamLexSimplex.cpp
   PresburgerBasicSet.cpp
+  PresburgerBasicMap.cpp
   Expr.cpp
   Printer.cpp
   ISLPrinter.cpp

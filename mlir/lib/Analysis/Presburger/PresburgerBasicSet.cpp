@@ -24,6 +24,17 @@ PresburgerBasicSet::PresburgerBasicSet(unsigned oNDim, unsigned oNParam,
   divs = llvm::to_vector<8>(oDivs);
 }
 
+PresburgerBasicSet::PresburgerBasicSet(
+    unsigned oNDim, unsigned oNParam, unsigned oNExist,
+    const ArrayRef<InequalityConstraint> oIneqs,
+    const ArrayRef<EqualityConstraint> oEqs,
+    const ArrayRef<DivisionConstraint> oDivs)
+    : nDim(oNDim), nParam(oNParam), nExist(oNExist) {
+  ineqs = llvm::to_vector<8>(oIneqs);
+  eqs = llvm::to_vector<8>(oEqs);
+  divs = llvm::to_vector<8>(oDivs);
+}
+
 void PresburgerBasicSet::addInequality(ArrayRef<int64_t> coeffs) {
   ineqs.emplace_back(coeffs);
 }
@@ -1063,4 +1074,20 @@ void PresburgerBasicSet::removeDuplicateDivs() {
       break;
     }
   }
+}
+
+void PresburgerBasicSet::convertDimsToExists(unsigned l, unsigned r) {
+  assert(l <= r && r <= getNumDims() &&
+         "Cannot convert non dimensions to existentials");
+
+  unsigned numRotated = r - l;
+  nDim -= numRotated;
+  nExist += numRotated;
+
+  for (auto &ineq : ineqs)
+    ineq.rotate(l, r, getNumDims() + getNumParams());
+  for (auto &eq : eqs)
+    eq.rotate(l, r, getNumDims() + getNumParams());
+  for (auto &div : divs)
+    div.rotate(l, r, getNumDims() + getNumParams());
 }

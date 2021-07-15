@@ -30,12 +30,18 @@ class PresburgerSet;
 class PresburgerBasicSet {
 public:
   friend class PresburgerSet;
+  friend class PresburgerBasicMap;
 
   PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0, unsigned oNExist = 0)
     : nDim(oNDim), nParam(oNParam), nExist(oNExist) {}
 
   PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist,
-                     ArrayRef<DivisionConstraint> divs);
+                     ArrayRef<DivisionConstraint> oDivs);
+
+  PresburgerBasicSet(unsigned oNDim, unsigned oNParam, unsigned oNExist,
+                     ArrayRef<InequalityConstraint> oIneqs,
+                     ArrayRef<EqualityConstraint> oEqs,
+                     ArrayRef<DivisionConstraint> oDivs);
 
   unsigned getNumDims() const { return nDim; }
   unsigned getNumTotalDims() const { return nParam + nDim + nExist + divs.size(); }
@@ -182,6 +188,9 @@ private:
 
   /// Get the index of first existential variable.
   unsigned getExistOffset();
+
+  /// Convert dimensions between range [l, r) to existentials
+  void convertDimsToExists(unsigned l, unsigned r);
 
   Matrix coefficientMatrixFromEqs() const;
 
