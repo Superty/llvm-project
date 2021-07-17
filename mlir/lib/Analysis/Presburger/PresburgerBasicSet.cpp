@@ -70,6 +70,20 @@ void PresburgerBasicSet::removeLastDivision() {
     div.removeLastDimension();
 }
 
+void PresburgerBasicSet::removeDivision(unsigned i) {
+  unsigned divIdx = getDivOffset() + i;
+
+  for (auto &ineq : ineqs)
+    ineq.eraseDimensions(divIdx, 1);
+  for (auto &eq : eqs)
+    eq.eraseDimensions(divIdx, 1);
+  for (auto &div : divs) {
+    div.eraseDimensions(divIdx, 1);
+  }
+
+  divs.erase(divs.begin() + i);
+}
+
 void PresburgerBasicSet::addEquality(ArrayRef<int64_t> coeffs) {
   eqs.emplace_back(coeffs);
 }
@@ -515,7 +529,6 @@ void PresburgerBasicSet::dumpISL() const {
 }
  
 // TODO: Improve flow
-// TODO: Intersection of sets should have a simplify call at end
 void PresburgerBasicSet::simplify() {
   // Remove redundancy
   normalizeConstraints();
@@ -536,6 +549,10 @@ void PresburgerBasicSet::simplify() {
   // Recovering of divisions may cause unordered and non-normalized divisions
   orderDivisions();
   normalizeDivisions();
+
+  // Remove constant divs
+  removeDuplicateDivs();
+  removeConstantDivs();
 }
 
 void PresburgerBasicSet::removeRedundantConstraints() {
@@ -1090,4 +1107,43 @@ void PresburgerBasicSet::convertDimsToExists(unsigned l, unsigned r) {
     eq.rotate(l, r, getNumDims() + getNumParams());
   for (auto &div : divs)
     div.rotate(l, r, getNumDims() + getNumParams());
+}
+
+void PresburgerBasicSet::removeConstantDivs() {
+  for (unsigned divi = 0; divi < divs.size(); ++divi) {
+    auto &div = divs[divi];
+    bool isConst = true;
+    ArrayRef<int64_t> coeffs = div.getCoeffs();
+    for (unsigned i = 0, e = coeffs.size() - 1; i < e; ++i) {
+      if (coeffs[i] != 0) {
+        isConst = false;
+        break;
+      }
+    }
+
+    // Convert division to constant if it is constant
+    if (isConst) {
+      int64_t constant = floorDiv(coeffs.back(), div.getDenominator()); 
+      unsigned divIdx = getDivOffset() + divi;
+
+      for (auto &con: ineqs) {
+        int64_t coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+      for (auto &con: eqs) {
+        int64_t coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+     for (auto &con: divs) {
+        int64_t coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+      // Remove division
+      removeDivision(divi); 
+      --divi;
+    }
+  }
 }

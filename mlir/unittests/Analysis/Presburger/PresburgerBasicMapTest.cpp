@@ -48,8 +48,6 @@ TEST(PresburgerBasicMapTest, relLexMax) {
   auto rel2 = PresburgerBasicMap(3, 3, bset2);
 
   auto depRel = PresburgerBasicMap::relLexMax(rel1, rel2, 1, 3);
-  for (auto &rel : depRel)
-    rel.dump();
 
   EXPECT_TRUE(true);
 }

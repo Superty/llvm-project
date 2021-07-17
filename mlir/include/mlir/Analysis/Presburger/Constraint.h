@@ -61,19 +61,17 @@ public:
     coeffs = SmallVector<int64_t, 8>(coeffs.begin() + values.size(), coeffs.end());
   }
 
-  void shift(int64_t x) {
-    coeffs.back() += x;
-  }
+  void shift(int64_t x) { coeffs.back() += x; }
 
-  void shiftCoeff(unsigned var, int64_t constant) {
-    coeffs[var] += constant;
-  }
+  void setCoeff(unsigned var, int64_t constant) { coeffs[var] = constant; }
+
+  void shiftCoeff(unsigned var, int64_t constant) { coeffs[var] += constant; }
 
   /// Swaps the elements in the range [first, last) in such a way that the
-  /// element n_first becomes the first element of the new range and n_first - 1
+  /// element nFirst becomes the first element of the new range and nFirst - 1
   /// becomes the last element.
-  void rotate(unsigned first, unsigned n_first, unsigned last) {
-    std::rotate(coeffs.begin() + first, coeffs.begin() + n_first,
+  void rotate(unsigned first, unsigned nFirst, unsigned last) {
+    std::rotate(coeffs.begin() + first, coeffs.begin() + nFirst,
                 coeffs.begin() + last);
   }
 
@@ -97,7 +95,7 @@ public:
     for (int64_t &coeff : coeffs)
       currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
 
-    if (currGcd != 1) {
+    if (currGcd > 1) {
       for (int64_t &coeff : coeffs) 
         coeff /= currGcd;
     }
@@ -118,9 +116,11 @@ public:
       first = false;
     }
 
+    bool printed = false;
     for (unsigned i = 0; i < coeffs.size() - 1; ++i) {
       if (coeffs[i] == 0)
         continue;
+      printed = true;
 
       if (first) {
         if (coeffs[i] == -1)
@@ -140,6 +140,9 @@ public:
       
       os << "x" << i;
     }
+
+    if (!printed) 
+      os << coeffs.back();
   }
 
   void dump() const { print(llvm::errs()); }
@@ -217,9 +220,7 @@ public:
   }
 
   void eraseDimensions(unsigned pos, unsigned count) {
-    assert(!(pos <= variable && variable < pos + count) &&
-           "cannot erase division variable!");
-    if (pos < count)
+    if (pos < variable)
       variable -= count;
     Constraint::eraseDimensions(pos, count);
   }

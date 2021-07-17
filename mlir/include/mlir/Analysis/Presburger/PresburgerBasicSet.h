@@ -74,6 +74,7 @@ public:
 
   void removeInequality(unsigned i);
   void removeEquality(unsigned i);
+  void removeDivision(unsigned i);
 
   /// Find a sample point satisfying the constraints. This uses a branch and
   /// bound algorithm with generalized basis reduction, which always works if
@@ -178,6 +179,9 @@ private:
 
   /// Remove duplicate divisions
   void removeDuplicateDivs();
+
+  /// Remove constant divisions
+  void removeConstantDivs();
 
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector

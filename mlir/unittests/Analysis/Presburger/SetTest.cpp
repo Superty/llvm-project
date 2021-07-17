@@ -52,8 +52,12 @@ TEST(PresburgerSetTest, Equality) {
 }
 
 void expectEqualAfterNormalization(PresburgerSet &set) {
+  set.dump();
+
   auto newSet = set;
   newSet.simplify();
+  newSet.dump();
+
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
 
   // Normalization check
@@ -79,6 +83,30 @@ TEST(PresburgerSetTest, simplify2) {
       "(x) : (exists q = [(5p - 15) / 10], p = [(x - 5)/2] : x - 1 <= 3q "
       "and 3q <= x and p >= x) or (exists p = [(4x - 9)/2], q = "
       "[(4x - 3)/3] : x - 2 = 3q and 4p >= x)");
+  expectEqualAfterNormalization(set);
+}
+
+TEST(PresburgerSetTest, simplify3) {
+  PresburgerSet set = setFromString(
+      "(d0, d1, d2, d3, d4, d5)[s0, s1] : (exists e0, e1, e2, e3, e4, e5 : d0 "
+      "- d3 + 1 = 0 and d1 - d4 = 0 and d2 - d5 = 0 and d5 - e2 = 0 and s0 - "
+      "e3 = 0 and s1 - e4 = 0 and e0 - e1 = 0 and e1 - e3 = 0 and d3 - e4 = 0 "
+      "and d4 - s0 + e1 = 0 and d4 - 1 >= 0 and d3 - d4 + 1 >= 0 and -d3 + s0 "
+      ">= 0 and d5 - 1 >= 0 and -d5 + s1 >= 0 and e3 >= 0 and e2 - e3 >= 0 and "
+      "-e2 + e5 >= 0 and e4 >= 0 and -e4 + 1 >= 0 and e3 >= 0 and e2 - e3 >= 0 "
+      "and -e2 + e5 >= 0 and e4 >= 0 and -e4 + 1 >= 0 and d3 >= 0)");
+  expectEqualAfterNormalization(set);
+}
+
+TEST(PresburgerSetTest, simplify4) {
+  PresburgerSet set = setFromString(
+      "(d0, d1, d2, d3, d4, d5)[s0, s1] : (exists e0, e1, e2, e3, e4, e5 : d0 "
+      "- d1 = 0 and d1 - d4 = 0 and d2 - d5 = 0 and d5 - e2 = 0 and s0 - e3 = "
+      "0 and s1 - e4 = 0 and e0 - e1 = 0 and e1 - e3 = 0 and d3 - e4 = 0 and "
+      "d4 - s0 + e1 = 0 and d4 - 1 >= 0 and d3 - d4 + 1 >= 0 and -d3 + s0 >= 0 "
+      "and d5 - 1 >= 0 and -d5 + s1 >= 0 and e3 >= 0 and e2 - e3 >= 0 and -e2 "
+      "+ e5 >= 0 and e4 >= 0 and -e4 + 1 >= 0 and e3 >= 0 and e2 - e3 >= 0 and "
+      "-e2 + e5 >= 0 and e4 >= 0 and -e4 + 1 >= 0 and -d3 >= 0)");
   expectEqualAfterNormalization(set);
 }
 

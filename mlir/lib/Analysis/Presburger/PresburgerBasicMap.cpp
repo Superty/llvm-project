@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/PresburgerBasicMap.h"
+#include "mlir/Analysis/Presburger/Set.h"
 
 using namespace mlir;
 using namespace mlir::analysis;
@@ -89,12 +90,15 @@ PresburgerBasicMap::relLexMax(PresburgerBasicMap &rel1,
   wCoeffs[1 + level] = -1;
   wCoeffs[1 + rel1.getDomainDims() + level] = 1;
   pd.addEquality(wCoeffs);
-  
+
   // Project out write variables other than \delta w
   pd.convertDimsToExists(1, 1 + rel1.getDomainDims() + rel2.getDomainDims());
 
+  PresburgerBasicSet test = pd;
+
   // TODO: Use non-aggressive simplification
   // Simplify constraints
+  pd.simplify();
 
   // wSet1 = rel1 and pi(pd and \delta w > 0), where pi implies converting
   // \delta w to an existential
