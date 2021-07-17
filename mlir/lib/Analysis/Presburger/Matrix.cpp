@@ -21,6 +21,14 @@ Matrix Matrix::identity(unsigned dimension) {
   return matrix;
 }
 
+void Matrix::transpose() {
+  Matrix t(nColumns, nRows);
+  for (unsigned i = 0; i < nRows; ++i)
+    for (unsigned j = 0; j < nColumns; ++j)
+      t.at(j, i) = at(i, j); 
+  *this = t;
+}
+
 int64_t &Matrix::at(unsigned row, unsigned column) {
   assert(row < getNumRows() && "Row outside of range");
   assert(column < getNumColumns() && "Column outside of range");
