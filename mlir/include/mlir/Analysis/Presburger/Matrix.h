@@ -38,6 +38,12 @@ public:
   /// Return the identity matrix of the specified dimension.
   static Matrix identity(unsigned dimension);
 
+  /// Transposes the matrix
+  void transpose();
+
+  /// Converts the matrix to row echelon form inplace
+  void convertToRowEchelon();
+
   /// Access the element at the specified row and column.
   int64_t &at(unsigned row, unsigned column);
   int64_t at(unsigned row, unsigned column) const;

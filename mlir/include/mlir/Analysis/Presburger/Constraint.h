@@ -61,6 +61,17 @@ public:
     coeffs = SmallVector<int64_t, 8>(coeffs.begin() + values.size(), coeffs.end());
   }
 
+  static bool sameConstraint(const Constraint &a, const Constraint &b) {
+    if (a.coeffs.size() != b.coeffs.size())
+      return false;
+    for (unsigned i = 0; i < a.coeffs.size(); ++i) {
+      if (a.coeffs[i] != b.coeffs[i])
+        return false;
+    }
+
+    return true;
+  }
+
   void shift(int64_t x) { coeffs.back() += x; }
 
   void setCoeff(unsigned var, int64_t constant) { coeffs[var] = constant; }

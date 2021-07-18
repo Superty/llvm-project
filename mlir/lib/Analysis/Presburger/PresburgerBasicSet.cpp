@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
@@ -134,14 +135,14 @@ PresburgerBasicSet::findRationalSample() const {
 }
 
 // Returns a matrix of the constraint coefficients in the specified vector.
-//
-// This only makes a matrix of the coefficients! The constant terms are
-// omitted.
-Matrix PresburgerBasicSet::coefficientMatrixFromEqs() const {
+// If constantTerm is false, only makes matrix of coefficents, excluding
+// constant
+Matrix
+PresburgerBasicSet::coefficientMatrixFromEqs(bool constantTerm) const {
   // TODO check if this works because of missing symbols
-  Matrix result(getNumEqualities(), getNumTotalDims());
+  Matrix result(getNumEqualities(), getNumTotalDims() + constantTerm);
   for (unsigned i = 0; i < getNumEqualities(); ++i) {
-    for (unsigned j = 0; j < getNumTotalDims(); ++j)
+    for (unsigned j = 0; j < getNumTotalDims() + constantTerm; ++j)
       result(i, j) = eqs[i].getCoeffs()[j];
   }
   return result;
@@ -540,6 +541,7 @@ void PresburgerBasicSet::simplify() {
   removeDuplicateDivs();
 
   // Removal of duplicate divs may lead to duplicate constraints
+  removeDuplicateConstraints();
   removeRedundantConstraints();
 
   // Try to recover divisions
@@ -553,6 +555,13 @@ void PresburgerBasicSet::simplify() {
   // Remove constant divs
   removeDuplicateDivs();
   removeConstantDivs();
+
+  // Use gauss elimination to eliminate constraints using equalities
+  gaussEliminateEq();
+  
+  // Remove trivial redundancy
+  removeTriviallyRedundantConstraints();
+  removeDuplicateConstraints();
 }
 
 void PresburgerBasicSet::removeRedundantConstraints() {
@@ -1144,6 +1153,104 @@ void PresburgerBasicSet::removeConstantDivs() {
       // Remove division
       removeDivision(divi); 
       --divi;
+    }
+  }
+}
+
+// TODO: Implement gauss elimination of equalities to simplify all constraints.
+void PresburgerBasicSet::gaussEliminateEq() {
+}
+
+/// Checks if a constraint is trivially redundant given its coefficents. If the
+/// boolean equality is set, treats the constraint as an equality else as an
+/// inequality.
+///
+/// Returns : 
+/// 0 --> Constraint is not redundant
+/// 1 --> Constraint is redundant
+/// 2 --> Constraint is invalid
+static int triviallyRedundantConstraint(const ArrayRef<int64_t> &coeffs,
+                                         bool equality) {
+  // Check if constraint is constant
+  for (unsigned i = 0; i < coeffs.size() - 1; ++i) {
+    if (coeffs[i] != 0)
+      return 0;
+  }
+
+  // Constraint is constant, check if its true
+  int64_t constCoeff = coeffs.back();
+
+  if (equality) {
+    if (constCoeff == 0)
+      return 1;
+    else
+      return 2;
+  } else {
+    if (constCoeff >= 0)
+      return 1;
+    else 
+      return 2;
+  }
+}
+
+void PresburgerBasicSet::removeTriviallyRedundantConstraints() {
+  for (unsigned i = 0; i < eqs.size(); ++i) {
+    int result = triviallyRedundantConstraint(eqs[i].getCoeffs(), true);
+
+    if (result == 1) {
+      removeEquality(i);
+      --i;
+    } else if (result == 2) {
+      // Constraint system is invalid, Remove all equalities and inequalities
+      // other than this constraint
+      Constraint invalidCon = eqs[i];
+
+      PresburgerBasicSet newSet(getNumDims(), getNumParams(), getNumExists(),
+                                getDivisions());
+      newSet.addEquality(invalidCon.getCoeffs());
+
+      *this = newSet;
+      return;
+    }
+  }
+  
+  for (unsigned i = 0; i < ineqs.size(); ++i) {
+    int result = triviallyRedundantConstraint(ineqs[i].getCoeffs(), false);
+
+    if (result == 1) {
+      removeInequality(i);
+      --i;
+    } else if (result == 2) {
+      // Constraint system is invalid, Remove all equalities and inequalities
+      // other than this constraint
+      Constraint invalidCon = ineqs[i];
+
+      PresburgerBasicSet newSet(getNumDims(), getNumParams(), getNumExists(),
+                                getDivisions());
+      newSet.addInequality(invalidCon.getCoeffs());
+
+      *this = newSet;
+      return;
+    }
+  }
+}
+
+void PresburgerBasicSet::removeDuplicateConstraints() {
+  for (unsigned k = 0; k < ineqs.size(); ++k) {
+    for (unsigned l = k + 1; l < ineqs.size(); ++l) {
+      if (Constraint::sameConstraint(ineqs[k], ineqs[l])) {
+        removeInequality(l);
+        l--;
+      }
+    }
+  }
+
+  for (unsigned k = 0; k < eqs.size(); ++k) {
+    for (unsigned l = k + 1; l < eqs.size(); ++l) {
+      if (Constraint::sameConstraint(eqs[k], eqs[l])) {
+        removeEquality(l);
+        l--;
+      }
     }
   }
 }

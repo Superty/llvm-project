@@ -52,11 +52,8 @@ TEST(PresburgerSetTest, Equality) {
 }
 
 void expectEqualAfterNormalization(PresburgerSet &set) {
-  set.dump();
-
   auto newSet = set;
   newSet.simplify();
-  newSet.dump();
 
   EXPECT_TRUE(PresburgerSet::equal(set, newSet));
 

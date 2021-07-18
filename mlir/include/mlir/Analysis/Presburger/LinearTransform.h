@@ -29,6 +29,8 @@ public:
   SmallVector<int64_t, 8> postMultiplyRow(ArrayRef<int64_t> row);
   SmallVector<int64_t, 8> preMultiplyColumn(ArrayRef<int64_t> col);
 
+  Matrix getMatrix() const { return matrix; };
+
 private:
   explicit LinearTransform(MatrixType oMatrix);
 

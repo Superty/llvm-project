@@ -183,6 +183,15 @@ private:
   /// Remove constant divisions
   void removeConstantDivs();
 
+  /// Use gaussian elimination to simplify equalities
+  void gaussEliminateEq();
+
+  /// Remove constraints that are trivially redundant
+  void removeTriviallyRedundantConstraints();
+
+  /// Remove duplicate constraints
+  void removeDuplicateConstraints();
+
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector
   void swapDivisions(unsigned vari, unsigned varj);
@@ -196,7 +205,7 @@ private:
   /// Convert dimensions between range [l, r) to existentials
   void convertDimsToExists(unsigned l, unsigned r);
 
-  Matrix coefficientMatrixFromEqs() const;
+  Matrix coefficientMatrixFromEqs(bool constantTerm = false) const;
 
   void insertDimensions(unsigned pos, unsigned count);
   void prependExistentialDimensions(unsigned count);

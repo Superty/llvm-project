@@ -91,6 +91,26 @@ TEST(MatrixTest, resize) {
       EXPECT_EQ(mat(row, col), row < 3 && col < 3 ? int(10 * row + col) : 0);
 }
 
+TEST(MatrixTest, transpose) {
+  Matrix mat(5, 3);
+  EXPECT_EQ(mat.getNumRows(), 5u);
+  EXPECT_EQ(mat.getNumColumns(), 3u);
+  for (unsigned row = 0; row < 5; ++row)
+    for (unsigned col = 0; col < 3; ++col)
+      mat(row, col) = 10 * row + col;
+
+  mat.dump();
+
+  mat.transpose();
+  EXPECT_EQ(mat.getNumRows(), 3u);
+  EXPECT_EQ(mat.getNumColumns(), 5u);
+  for (unsigned row = 0; row < 5; ++row)
+    for (unsigned col = 0; col < 3; ++col)
+      EXPECT_EQ(mat(col, row), 10 * row + col);
+
+  mat.dump();
+}
+
 } // namespace presburger
 } // namespace analysis
 } // namespace mlir
