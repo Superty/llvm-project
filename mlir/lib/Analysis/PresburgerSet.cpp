@@ -382,45 +382,30 @@ bool PresburgerSet::findIntegerSample(SmallVectorImpl<int64_t> &sample) {
 }
 
 PresburgerSet PresburgerSet::coalesce() {
-  assert(nSym == 0 && "symbolic sets are not yet supported by coalesce");
   PresburgerSet newSet =
       PresburgerSet::getEmptySet(this->getNumDims(), this->getNumSyms());
-  ArrayRef<FlatAffineConstraints> basicSetVector =
-      flatAffineConstraints;
   SmallVector<bool, 4> marked(this->getNumFACs());
 
-  for (unsigned i = 0; i < basicSetVector.size(); i++) {
+  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; i++) {
     if (marked[i])
       continue;
-    FlatAffineConstraints bs1 = basicSetVector[i];
+    Simplex simplex(flatAffineConstraints[i]);
 
-    unsigned numIneq = bs1.getNumInequalities();
-    unsigned numEq = bs1.getNumEqualities();
     // check if bs1 is contained in any basicSet
-    for (unsigned j = 0; j < basicSetVector.size(); j++) {
+    for (unsigned j = 0, e = flatAffineConstraints.size(); j < e; ++j) {
       if (j == i || marked[j])
         continue;
-      FlatAffineConstraints bs2 = basicSetVector[j];
-      Simplex simplex(bs2);
 
-      bool contained = true;
-      for (unsigned i = 0; i < numIneq; ++i) {
-        contained &= simplex.isRedundant(bs1.getInequality(i));
-      }
-      for (unsigned i = 0; i < numEq; ++i) {
-        contained &= simplex.isRedundant(bs1.getEquality(i));
-      }
-
-      if (contained) {
-        marked[j] = true;
+      if (simplex.containedIn(flatAffineConstraints[j])) {
+        marked[i] = true;
+        break;
       }
     }
   }
 
-  for (unsigned i = 0; i < basicSetVector.size(); ++i) {
-    if (!marked[i]) {
-      newSet.unionFACInPlace(basicSetVector[i]);
-    }
+  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; ++i) {
+    if (!marked[i])
+      newSet.unionFACInPlace(flatAffineConstraints[i]);
   }
   return newSet;
 }

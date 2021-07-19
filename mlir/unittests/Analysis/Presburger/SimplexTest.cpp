@@ -412,8 +412,8 @@ TEST(SimplexTest, appendVariable) {
 
 TEST(SimplexTest, isRedundant) {
   Simplex simplex(2);
-  simplex.addInequality({0, -1, 1}); // [0]: y <= 1.
-  simplex.addInequality({1, 0, -1}); // [1]: x >= 1.
+  simplex.addInequality({0, -1, 2}); // [0]: y <= 2.
+  simplex.addInequality({1, 0, 0}); // [1]: x >= 0.
   simplex.addEquality({-1, 1, 0});   // [2]: y = x.
 
   EXPECT_TRUE(simplex.isRedundant({-1, 0, 2})); // x <= 2.
@@ -421,6 +421,7 @@ TEST(SimplexTest, isRedundant) {
 
   EXPECT_FALSE(simplex.isRedundant({-1, 0, -1})); // x <= -1.
   EXPECT_FALSE(simplex.isRedundant({0, 1, -2}));  // y >= 2.
+  EXPECT_FALSE(simplex.isRedundant({0, 1, -1}));  // y >= 1.
 }
 
 } // namespace mlir

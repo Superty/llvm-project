@@ -237,8 +237,12 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
-  /// Check if the given constraint is redundant
+  /// Check if the specified inequality already holds in the polytope.
   bool isRedundant(ArrayRef<int64_t> coeffs);
+
+  /// Check if the specified FAC contains the polytope,
+  /// i.e. whether all inequalities of the specified FAC hold for the polytope.
+  bool containedIn(const FlatAffineConstraints &fac);
 
 private:
   friend class GBRSimplex;

@@ -94,8 +94,9 @@ public:
   /// any of the FACs in the union are unbounded.
   bool findIntegerSample(SmallVectorImpl<int64_t> &sample);
 
-  /// eliminates FlatAffineConstraints, that are fully contained within other
-  /// FlatAffineConstraints, from the representation of set
+  /// Simplifies the representation of a PresburgerSet.
+  ///
+  /// Inparticular, removes all FACs which are subset of other FACs in the union.
   PresburgerSet coalesce();
 
 
