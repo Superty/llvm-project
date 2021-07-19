@@ -72,6 +72,8 @@ public:
     return true;
   }
 
+  int64_t getConstant() const { return coeffs.back(); }
+
   void shift(int64_t x) { coeffs.back() += x; }
 
   void setCoeff(unsigned var, int64_t constant) { coeffs[var] = constant; }
@@ -110,6 +112,13 @@ public:
       for (int64_t &coeff : coeffs) 
         coeff /= currGcd;
     }
+  }
+
+  bool isTrivial() const {
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      if (coeffs[i] != 0)
+        return false;
+    return true;
   }
 
   void appendDimension() {

@@ -99,6 +99,11 @@ public:
   /// Converts non matching divisions to existentials
   static void alignDivs(PresburgerBasicSet &bs1, PresburgerBasicSet &bs2);
 
+  /// Return +1 if the basic set is trivially non-empty;
+  ///        -1 if the basic set is empty;
+  ///         0 otherwise.
+  int isTrivial() const;
+
   void simplify();
 
   void dumpCoeffs() const;

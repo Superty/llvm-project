@@ -191,6 +191,9 @@ void PresburgerBasicSet::substitute(ArrayRef<int64_t> values) {
 llvm::Optional<SmallVector<int64_t, 8>>
 PresburgerBasicSet::findSampleUnbounded(PresburgerBasicSet &cone,
                                         bool onlyEmptiness) const {
+  if (isTrivial() == -1)
+    return {};
+
   auto coeffMatrix = cone.coefficientMatrixFromEqs();
   LinearTransform U =
       LinearTransform::makeTransformToColumnEchelon(std::move(coeffMatrix));
@@ -333,6 +336,9 @@ PresburgerBasicSet::findSampleBounded() const {
 
   Simplex simplex(*this);
   if (simplex.isEmpty())
+    return {};
+
+  if (isTrivial() == -1)
     return {};
 
   // NOTE possible optimization for equalities. We could transform the basis
@@ -529,6 +535,34 @@ void PresburgerBasicSet::printISL(raw_ostream &os) const {
 void PresburgerBasicSet::dumpISL() const {
   printISL(llvm::errs());
   llvm::errs() << '\n';
+}
+
+int PresburgerBasicSet::isTrivial() const {
+  bool allTrivial = true;
+  for (const auto& ineq : ineqs) {
+    if (ineq.isTrivial()) {
+      if (ineq.getConstant() < 0)
+        return -1;
+    }
+    else {
+      allTrivial = false;
+    }
+  }
+
+  for (const auto& eq : eqs) {
+    if (eq.isTrivial()) {
+      if (eq.getConstant() != 0)
+        return -1;
+    }
+    else {
+      allTrivial = false;
+    }
+  }
+
+  if (allTrivial)
+    return +1;
+
+  return 0;
 }
  
 // TODO: Improve flow
