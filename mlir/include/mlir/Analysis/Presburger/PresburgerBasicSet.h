@@ -207,7 +207,10 @@ private:
 
   Matrix coefficientMatrixFromEqs(bool constantTerm = false) const;
 
+  /// Inserts dimensions in each constraint. Does not change nDim, nParam,
+  /// nExist
   void insertDimensions(unsigned pos, unsigned count);
+
   void prependExistentialDimensions(unsigned count);
   void appendExistentialDimensions(unsigned count);
 

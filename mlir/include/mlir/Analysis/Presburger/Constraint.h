@@ -260,7 +260,7 @@ public:
     for (unsigned i = 0; i < coeffs.size() - 1; ++i)
       currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeffs[i]));
 
-    if (currGcd != 1) {
+    if (currGcd > 1) {
       for (int64_t &coeff : coeffs)
         coeff /= currGcd;
       denom /= currGcd;

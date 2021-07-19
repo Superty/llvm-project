@@ -44,10 +44,14 @@ TEST(PresburgerBasicMapTest, relLexMax) {
   auto bset1 = s1.getBasicSets()[0];
   auto bset2 = s2.getBasicSets()[0];
 
-  auto rel1 = PresburgerBasicMap(3, 3, bset1);
-  auto rel2 = PresburgerBasicMap(3, 3, bset2);
+  auto rel1 = PresburgerBasicMap(3, 3, bset1, "W1");
+  auto rel2 = PresburgerBasicMap(3, 3, bset2, "W2");
 
-  auto depRel = PresburgerBasicMap::relLexMax(rel1, rel2, 1, 3);
+  auto depRel = PresburgerBasicMap::relLexMax(rel1, rel2, 0, 3);
+
+  for (auto &dep : depRel) {
+    dep.dump();
+  }
 
   EXPECT_TRUE(true);
 }

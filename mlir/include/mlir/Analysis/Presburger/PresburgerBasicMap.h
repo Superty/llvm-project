@@ -25,21 +25,23 @@ namespace presburger {
 class PresburgerBasicMap : public PresburgerBasicSet {
 public:
   PresburgerBasicMap(unsigned oDomainDim, unsigned oRangeDim, unsigned oNParam,
-                     unsigned oNExist)
+                     unsigned oNExist, std::string oName = "Unnamed")
       : PresburgerBasicSet(oDomainDim + oRangeDim, oNParam, oNExist),
-        domainDim(oDomainDim), rangeDim(oRangeDim) {}
+        domainDim(oDomainDim), rangeDim(oRangeDim), name(oName) {}
 
   PresburgerBasicMap(unsigned oDomainDim, unsigned oRangeDim, unsigned oNParam,
-                     unsigned oNExist, ArrayRef<DivisionConstraint> divs)
+                     unsigned oNExist, ArrayRef<DivisionConstraint> divs,
+                     std::string oName = "Unnamed")
       : PresburgerBasicSet(oDomainDim + oRangeDim, oNParam, oNExist, divs),
-        domainDim(oDomainDim), rangeDim(oRangeDim) {}
+        domainDim(oDomainDim), rangeDim(oRangeDim), name(oName) {}
 
   PresburgerBasicMap(unsigned oDomainDim, unsigned oRangeDim,
-                     const PresburgerBasicSet &bset)
+                     const PresburgerBasicSet &bset,
+                     std::string oName = "Unnamed")
       : PresburgerBasicSet(oDomainDim + oRangeDim, bset.getNumParams(),
                            bset.getNumExists(), bset.getInequalities(),
                            bset.getEqualities(), bset.getDivisions()),
-        domainDim(oDomainDim), rangeDim(oRangeDim) {}
+        domainDim(oDomainDim), rangeDim(oRangeDim), name(oName) {}
 
   unsigned getDomainDims() const { return domainDim; }
   unsigned getRangeDims() const { return rangeDim; }
@@ -62,6 +64,7 @@ public:
 
 private:
   unsigned domainDim, rangeDim;
+  std::string name;
 };
 
 } // namespace presburger

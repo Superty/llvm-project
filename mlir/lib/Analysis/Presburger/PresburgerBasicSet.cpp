@@ -453,6 +453,8 @@ void PresburgerBasicSet::toCommonSpace(PresburgerBasicSet &a,
 }
 
 void PresburgerBasicSet::intersect(PresburgerBasicSet bs) {
+  assert(getNumDims() == bs.getNumDims() && "Dimensions do not match");
+  assert(getNumParams() == bs.getNumParams() && "Symbols do not match");
   toCommonSpace(*this, bs);
   ineqs.insert(ineqs.end(), std::make_move_iterator(bs.ineqs.begin()),
                std::make_move_iterator(bs.ineqs.end()));
@@ -1106,16 +1108,31 @@ void PresburgerBasicSet::convertDimsToExists(unsigned l, unsigned r) {
   assert(l <= r && r <= getNumDims() &&
          "Cannot convert non dimensions to existentials");
 
-  unsigned numRotated = r - l;
-  nDim -= numRotated;
-  nExist += numRotated;
+  unsigned numMoved = r - l;
+  nDim -= numMoved;
+  nExist += numMoved;
 
-  for (auto &ineq : ineqs)
-    ineq.rotate(l, r, getNumDims() + getNumParams());
-  for (auto &eq : eqs)
-    eq.rotate(l, r, getNumDims() + getNumParams());
-  for (auto &div : divs)
-    div.rotate(l, r, getNumDims() + getNumParams());
+  for (auto &ineq : ineqs) {
+    Constraint old = ineq;
+    ineq.eraseDimensions(l, numMoved);
+    ineq.insertDimensions(getNumDims() + getNumParams(), numMoved);
+    for (unsigned i = l; i < r; ++i)
+      ineq.setCoeff(getExistOffset() + i - l, old.getCoeffs()[i]);
+  }
+  for (auto &eq : eqs) {
+    Constraint old = eq;
+    eq.eraseDimensions(l, numMoved);
+    eq.insertDimensions(getNumDims() + getNumParams(), numMoved);
+    for (unsigned i = l; i < r; ++i)
+      eq.setCoeff(getExistOffset() + i - l, old.getCoeffs()[i]);
+  }
+  for (auto &div : divs) {
+    Constraint old = div;
+    div.eraseDimensions(l, numMoved);
+    div.insertDimensions(getNumDims() + getNumParams(), numMoved);
+    for (unsigned i = l; i < r; ++i)
+      div.setCoeff(getExistOffset() + i - l, old.getCoeffs()[i]);
+  }
 }
 
 void PresburgerBasicSet::removeConstantDivs() {

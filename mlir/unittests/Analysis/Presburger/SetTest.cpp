@@ -135,3 +135,10 @@ TEST(PresburgerSetTest, recoverDivisionTest2) {
                     "4x and 5c >= 4x and 5c <= 4x)");
   expectEqualAfterNormalization(set);
 }
+
+TEST(PresburgerSet, falseEqualityTest) {
+  PresburgerSet set =
+      setFromString("(x)[] : (-1 >= 0)");
+  PresburgerBasicSet bs = set.getBasicSets()[0];
+  EXPECT_TRUE(bs.isIntegerEmpty());
+}
