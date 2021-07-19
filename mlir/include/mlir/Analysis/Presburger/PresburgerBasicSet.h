@@ -74,6 +74,7 @@ public:
   void removeLastEquality();
   void removeLastDivision();
 
+  void removeDivision(unsigned i);
   void removeInequality(unsigned i);
   void removeEquality(unsigned i);
 
@@ -203,8 +204,14 @@ private:
   /// Remove duplicate divisions
   void removeDuplicateDivs();
 
+  /// Remove constraints that are trivially redundant
+  void removeTriviallyRedundantConstraints();
+
   /// Remove duplicate equalities and inequalities
   void removeDuplicateConstraints();
+
+  /// Remove constant divs
+  void removeConstantDivs();
 
   /// Swap division variables at indexes vari and varj
   /// vari and varj are indexes in the divs vector
