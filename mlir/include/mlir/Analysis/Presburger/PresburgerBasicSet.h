@@ -110,6 +110,12 @@ public:
                         PresburgerBasicSet<Int> &bs2, 
                         bool preserve);
 
+
+  /// Return +1 if the basic set is trivially non-empty;
+  ///        -1 if the basic set is empty;
+  ///         0 otherwise.
+  int isTrivial() const;
+
   /// Simplify the basic set. If aggressive is true, then uses more expensive 
   /// (in terms of performance) hueristics to simplify the basicset.
   void simplify(bool aggressive = true);
