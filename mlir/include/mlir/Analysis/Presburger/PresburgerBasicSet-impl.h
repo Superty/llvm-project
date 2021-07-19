@@ -86,6 +86,21 @@ void PresburgerBasicSet<Int>::removeLastDivision() {
 }
 
 template <typename Int>
+void PresburgerBasicSet<Int>::removeDivision(unsigned i) {
+  unsigned divIdx = getDivOffset() + i;
+
+  for (auto &ineq : ineqs)
+    ineq.eraseDimensions(divIdx, 1);
+  for (auto &eq : eqs)
+    eq.eraseDimensions(divIdx, 1);
+  for (auto &div : divs) {
+    div.eraseDimensions(divIdx, 1);
+  }
+
+  divs.erase(divs.begin() + i);
+}
+
+template <typename Int>
 void PresburgerBasicSet<Int>::addEquality(ArrayRef<Int> coeffs) {
   eqs.emplace_back(coeffs);
 }
@@ -649,7 +664,7 @@ void PresburgerBasicSet<Int>::simplify(bool aggressive) {
   if (nExist != 0 || divs.size() != 0)
     removeRedundantVars();
 
-  // Divs should be normilzed to be compared properly
+  // Divs should be normalized to be compared properly
   if (divs.size() != 0) {
     orderDivisions();
     normalizeDivisions();
@@ -669,6 +684,14 @@ void PresburgerBasicSet<Int>::simplify(bool aggressive) {
   // Recovering of divisions may cause unordered and non-normalized divisions
   orderDivisions();
   normalizeDivisions();
+
+  // Remove constant divs
+  removeDuplicateDivs();
+  removeConstantDivs();
+
+  // Remove trivial redundancy
+  removeTriviallyRedundantConstraints();
+  removeDuplicateConstraints();
 }
 
 template <typename Int>
@@ -1233,6 +1256,82 @@ void PresburgerBasicSet<Int>::removeDuplicateDivs() {
   }
 }
 
+/// Checks if a constraint is trivially redundant given its coefficents. If the
+/// boolean equality is set, treats the constraint as an equality else as an
+/// inequality.
+///
+/// Returns :
+/// 0 --> Constraint is not redundant
+/// 1 --> Constraint is redundant
+/// 2 --> Constraint is invalid
+template <typename Int>
+static int triviallyRedundantConstraint(const ArrayRef<Int> &coeffs,
+                                        bool equality) {
+  // Check if constraint is constant
+  for (unsigned i = 0; i < coeffs.size() - 1; ++i) {
+    if (coeffs[i] != 0)
+      return 0;
+  }
+
+  // Constraint is constant, check if its true
+  Int constCoeff = coeffs.back();
+
+  if (equality) {
+    if (constCoeff == 0)
+      return 1;
+    else
+      return 2;
+  } else {
+    if (constCoeff >= 0)
+      return 1;
+    else
+      return 2;
+  }
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::removeTriviallyRedundantConstraints() {
+  for (unsigned i = 0; i < eqs.size(); ++i) {
+    int result = triviallyRedundantConstraint(eqs[i].getCoeffs(), true);
+
+    if (result == 1) {
+      removeEquality(i);
+      --i;
+    } else if (result == 2) {
+      // Constraint system is invalid, Remove all equalities and inequalities
+      // other than this constraint
+      Constraint<Int> invalidCon = eqs[i];
+
+      PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(),
+                                     getNumExists(), getDivisions());
+      newSet.addEquality(invalidCon.getCoeffs());
+
+      *this = newSet;
+      return;
+    }
+  }
+
+  for (unsigned i = 0; i < ineqs.size(); ++i) {
+    int result = triviallyRedundantConstraint(ineqs[i].getCoeffs(), false);
+
+    if (result == 1) {
+      removeInequality(i);
+      --i;
+    } else if (result == 2) {
+      // Constraint system is invalid, Remove all equalities and inequalities
+      // other than this constraint
+      Constraint<Int> invalidCon = ineqs[i];
+
+      PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(),
+                                     getNumExists(), getDivisions());
+      newSet.addInequality(invalidCon.getCoeffs());
+
+      *this = newSet;
+      return;
+    }
+  }
+}
+
 template <typename Int>
 void PresburgerBasicSet<Int>::removeDuplicateConstraints() {
   for (unsigned k = 0; k < ineqs.size(); ++k) {
@@ -1250,6 +1349,46 @@ void PresburgerBasicSet<Int>::removeDuplicateConstraints() {
         removeEquality(l);
         l--;
       }
+    }
+  }
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::removeConstantDivs() {
+  for (unsigned divi = 0; divi < divs.size(); ++divi) {
+    auto &div = divs[divi];
+    bool isConst = true;
+    ArrayRef<Int> coeffs = div.getCoeffs();
+    for (unsigned i = 0, e = coeffs.size() - 1; i < e; ++i) {
+      if (coeffs[i] != 0) {
+        isConst = false;
+        break;
+      }
+    }
+
+    // Convert division to constant if it is constant
+    if (isConst) {
+      Int constant = floorDiv(coeffs.back(), div.getDenominator());
+      unsigned divIdx = getDivOffset() + divi;
+
+      for (auto &con : ineqs) {
+        Int coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+      for (auto &con : eqs) {
+        Int coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+      for (auto &con : divs) {
+        Int coeff = con.getCoeffs()[divIdx];
+        con.shift(constant * coeff);
+      }
+
+      // Remove division
+      removeDivision(divi);
+      --divi;
     }
   }
 }
