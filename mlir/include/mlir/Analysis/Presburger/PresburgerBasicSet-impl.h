@@ -156,12 +156,52 @@ PresburgerBasicSet<Int>::findIntegerSample(bool onlyEmptiness) const {
   if (!eqs.empty())
     return findIntegerSampleRemoveEqs(onlyEmptiness);
   PresburgerBasicSet cone = makeRecessionCone();
-  if (cone.getNumEqualities() == 0 && onlyEmptiness)
+
+  if (cone.getNumEqualities() == 0 && onlyEmptiness) {
+    // No shifting of constraints can make a full-dimensional cone integer empty.
+    // Therefore, if the recession cone of this basic set is a full-dimensional
+    // cone, then the basic set is certainly non-empty. However, this is only
+    // true when the cone is represented without any trivial constraints.
+    // A trivial constraint can be contradictory on its own just by shifting,
+    // for example 1 >= 0 is valid but -1 >= 0 is not valid, and similarly for
+    // equalities. Hence, we check explicitly for this case.
+    if (isTrivial() == -1)
+      return {};
     return SmallVector<Int, 8>();
+  }
   if (cone.getNumEqualities() < getNumTotalDims())
     return findSampleUnbounded(cone, onlyEmptiness);
   else
     return findSampleBounded(onlyEmptiness);
+}
+
+template <typename Int>
+int PresburgerBasicSet<Int>::isTrivial() const {
+  bool allTrivial = true;
+  for (const auto& ineq : ineqs) {
+    if (ineq.isTrivial()) {
+      if (ineq.getConstant() < 0)
+        return -1;
+    }
+    else {
+      allTrivial = false;
+    }
+  }
+
+  for (const auto& eq : eqs) {
+    if (eq.isTrivial()) {
+      if (eq.getConstant() != 0)
+        return -1;
+    }
+    else {
+      allTrivial = false;
+    }
+  }
+
+  if (allTrivial)
+    return +1;
+
+  return 0;
 }
 
 template <typename Int>

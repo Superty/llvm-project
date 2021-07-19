@@ -67,6 +67,8 @@ public:
     coeffs = SmallVector<Int, 8>(coeffs.begin() + values.size(), coeffs.end());
   }
 
+  Int getConstant() const { return coeffs.back(); }
+
   void shift(Int x) { coeffs.back() += x; }
 
   void shiftCoeff(unsigned var, Int constant) { coeffs[var] += constant; }
@@ -105,6 +107,13 @@ public:
         return false;
     }
 
+    return true;
+  }
+
+  bool isTrivial() const {
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      if (coeffs[i] != 0)
+        return false;
     return true;
   }
 
