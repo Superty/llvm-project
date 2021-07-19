@@ -391,6 +391,10 @@ PresburgerSet PresburgerSet::coalesce() {
       continue;
     Simplex simplex(flatAffineConstraints[i]);
 
+    if (simplex.isEmpty()) {
+      marked[i] = true;
+      continue;
+    }
     // check if bs1 is contained in any basicSet
     for (unsigned j = 0, e = flatAffineConstraints.size(); j < e; ++j) {
       if (j == i || marked[j])
