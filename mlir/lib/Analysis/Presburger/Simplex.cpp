@@ -1242,17 +1242,14 @@ void Simplex::dump() const { print(llvm::errs()); }
 
 bool Simplex::containedIn(const FlatAffineConstraints &fac) {
   
-  for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i) {
-    if(!isRedundant(fac.getInequality(i))) {
+  for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
+    if(!isRedundant(fac.getInequality(i)))
       return false;
-    }
-  }
   
-  for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i) {
-    if(!isRedundant(fac.getEquality(i))) {
+  
+  for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i) 
+    if(!isRedundant(fac.getEquality(i)))
       return false;
-    }
-  }
 
   return true;
 
