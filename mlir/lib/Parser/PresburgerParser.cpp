@@ -12,6 +12,7 @@
 
 #include "mlir/PresburgerParser.h"
 #include "./Parser.h"
+#include "mlir/Parser/AsmParserState.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/SourceMgr.h"
@@ -299,8 +300,12 @@ ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
     return emitError("expected integer literal or identifier");
 
   int64_t coeff = 1;
-  bool intFound = parseOptionalInteger(coeff).hasValue();
+  APInt parsedInt(1, 64);
+  bool intFound = parseOptionalInteger(parsedInt).hasValue();
 
+  if (intFound) {
+    coeff = parsedInt.getZExtValue();
+  }
   if (isNegated) {
     coeff = -coeff;
   }
@@ -343,7 +348,9 @@ FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
   sourceMgr.AddNewSourceBuffer(MemoryBuffer::getMemBuffer(str), SMLoc());
 
   SymbolState symbols;
-  ParserState state(sourceMgr, ctx, symbols);
+  // TODO should we provide an existing AsmParserState?
+  AsmParserState asmParserState;
+  ParserState state(sourceMgr, ctx, symbols, &asmParserState);
   PresburgerParser parser(state);
 
   // This set will be overwritten

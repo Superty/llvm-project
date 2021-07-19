@@ -1277,11 +1277,7 @@ public:
   }
 
   /// Parse an optional integer value from the stream.
-<<<<<<< HEAD
   OptionalParseResult parseOptionalInteger(APInt &result) override {
-=======
-  OptionalParseResult parseOptionalInteger(int64_t &result) override {
->>>>>>> 7857a28d58fc... [Parser] support for signed int parsing
     return parser.parseOptionalInteger(result);
   }
 

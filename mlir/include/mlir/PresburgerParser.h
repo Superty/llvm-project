@@ -22,6 +22,6 @@ namespace mlir {
 /// not, an error message is emitted.
 FailureOr<PresburgerSet> parsePresburgerSet(StringRef str, MLIRContext *ctx);
 
-}; // namespace mlir
+} // namespace mlir
 
 #endif // MLIR_PRESBURGER_PARSER_H
