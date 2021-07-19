@@ -1,5 +1,6 @@
 set(LLVM_OPTIONAL_SOURCES
   AffineParser.cpp
+  AsmParserState.cpp
   AttributeParser.cpp
   DialectSymbolParser.cpp
   Lexer.cpp

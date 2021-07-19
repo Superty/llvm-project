@@ -1167,7 +1167,6 @@ public:
     return count;
   }
 
-<<<<<<< HEAD
   /// Emit a diagnostic at the specified location and return failure.
   InFlightDiagnostic emitError(llvm::SMLoc loc, const Twine &message) override {
     return AsmParserImpl<OpAsmParser>::emitError(loc, "custom op '" + opName +
