@@ -57,8 +57,7 @@ void init_perf_fds() {
 
   for (unsigned i = 0; i < fd_count; ++i) {
     if (fd[i] == -1) {
-      fprintf(stderr, "error at %d: ", i);
-      perror("perf_event_open");
+      perror("error: perf_event_open");
       exit(1);
     }
   }
