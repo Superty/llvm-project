@@ -100,10 +100,6 @@ int main(int argc, char **argv) {
   const unsigned numRuns = 5;
   std::string op = argv[1];
 
-  unsigned numCases;
-  std::cin >> numCases;
-  consumeNewline();
-
   std::ofstream fruntime("data/runtime_fpl_" + op + ".txt");
   std::ofstream fwaterline("data/waterline_fpl_" + op + ".txt");
   std::ofstream fstat("data/stats_fpl_" + op + ".txt");
@@ -113,6 +109,10 @@ int main(int argc, char **argv) {
     std::cerr << "Could not open data/outputs_fpl_" + op + ".txt!\nTry creating the directory data.\n";
     return 1;
   }
+
+  unsigned numCases;
+  std::cin >> numCases;
+  consumeNewline();
   fout << numCases << '\n';
 
   for (unsigned j = 0; j < numCases; ++j) {
