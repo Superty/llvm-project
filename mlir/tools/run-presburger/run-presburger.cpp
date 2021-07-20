@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
   std::error_code EC;
   llvm::raw_fd_ostream fout("data/outputs_fpl_" + op + ".txt", EC);
   if (EC) {
-    std::cerr << "Could not open outputs_fpl_" + op + ".txt!\n";
+    std::cerr << "Could not open data/outputs_fpl_" + op + ".txt!\nTry creating the directory data.\n";
     return 1;
   }
   fout << numCases << '\n';
