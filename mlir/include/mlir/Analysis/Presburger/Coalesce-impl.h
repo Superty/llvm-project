@@ -1,4 +1,5 @@
 #include "mlir/Analysis/AffineStructures.h"
+#include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include <iostream>
