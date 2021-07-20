@@ -1,11 +1,12 @@
+#ifndef MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
+
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Coalesce.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include <iostream>
 
-#ifndef MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_COALESCE_IMPL_H
 
 using namespace mlir;
 

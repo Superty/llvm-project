@@ -6,6 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
+
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
@@ -13,9 +16,6 @@
 #include "mlir/Analysis/Presburger/Constraint.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
-
-#ifndef MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_BASIC_SET_IMPL_H
 
 using namespace mlir;
 using namespace mlir::analysis;

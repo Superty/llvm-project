@@ -1,3 +1,6 @@
+#ifndef MLIR_ANALYSIS_PRESBURGER_COALESCE_H
+#define MLIR_ANALYSIS_PRESBURGER_COALESCE_H
+
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
@@ -55,3 +58,5 @@ bool containedFacet(ArrayRef<Int> ineq, const PresburgerBasicSet<Int> &bs,
 
 
 } // namespace mlir
+
+#endif // MLIR_ANALYSIS_PRESBURGER_COALESCE_H

@@ -1,10 +1,10 @@
+#ifndef MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
+
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
 
 using namespace mlir;
 using namespace analysis::presburger;
-
-#ifndef MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_ISLPRINTER_IMPL_H
 
 namespace islprinter {
 

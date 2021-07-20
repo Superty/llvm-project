@@ -6,13 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
+
 #include "mlir/Analysis/Presburger/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/ADT/SmallVector.h"
-
-#ifndef MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_PARAMLEXSIMPLEX_IMPL_H
 
 using namespace mlir;
 using namespace analysis::presburger;
