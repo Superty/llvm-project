@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Matrix.h"
-
 #ifndef MLIR_ANALYSIS_PRESBURGER_MATRIX_IMPL_H
 #define MLIR_ANALYSIS_PRESBURGER_MATRIX_IMPL_H
+
+#include "mlir/Analysis/Presburger/Matrix.h"
 
 using namespace mlir;
 using namespace analysis::presburger;

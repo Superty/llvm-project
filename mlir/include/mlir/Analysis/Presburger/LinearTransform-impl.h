@@ -2,14 +2,14 @@
  * SPDX-FileCopyrightText: 2019 Arjun Pitchanathan <arjunpitchanathan@gmail.com>
  */
 
+#ifndef MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
+
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
 
 using namespace mlir;
 using namespace analysis::presburger;
-
-#ifndef MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
 
 template <typename Int>
 LinearTransform<Int>::LinearTransform(Matrix<Int> oMatrix)

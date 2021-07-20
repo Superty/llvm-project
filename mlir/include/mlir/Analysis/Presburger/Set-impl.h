@@ -1,3 +1,6 @@
+#ifndef MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+#define MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
+
 #include "mlir/Analysis/Presburger/Set.h"
 #include "mlir/Analysis/Presburger/Constraint.h"
 #include "mlir/Analysis/Presburger/ISLPrinter.h"
@@ -5,8 +8,6 @@
 #include "mlir/Analysis/Presburger/Printer.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 
-#ifndef MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
-#define MLIR_ANALYSIS_PRESBURGER_SET_IMPL_H
 
 // TODO should we change this to a storage type?
 using namespace mlir;
