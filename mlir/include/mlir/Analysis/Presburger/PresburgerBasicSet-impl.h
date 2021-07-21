@@ -1104,6 +1104,11 @@ void PresburgerBasicSet<Int>::recoverDivisionsFromInequalities() {
         else
           newCoeffs = createDivFromLowerBound(coeffs2, existIdx);
 
+        if (constantSum == std::abs(coeffs1[existIdx]) - 1) {
+          removeInequality(l);
+          removeInequality(k);
+        }
+
         // Insert the new division at starting of divs
         DivisionConstraint<Int> newDiv(newCoeffs, std::abs(coeffs1[existIdx]),
                                   getDivOffset() - 1);
