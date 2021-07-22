@@ -737,7 +737,7 @@ bool Simplex<Int>::constraintIsRedundant(unsigned conIndex) {
     pivot(*maybeRow, col);
   }
 
-  if (rowIsObviouslyRedundant(conIndex))
+  if (rowIsObviouslyRedundant(con[conIndex].pos))
     return true;
 
   while (tableau(con[conIndex].pos, 1) >= 0) {
