@@ -64,11 +64,7 @@ void consumeLine(unsigned cnt = 1) {
   }
 }
 
-// Exits the program if cin reached EOF.
-TransprecSet getSetFromInput() {
-  char str[1'000'000];
-  std::cin.getline(str, 1'000'000);
-  // std::cerr << "Read '" << str << "'\n";
+TransprecSet getTransprecSetFromString(char str[]) {
   if (auto set = setFromString<int16_t>(str))
     return TransprecSet(*set);
   else if (auto set = setFromString<int64_t>(str))
@@ -79,6 +75,14 @@ TransprecSet getSetFromInput() {
     return TransprecSet(*set);
   else
     llvm_unreachable("Input did not fit in 128-bits!");
+}
+
+// Exits the program if cin reached EOF.
+TransprecSet getSetFromInput() {
+  char str[1'000'000];
+  std::cin.getline(str, 1'000'000);
+  return getTransprecSetFromString(str);
+  // std::cerr << "Read '" << str << "'\n";
   // return setFromString(str);
 }
 
