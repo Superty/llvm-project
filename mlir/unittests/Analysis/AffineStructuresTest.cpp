@@ -587,4 +587,27 @@ TEST(FlatAffineConstraintsTest, clearConstraints) {
   EXPECT_EQ(fac.atIneq(0, 1), 0);
 }
 
+TEST(FlatAffineConstraintsTest, computeLocalReprSimple) {
+  FlatAffineConstraints fac = makeFACFromConstraints(1, {}, {});
+
+  fac.addLocalFloorDiv({1, 4}, 10);
+  fac.addLocalFloorDiv({1, 10, 100}, 10);
+
+  // Check if representation can be computed for all local variables
+  auto res = fac.computeLocalRepr();
+  for (auto &r : res)
+    EXPECT_NE(r, llvm::None);
+}
+
+TEST(FlatAffineConstraints, computeLocalReprConstantFloorDiv) {
+  FlatAffineConstraints fac = makeFACFromConstraints(4, {}, {});
+
+  fac.addLocalFloorDiv({0, 0, 0, 0, 10}, 30);
+
+  // Check if representation can be computed for all local variables
+  auto res = fac.computeLocalRepr();
+  for (auto &r : res)
+    EXPECT_NE(r, llvm::None);
+}
+
 } // namespace mlir

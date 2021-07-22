@@ -160,6 +160,11 @@ public:
   /// otherwise.
   bool containsPoint(ArrayRef<int64_t> point) const;
 
+  /// Find pairs of indices of inequalities, using which an explicit
+  /// representation for each local variable can be computed.
+  std::vector<llvm::Optional<std::pair<unsigned, unsigned>>>
+  computeLocalRepr() const;
+
   // Clones this object.
   std::unique_ptr<FlatAffineConstraints> clone() const;
 
