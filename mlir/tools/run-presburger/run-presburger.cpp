@@ -103,9 +103,9 @@ int main(int argc, char **argv) {
   std::ofstream fruntime("data/runtime_fpl_" + op + ".txt");
   std::ofstream fwaterline("data/waterline_fpl_" + op + ".txt");
   std::ofstream fstat("data/stats_fpl_" + op + ".txt");
-  std::error_code EC;
-  llvm::raw_fd_ostream fout("data/outputs_fpl_" + op + ".txt", EC);
-  if (EC) {
+  std::error_code ec;
+  llvm::raw_fd_ostream fout("data/outputs_fpl_" + op + ".txt", ec);
+  if (ec) {
     std::cerr << "Could not open data/outputs_fpl_" + op + ".txt!\nTry creating the directory data.\n";
     return 1;
   }
