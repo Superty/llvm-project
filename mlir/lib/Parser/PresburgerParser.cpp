@@ -49,9 +49,12 @@ private:
   ParseResult parsePresburgerSetConstraints(PresburgerSet &set);
 
   ParseResult parseConstraint(FlatAffineConstraints &fac);
-  ParseResult parseSum(SmallVector<int64_t, 8> &coefs);
-  ParseResult parseTerm(SmallVector<int64_t, 8> &coefs,
+  ParseResult parseSum(FlatAffineConstraints &fac,
+                       SmallVector<int64_t, 8> &coefs);
+  ParseResult parseTerm(FlatAffineConstraints &fac,
+                        SmallVector<int64_t, 8> &coefs,
                         bool is_negated = false);
+  ParseResult parseDivision(FlatAffineConstraints &fac, int64_t &localId);
   ParseResult parseVariable(StringRef &var);
 
   /// Mapping from names to ids
@@ -193,17 +196,26 @@ PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
   return success();
 }
 
+namespace {
+void makeSpaceForDivIds(SmallVector<int64_t, 8> &coeffs, size_t newIds) {
+  int64_t prevConst = coeffs[coeffs.size() - 1];
+  coeffs[coeffs.size() - 1] = 0;
+
+  coeffs.append(newIds, 0);
+  // set the constant in the new possition
+  coeffs[coeffs.size() - 1] = prevConst;
+}
+} // namespace
+
 /// Parse a Presburger constraint
 ///
 ///  pb-constraint ::= pb-expr (`>=` | `=` | `<=`) pb-expr
 ///
 ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
   // space for constant
-  unsigned size = dimAndSymNameToIndex.size() + 1;
-  SmallVector<int64_t, 8> left(size, 0);
-  SmallVector<int64_t, 8> right(size, 0);
+  SmallVector<int64_t, 8> left(fac.getNumCols(), 0);
 
-  if (parseSum(left))
+  if (parseSum(fac, left))
     return failure();
 
   ConstraintKind kind;
@@ -236,12 +248,16 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
     return emitError("expected comparison operator");
   }
 
-  if (parseSum(right))
+  SmallVector<int64_t, 8> right(fac.getNumCols(), 0);
+  if (parseSum(fac, right))
     return failure();
 
-  // TODO move to separate function, check if we can reuse one of the vectors.
-  // TODO can we use std::move?
+  // check if the right side introduced new divisions
+  if (left.size() < right.size())
+    makeSpaceForDivIds(left, right.size() - left.size());
+
   SmallVector<int64_t, 8> coeffs;
+  coeffs.reserve(left.size());
 
   switch (kind) {
   case ConstraintKind::LE:
@@ -268,15 +284,16 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
 ///
 ///  pb-sum ::= pb-term ((`+` | `-`) pb-term)*
 ///
-ParseResult PresburgerParser::parseSum(SmallVector<int64_t, 8> &coeffs) {
-  if (parseTerm(coeffs))
+ParseResult PresburgerParser::parseSum(FlatAffineConstraints &fac,
+                                       SmallVector<int64_t, 8> &coeffs) {
+  if (parseTerm(fac, coeffs))
     return failure();
 
   while (getToken().isAny(Token::plus, Token::minus)) {
     bool isMinus = getToken().is(Token::minus);
     consumeToken();
 
-    if (parseTerm(coeffs, isMinus))
+    if (parseTerm(fac, coeffs, isMinus))
       return failure();
   }
 
@@ -286,23 +303,29 @@ ParseResult PresburgerParser::parseSum(SmallVector<int64_t, 8> &coeffs) {
 /// Parse a Presburger term.
 ///
 ///  pb-term ::= integer-literal? bare-id
-///            | `-`? bare-id
+///            | `-` bare-id
+///            | integer-literal? pb-floor-div
+///            | `-` pb-floor-div
 ///            | integer-literal
 ///
-ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
+ParseResult PresburgerParser::parseTerm(FlatAffineConstraints &fac,
+                                        SmallVector<int64_t, 8> &coeffs,
                                         bool isNegated) {
   if (consumeIf(Token::minus))
     isNegated = !isNegated;
 
   // needed as parseOptionalInteger would consume this even on failure.
+  // TODO check if this bug is still present
   // TODO fix this as soon as parseOptionalInteger works as expected
   if (getToken().is(Token::minus))
     return emitError("expected integer literal or identifier");
 
   int64_t coeff = 1;
+  // TODO how to handle other precisions?
   APInt parsedInt(1, 64);
   bool intFound = parseOptionalInteger(parsedInt).hasValue();
 
+  // TODO check what happens if input has too high precision
   if (intFound) {
     coeff = parsedInt.getZExtValue();
   }
@@ -310,10 +333,22 @@ ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
     coeff = -coeff;
   }
 
-  if (getToken().isNot(Token::bare_identifier)) {
+  if (getToken().isNot(Token::bare_identifier) &&
+      getToken().isNot(Token::kw_floor)) {
     if (!intFound)
       return emitError("expected non empty term");
     coeffs[coeffs.size() - 1] += coeff;
+    return success();
+  }
+
+  if (getToken().is(Token::kw_floor)) {
+    // Problem: a new division changes the dimensionality
+    int64_t divId;
+    if (parseDivision(fac, divId))
+      return failure();
+
+    makeSpaceForDivIds(coeffs, fac.getNumCols() - coeffs.size());
+    coeffs[divId] = coeff;
     return success();
   }
 
@@ -329,6 +364,36 @@ ParseResult PresburgerParser::parseTerm(SmallVector<int64_t, 8> &coeffs,
   }
 
   return emitError("encountered unknown variable name: " + identifier);
+}
+
+/// Parse a floor division
+///
+///  pb-floor ::= floor(pb-sum `/` integer-literal)
+///
+ParseResult PresburgerParser::parseDivision(FlatAffineConstraints &fac,
+                                            int64_t &localId) {
+  consumeToken(Token::kw_floor);
+  if (!consumeIf(Token::l_paren))
+    return emitError("expected `(`");
+
+  SmallVector<int64_t, 8> coeffs(fac.getNumIds() + 1, 0);
+  if (parseSum(fac, coeffs))
+    return failure();
+
+  if (!consumeIf(Token::slash))
+    return emitError("expected `/`");
+
+  APInt divisor;
+  if (!parseOptionalInteger(divisor).hasValue())
+    return failure();
+
+  if (!consumeIf(Token::r_paren))
+    return emitError("expected `)`");
+
+  fac.addLocalFloorDiv(coeffs, divisor.getZExtValue());
+  localId = fac.getNumIds() - 1;
+
+  return success();
 }
 
 /// Parse a bare-identifier

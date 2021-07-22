@@ -15,12 +15,15 @@ namespace mlir {
 
 /// Construct a FlatAffineConstraints from a set of inequality and
 /// equality constraints.
-static FlatAffineConstraints
-makeFACFromConstraints(unsigned dims, unsigned syms,
-                       ArrayRef<SmallVector<int64_t, 4>> ineqs,
-                       ArrayRef<SmallVector<int64_t, 4>> eqs) {
+static FlatAffineConstraints makeFACFromConstraints(
+    unsigned dims, unsigned syms, ArrayRef<SmallVector<int64_t, 4>> ineqs,
+    ArrayRef<SmallVector<int64_t, 4>> eqs,
+    ArrayRef<std::pair<SmallVector<int64_t, 4>, int64_t>> divs) {
   FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + syms + 1, dims,
                             syms);
+  for (const auto &div : divs) {
+    fac.addLocalFloorDiv(div.first, div.second);
+  }
   for (const SmallVector<int64_t, 4> &eq : eqs)
     fac.addEquality(eq);
   for (const SmallVector<int64_t, 4> &ineq : ineqs)
@@ -31,7 +34,7 @@ makeFACFromConstraints(unsigned dims, unsigned syms,
 static FlatAffineConstraints
 makeFACFromIneqs(unsigned dims, unsigned syms,
                  ArrayRef<SmallVector<int64_t, 4>> ineqs) {
-  return makeFACFromConstraints(dims, syms, ineqs, {});
+  return makeFACFromConstraints(dims, syms, ineqs, {}, {});
 }
 
 static PresburgerSet makeSetFromFACs(unsigned dims, unsigned syms,
@@ -113,7 +116,7 @@ TEST(ParserTest, simpleEq) {
   EXPECT_TRUE(succeeded(set));
 
   PresburgerSet ex =
-      makeSetFromFACs(1, 0, {makeFACFromConstraints(1, 0, {}, {{1, 0}})});
+      makeSetFromFACs(1, 0, {makeFACFromConstraints(1, 0, {}, {{1, 0}}, {})});
   EXPECT_TRUE(set->isEqual(ex));
 }
 
@@ -212,6 +215,77 @@ TEST(ParserTest, plusMinus) {
   PresburgerSet ex =
       makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{-1, -4}})});
   EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, floorDivSimple) {
+  MLIRContext ctx;
+  auto str = "(x, y) : (y = floor(x / 3))";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  // TODO why only 2 for the division argument?
+  PresburgerSet ex = makeSetFromFACs(
+      2, 0,
+      {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, 0}}, {{{1, 0, 0}, 3}})});
+  set->print(llvm::errs());
+  ex.print(llvm::errs());
+  EXPECT_TRUE(false) << "No way to compare as of yet!";
+  // EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, floorDivWithCoeffs) {
+  MLIRContext ctx;
+  auto str = "(x, y) : (y = 3floor(x + y - 13 / 3) + 42)";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  // TODO why only 2 for the division argument?
+  PresburgerSet ex =
+      makeSetFromFACs(2, 0,
+                      {makeFACFromConstraints(2, 0, {}, {{0, 1, -3, -42}},
+                                              {{{1, 1, -13}, 3}})});
+  set->print(llvm::errs());
+  ex.print(llvm::errs());
+  EXPECT_TRUE(false) << "No way to compare as of yet!";
+  // EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, floorDivMultiple) {
+  MLIRContext ctx;
+  auto str = "(x, y) : (y = floor(x / 3) + floor(y / 2))";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  // TODO why only 2 for the division argument?
+  PresburgerSet ex = makeSetFromFACs(
+      2, 0,
+      {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, -1, 0}},
+                              {{{1, 0, 0}, 3}, {{0, 1, 0, 0}, 2}})});
+  set->print(llvm::errs());
+  ex.print(llvm::errs());
+  EXPECT_TRUE(false) << "No way to compare as of yet!";
+  // EXPECT_TRUE(set->isEqual(ex));
+}
+
+TEST(ParserTest, floorDivNested) {
+  MLIRContext ctx;
+  auto str = "(x, y) : (y = floor(x + floor(y / 2) / 3))";
+
+  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(succeeded(set));
+
+  // TODO why only 2 for the division argument?
+  PresburgerSet ex = makeSetFromFACs(
+      2, 0,
+      {makeFACFromConstraints(2, 0, {}, {{0, 1, 0, -1, 0}},
+                              {{{0, 1, 0}, 2}, {{1, 0, 1, 0}, 3}})});
+  set->print(llvm::errs());
+  ex.print(llvm::errs());
+  EXPECT_TRUE(false) << "No way to compare as of yet!";
+  // EXPECT_TRUE(set->isEqual(ex));
 }
 
 } // namespace mlir
