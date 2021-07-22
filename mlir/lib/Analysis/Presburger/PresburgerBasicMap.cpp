@@ -87,14 +87,14 @@ PresburgerBasicMap::relLexMax(PresburgerBasicMap &rel1,
   pd2.nDim += 1 + rel1.getDomainDims();
   pd.intersect(pd2);
 
-  // Add constraint \delta w = w1[level] - w2[level] where w1, w2 are domains
+  // Add constraint \delta w = w1[level] - w2[level] where w1, w2 are domain
   // variables of rel1, rel2 respectively
   SmallVector<int64_t, 8> wCoeffs(pd.getNumTotalDims() + 1, 0);
   wCoeffs[0] = 1;
   wCoeffs[1 + level] = -1;
   wCoeffs[1 + rel1.getDomainDims() + level] = 1;
   pd.addEquality(wCoeffs);
-
+  
   // Project out write variables other than \delta w
   pd.convertDimsToExists(1, 1 + rel1.getDomainDims() + rel2.getDomainDims());
 
@@ -130,8 +130,6 @@ PresburgerBasicMap::relLexMax(PresburgerBasicMap &rel1,
   wPd2.nDim += rel2.getDomainDims();
   wSet2.intersect(wPd2);
 
-  PresburgerBasicSet ws2 = wSet2;
-
   wSet1.simplify();
   wSet2.simplify();
 
@@ -142,7 +140,7 @@ PresburgerBasicMap::relLexMax(PresburgerBasicMap &rel1,
 
   PresburgerBasicSet zeroPd = pd; 
   SmallVector<int64_t, 8> coeffsZeroPd(pd.getNumTotalDims() + 1, 0);
-  coeffsPd1[0] = 1;
+  coeffsZeroPd[0] = 1;
   zeroPd.addEquality(coeffsZeroPd);
   zeroPd.convertDimsToExists(0, 1);
 

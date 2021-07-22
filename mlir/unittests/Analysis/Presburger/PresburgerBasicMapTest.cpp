@@ -36,22 +36,36 @@ static PresburgerSet setFromString(StringRef string) {
 TEST(PresburgerBasicMapTest, relLexMax) {
   auto s1 = setFromString(
       "(pw, qw, iw, pr, qr, ir)[np, mb] : (pw = pr - 1 and qw = qr and iw = ir "
-      "and 1 <= qr and qr <= pr + 1 and pr <= np and 1 <= ir and ir <= mb)");
+      "and 1 <= qr and qr + 1<= pr and pr <= np and 1 <= ir and ir <= mb)");
   auto s2 = setFromString(
       "(pw, qw, iw, pr, qr, ir)[np, mb] : (pw = qw and qw = qr and iw = ir and "
-      "1 <= qr and qr <= pr + 1 and pr <= np and 1 <= ir and ir <= mb)");
-  
+      "1 <= qr and qr + 1 <= pr and pr <= np and 1 <= ir and ir <= mb)");
+
+  auto s3 = setFromString(
+      "(pw, qw, iw, pr, qr, ir)[np, mb] : (pw = pr - 1 and qw = qr and iw = ir "
+      "and pr <= np and 1 <= qr and qr <= pr - 2 and 1 <= ir and ir <= mb)");
+
+  auto s4 = setFromString(
+      "(pw, qw, iw, pr, qr, ir)[np, mb] : (pw = pr - 1 and qw = qr and iw = ir "
+      "and 2 <= pr and pr <= np and qr = pr - 1 and 1 <= ir and ir <= mb)");
+
+
   auto bset1 = s1.getBasicSets()[0];
   auto bset2 = s2.getBasicSets()[0];
 
-  auto rel1 = PresburgerBasicMap(3, 3, bset1, "W1");
-  auto rel2 = PresburgerBasicMap(3, 3, bset2, "W2");
+  auto rel1 = PresburgerBasicMap(3, 3, bset1, "W1 -> R");
+  auto rel2 = PresburgerBasicMap(3, 3, bset2, "W2 -> R");
 
   auto depRel = PresburgerBasicMap::relLexMax(rel1, rel2, 0, 3);
 
-  for (auto &dep : depRel) {
-    dep.dump();
-  }
+  EXPECT_TRUE(PresburgerSet::equal(s3, depRel[0]));
+  EXPECT_TRUE(PresburgerSet::equal(s4, depRel[1]));
 
-  EXPECT_TRUE(true);
+  rel1.dump();
+  rel2.dump();
+
+  llvm::errs() << "\n";
+
+  for (auto &dep : depRel)
+    dep.dump();
 }
