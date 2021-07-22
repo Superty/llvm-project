@@ -311,7 +311,7 @@ inline typename Simplex<Int>::IneqType Simplex<Int>::separationType(unsigned row
 
   bool found = false;
   for (unsigned col = liveColBegin; col < nCol; col++) {
-    if (tableau(row, col) != 0) {
+    if (!unknownFromColumn(col).zero && tableau(row, col) != 0) {
       if (!found) {
         found = true;
         if (tableau(row, 1) != tableau(row, col))
@@ -322,14 +322,10 @@ inline typename Simplex<Int>::IneqType Simplex<Int>::separationType(unsigned row
     }
   }
 
-  if (tableau(row, 1) == -1) {
-    auto min = computeRowOptimum(Direction::Down, row);
-    if (min && *min == Fraction<Int>(-1, 1))
-      return IneqType::AdjEq;
-  }
-
   if (found)
     return IneqType::AdjIneq;
+  else if (tableau(row, 1) == -1)
+    return IneqType::AdjEq;
   else
     return IneqType::Separate;
 }
@@ -805,10 +801,12 @@ void Simplex<Int>::addInequality(ArrayRef<Int> coeffs) {
 template <typename Int>
 void Simplex<Int>::addEquality(ArrayRef<Int> coeffs) {
   addInequality(coeffs);
+  con[con.size() - 1].zero = true;
   SmallVector<Int, 8> negatedCoeffs;
   for (Int coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   addInequality(negatedCoeffs);
+  con[con.size() - 1].zero = true;
 }
 
 /// Mark the row as being redundant and push an entry to the undo stack.
