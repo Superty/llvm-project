@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "../utils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -422,26 +423,6 @@ TEST(SimplexTest, isRedundant) {
   EXPECT_FALSE(simplex.isRedundant({-1, 0, -1})); // x <= -1.
   EXPECT_FALSE(simplex.isRedundant({0, 1, -2}));  // y >= 2.
   EXPECT_FALSE(simplex.isRedundant({0, 1, -1}));  // y >= 1.
-}
-
-/// Construct a FlatAffineConstraints from a set of inequality and
-/// equality constraints.
-/// TODO: This is duplicated functionality
-/// (unittests/Analysis/PresburgerSetTest.cpp)
-static FlatAffineConstraints
-makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
-                       ArrayRef<SmallVector<int64_t, 4>> eqs) {
-  FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + 1, dims);
-  for (const SmallVector<int64_t, 4> &eq : eqs)
-    fac.addEquality(eq);
-  for (const SmallVector<int64_t, 4> &ineq : ineqs)
-    fac.addInequality(ineq);
-  return fac;
-}
-
-static FlatAffineConstraints
-makeFACFromIneqs(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
-  return makeFACFromConstraints(dims, ineqs, {});
 }
 
 TEST(SimplexTest, ContainedIn) {
