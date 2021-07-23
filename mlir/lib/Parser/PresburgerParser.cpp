@@ -316,13 +316,10 @@ ParseResult PresburgerParser::parseTerm(FlatAffineConstraints &fac,
     isNegated = !isNegated;
 
   // needed as parseOptionalInteger would consume this even on failure.
-  // TODO check if this bug is still present
-  // TODO fix this as soon as parseOptionalInteger works as expected
   if (getToken().is(Token::minus))
     return emitError("expected integer literal or identifier");
 
   int64_t coeff = 1;
-  // TODO how to handle other precisions?
   APInt parsedInt;
   bool intFound = parseOptionalInteger(parsedInt).hasValue();
 
@@ -343,7 +340,6 @@ ParseResult PresburgerParser::parseTerm(FlatAffineConstraints &fac,
   }
 
   if (getToken().is(Token::kw_floor)) {
-    // Problem: a new division changes the dimensionality
     int64_t divId;
     if (parseDivision(fac, divId))
       return failure();

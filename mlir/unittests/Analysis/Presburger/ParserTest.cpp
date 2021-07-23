@@ -62,50 +62,61 @@ TEST(ParserTest, invalid) {
   auto str = "(i)[] : (i = )";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "Should not accept incomplete constraints";
 
   // The complete StringRef should be checked.
   str = "(i)[] : () )";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set))
+      << "Should check if the end of the string was reached";
 
   // `and` is only allowed inside a convex set.
   str = "(i)[] : (i <= 2) and (i >= 3)";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set))
+      << "`and` should only be allowed inside a convex set";
 
   // Reused variable names are not supported
   str = "(i,i)[] : (i <= 2) or (i >= 3)";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "Should detect repeated identifier names";
 
   str = "(i)[i] : (i <= 2) or (i >= 3)";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "Should detect repeated identifier names";
 
   str = "(i) : ";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "Should not accept inclompleate representations";
 
   str = "(i) : (i - >= 2) ";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "Should only parse valid expressions";
 
   str = "(i) : (1i >= -) ";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set)) << "`-` shouldn't be a valid expression";
 
   str = "(i) : (-i - -2 >= - -2) ";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set));
+  EXPECT_TRUE(failed(set))
+      << "Two minuses in front of a integer literal should not be valid";
+
+  /*
+  str = "(i) : (-i - -2 >= 9223372036854775808) ";
+
+  set = parsePresburgerSet(str, &ctx);
+  EXPECT_TRUE(failed(set))
+      << "Should complain if integer literals do not fit into int64_t";
+      */
 }
 
 TEST(ParserTest, simpleEq) {
@@ -224,7 +235,6 @@ TEST(ParserTest, floorDivSimple) {
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
 
-  // TODO why only 2 for the division argument?
   PresburgerSet ex = makeSetFromFACs(
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, 0}}, {{{1, 0, 0}, 3}})});
@@ -241,7 +251,6 @@ TEST(ParserTest, floorDivWithCoeffs) {
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
 
-  // TODO why only 2 for the division argument?
   PresburgerSet ex =
       makeSetFromFACs(2, 0,
                       {makeFACFromConstraints(2, 0, {}, {{0, 1, -3, -42}},
@@ -259,7 +268,6 @@ TEST(ParserTest, floorDivMultiple) {
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
 
-  // TODO why only 2 for the division argument?
   PresburgerSet ex = makeSetFromFACs(
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, -1, 0}},
@@ -277,7 +285,6 @@ TEST(ParserTest, floorDivNested) {
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
 
-  // TODO why only 2 for the division argument?
   PresburgerSet ex = makeSetFromFACs(
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, 0, -1, 0}},
