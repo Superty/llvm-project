@@ -303,31 +303,42 @@ Direction<Int> flippedDirection(Direction<Int> direction) {
 /// Otherwise, none of the heuristics match so the type is Separate.
 template <typename Int>
 inline typename Simplex<Int>::IneqType Simplex<Int>::separationType(unsigned row) {
+  static unsigned count = 0;
+  count++;
   // TODO this can be removed, if below we compare tableau(row, 1) with the
   // negated denominator instead of -1.
   normalizeRow(row);
-  if (tableau(row, 0) != 1)
+  if (tableau(row, 0) != 1) {
+    std::cerr << count << ' '<< "Separate\n";
     return IneqType::Separate;
+  }
 
   bool found = false;
   for (unsigned col = liveColBegin; col < nCol; col++) {
     if (!unknownFromColumn(col).zero && tableau(row, col) != 0) {
       if (!found) {
         found = true;
-        if (tableau(row, 1) != tableau(row, col))
+        if (tableau(row, 1) != tableau(row, col)) {
+          std::cerr << count << ' '<< "Separate\n";
           return IneqType::Separate;
+        }
       } else {
+        std::cerr << count << ' '<< "Separate\n";
         return IneqType::Separate;
       }
     }
   }
 
-  if (found)
+  if (found) {
+    std::cerr << count << ' '<< "AdjIneq\n";
     return IneqType::AdjIneq;
-  else if (tableau(row, 1) == -1)
+  } else if (tableau(row, 1) == -1) {
+    std::cerr << count << ' '<< "AdjEq\n";
     return IneqType::AdjEq;
-  else
+  } else {
+    std::cerr << count << ' '<< "Separate\n";
     return IneqType::Separate;
+  }
 }
 
 /// Checks the type of the inequality. The inequality is represented as
@@ -366,6 +377,8 @@ typename Simplex<Int>::IneqType Simplex<Int>::ineqType(ArrayRef<Int> coeffs) {
   unsigned con_index = addRow(coeffs);
   unsigned row = con[con_index].pos;
   IneqType type = IneqType::Cut;
+  static unsigned count = 0;
+  count++;
   // rowIsAtLeastZero never moves the unknown passed to it, so we can continue
   // to use the same row position.
   if (tableau(row, 1) < 0 && !rowIsAtLeastZero(con[con_index]))
@@ -374,8 +387,12 @@ typename Simplex<Int>::IneqType Simplex<Int>::ineqType(ArrayRef<Int> coeffs) {
     Int min_sample_value = -tableau(row, 0) + 1;
     // The constraint may have been marked redundant in signOfMax above.
     if (con[con_index].redundant || (tableau(row, 1) >= min_sample_value &&
-                                     constraintIsRedundant(con_index)))
+                                     constraintIsRedundant(con_index))) {
+      std::cerr << count << ' '<< "Redundant\n";
       type = IneqType::Redundant;
+    } else {
+      std::cerr << count << ' '<< "Cut\n";
+    }
   }
 
   rollback(snap);
