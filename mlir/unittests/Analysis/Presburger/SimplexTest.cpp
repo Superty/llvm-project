@@ -413,7 +413,7 @@ TEST(SimplexTest, appendVariable) {
 TEST(SimplexTest, isRedundant) {
   Simplex simplex(2);
   simplex.addInequality({0, -1, 2}); // [0]: y <= 2.
-  simplex.addInequality({1, 0, 0}); // [1]: x >= 0.
+  simplex.addInequality({1, 0, 0});  // [1]: x >= 0.
   simplex.addEquality({-1, 1, 0});   // [2]: y = x.
 
   EXPECT_TRUE(simplex.isRedundant({-1, 0, 2})); // x <= 2.
@@ -422,6 +422,65 @@ TEST(SimplexTest, isRedundant) {
   EXPECT_FALSE(simplex.isRedundant({-1, 0, -1})); // x <= -1.
   EXPECT_FALSE(simplex.isRedundant({0, 1, -2}));  // y >= 2.
   EXPECT_FALSE(simplex.isRedundant({0, 1, -1}));  // y >= 1.
+}
+
+/// Construct a FlatAffineConstraints from a set of inequality and
+/// equality constraints.
+/// TODO: This is duplicated functionality
+/// (unittests/Analysis/PresburgerSetTest.cpp)
+static FlatAffineConstraints
+makeFACFromConstraints(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs,
+                       ArrayRef<SmallVector<int64_t, 4>> eqs) {
+  FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + 1, dims);
+  for (const SmallVector<int64_t, 4> &eq : eqs)
+    fac.addEquality(eq);
+  for (const SmallVector<int64_t, 4> &ineq : ineqs)
+    fac.addInequality(ineq);
+  return fac;
+}
+
+static FlatAffineConstraints
+makeFACFromIneqs(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
+  return makeFACFromConstraints(dims, ineqs, {});
+}
+
+TEST(SimplexTest, ContainedIn) {
+
+  FlatAffineConstraints univ = FlatAffineConstraints::getUniverse(1, 0);
+
+  FlatAffineConstraints empty = makeFACFromIneqs(1, {{1, 0},     // x >= 0.
+                                                     {-1, -1}}); // x <= -1.
+
+  FlatAffineConstraints s1 = makeFACFromIneqs(1, {{1, 0},    // x >= 0.
+                                                  {-1, 4}}); // x <= 4.
+
+  FlatAffineConstraints s2 = makeFACFromIneqs(1, {{1, -1},   // x >= 1.
+                                                  {-1, 3}}); // x <= 3.
+
+  Simplex simUniv(univ);
+  Simplex simEmpty(empty);
+  Simplex sim1(s1);
+  Simplex sim2(s2);
+
+  EXPECT_TRUE(simEmpty.containedIn(univ));
+  EXPECT_TRUE(simEmpty.containedIn(s1));
+  EXPECT_TRUE(simEmpty.containedIn(s2));
+  EXPECT_TRUE(simEmpty.containedIn(empty));
+
+  EXPECT_TRUE(simUniv.containedIn(univ));
+  EXPECT_FALSE(simUniv.containedIn(s1));
+  EXPECT_FALSE(simUniv.containedIn(s2));
+  EXPECT_FALSE(simUniv.containedIn(empty));
+
+  EXPECT_TRUE(sim1.containedIn(univ));
+  EXPECT_TRUE(sim1.containedIn(s1));
+  EXPECT_FALSE(sim1.containedIn(s2));
+  EXPECT_FALSE(sim1.containedIn(empty));
+
+  EXPECT_TRUE(sim2.containedIn(univ));
+  EXPECT_TRUE(sim2.containedIn(s1));
+  EXPECT_TRUE(sim2.containedIn(s2));
+  EXPECT_FALSE(sim2.containedIn(empty));
 }
 
 } // namespace mlir

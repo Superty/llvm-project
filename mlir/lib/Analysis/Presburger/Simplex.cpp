@@ -1241,18 +1241,19 @@ void Simplex::print(raw_ostream &os) const {
 void Simplex::dump() const { print(llvm::errs()); }
 
 bool Simplex::containedIn(const FlatAffineConstraints &fac) {
-  
+
+  if (isEmpty())
+    return true;
+
   for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
-    if(!isRedundant(fac.getInequality(i)))
+    if (!isRedundant(fac.getInequality(i)))
       return false;
-  
-  
-  for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i) 
-    if(!isRedundant(fac.getEquality(i)))
+
+  for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i)
+    if (!isRedundant(fac.getEquality(i)))
       return false;
 
   return true;
-
 }
 
 bool Simplex::isRedundant(ArrayRef<int64_t> coeffs) {

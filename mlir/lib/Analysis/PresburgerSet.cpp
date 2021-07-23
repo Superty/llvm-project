@@ -414,8 +414,6 @@ PresburgerSet PresburgerSet::coalesce() {
   return newSet;
 }
 
-
-
 void PresburgerSet::print(raw_ostream &os) const {
   os << getNumFACs() << " FlatAffineConstraints:\n";
   for (const FlatAffineConstraints &fac : flatAffineConstraints) {

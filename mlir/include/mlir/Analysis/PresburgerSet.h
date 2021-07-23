@@ -96,9 +96,9 @@ public:
 
   /// Simplifies the representation of a PresburgerSet.
   ///
-  /// Inparticular, removes all FACs which are subset of other FACs in the union.
+  /// Inparticular, removes all FACs which are subset of other FACs in the
+  /// union.
   PresburgerSet coalesce();
-
 
 private:
   /// Construct an empty PresburgerSet.

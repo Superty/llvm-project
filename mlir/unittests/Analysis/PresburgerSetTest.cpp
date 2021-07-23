@@ -640,7 +640,7 @@ TEST(SetTest, divisions) {
 
 void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
   PresburgerSet newSet = set.coalesce();
-  if(!set.isEqual(newSet) || !(expectedNumBasicSets == newSet.getNumFACs())) {
+  if (!set.isEqual(newSet) || !(expectedNumBasicSets == newSet.getNumFACs())) {
     set.dump();
     newSet.dump();
   }
@@ -684,12 +684,60 @@ TEST(SetTest, coalesceSecondEmpty) {
 TEST(SetTest, coalesceBothEmpty) {
   PresburgerSet set =
       makeSetFromFACs(1, {
-                             makeFACFromIneqs(1, {{1, -1},    // x >= 1.
-                                                  {-1, -2}}),  // x <= -2.
+                             makeFACFromIneqs(1, {{1, -3},    // x >= 3.
+                                                  {-1, -1}}), // x <= -1.
                              makeFACFromIneqs(1, {{1, 0},     // x >= 0.
                                                   {-1, -1}}), // x <= -1.
                          });
   expectCoalesce(0, set);
+}
+
+TEST(SetTest, coalesceFirstUniv) {
+  PresburgerSet set =
+      makeSetFromFACs(1, {
+                             makeFACFromIneqs(1, {}),
+                             makeFACFromIneqs(1, {{1, 0},    // x >= 0.
+                                                  {-1, 1}}), // x <= 1.
+                         });
+  expectCoalesce(1, set);
+}
+
+TEST(SetTest, coalesceSecondUniv) {
+  PresburgerSet set =
+      makeSetFromFACs(1, {
+                             makeFACFromIneqs(1, {{1, 0},    // x >= 0.
+                                                  {-1, 1}}), // x <= 1.
+                             makeFACFromIneqs(1, {}),
+                         });
+  expectCoalesce(1, set);
+}
+
+TEST(SetTest, coalesceBothUniv) {
+  PresburgerSet set = makeSetFromFACs(1, {
+                                             makeFACFromIneqs(1, {}),
+                                             makeFACFromIneqs(1, {}),
+                                         });
+  expectCoalesce(1, set);
+}
+
+TEST(SetTest, coalesceFirstUnivSecondEmpty) {
+  PresburgerSet set =
+      makeSetFromFACs(1, {
+                             makeFACFromIneqs(1, {}),
+                             makeFACFromIneqs(1, {{1, 0},     // x >= 0.
+                                                  {-1, -1}}), // x <= -1.
+                         });
+  expectCoalesce(1, set);
+}
+
+TEST(SetTest, coalesceFirstEmptySecondUniv) {
+  PresburgerSet set =
+      makeSetFromFACs(1, {
+                             makeFACFromIneqs(1, {}),
+                             makeFACFromIneqs(1, {{1, 0},     // x >= 0.
+                                                  {-1, -1}}), // x <= -1.
+                         });
+  expectCoalesce(1, set);
 }
 
 TEST(SetTest, coalesceCutOneDim) {
@@ -743,7 +791,6 @@ TEST(SetTest, coalesceCutTwoDim) {
                          });
   expectCoalesce(2, set);
 }
-
 
 TEST(SetTest, coalesceSeparateTwoDim) {
   PresburgerSet set =
