@@ -1321,6 +1321,8 @@ computeSingleVarRepr(const FlatAffineConstraints &cst,
 
 /// Find pairs of indices of inequalities, using which an explicit
 /// representation for each local variable can be computed.
+/// Pairs are returned as indices of upperbound, lowerbound equalities.
+/// If no such pair is found, pair is marked as None.
 std::vector<llvm::Optional<std::pair<unsigned, unsigned>>>
 FlatAffineConstraints::computeLocalRepr() const {
 

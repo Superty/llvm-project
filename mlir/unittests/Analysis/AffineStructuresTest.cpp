@@ -587,27 +587,73 @@ TEST(FlatAffineConstraintsTest, clearConstraints) {
   EXPECT_EQ(fac.atIneq(0, 1), 0);
 }
 
+void checkDivisionRepresentation(FlatAffineConstraints &fac, bool all = true) {
+  // Check if representation can be computed for all local variables
+  auto res = fac.computeLocalRepr();
+
+  // If all is set, check if all divisions are computed
+  if (all) {
+    for (auto &r : res)
+      EXPECT_NE(r, llvm::None);
+  }
+
+  unsigned divOffset = fac.getNumDimAndSymbolIds();
+  for (unsigned i = 0, e = fac.getNumLocalIds(); i < e; ++i) {
+    if (!res[i])
+      continue;
+
+    // Check if bounds are of the form: 
+    // divisor * id >=  expr - (divisor - 1)    <-- Lower bound for 'id'
+    // divisor * id <=  expr                    <-- Upper bound for 'id'
+    unsigned ubPos = res[i]->first, lbPos = res[i]->second;
+    int64_t constantSum = fac.atIneq(lbPos, fac.getNumCols() - 1) +
+                          fac.atIneq(ubPos, fac.getNumCols() - 1);
+
+    // Check if (sum of constants > 0). Indirectly checking (divisor > 1).
+    EXPECT_TRUE(constantSum > 0);
+
+    // Check if coeff of variable is equal to divisor
+    EXPECT_EQ(constantSum + 1, fac.atIneq(lbPos, i + divOffset));
+
+    // Check if constraints are opposite of each other.
+    for (unsigned c = 0, f = fac.getNumIds(); c < f; ++c)
+      EXPECT_EQ(fac.atIneq(ubPos, c), -fac.atIneq(lbPos, c));
+  }
+}
+
 TEST(FlatAffineConstraintsTest, computeLocalReprSimple) {
   FlatAffineConstraints fac = makeFACFromConstraints(1, {}, {});
 
   fac.addLocalFloorDiv({1, 4}, 10);
   fac.addLocalFloorDiv({1, 10, 100}, 10);
-
-  // Check if representation can be computed for all local variables
-  auto res = fac.computeLocalRepr();
-  for (auto &r : res)
-    EXPECT_NE(r, llvm::None);
 }
 
-TEST(FlatAffineConstraints, computeLocalReprConstantFloorDiv) {
+TEST(FlatAffineConstraintsTest, computeLocalReprConstantFloorDiv) {
   FlatAffineConstraints fac = makeFACFromConstraints(4, {}, {});
 
+  fac.addInequality({1, 0, 3, 1, 2});
+  fac.addInequality({1, 2, -8, 1, 10});
+  fac.addEquality({1, 2, -4, 1, 10});
   fac.addLocalFloorDiv({0, 0, 0, 0, 10}, 30);
 
-  // Check if representation can be computed for all local variables
-  auto res = fac.computeLocalRepr();
-  for (auto &r : res)
-    EXPECT_NE(r, llvm::None);
+  checkDivisionRepresentation(fac);
+}
+
+TEST(FlatAffineConstraintsTest, computeLocalReprRecursive) {
+  FlatAffineConstraints fac = makeFACFromConstraints(4, {}, {});
+  fac.addInequality({1, 0, 3, 1, 2});
+  fac.addInequality({1, 2, -8, 1, 10});
+  fac.addInequality({1, 2, -8, 1, 10});
+  fac.addEquality({1, 2, -4, 1, 10});
+
+  fac.addLocalFloorDiv({0, -2, 7, 2, 10}, 3);
+  fac.addLocalFloorDiv({3, 0, 9, 2, 2, 10}, 5);
+  fac.addLocalFloorDiv({0, 1, -123, 2, 0, -4, 10}, 3);
+
+  fac.addInequality({1, 2, -2, 1, -5, 0, 6, 100});
+  fac.addInequality({1, 2, -8, 1, 3, 7, 0, -9});
+
+  checkDivisionRepresentation(fac);
 }
 
 } // namespace mlir
