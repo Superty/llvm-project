@@ -462,6 +462,11 @@ TEST(SimplexTest, ContainedIn) {
   Simplex sim1(s1);
   Simplex sim2(s2);
 
+  EXPECT_TRUE(simUniv.containedIn(univ));
+  EXPECT_TRUE(simEmpty.containedIn(empty));
+  EXPECT_TRUE(sim1.containedIn(s1));
+  EXPECT_TRUE(sim2.containedIn(s2));
+
   EXPECT_TRUE(simEmpty.containedIn(univ));
   EXPECT_TRUE(simEmpty.containedIn(s1));
   EXPECT_TRUE(simEmpty.containedIn(s2));
