@@ -75,8 +75,12 @@ private:
 ///                  | `(` pb-constraint (`and` pb-constraint)* `)`
 ///  pb-constraint ::= pb-sum (`>=` | `=` | `<=`) pb-sum
 ///  pb-sum        ::= pb-term ((`+` | `-`) pb-term)*
-///  pb-term       ::= `-`? integer-literal? bare-id
-///                  | `-`? integer-literal
+///  pb-term       ::= integer-literal? bare-id
+///                  | `-` bare-id
+///                  | integer-literal? pb-floor-div
+///                  | `-` pb-floor-div
+///                  | integer-literal
+///  pb-floor      ::= floor(pb-sum `/` integer-literal)
 ///
 ParseResult PresburgerParser::parsePresburgerSet(PresburgerSet &set) {
   if (parseDimAndOptionalSymbolIdList())
@@ -197,6 +201,9 @@ PresburgerParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
 }
 
 namespace {
+/// Addapts the existing coefficient array for newly added local Ids
+/// This is done by making space for them and moving the value of the constant
+/// to its new position
 void makeSpaceForDivIds(SmallVector<int64_t, 8> &coeffs, size_t newIds) {
   int64_t prevConst = coeffs[coeffs.size() - 1];
   coeffs[coeffs.size() - 1] = 0;
@@ -238,12 +245,6 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
       break;
     }
     return emitError("strict inequalities are not supported");
-  case Token::bang:
-    consumeToken(Token::bang);
-    if (consumeIf(Token::equal)) {
-      return emitError("!= constraints are not supported");
-    }
-    [[clang::fallthrough]];
   default:
     return emitError("expected comparison operator");
   }
@@ -252,7 +253,7 @@ ParseResult PresburgerParser::parseConstraint(FlatAffineConstraints &fac) {
   if (parseSum(fac, right))
     return failure();
 
-  // check if the right side introduced new divisions
+  // check if the right side introduced new local ids
   if (left.size() < right.size())
     makeSpaceForDivIds(left, right.size() - left.size());
 
@@ -322,7 +323,7 @@ ParseResult PresburgerParser::parseTerm(FlatAffineConstraints &fac,
 
   int64_t coeff = 1;
   // TODO how to handle other precisions?
-  APInt parsedInt(1, 64);
+  APInt parsedInt;
   bool intFound = parseOptionalInteger(parsedInt).hasValue();
 
   // TODO check what happens if input has too high precision
@@ -366,29 +367,33 @@ ParseResult PresburgerParser::parseTerm(FlatAffineConstraints &fac,
   return emitError("encountered unknown variable name: " + identifier);
 }
 
-/// Parse a floor division
+/// Parse a floor division. The division is added to the provided FAC and the
+/// col id of the newly added local id is returned.
 ///
 ///  pb-floor ::= floor(pb-sum `/` integer-literal)
 ///
 ParseResult PresburgerParser::parseDivision(FlatAffineConstraints &fac,
                                             int64_t &localId) {
   consumeToken(Token::kw_floor);
-  if (!consumeIf(Token::l_paren))
-    return emitError("expected `(`");
+  if (parseToken(Token::l_paren, "expected `(`"))
+    return failure();
 
   SmallVector<int64_t, 8> coeffs(fac.getNumIds() + 1, 0);
   if (parseSum(fac, coeffs))
     return failure();
 
-  if (!consumeIf(Token::slash))
-    return emitError("expected `/`");
+  if (parseToken(Token::slash, "expected `/`"))
+    return failure();
 
   APInt divisor;
   if (!parseOptionalInteger(divisor).hasValue())
     return failure();
 
-  if (!consumeIf(Token::r_paren))
-    return emitError("expected `)`");
+  if (divisor.isNegative())
+    return emitError("expected divisor to be non-negative");
+
+  if (parseToken(Token::r_paren, "expected `)`"))
+    return failure();
 
   fac.addLocalFloorDiv(coeffs, divisor.getZExtValue());
   localId = fac.getNumIds() - 1;
@@ -413,7 +418,6 @@ FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
   sourceMgr.AddNewSourceBuffer(MemoryBuffer::getMemBuffer(str), SMLoc());
 
   SymbolState symbols;
-  // TODO should we provide an existing AsmParserState?
   AsmParserState asmParserState;
   ParserState state(sourceMgr, ctx, symbols, &asmParserState);
   PresburgerParser parser(state);

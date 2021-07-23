@@ -54,7 +54,6 @@ TOK_LITERAL(inttype)      // i4, si8, ui16
 // Punctuation.
 TOK_PUNCTUATION(arrow, "->")
 TOK_PUNCTUATION(at, "@")
-TOK_PUNCTUATION(bang, "!")
 TOK_PUNCTUATION(colon, ":")
 TOK_PUNCTUATION(comma, ",")
 TOK_PUNCTUATION(ellipsis, "...")
