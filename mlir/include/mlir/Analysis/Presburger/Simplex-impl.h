@@ -1569,8 +1569,8 @@ template <typename Int>
 Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
   if (empty)
     return {};
-  if (auto maybeSample = getSamplePointIfIntegral())
-    return *maybeSample;
+  // if (auto maybeSample = getSamplePointIfIntegral())
+  //   return *maybeSample;
 
   unsigned nDims = var.size();
   Matrix<Int> basis = Matrix<Int>::identity(nDims);
@@ -1591,8 +1591,8 @@ Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
     if (level == basis.getNumRows()) {
       // We've assigned values to all variables. Return if we have a sample,
       // or go back up to the previous level otherwise.
-      if (auto maybeSample = getSamplePointIfIntegral())
-        return maybeSample;
+  //     if (auto maybeSample = getSamplePointIfIntegral())
+  //       return maybeSample;
       level--;
       continue;
     }
@@ -1614,8 +1614,8 @@ Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
         llvm_unreachable("Tableau should not be unbounded");
       }
 
-      if (auto maybeSample = getSamplePointIfIntegral())
-        return *maybeSample;
+  //     if (auto maybeSample = getSamplePointIfIntegral())
+  //       return *maybeSample;
 
       if (Optional<Fraction<Int>> maybeMax =
               computeOptimum(Direction::Up, basisCoeffs))
@@ -1626,53 +1626,53 @@ Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
 
       // Heuristic: if the sample point is integral at this point, just return
       // it.
-      if (auto maybeSample = getSamplePointIfIntegral())
-        return *maybeSample;
+  //     if (auto maybeSample = getSamplePointIfIntegral())
+  //       return *maybeSample;
 
       if (minRoundedUp < maxRoundedDown) {
-        {
-          auto snap = getSnapshot();
-          auto min = minRoundedUp, max = maxRoundedDown;
-          for (unsigned i = level; i < basis.getNumRows(); ++i) {
-            SmallVector<Int, 8> basisCoeffs(basis.getRow(i).begin(),
-                                                    basis.getRow(i).end());
-            basisCoeffs.push_back(0);
-            if (i != level) {
-              if (Optional<Fraction<Int>> maybeMin =
-                      computeOptimum(Direction::Down, basisCoeffs))
-                min = ceil(*maybeMin);
-              else {
-                llvm_unreachable("Tableau should not be unbounded");
-              }
+  //       {
+  //         auto snap = getSnapshot();
+  //         auto min = minRoundedUp, max = maxRoundedDown;
+  //         for (unsigned i = level; i < basis.getNumRows(); ++i) {
+  //           SmallVector<Int, 8> basisCoeffs(basis.getRow(i).begin(),
+  //                                                   basis.getRow(i).end());
+  //           basisCoeffs.push_back(0);
+  //           if (i != level) {
+  //             if (Optional<Fraction<Int>> maybeMin =
+  //                     computeOptimum(Direction::Down, basisCoeffs))
+  //               min = ceil(*maybeMin);
+  //             else {
+  //               llvm_unreachable("Tableau should not be unbounded");
+  //             }
 
-              if (auto maybeSample = getSamplePointIfIntegral())
-                return *maybeSample;
+  // //             if (auto maybeSample = getSamplePointIfIntegral())
+  // //               return *maybeSample;
 
-              if (Optional<Fraction<Int>> maybeMax =
-                      computeOptimum(Direction::Up, basisCoeffs))
-                max = floor(*maybeMax);
-              else {
-                llvm_unreachable("Tableau should not be unbounded");
-              }
+  //             if (Optional<Fraction<Int>> maybeMax =
+  //                     computeOptimum(Direction::Up, basisCoeffs))
+  //               max = floor(*maybeMax);
+  //             else {
+  //               llvm_unreachable("Tableau should not be unbounded");
+  //             }
 
-              if (min > max)
-                break;
+  //             if (min > max)
+  //               break;
 
-              if (auto maybeSample = getSamplePointIfIntegral())
-                return *maybeSample;
-            }
+  // //             if (auto maybeSample = getSamplePointIfIntegral())
+  // //               return *maybeSample;
+  //           }
 
-            Int mid = (min + max) / 2;
-            basisCoeffs.back() = -mid;
-            addEquality(basisCoeffs);
-            if (empty)
-              break;
-            if (auto maybeSample = getSamplePointIfIntegral())
-              return *maybeSample;
-          }
+  //           Int mid = (min + max) / 2;
+  //           basisCoeffs.back() = -mid;
+  //           addEquality(basisCoeffs);
+  //           if (empty)
+  //             break;
+  // //           if (auto maybeSample = getSamplePointIfIntegral())
+  // //             return *maybeSample;
+  //         }
 
-          rollback(snap);
-        }
+  //         rollback(snap);
+  //       }
         reduceBasis(basis, level);
         basisCoeffs = llvm::to_vector<8>(basis.getRow(level));
         basisCoeffs.push_back(0);
@@ -1683,8 +1683,8 @@ Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
           llvm_unreachable("Tableau should not be unbounded");
         }
 
-        if (auto maybeSample = getSamplePointIfIntegral())
-          return *maybeSample;
+  //       if (auto maybeSample = getSamplePointIfIntegral())
+  //         return *maybeSample;
 
         if (Optional<Fraction<Int>> maybeMax =
                 computeOptimum(Direction::Up, basisCoeffs))
@@ -1693,8 +1693,8 @@ Optional<SmallVector<Int, 8>> Simplex<Int>::findIntegerSample() {
           llvm_unreachable("Tableau should not be unbounded");
         }
 
-        if (auto maybeSample = getSamplePointIfIntegral())
-          return *maybeSample;
+  //       if (auto maybeSample = getSamplePointIfIntegral())
+  //         return *maybeSample;
       }
 
       snapshotStack.push_back(getSnapshot());
