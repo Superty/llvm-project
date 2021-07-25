@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  const unsigned numRuns = 5;
+  const unsigned numRuns = 1;
   std::string op = argv[1];
 
   std::ofstream fruntime("data/runtime_fpl_" + op + ".txt");
