@@ -1272,6 +1272,8 @@ public:
 
   /// Compute max(dotProduct(dir, x - y)) and save the dual variables for only
   /// the direction equalities to `dual`.
+  /// Compute max(dotProduct(dir, x - y)) and save the dual variables for only
+  /// the direction equalities to `dual`.
   Fraction<Int> computeWidthAndDuals(ArrayRef<Int> dir,
                                 SmallVectorImpl<Int> &dual,
                                 Int &dualDenom) {
@@ -1283,26 +1285,55 @@ public:
     assert(maybeWidth.hasValue() && "Width should not be unbounded!");
     dualDenom = simplex.tableau(row, 0);
     dual.clear();
-
-    // Get the numerator of the dual variable for the specified inequality.
-    // If the inequality is in row position, the dual variable is zero.
-    // If it is in column position, the numerator is the value at the row being
-    // maximized.
-    auto getDualForInequality = [this, &row](unsigned i) -> Int {
-      if (simplex.con[i].orientation == Orientation::Row)
-        return 0;
-      return -simplex.tableau(row, simplex.con[i].pos);
-    };
-
-    // The increment is i += 2 because equalities are added as two
-    // inequalities, one positive and one negative. Each iteration processes
-    // one equality.
-    for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2)
-      dual.push_back(getDualForInequality(i) - getDualForInequality(i + 1));
+    // The increment is i += 2 because equalities are added as two inequalities,
+    // one positive and one negative. Each iteration processes one equality.
+    for (unsigned i = simplexConstraintOffset; i < conIndex; i += 2) {
+      // The dual variable is the negative of the coefficient of the new row
+      // in the column of the constraint, if the constraint is in a column.
+      // Note that the second inequality for the equality is negated.
+      //
+      // We want the dual for the original equality. If the positive inequality
+      // is in column position, the negative of its row coefficient is the
+      // desired dual. If the negative inequality is in column position, its row
+      // coefficient is the desired dual. (its coefficients are already the
+      // negated coefficients of the original equality, so we don't need to
+      // negate it now.)
+      //
+      // If neither are in column position, we move the negated inequality to
+      // column position. Since the inequality must have sample value zero
+      // (since it corresponds to an equality), we are free to pivot with
+      // any column. Since both the unknowns have sample value before and after
+      // pivoting, no other sample values will change and the tableau will
+      // remain consistent. To pivot, we just need to find a column that has a
+      // non-zero coefficient in this row. There must be one since otherwise the
+      // equality would be 0 == 0, which should never be passed to
+      // addEqualityForDirection.
+      //
+      // After finding a column, we pivot with the column, after which we can
+      // get the dual from the inequality in column position as explained above.
+      if (simplex.con[i].orientation == Orientation::Column) {
+        dual.push_back(-simplex.tableau(row, simplex.con[i].pos));
+      } else {
+        if (simplex.con[i + 1].orientation == Orientation::Row) {
+          unsigned ineqRow = simplex.con[i + 1].pos;
+          // Since it is an equality, the sample value must be zero.
+          assert(simplex.tableau(ineqRow, 1) == 0 &&
+                 "Equality's sample value must be zero.");
+          for (unsigned col = 2; col < simplex.nCol; ++col) {
+            if (simplex.tableau(ineqRow, col) != 0) {
+              simplex.pivot(ineqRow, col);
+              break;
+            }
+          }
+          assert(simplex.con[i + 1].orientation == Orientation::Column &&
+                 "No pivot found. Equality has all-zeros row in tableau!");
+        }
+        dual.push_back(simplex.tableau(row, simplex.con[i + 1].pos));
+      }
+    }
     simplex.rollback(snap);
     return *maybeWidth;
   }
-
   /// Remove the last equality that was added through addEqualityForDirection.
   ///
   /// We do this by rolling back to the snapshot at the top of the stack,
