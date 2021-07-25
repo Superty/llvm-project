@@ -1398,6 +1398,13 @@ private:
 /// When incrementing i, no cached f values get invalidated. However, the
 /// cached duals do get invalidated as the duals for the higher levels are
 /// different.
+
+
+void throwAssert(bool cond, const char msg[]) {
+  throw std::runtime_error(msg);
+}
+
+
 template <typename Int>
 void Simplex<Int>::reduceBasis(Matrix<Int> &basis, unsigned level) {
   const Fraction<Int> epsilon(3, 4);
@@ -1457,14 +1464,22 @@ void Simplex<Int>::reduceBasis(Matrix<Int> &basis, unsigned level) {
       // width_i(b{i+1} + u*b_i) should be minimized at our value of u.
       // Check that this holds by comparing with width_i
 #ifndef NDEBUG
-      basis.addToRow(i, i + 1, j == 0 ? -1 : +1);
       Int unusedDualDenom;
       SmallVector<Int, 8> unusedDuals;
+
+      basis.addToRow(i, i + 1, +1);
       Fraction<Int> otherWidth = gbrSimplex.computeWidthAndDuals(
           basis.getRow(i + 1), unusedDuals, unusedDualDenom);
-      assert(otherWidth >= widthI[j] &&
+      throwAssert(otherWidth >= widthI[j],
              "Computed u value does not correspond to minimum width!");
-      basis.addToRow(i, i + 1, j == 0 ? +1 : -1);
+      basis.addToRow(i, i + 1, -1);
+
+      basis.addToRow(i, i + 1, -1);
+      otherWidth = gbrSimplex.computeWidthAndDuals(
+          basis.getRow(i + 1), unusedDuals, unusedDualDenom);
+      throwAssert(otherWidth >= widthI[j],
+             "Computed u value does not correspond to minimum width!");
+      basis.addToRow(i, i + 1, +1);
 #endif
       return widthI[j];
     }
@@ -1476,7 +1491,9 @@ void Simplex<Int>::reduceBasis(Matrix<Int> &basis, unsigned level) {
     SmallVector<Int, 8> unusedDuals;
     Fraction<Int> otherWidth = gbrSimplex.computeWidthAndDuals(
         basis.getRow(i + 1), unusedDuals, unusedDualDenom);
-    assert(otherWidth == width[i + 1 - level]);
+    throwAssert(otherWidth == width[i + 1 - level],
+        "Computed dual does not satisfy "
+        "f_i(b_{i+1} + dual*b_i) == width_{i+1}(b_{i+1})");
 #endif
     return width[i + 1 - level];
   };
