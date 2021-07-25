@@ -131,7 +131,13 @@ int main(int argc, char **argv) {
         auto a = setA;
         unsigned int dummy;
         unsigned long long start = __rdtscp(&dummy);
-        volatile auto res = a.isIntegerEmpty();
+        volatile bool res;
+        try {
+          res = a.isIntegerEmpty();
+        } catch (const std::runtime_error &e) {
+          std::cerr << "Assertion " << e.what() << " violated at " << j << '\n';
+          break;
+        }
         res = res;
         unsigned long long end = __rdtscp(&dummy);
         times[i] = end - start;
