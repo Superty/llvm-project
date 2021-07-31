@@ -356,7 +356,7 @@ bool coalescePair(unsigned i, unsigned j,
     addCoalescedBasicSet(basicSetVector, i, j, basicSetVector[j]);
     return true;
   } else if (!info1.redundant.empty() && !info1.cut.empty() && !info1.adjIneq &&
-             !info2.t) {
+             !info2.t && !info2.adjIneq) {
     // cut or protrusion case 1
     if (cutCase(basicSetVector, i, j, info1, info2)) {
       return true;
@@ -366,7 +366,7 @@ bool coalescePair(unsigned i, unsigned j,
       return true;
     }
   } else if (!info2.redundant.empty() && !info2.cut.empty() && !info2.adjIneq &&
-             !info1.t) {
+             !info1.t && !info1.adjIneq) {
     // cut or protrusion case 2
     if (cutCase(basicSetVector, j, i, info2, info1)) {
       return true;
