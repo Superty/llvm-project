@@ -24,11 +24,10 @@ inline __mmask32 equalMask(Vector x, Vector y) {
 }
 
 inline Vector add(Vector x, Vector y) {
-  Vector z = _mm512_adds_epi16(x, y);
-  bool overflow = equalMask(z, std::numeric_limits<int16_t>::min()) ||
-                  equalMask(z, std::numeric_limits<int16_t>::max());
-  SafeInteger<int16_t>::throwOverflowIf(overflow);
-  return z;
+  Vector result_adds = _mm512_adds_epi16(x, y);
+  Vector result = x + y;
+  SafeInteger<int16_t>::throwOverflowIf(~equalMask(result, result_adds));
+  return result;
 }
 
 inline __mmask32 negs(Vector x) {
