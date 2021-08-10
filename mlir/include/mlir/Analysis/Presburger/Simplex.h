@@ -133,7 +133,12 @@ class PresburgerBasicSet;
 template <typename Int>
 class Simplex {
 public:
+  using UnderlyingInt = typename std::conditional<
+    isInt<Int, int16_t>, int16_t,
+    typename std::conditional<isInt<Int, int32_t>, int32_t, void>::type>::type;
   static constexpr bool isVectorized = Matrix<Int>::isVectorized;
+  static constexpr bool isChecked = Matrix<Int>::isChecked;
+  using Vector = typename Matrix<Int>::Vector;
 
   enum class Direction { Up, Down };
 

@@ -34,9 +34,12 @@ namespace presburger {
 static inline void assert_aligned(const void *pointer, size_t byte_count)
 { assert((uintptr_t)pointer % byte_count == 0); }
 
-const unsigned MatrixVectorColumns = 32;
+typedef int16_t Vector16x16 __attribute__((ext_vector_type(16)));
+typedef int16_t Vector16x32 __attribute__((ext_vector_type(32)));
+typedef int32_t Vector32x16 __attribute__((ext_vector_type(16)));
 
-typedef int16_t Vector __attribute__((ext_vector_type(MatrixVectorColumns)));
+template <typename T, typename Int>
+inline constexpr bool isInt = std::is_same_v<T, SafeInteger<Int>> || std::is_same_v<Int, T>;
 
 /// This is a simple class to represent a resizable matrix.
 ///
@@ -45,10 +48,20 @@ template <typename Int>
 class Matrix {
 public:
 #ifdef ENABLE_VECTORIZATION
-  static constexpr bool isVectorized = std::is_same<Int, SafeInteger<int16_t>>::value || std::is_same<Int, int16_t>::value;
+  static constexpr bool isVectorized = isInt<Int, int16_t> || isInt<Int, int32_t>;
 #else
   static constexpr bool isVectorized = false;
 #endif
+
+  using Vector = typename std::conditional<isInt<Int, int16_t>,
+    Vector16x32,
+    Vector32x16>::type;
+  static constexpr unsigned MatrixVectorColumns = isInt<Int, int16_t> ? 32 : 16;
+  static constexpr bool isChecked = std::is_same_v<Int, SafeInteger<int16_t>> ||
+                                    std::is_same_v<Int, SafeInteger<int32_t>> ||
+                                    std::is_same_v<Int, SafeInteger<int64_t>> ||
+                                    std::is_same_v<Int, SafeInteger<__int128_t>>;
+
   Matrix() = delete;
 
   /// Construct a matrix with the specified number of rows and columns.

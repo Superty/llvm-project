@@ -36,11 +36,19 @@ SmallVector<T, S> convert(const SmallVector<U, S> &v) {
   return res;
 }
 
+// template <typename Vector>
+// struct SafeVector {
+//   SafeVector(const Vector &x) : vec(x) {};
+//   SafeVector(Vector &&x) : vec(x) {};
+//   Vector vec;
+// };
+
 using DefaultInt = mpz_class;
 
 /// A class to overflow-aware 64-bit integers.
 template <typename Int>
 struct SafeInteger {
+  using UnderlyingInt = Int;
   /// Construct a SafeInteger<Int> from an Int.
   /// Note that if this was the constructor for Int = int16_t, then SafeInteger<int16_t>(123) causes problems as 123 is an int and convering it to int16_t narrows it.
   /// Therefore we only use this when Int i snot int16_t (a hack; it should also be disabled for int8_t but we never use that anyway). For int16_t we provide a different constructor

@@ -26,7 +26,7 @@ Matrix<Int>::Matrix(unsigned rows, unsigned columns)
     : nRows(rows), nColumns(columns), nReservedColumns(isVectorized ? MatrixVectorColumns : nextPowOfTwo(nColumns)), data(nRows * nReservedColumns) {
 
   if constexpr (isVectorized) {
-    if constexpr (std::is_same<Int, SafeInteger<int16_t>>::value)
+    if constexpr (isChecked)
       Int::throwOverflowIf(columns > MatrixVectorColumns);
     else if (columns > MatrixVectorColumns)
       std::abort();

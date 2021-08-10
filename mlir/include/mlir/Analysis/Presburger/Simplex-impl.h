@@ -19,43 +19,104 @@ using namespace mlir;
 using namespace analysis::presburger;
 
 #ifdef ENABLE_VECTORIZATION
-inline __mmask32 equalMask(Vector x, Vector y) {
+inline __mmask32 equalMask(Vector32x16 x, Vector32x16 y) {
   return _mm512_cmp_epi16_mask(x, y, _MM_CMPINT_EQ);
 }
 
-inline Vector add(Vector x, Vector y) {
-  Vector result_adds = _mm512_adds_epi16(x, y);
-  Vector result = x + y;
-  SafeInteger<int16_t>::throwOverflowIf(~equalMask(result, result_adds));
-  return result;
+inline __mmask32 negs(Vector32x16 x) {
+  return _mm512_cmp_epi16_mask(x, Vector32x16(0), _MM_CMPINT_LT);
 }
 
-inline __mmask32 negs(Vector x) {
-  return _mm512_cmp_epi16_mask(x, Vector(0), _MM_CMPINT_LT);
+template <bool isChecked>
+inline Vector32x16 negate(Vector32x16 x) {
+  if constexpr (isChecked) {
+    bool overflow = equalMask(x, std::numeric_limits<int16_t>::min());
+    SafeInteger<int16_t>::throwOverflowIf(overflow);
+  }
+  return -x;
+}
+
+template <bool isChecked>
+inline Vector32x16 add(Vector32x16 x, Vector32x16 y) {
+  Vector32x16 res = x + y;
+  if constexpr (isChecked) {
+    Vector32x16 z = _mm512_adds_epi16(x, y);
+    bool overflow = ~equalMask(z, res);
+    SafeInteger<int16_t>::throwOverflowIf(overflow);
+  }
+  return res;
 }
 
 // If the 16th bit in the lower bits of the product is F then the result is
 // negative and the high bits must all be F if no overflow occurred. Similarly,
 // if the 16th in the low bits has value 0 then the result is non-negative and 
 // the high bits must all be 0 if no overflow occurred.
-inline Vector mul(Vector x, Vector y) {
-  Vector lo = _mm512_mullo_epi16(x, y);
-  Vector hi = _mm512_mulhi_epi16(x, y);
-  SafeInteger<int16_t>::throwOverflowIf(~equalMask(lo >> 15, hi));
+template <bool isChecked>
+inline Vector32x16 mul(Vector32x16 x, Vector32x16 y) {
+  Vector32x16 lo = _mm512_mullo_epi16(x, y);
+  if constexpr (isChecked) {
+    Vector32x16 hi = _mm512_mulhi_epi16(x, y);
+    SafeInteger<int16_t>::throwOverflowIf(~equalMask(lo >> 15, hi));
+  }
   return lo;
 }
 
-inline Vector negate(Vector x) {
-  bool overflow = equalMask(x, std::numeric_limits<int16_t>::min());
-  SafeInteger<int16_t>::throwOverflowIf(overflow);
+
+
+
+inline __mmask32 equalMask(Vector16x32 x, Vector16x32 y) {
+  return _mm512_cmp_epi16_mask(x, y, _MM_CMPINT_EQ);
+}
+
+inline __mmask32 negs(Vector16x32 x) {
+  return _mm512_cmp_epi16_mask(x, Vector16x32(0), _MM_CMPINT_LT);
+}
+
+template <bool isChecked>
+inline Vector16x32 negate(Vector16x32 x) {
+  if constexpr (isChecked) {
+    bool overflow = equalMask(x, std::numeric_limits<int16_t>::min());
+    SafeInteger<int16_t>::throwOverflowIf(overflow);
+  }
   return -x;
 }
+
+template <bool isChecked>
+inline Vector16x32 add(Vector16x32 x, Vector16x32 y) {
+  Vector16x32 res = x + y;
+  if constexpr (isChecked) {
+    Vector16x32 z = _mm512_adds_epi16(x, y);
+    bool overflow = ~equalMask(z, res);
+    SafeInteger<int16_t>::throwOverflowIf(overflow);
+  }
+  return res;
+}
+
+// If the 16th bit in the lower bits of the product is F then the result is
+// negative and the high bits must all be F if no overflow occurred. Similarly,
+// if the 16th in the low bits has value 0 then the result is non-negative and 
+// the high bits must all be 0 if no overflow occurred.
+template <bool isChecked>
+inline Vector16x32 mul(Vector16x32 x, Vector16x32 y) {
+  Vector16x32 lo = _mm512_mullo_epi16(x, y);
+  if constexpr (isChecked) {
+    Vector16x32 hi = _mm512_mulhi_epi16(x, y);
+    SafeInteger<int16_t>::throwOverflowIf(~equalMask(lo >> 15, hi));
+  }
+  return lo;
+}
 #else
+template <typename Vector>
 inline __mmask32 equalMask(Vector x, Vector y);
-inline Vector add(Vector x, Vector y);
+template <typename Vector>
 inline __mmask32 negs(Vector x);
-inline Vector mul(Vector x, Vector y);
+
+template <bool isChecked, typename Vector>
 inline Vector negate(Vector x);
+template <bool isChecked, typename Vector>
+inline Vector add(Vector x, Vector y);
+template <bool isChecked, typename Vector>
+inline Vector mul(Vector x, Vector y);
 #endif
 
 
@@ -190,13 +251,11 @@ unsigned Simplex<Int>::addRow(ArrayRef<Int> coeffs) {
       Int lcm = std::lcm(tableau(nRow - 1, 0), tableau(pos, 0));
       Int nRowCoeff = lcm / tableau(nRow - 1, 0);
       Int idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
-      vec = add(mul(vec, int16_t(nRowCoeff)), mul(int16_t(idxRowCoeff), varRowVec));
+      vec = add<isChecked>(mul<isChecked>(vec, nRowCoeff.val), mul<isChecked>(idxRowCoeff.val, varRowVec));
       tableau(nRow - 1, 0) = lcm;
     }
-
     normalizeRow(nRow - 1, vec);
   } else {
-
     tableau(nRow - 1, 1) = coeffs.back();
     // Process each given variable coefficient.
     for (unsigned i = 0, e = var.size(); i < e; ++i) {
@@ -510,7 +569,7 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
 
       // If the denominator is negative, we canonicalize the row.
     if (tableau(pivotRow, 0) < 0)
-      pivotRowVec = negate(pivotRowVec);
+      pivotRowVec = negate<isChecked>(pivotRowVec);
 
     normalizeRow(pivotRow, pivotRowVec);
 
@@ -529,35 +588,35 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
 
     // In the pivotColumn, we overwrite the value from vac, which we implement
     // by multiplying with a zeroValue in the a vector.
-    int16_t a = int16_t(tableau(pivotRow, 0));
+    UnderlyingInt a = UnderlyingInt(tableau(pivotRow, 0));
     Vector aVector = a;
     aVector[pivotCol] = 0;
 
     for (unsigned row = 0; row < pivotRow; ++row) {
-      int16_t c = int16_t(tableau(row, pivotCol));
+      UnderlyingInt c = UnderlyingInt(tableau(row, pivotCol));
 
       if (c == 0) // Nothing to do.
         continue;
 
       Vector &vec = tableau.getRowVector(row);
       // c/q, d/q
-      vec = mul(vec, aVector);
+      vec = mul<isChecked>(vec, aVector);
       // ca/aq, da/aq
-      vec = add(vec, mul(c, pivotRowVecTerm));
+      vec = add<isChecked>(vec, mul<isChecked>(c, pivotRowVecTerm));
       normalizeRow(row, vec);
     }
 
     for (unsigned row = pivotRow+1; row < nRow; ++row) {
-      int16_t c = int16_t(tableau(row, pivotCol));
+      UnderlyingInt c = UnderlyingInt(tableau(row, pivotCol));
 
       if (c == 0) // Nothing to do.
         continue;
 
       Vector &vec = tableau.getRowVector(row);
       // c/q, d/q
-      vec = mul(vec, aVector);
+      vec = mul<isChecked>(vec, aVector);
       // ca/aq, da/aq
-      vec = add(vec, mul(c, pivotRowVecTerm));
+      vec = add<isChecked>(vec, mul<isChecked>(c, pivotRowVecTerm));
       normalizeRow(row, vec);
     }
   } else {
