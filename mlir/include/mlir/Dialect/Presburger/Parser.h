@@ -445,11 +445,11 @@ public:
   LogicalResult parsePresburgerExpr(PresburgerExpr &expr);
 
   /// Parse a Presburger set into set
-  LogicalResult parsePresburgerSet(PresburgerSet<SafeInt<Int>> &set);
+  LogicalResult parsePresburgerSet(PresburgerSet<Int> &set);
 
 private:
   // parsing helpers
-  LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet<SafeInt<Int>> &set);
+  LogicalResult parsePresburgerSet(Expr *constraints, PresburgerSet<Int> &set);
   LogicalResult parseAndAddPiece(PieceExpr *piece, PresburgerExpr &expr);
   LogicalResult parsePresburgerBasicSet(Expr *constraints,
                                         PresburgerBasicSet<Int> &bs);

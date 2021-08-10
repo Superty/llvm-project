@@ -715,7 +715,7 @@ LogicalResult Parser<Int>::parseInteger(std::unique_ptr<IntegerExpr<Int>> &iExpr
 
   constexpr bool intIsGmp = std::is_same<Int, mpz_class>::value;
 
-  typename std::conditional<intIsGmp, int64_t, Int>::type value;
+  typename std::conditional<intIsGmp, int64_t, UnderlyingInt<Int>>::type value;
   if (!llvm::to_integer(integerToken.string(), value)) {
     if constexpr (intIsGmp) {
       llvm::errs() << "parsing coefficients that don't fix in 64-bits is not yet implemented!";
@@ -774,13 +774,13 @@ PresburgerParser<Int>::initVariables(const SmallVector<StringRef, 8> &vars,
 ///
 /// For the exact parsing rules, see Parser<Int>::parseSet
 template <typename Int>
-LogicalResult PresburgerParser<Int>::parsePresburgerSet(PresburgerSet<SafeInt<Int>> &set) {
+LogicalResult PresburgerParser<Int>::parsePresburgerSet(PresburgerSet<Int> &set) {
   std::unique_ptr<SetExpr<Int>> setExpr;
   if (failed(parser.parseSet(setExpr)))
     return failure();
 
   if (setExpr->getConstraints() == nullptr) {
-    set = PresburgerSet<SafeInt<Int>>(setExpr->getDims().size(), setExpr->getSyms().size());
+    set = PresburgerSet<Int>(setExpr->getDims().size(), setExpr->getSyms().size());
     return success();
   }
 
@@ -792,14 +792,14 @@ LogicalResult PresburgerParser<Int>::parsePresburgerSet(PresburgerSet<SafeInt<In
   return success();
 }
 
-/// Creates a PresburgerSet<SafeInt<Int>> instance from constraints
+/// Creates a PresburgerSet<Int> instance from constraints
 ///
 /// For each AndExpr<Int> contained in constraints it creates one
 /// PresburgerBasicSet<Int> object
 template <typename Int>
 LogicalResult PresburgerParser<Int>::parsePresburgerSet(Expr *constraints,
-                                                   PresburgerSet<SafeInt<Int>> &set) {
-  set = PresburgerSet<SafeInt<Int>>(dimNameToIndex.size(), symNameToIndex.size());
+                                                   PresburgerSet<Int> &set) {
+  set = PresburgerSet<Int>(dimNameToIndex.size(), symNameToIndex.size());
   if (auto orConstraints = constraints->dyn_cast<OrExpr<Int>>()) {
     for (std::unique_ptr<Expr> &basicSet : orConstraints->getConstraints()) {
       PresburgerBasicSet<Int> bs;
@@ -1035,10 +1035,10 @@ LogicalResult PresburgerParser<Int>::parseAndAddPiece(PieceExpr *piece,
   std::pair<Int, SmallVector<Int, 8>> affineExpr;
   parseSum(piece->getExpr(), affineExpr);
 
-  PresburgerSet<SafeInt<Int>> set;
+  PresburgerSet<Int> set;
 
   if (piece->getConstraints() == nullptr)
-    set = PresburgerSet<SafeInt<Int>>(expr.getNumDims(), expr.getNumSyms());
+    set = PresburgerSet<Int>(expr.getNumDims(), expr.getNumSyms());
   else
     parsePresburgerSet(piece->getConstraints(), set);
 

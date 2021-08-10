@@ -251,7 +251,7 @@ unsigned Simplex<Int>::addRow(ArrayRef<Int> coeffs) {
       Int lcm = std::lcm(tableau(nRow - 1, 0), tableau(pos, 0));
       Int nRowCoeff = lcm / tableau(nRow - 1, 0);
       Int idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
-      vec = add<isChecked>(mul<isChecked>(vec, nRowCoeff.val), mul<isChecked>(idxRowCoeff.val, varRowVec));
+      vec = add<isChecked>(mul<isChecked>(vec, BaseInt(nRowCoeff)), mul<isChecked>(BaseInt(idxRowCoeff), varRowVec));
       tableau(nRow - 1, 0) = lcm;
     }
     normalizeRow(nRow - 1, vec);
@@ -563,7 +563,7 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
     // and negate the whole pivot row except for the pivot column.
     // (implemented as only flipping the pivot coloum and the denominator)
     // We merge sign flipping into the swap for improved performance.
-    auto tmp = tableau(pivotRow, 0);
+    Int tmp = tableau(pivotRow, 0);
     tableau(pivotRow, 0) = -tableau(pivotRow, pivotCol);
     tableau(pivotRow, pivotCol) = -tmp;
 
@@ -588,12 +588,12 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
 
     // In the pivotColumn, we overwrite the value from vac, which we implement
     // by multiplying with a zeroValue in the a vector.
-    UnderlyingInt a = UnderlyingInt(tableau(pivotRow, 0));
-    Vector aVector = a;
+    Int a = tableau(pivotRow, 0);
+    Vector aVector = BaseInt(a);
     aVector[pivotCol] = 0;
 
     for (unsigned row = 0; row < pivotRow; ++row) {
-      UnderlyingInt c = UnderlyingInt(tableau(row, pivotCol));
+      Int c = tableau(row, pivotCol);
 
       if (c == 0) // Nothing to do.
         continue;
@@ -602,12 +602,12 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
       // c/q, d/q
       vec = mul<isChecked>(vec, aVector);
       // ca/aq, da/aq
-      vec = add<isChecked>(vec, mul<isChecked>(c, pivotRowVecTerm));
+      vec = add<isChecked>(vec, mul<isChecked>(BaseInt(c), pivotRowVecTerm));
       normalizeRow(row, vec);
     }
 
     for (unsigned row = pivotRow+1; row < nRow; ++row) {
-      UnderlyingInt c = UnderlyingInt(tableau(row, pivotCol));
+      Int c = tableau(row, pivotCol);
 
       if (c == 0) // Nothing to do.
         continue;
@@ -616,7 +616,7 @@ void Simplex<Int>::pivot(unsigned pivotRow, unsigned pivotCol) {
       // c/q, d/q
       vec = mul<isChecked>(vec, aVector);
       // ca/aq, da/aq
-      vec = add<isChecked>(vec, mul<isChecked>(c, pivotRowVecTerm));
+      vec = add<isChecked>(vec, mul<isChecked>(BaseInt(c), pivotRowVecTerm));
       normalizeRow(row, vec);
     }
   } else {
