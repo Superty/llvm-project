@@ -12,6 +12,7 @@ namespace presburger {
 template <typename Int>
 class PresburgerSet {
 public:
+  using UnderlyingInt = Int;
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false)
       : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty) {}
   PresburgerSet(PresburgerBasicSet<Int> cs);

@@ -88,6 +88,21 @@ struct SafeInteger {
 };
 
 template <typename Int>
+struct MaybeUnwrapInt {
+  using type = Int;
+};
+
+template <typename Int>
+struct MaybeUnwrapInt<SafeInteger<Int>> {
+  using type = Int;
+  void test() {
+  }
+};
+
+template <typename Int>
+using UnderlyingInt = typename MaybeUnwrapInt<Int>::type;
+
+template <typename Int>
 using SafeInt = typename std::conditional<std::is_same<Int, mpz_class>::value,
 mpz_class,
 SafeInteger<Int>>::type;
