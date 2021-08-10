@@ -181,8 +181,8 @@ public:
   std::variant<PresburgerSet<SafeInteger<int16_t>>, PresburgerSet<SafeInteger<int64_t>>, PresburgerSet<SafeInteger<__int128_t>>, PresburgerSet<BigInt>> setvar;
 };
 
-inline void coalesce(TransprecSet &set) {
-  set.coalesce();
+inline TransprecSet coalesce(TransprecSet &set) {
+  return set.coalesce();
 }
 
 } // namespace presburger
