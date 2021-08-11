@@ -23,10 +23,126 @@
 #include <limits>
 #include <sstream>
 #include <gmpxx.h>
+#include <immintrin.h>
 
 namespace mlir {
 namespace analysis {
 namespace presburger {
+
+inline void throwOverflowIf(bool cond) {
+  if (cond)
+    throw std::overflow_error("Overflow!");
+}
+
+#if __AVX512BW__ && __AVX512F__
+#define ENABLE_VECTORIZATION
+#endif
+
+#ifdef ENABLE_VECTORIZATION
+
+typedef int16_t Vector16x16 __attribute__((ext_vector_type(16)));
+typedef int16_t Vector16x32 __attribute__((ext_vector_type(32)));
+typedef int32_t Vector32x16 __attribute__((ext_vector_type(16)));
+
+inline __mmask32 equalMask(Vector32x16 x, Vector32x16 y) {
+  return _mm512_cmp_epi16_mask(x, y, _MM_CMPINT_EQ);
+}
+
+inline __mmask32 negs(Vector32x16 x) {
+  return _mm512_cmp_epi16_mask(x, Vector32x16(0), _MM_CMPINT_LT);
+}
+
+template <bool isChecked>
+inline Vector32x16 negate(Vector32x16 x) {
+  if constexpr (isChecked) {
+    bool overflow = equalMask(x, std::numeric_limits<int16_t>::min());
+    throwOverflowIf(overflow);
+  }
+  return -x;
+}
+
+template <bool isChecked>
+inline Vector32x16 add(Vector32x16 x, Vector32x16 y) {
+  Vector32x16 res = x + y;
+  if constexpr (isChecked) {
+    Vector32x16 z = _mm512_adds_epi16(x, y);
+    bool overflow = ~equalMask(z, res);
+    throwOverflowIf(overflow);
+  }
+  return res;
+}
+
+// If the 16th bit in the lower bits of the product is F then the result is
+// negative and the high bits must all be F if no overflow occurred. Similarly,
+// if the 16th in the low bits has value 0 then the result is non-negative and 
+// the high bits must all be 0 if no overflow occurred.
+template <bool isChecked>
+inline Vector32x16 mul(Vector32x16 x, Vector32x16 y) {
+  Vector32x16 lo = _mm512_mullo_epi16(x, y);
+  if constexpr (isChecked) {
+    Vector32x16 hi = _mm512_mulhi_epi16(x, y);
+    throwOverflowIf(~equalMask(lo >> 15, hi));
+  }
+  return lo;
+}
+
+
+
+
+inline __mmask32 equalMask(Vector16x32 x, Vector16x32 y) {
+  return _mm512_cmp_epi16_mask(x, y, _MM_CMPINT_EQ);
+}
+
+inline __mmask32 negs(Vector16x32 x) {
+  return _mm512_cmp_epi16_mask(x, Vector16x32(0), _MM_CMPINT_LT);
+}
+
+template <bool isChecked>
+inline Vector16x32 negate(Vector16x32 x) {
+  if constexpr (isChecked) {
+    bool overflow = equalMask(x, std::numeric_limits<int16_t>::min());
+    throwOverflowIf(overflow);
+  }
+  return -x;
+}
+
+template <bool isChecked>
+inline Vector16x32 add(Vector16x32 x, Vector16x32 y) {
+  Vector16x32 res = x + y;
+  if constexpr (isChecked) {
+    Vector16x32 z = _mm512_adds_epi16(x, y);
+    bool overflow = ~equalMask(z, res);
+    throwOverflowIf(overflow);
+  }
+  return res;
+}
+
+// If the 16th bit in the lower bits of the product is F then the result is
+// negative and the high bits must all be F if no overflow occurred. Similarly,
+// if the 16th in the low bits has value 0 then the result is non-negative and 
+// the high bits must all be 0 if no overflow occurred.
+template <bool isChecked>
+inline Vector16x32 mul(Vector16x32 x, Vector16x32 y) {
+  Vector16x32 lo = _mm512_mullo_epi16(x, y);
+  if constexpr (isChecked) {
+    Vector16x32 hi = _mm512_mulhi_epi16(x, y);
+    throwOverflowIf(~equalMask(lo >> 15, hi));
+  }
+  return lo;
+}
+#else
+template <typename Vector>
+inline __mmask32 equalMask(Vector x, Vector y);
+template <typename Vector>
+inline __mmask32 negs(Vector x);
+
+template <bool isChecked, typename Vector>
+inline Vector negate(Vector x);
+template <bool isChecked, typename Vector>
+inline Vector add(Vector x, Vector y);
+template <bool isChecked, typename Vector>
+inline Vector mul(Vector x, Vector y);
+#endif
 
 template <typename T, typename U, unsigned S>
 SmallVector<T, S> convert(const SmallVector<U, S> &v) {
@@ -64,7 +180,7 @@ struct SafeInteger {
     val = oVal;
   }
 
-  explicit operator Int() {
+  explicit operator Int() const {
     return val;
   }
 
@@ -80,11 +196,6 @@ struct SafeInteger {
 
   /// The stored value.
   Int val;
-
-  static void throwOverflowIf(bool cond) {
-    if (cond)
-      throw std::overflow_error("Overflow!");
-  }
 };
 
 template <typename Int>
@@ -165,7 +276,7 @@ inline SafeInteger<Int> operator+(const SafeInteger<Int> &x, const SafeInteger<I
   } else {
     Int result;
     bool overflow = __builtin_add_overflow(x.val, y.val, &result);
-    SafeInteger<Int>::throwOverflowIf(overflow);
+    throwOverflowIf(overflow);
     return SafeInteger<Int>(result);
   }
 }
@@ -178,7 +289,7 @@ inline SafeInteger<Int> operator-(const SafeInteger<Int> &x, const SafeInteger<I
   } else {
     Int result;
     bool overflow = __builtin_sub_overflow(x.val, y.val, &result);
-    SafeInteger<Int>::throwOverflowIf(overflow);
+    throwOverflowIf(overflow);
     return SafeInteger<Int>(result);
   }
 }
@@ -201,7 +312,7 @@ inline SafeInteger<Int> operator*(const SafeInteger<Int> &x, const SafeInteger<I
   } else {
     Int result;
     bool overflow = __builtin_mul_overflow(x.val, y.val, &result);
-    SafeInteger<Int>::throwOverflowIf(overflow);
+    throwOverflowIf(overflow);
     return SafeInteger<Int>(result);
   }
 }
@@ -314,7 +425,7 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
   return os;
 }
 
-llvm::raw_ostream &operator<< (llvm::raw_ostream &os, const mpz_class &x) {
+inline llvm::raw_ostream &operator<< (llvm::raw_ostream &os, const mpz_class &x) {
   std::stringstream ss;
   ss << x;
   os << ss.str();

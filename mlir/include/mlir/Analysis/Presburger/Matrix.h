@@ -23,20 +23,12 @@
 #include <cassert>
 #include <vector>
 
-#if __AVX512BW__ && __AVX512F__
-#define ENABLE_VECTORIZATION
-#endif
-
 namespace mlir {
 namespace analysis {
 namespace presburger {
 
 static inline void assert_aligned(const void *pointer, size_t byte_count)
 { assert((uintptr_t)pointer % byte_count == 0); }
-
-typedef int16_t Vector16x16 __attribute__((ext_vector_type(16)));
-typedef int16_t Vector16x32 __attribute__((ext_vector_type(32)));
-typedef int32_t Vector32x16 __attribute__((ext_vector_type(16)));
 
 template <typename T, typename Int>
 inline constexpr bool isInt = std::is_same_v<T, SafeInteger<Int>> || std::is_same_v<Int, T>;
@@ -53,9 +45,10 @@ public:
   static constexpr bool isVectorized = false;
 #endif
 
-  using Vector = typename std::conditional<isInt<Int, int16_t>,
-    Vector16x32,
-    Vector32x16>::type;
+  // using Vector = typename std::conditional<isInt<Int, int16_t>,
+  //   Vector16x32,
+  //   void>::type;
+  using Vector = Vector16x32;
   static constexpr unsigned MatrixVectorColumns = isInt<Int, int16_t> ? 32 : 16;
   static constexpr bool isChecked = std::is_same_v<Int, SafeInteger<int16_t>> ||
                                     std::is_same_v<Int, SafeInteger<int32_t>> ||

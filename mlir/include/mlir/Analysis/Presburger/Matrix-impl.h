@@ -27,7 +27,7 @@ Matrix<Int>::Matrix(unsigned rows, unsigned columns)
 
   if constexpr (isVectorized) {
     if constexpr (isChecked)
-      Int::throwOverflowIf(columns > MatrixVectorColumns);
+      throwOverflowIf(columns > MatrixVectorColumns);
     else if (columns > MatrixVectorColumns)
       std::abort();
     // llvm::errs() << "Cannot construct matrix with " << nColumns << " columns; limit is " << nReservedColumns << ".\n";
@@ -54,7 +54,7 @@ void Matrix<Int>::resize(unsigned newNRows, unsigned newNColumns) {
   if (newNColumns > nReservedColumns) {
     if constexpr (isVectorized) {
       if constexpr (std::is_same<Int, SafeInteger<int16_t>>::value)
-        Int::throwOverflowIf(true);
+        throwOverflowIf(true);
       else 
         std::abort();
     }
