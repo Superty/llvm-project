@@ -137,19 +137,23 @@ LinearTransform<Int> LinearTransform<Int>::makeTransformToColumnEchelon(Matrix<I
 }
 
 template <typename Int>
-SmallVector<Int, 8>
-LinearTransform<Int>::postMultiplyRow(ArrayRef<Int> row) {
+void LinearTransform<Int>::postMultiplyRow(ArrayRef<Int> row, SmallVector<Int, 8> &result) {
   assert(row.size() == matrix.getNumRows() &&
          "row vector dimension should be matrix output dimension");
 
-  SmallVector<Int, 8> result;
-  for (unsigned col = 0, e = matrix.getNumColumns(); col < e; col++) {
-    Int elem = 0;
+  if constexpr (Matrix<Int>::isVectorized) {
+    Vector resVec = 0;
     for (unsigned i = 0, e = matrix.getNumRows(); i < e; i++)
-      elem += row[i] * matrix(i, col);
-    result.push_back(elem);
+      resVec += mul<Matrix<Int>::isChecked>(UnderlyingInt<Int>(row[i]), matrix.getRowVector(i));
+    result.reserve(matrix.getNumColumns());
+    for (unsigned col = 0, e = matrix.getNumColumns(); col < e; ++col)
+      result.push_back(resVec[col]);
+  } else {
+    result.resize(matrix.getNumColumns(), 0);
+    for (unsigned col = 0, e = matrix.getNumColumns(); col < e; col++)
+      for (unsigned i = 0, e = matrix.getNumRows(); i < e; i++)
+        result[col] += row[i] * matrix(i, col);
   }
-  return result;
 }
 
 template <typename Int>
@@ -168,9 +172,11 @@ LinearTransform<Int>::preMultiplyColumn(ArrayRef<Int> col) {
   return result;
 }
 
+// Note: only plain basic sets are passed, so no divisions.
 template <typename Int>
 PresburgerBasicSet<Int>
 LinearTransform<Int>::postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs) {
+  assert(bs.isPlainBasicSet());
   PresburgerBasicSet<Int> result(bs.getNumTotalDims(), 0, 0);
 
   for (unsigned i = 0; i < bs.getNumEqualities(); ++i) {
@@ -178,7 +184,8 @@ LinearTransform<Int>::postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs) {
 
     Int c = eq.back();
 
-    SmallVector<Int, 8> newEq = postMultiplyRow(eq.drop_back());
+    SmallVector<Int, 8> newEq;
+    postMultiplyRow(eq.drop_back(), newEq);
     newEq.push_back(c);
     result.addEquality(newEq);
   }
@@ -188,7 +195,8 @@ LinearTransform<Int>::postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs) {
 
     Int c = ineq.back();
 
-    SmallVector<Int, 8> newIneq = postMultiplyRow(ineq.drop_back());
+    SmallVector<Int, 8> newIneq;
+    postMultiplyRow(ineq.drop_back(), newIneq);
     newIneq.push_back(c);
     result.addInequality(newIneq);
   }

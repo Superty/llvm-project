@@ -21,13 +21,14 @@ namespace presburger {
 template <typename Int>
 class LinearTransform {
 public:
+  using Vector = typename Matrix<Int>::Vector;
   // Return a unimodular transform which, when postmultiplied to M, brings M to
   // column echelon form.
   static LinearTransform makeTransformToColumnEchelon(Matrix<Int> &M);
 
   FlatAffineConstraints postMultiplyBasicSet(const FlatAffineConstraints &bs);
   PresburgerBasicSet<Int> postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs);
-  SmallVector<Int, 8> postMultiplyRow(ArrayRef<Int> row);
+  void postMultiplyRow(ArrayRef<Int> row, SmallVector<Int, 8> &result);
   SmallVector<Int, 8> preMultiplyColumn(ArrayRef<Int> col);
 
 private:
