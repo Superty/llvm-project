@@ -329,7 +329,7 @@ PresburgerSet<Int>::eliminateExistentials(const PresburgerBasicSet<Int> &bs) {
   }
 
   // Coalesce with preserve so as to not add additional existentials
-  return coalesce(result, true);
+  return mlir::coalesce(result, true);
 }
 
 template <typename Int>
