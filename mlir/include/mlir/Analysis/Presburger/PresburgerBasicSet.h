@@ -121,6 +121,9 @@ public:
   /// (in terms of performance) hueristics to simplify the basicset.
   void simplify(bool aggressive = true);
 
+  PresburgerBasicSet<Int> makePlainBasicSet() const;
+  bool isPlainBasicSet() const;
+
   void dumpCoeffs() const;
 
   void dump() const;
@@ -228,9 +231,6 @@ private:
   void insertDimensions(unsigned pos, unsigned count);
   void prependExistentialDimensions(unsigned count);
   void appendExistentialDimensions(unsigned count);
-
-  PresburgerBasicSet<Int> makePlainBasicSet() const;
-  bool isPlainBasicSet() const;
 
   void updateFromSimplex(const Simplex<Int> &simplex);
 
