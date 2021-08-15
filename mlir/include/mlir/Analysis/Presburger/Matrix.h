@@ -39,17 +39,20 @@ inline constexpr bool isInt = std::is_same_v<T, SafeInteger<Int>> || std::is_sam
 template <typename Int>
 class Matrix {
 public:
+
+  static constexpr unsigned MatrixVectorColumns = isInt<Int, int16_t> ? 32 : 16;
+
 #ifdef ENABLE_VECTORIZATION
   static constexpr bool isVectorized = isInt<Int, int16_t> || isInt<Int, int32_t>;
-#else
-  static constexpr bool isVectorized = false;
-#endif
-
   // using Vector = typename std::conditional<isInt<Int, int16_t>,
   //   Vector16x32,
   //   void>::type;
   using Vector = Vector16x32;
-  static constexpr unsigned MatrixVectorColumns = isInt<Int, int16_t> ? 32 : 16;
+#else
+  static constexpr bool isVectorized = false;
+  typedef int16_t Vector __attribute__((ext_vector_type(MatrixVectorColumns)));
+#endif
+
   static constexpr bool isChecked = std::is_same_v<Int, SafeInteger<int16_t>> ||
                                     std::is_same_v<Int, SafeInteger<int32_t>> ||
                                     std::is_same_v<Int, SafeInteger<int64_t>> ||
