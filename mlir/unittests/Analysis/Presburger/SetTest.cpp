@@ -6,18 +6,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Set.h"
-#include "mlir/Dialect/Presburger/Parser.h"
-
+#include "mlir/Analysis/Presburger/Presburger-impl.h"
 #include <ostream>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+using Int = int64_t;
+
 using namespace mlir;
 using namespace mlir::presburger;
 
-static PresburgerSet setFromString(StringRef string) {
+static PresburgerSet<Int> setFromString(StringRef string) {
   ErrorCallback callback = [](SMLoc loc, const Twine &message) {
     // This is a hack to make the Parser compile
     llvm::errs() << "Parsing error " << message << " at " << loc.getPointer()
@@ -26,9 +26,9 @@ static PresburgerSet setFromString(StringRef string) {
     MLIRContext context;
     return mlir::emitError(UnknownLoc::get(&context), message);
   };
-  Parser parser(string, callback);
-  PresburgerParser setParser(parser);
-  PresburgerSet res;
+  Parser<Int> parser(string, callback);
+  PresburgerParser<Int> setParser(parser);
+  PresburgerSet<Int> res;
   setParser.parsePresburgerSet(res);
   return res;
 }
@@ -36,7 +36,7 @@ static PresburgerSet setFromString(StringRef string) {
 void expectEqual(StringRef sDesc, StringRef tDesc) {
   auto s = setFromString(sDesc);
   auto t = setFromString(tDesc);
-  EXPECT_TRUE(PresburgerSet::equal(s, t));
+  EXPECT_TRUE(PresburgerSet<Int>::equal(s, t));
 }
 
 TEST(PresburgerSetTest, Equality) {
@@ -61,4 +61,14 @@ TEST(PresburgerSetTest, Empty) {
           "[(2d0)/3], q4 = [(q3)/2] : d0 >= 0 and d0 - 1 >= 0 and 2d0 - 3q0 - "
           "1 >= 0 and -2d0 + 3q1 >= 0 and -2d0 + 3q3 >= 0)")
           .isIntegerEmpty());
+}
+
+TEST(PresburgerSet, codeLexMinTest) {
+  PresburgerSet<Int> set =
+      setFromString("(i2, i) : (exists q = [(i) / 100] : i >= 0 and i <=  "
+                    "199 and i2 >= 0 and i2 <= 99 and i - 100q = i2)");
+
+  set = PresburgerSet<Int>::eliminateExistentials(set);
+
+  EXPECT_TRUE(true);
 }

@@ -3,6 +3,9 @@
  * SPDX-FileCopyrightText: 2019 Arjun Pitchanathan <arjunpitchanathan@gmail.com>
  */
 
+#ifndef MLIR_DIALECT_PRESBURGER_PARSER_IMPL_H
+#define MLIR_DIALECT_PRESBURGER_PARSER_IMPL_H
+
 #include "mlir/Dialect/Presburger/Parser.h"
 #include "mlir/Analysis/Presburger/Constraint.h"
 #include "mlir/IR/Diagnostics.h"
@@ -14,11 +17,11 @@ using namespace mlir;
 using namespace mlir::analysis::presburger;
 using namespace mlir::presburger;
 
-bool Token::isa(Kind mayKind) { return kind == mayKind; }
+inline bool Token::isa(Kind mayKind) { return kind == mayKind; }
 
-StringRef Token::string() { return content; }
+inline StringRef Token::string() { return content; }
 
-StringRef Token::name(Token::Kind kind) {
+inline StringRef Token::name(Token::Kind kind) {
   switch (kind) {
   case Token::Kind::Integer:
     return "integer";
@@ -86,23 +89,23 @@ StringRef Token::name(Token::Kind kind) {
 // Lexer
 //===----------------------------------------------------------------------===//
 
-Lexer::Lexer(StringRef buffer, ErrorCallback callback)
+inline Lexer::Lexer(StringRef buffer, ErrorCallback callback)
     : buffer(buffer), curPos(0), callback(callback) {
   current = nextToken();
 }
 
-bool Lexer::isSpace(char c) { return std::isspace(c); }
+inline bool Lexer::isSpace(char c) { return std::isspace(c); }
 
-bool Lexer::isDigit(char c) { return std::isdigit(c); }
+inline bool Lexer::isDigit(char c) { return std::isdigit(c); }
 
-bool Lexer::isAlpha(char c) { return std::isalpha(c); }
+inline bool Lexer::isAlpha(char c) { return std::isalpha(c); }
 
-Token Lexer::getAtom(Token::Kind kind, unsigned start) {
+inline Token Lexer::getAtom(Token::Kind kind, unsigned start) {
   curPos++;
   return Token(kind, StringRef(start + buffer.begin(), curPos - start));
 }
 
-Token Lexer::consumeInteger(unsigned start) {
+inline Token Lexer::consumeInteger(unsigned start) {
   while (isDigit(buffer[curPos]))
     curPos++;
 
@@ -114,7 +117,7 @@ Token Lexer::consumeInteger(unsigned start) {
 /// alphabetic char and after that contains a sequence of alphanumeric chars.
 ///
 /// If the resulting string matches a keyword an according token is returned.
-Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
+inline Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
   char c = buffer[curPos];
   assert(isAlpha(c) && "identifier or keyword should begin with an alphabet");
 
@@ -143,7 +146,7 @@ Token Lexer::consumeIdentifierOrKeyword(unsigned start) {
 ///
 /// If the end of the buffer is reached, this will return a Token with kind
 /// `Eof`.
-Token Lexer::nextToken() {
+inline Token Lexer::nextToken() {
   if (reachedEOF()) {
     return Token(Token::Kind::Eof, StringRef(buffer.begin() + curPos, 0));
   }
@@ -219,24 +222,24 @@ Token Lexer::nextToken() {
 }
 
 /// Returns the next token without consuming it.
-Token Lexer::peek() { return current; }
+inline Token Lexer::peek() { return current; }
 
 /// Returns the next token and consumes it.
-Token Lexer::next() {
+inline Token Lexer::next() {
   Token result = current;
   current = nextToken();
   return result;
 }
 
 /// Consumes a token with specified kind. If non is present it is a no-op.
-void Lexer::consume(Token::Kind kind) {
+inline void Lexer::consume(Token::Kind kind) {
   if (current.isa(kind))
     next();
 }
 
 /// Consumes the next token and emits an error if it doesn't match the
 /// provided kind.
-LogicalResult Lexer::consumeKindOrError(Token::Kind kind) {
+inline LogicalResult Lexer::consumeKindOrError(Token::Kind kind) {
   Token token = next();
   if (!token.isa(kind))
     return emitError("expected " + Token::name(kind));
@@ -246,7 +249,7 @@ LogicalResult Lexer::consumeKindOrError(Token::Kind kind) {
 
 /// Consumes the next token and emits an error if it doesn't match the
 /// provided kind.
-LogicalResult Lexer::consumeKindOrError(Token::Kind kind, Token &token) {
+inline LogicalResult Lexer::consumeKindOrError(Token::Kind kind, Token &token) {
   token = next();
   if (!token.isa(kind))
     return emitError("expected " + Token::name(kind));
@@ -254,28 +257,28 @@ LogicalResult Lexer::consumeKindOrError(Token::Kind kind, Token &token) {
   return success();
 }
 
-bool Lexer::reachedEOF() {
+inline bool Lexer::reachedEOF() {
   assert(curPos <= buffer.size() && "read outside of the buffer");
   return curPos == buffer.size();
 }
 
 /// Emits the provided error message at the location provided.
-InFlightDiagnostic Lexer::emitError(const char *loc, const Twine &message) {
+inline InFlightDiagnostic Lexer::emitError(const char *loc, const Twine &message) {
   return callback(SMLoc::getFromPointer(loc), message);
 }
 
 /// Emits the provided error message at the location provided.
-InFlightDiagnostic Lexer::emitError(SMLoc loc, const Twine &message) {
+inline InFlightDiagnostic Lexer::emitError(SMLoc loc, const Twine &message) {
   return callback(loc, message);
 }
 
 /// Emits the provided error message at the start of the buffer.
-InFlightDiagnostic Lexer::emitErrorAtStart(const Twine &message) {
+inline InFlightDiagnostic Lexer::emitErrorAtStart(const Twine &message) {
   return emitError(SMLoc::getFromPointer(buffer.begin()), message);
 }
 
 /// Emits the provided error message at the current possition of the Lexer.
-InFlightDiagnostic Lexer::emitError(const Twine &message) {
+inline InFlightDiagnostic Lexer::emitError(const Twine &message) {
   assert(!reachedEOF() &&
          "lexer is out of range, you have to specify a location");
   return emitError(buffer.begin() + curPos, message);
@@ -1059,3 +1062,5 @@ InFlightDiagnostic PresburgerParser<Int>::emitError(SMLoc loc,
                                                const Twine &message) {
   return parser.emitError(loc, message);
 }
+
+#endif // MLIR_DIALECT_PRESBURGER_PARSER_IMPL_H

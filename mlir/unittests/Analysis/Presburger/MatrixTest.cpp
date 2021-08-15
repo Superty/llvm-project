@@ -6,16 +6,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/Presburger-impl.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+using Int = int64_t;
 
 namespace mlir {
 namespace analysis {
 namespace presburger {
 
 TEST(MatrixTest, ReadWrite) {
-  Matrix mat(5, 5);
+  Matrix<Int> mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = 10 * row + col;
@@ -25,7 +27,7 @@ TEST(MatrixTest, ReadWrite) {
 }
 
 TEST(MatrixTest, SwapColumns) {
-  Matrix mat(5, 5);
+  Matrix<Int> mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = col == 3 ? 1 : 0;
@@ -47,7 +49,7 @@ TEST(MatrixTest, SwapColumns) {
 }
 
 TEST(MatrixTest, SwapRows) {
-  Matrix mat(5, 5);
+  Matrix<Int> mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = row == 2 ? 1 : 0;
@@ -69,7 +71,7 @@ TEST(MatrixTest, SwapRows) {
 }
 
 TEST(MatrixTest, resize) {
-  Matrix mat(5, 5);
+  Matrix<Int> mat(5, 5);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row)

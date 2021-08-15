@@ -7,9 +7,6 @@ add_mlir_unittest(MLIRPresburgerTests
 )
 
 target_link_libraries(MLIRPresburgerTests
-  PRIVATE MLIRPresburger
-  MLIRPresburgerDialect
-  MLIRAnalysis
-  MLIRLoopAnalysis
+  PRIVATE MLIRPresburgerDialect
+  gmpxx
 )
-

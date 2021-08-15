@@ -13,7 +13,6 @@ void printConstraints(raw_ostream &os, const PresburgerBasicSet<Int> &bs);
 
 template <typename Int>
 void printConstraints(raw_ostream &os, const PresburgerSet<Int> &set);
-template <typename Int>
 void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym);
 template <typename Int>
 void printExpr(raw_ostream &os, ArrayRef<Int> coeffs,
@@ -27,7 +26,7 @@ void printConst(raw_ostream &os, Int c, bool first);
 
 /// Prints the '(d0, ..., dN)[s0, ... ,sM]' dimension and symbol list.
 ///
-void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
+inline void printVariableList(raw_ostream &os, unsigned nDim, unsigned nSym) {
   if (nSym > 0) {
     os << "[";
     for (unsigned i = 0; i < nSym; i++)

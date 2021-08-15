@@ -6,10 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/Presburger/Presburger-impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+using Int = int64_t;
 
 namespace mlir {
 namespace analysis {
@@ -18,7 +20,7 @@ namespace presburger {
 /// Take a snapshot, add constraints making the set empty, and rollback.
 /// The set should not be empty after rolling back.
 TEST(SimplexTest, emptyRollback) {
-  Simplex simplex(2);
+  Simplex<Int> simplex(2);
   // (u - v) >= 0
   simplex.addInequality({1, -1, 0});
   EXPECT_FALSE(simplex.isEmpty());
@@ -32,7 +34,7 @@ TEST(SimplexTest, emptyRollback) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
-  Simplex tab(0);
+  Simplex<Int> tab(0);
   tab.addInequality({0}); // 0 >= 0
 
   tab.detectRedundant();
@@ -41,7 +43,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_ge_zero) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_no_var_eq) {
-  Simplex tab(0);
+  Simplex<Int> tab(0);
   tab.addEquality({0}); // 0 == 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -49,7 +51,7 @@ TEST(SimplexTest, isMarkedRedundant_no_var_eq) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_pos_var_eq) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addEquality({1, 0}); // x == 0
 
   tab.detectRedundant();
@@ -58,7 +60,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_eq) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_zero_var_eq) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addEquality({0, 0}); // 0x == 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -66,7 +68,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_eq) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_neg_var_eq) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addEquality({-1, 0}); // -x == 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -74,7 +76,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_eq) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_pos_var_ge) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addInequality({1, 0}); // x >= 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -82,7 +84,7 @@ TEST(SimplexTest, isMarkedRedundant_pos_var_ge) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_zero_var_ge) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addInequality({0, 0}); // 0x >= 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -90,7 +92,7 @@ TEST(SimplexTest, isMarkedRedundant_zero_var_ge) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addInequality({-1, 0}); // x <= 0
   tab.detectRedundant();
   ASSERT_FALSE(tab.isEmpty());
@@ -98,7 +100,7 @@ TEST(SimplexTest, isMarkedRedundant_neg_var_ge) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_no_redundant) {
-  Simplex tab(3);
+  Simplex<Int> tab(3);
 
   tab.addEquality({-1, 0, 1, 0});     // u = w
   tab.addInequality({-1, 16, 0, 15}); // 15 - (u - 16v) >= 0
@@ -112,7 +114,7 @@ TEST(SimplexTest, isMarkedRedundant_no_redundant) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_regression_test) {
-  Simplex tab(17);
+  Simplex<Int> tab(17);
 
   tab.addEquality({0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0});
   tab.addEquality({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, -10});
@@ -153,7 +155,7 @@ TEST(SimplexTest, isMarkedRedundant_regression_test) {
 }
 
 TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
-  Simplex tab(3);
+  Simplex<Int> tab(3);
 
   // [4] to [7] are repeats of [0] to [3].
   tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
@@ -179,7 +181,7 @@ TEST(SimplexTest, isMarkedRedundant_repeated_constraints) {
 }
 
 TEST(SimplexTest, isMarkedRedundant) {
-  Simplex tab(3);
+  Simplex<Int> tab(3);
   tab.addInequality({0, -1, 0, 1}); // [0]: y <= 1
   tab.addInequality({1, 0, 0, -1}); // [1]: x >= 1
   tab.addInequality({-1, 0, 0, 2}); // [2]: x <= 2
@@ -208,7 +210,7 @@ TEST(SimplexTest, isMarkedRedundant) {
 }
 
 TEST(SimplexTest, addInequality_already_redundant) {
-  Simplex tab(1);
+  Simplex<Int> tab(1);
   tab.addInequality({1, -1}); // x >= 1
   tab.addInequality({1, 0});  // x >= 0
   tab.detectRedundant();
@@ -220,15 +222,15 @@ TEST(SimplexTest, addInequality_already_redundant) {
 /// Check that the set gets marked as empty when we add contradictory
 /// constraints.
 TEST(SimplexTest, addEquality_separate) {
-  Simplex simplex(1);
+  Simplex<Int> simplex(1);
   simplex.addInequality({1, -1}); // x >= 1.
   ASSERT_FALSE(simplex.isEmpty());
   simplex.addEquality({1, 0}); // x == 0.
   EXPECT_TRUE(simplex.isEmpty());
 }
 namespace {
-void expectInequalityMakesSetEmpty(Simplex &simplex,
-                                   ArrayRef<SafeInteger> coeffs, bool expect) {
+void expectInequalityMakesSetEmpty(Simplex<Int> &simplex,
+                                   ArrayRef<Int> coeffs, bool expect) {
   ASSERT_FALSE(simplex.isEmpty());
   unsigned snapshot = simplex.getSnapshot();
   simplex.addInequality(coeffs);
@@ -238,14 +240,14 @@ void expectInequalityMakesSetEmpty(Simplex &simplex,
 } // namespace
 
 TEST(SimplexTest, addInequality_rollback) {
-  Simplex simplex(3);
-  SmallVector<SafeInteger, 4> coeffs[]{{1, 0, 0, 0},   // u >= 0.
+  Simplex<Int> simplex(3);
+  SmallVector<Int, 4> coeffs[]{{1, 0, 0, 0},   // u >= 0.
                                        {-1, 0, 0, 0},  // u <= 0.
                                        {1, -1, 1, 0},  // u - v + w >= 0.
                                        {1, 1, -1, 0}}; // u + v - w >= 0.
   // The above constraints force u = 0 and v = w.
   // The constraints below violate v = w.
-  SmallVector<SafeInteger, 4> checkCoeffs[]{{0, 1, -1, -1},  // v - w >= 1.
+  SmallVector<Int, 4> checkCoeffs[]{{0, 1, -1, -1},  // v - w >= 1.
                                             {0, -1, 1, -1}}; // v - w <= -1.
 
   for (int run = 0; run < 4; run++) {
@@ -269,11 +271,11 @@ TEST(SimplexTest, addInequality_rollback) {
 }
 
 namespace {
-Simplex /* workaround lsp/clang-format bug */
+Simplex<Int> /* workaround lsp/clang-format bug */
 simplexFromConstraints(unsigned nDim,
-                       SmallVector<SmallVector<SafeInteger, 8>, 8> ineqs,
-                       SmallVector<SmallVector<SafeInteger, 8>, 8> eqs) {
-  Simplex simplex(nDim);
+                       SmallVector<SmallVector<Int, 8>, 8> ineqs,
+                       SmallVector<SmallVector<Int, 8>, 8> eqs) {
+  Simplex<Int> simplex(nDim);
   for (const auto &ineq : ineqs)
     simplex.addInequality(ineq);
   for (const auto &eq : eqs)
@@ -361,16 +363,16 @@ TEST(SimplexTest, isUnbounded) {
 }
 
 TEST(SimplexTest, ineqType) {
-  Simplex simplex(1);
+  Simplex<Int> simplex(1);
   simplex.addEquality({1, 0});                                    // x >= 0.
-  EXPECT_EQ(simplex.ineqType({1, -1}), Simplex::IneqType::AdjEq); // x >= 1.
-  Simplex simplex2(1);
+  EXPECT_EQ(simplex.ineqType({1, -1}), Simplex<Int>::IneqType::AdjEq); // x >= 1.
+  Simplex<Int> simplex2(1);
   simplex2.addInequality({1, -1});                                   // x >= 1.
-  EXPECT_EQ(simplex2.ineqType({-1, 0}), Simplex::IneqType::AdjIneq); // x <= 0.
-  Simplex simplex3(1);
+  EXPECT_EQ(simplex2.ineqType({-1, 0}), Simplex<Int>::IneqType::AdjIneq); // x <= 0.
+  Simplex<Int> simplex3(1);
   simplex3.addInequality({1, -2}); // x >= 2.
   simplex3.addInequality({-1, 3}); // x <= 3.
-  EXPECT_EQ(simplex3.ineqType({-1, 1}), Simplex::IneqType::AdjIneq);
+  EXPECT_EQ(simplex3.ineqType({-1, 1}), Simplex<Int>::IneqType::AdjIneq);
 }
 
 TEST(SimplexTest, getSamplePointIfIntegral) {
@@ -422,7 +424,7 @@ TEST(SimplexTest, getSamplePointIfIntegral) {
 }
 
 TEST(SimplexTest, markEmptyRollbackRegressionTest) {
-  Simplex simplex(1);
+  Simplex<Int> simplex(1);
   simplex.addInequality({1, 0});   // x >= 0.
   simplex.addInequality({-1, -1}); // x <= -1.
   ASSERT_TRUE(simplex.isEmpty());
