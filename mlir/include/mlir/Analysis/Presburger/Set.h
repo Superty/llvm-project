@@ -2,7 +2,6 @@
 #define MLIR_ANALYSIS_PRESBURGER_SET_H
 
 #include "mlir/Analysis/Presburger/PresburgerBasicSet.h"
-#include "mlir/Analysis/Presburger/Coalesce.h"
 #include <variant>
 
 namespace mlir {
@@ -12,6 +11,8 @@ namespace presburger {
 template <typename Int>
 class PresburgerSet {
 public:
+  friend class PresburgerMap<Int>;
+
   using UnderlyingInt = Int;
   PresburgerSet(unsigned nDim = 0, unsigned nSym = 0, bool markedEmpty = false)
       : nDim(nDim), nSym(nSym), markedEmpty(markedEmpty) {}

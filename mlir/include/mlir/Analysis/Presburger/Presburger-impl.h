@@ -4,6 +4,7 @@
 #include "Matrix-impl.h"
 #include "ParamLexSimplex-impl.h"
 #include "PresburgerBasicSet-impl.h"
+#include "PresburgerMap-impl.h"
 #include "Printer-impl.h"
 #include "Set-impl.h"
 #include "Simplex-impl.h"

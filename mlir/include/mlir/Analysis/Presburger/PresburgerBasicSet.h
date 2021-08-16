@@ -29,9 +29,13 @@ template <typename Int>
 class PresburgerSet;
 
 template <typename Int>
+class PresburgerMap;
+
+template <typename Int>
 class PresburgerBasicSet {
 public:
   friend class PresburgerSet<Int>;
+  friend class PresburgerMap<Int>;
 
   PresburgerBasicSet(unsigned oNDim = 0, unsigned oNParam = 0,
                      unsigned oNExist = 0)

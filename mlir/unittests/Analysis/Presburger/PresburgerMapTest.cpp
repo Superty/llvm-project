@@ -1,4 +1,4 @@
-//===- SimplexTest.cpp - Tests for ParamLexSimplex ------------------------===//
+//===- PresburgerMapTest.cpp - Tests for ParamLexSimplex ------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -39,26 +39,18 @@ inline void expectEqual(StringRef sDesc, StringRef tDesc) {
   EXPECT_TRUE(PresburgerSet<Int>::equal(s, t));
 }
 
-TEST(PresburgerSetTest, Equality) {
-  expectEqual(
-      "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
-      "(x) : (x >= 0)");
-  expectEqual(
-      "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
-      "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)");
-  expectEqual("(x) : (exists q = [(x)/2] : x = 2q)",
-              "(x) : (exists q = [(x)/2] : x = 2q)");
-  expectEqual(
-      "(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)",
-      "(x) : (exists q = [(x)/2] : x = 2q) or (exists q = [(x)/3] : x = 3q)");
-  expectEqual("(x) : (exists q : x = q and q <= -1)", "(x) : (x <= -1)");
-}
+TEST(PresburgerSet, codeLexMinTest) {
+  PresburgerSet set =
+      setFromString("(i2, i) : (exists q = [(i) / 100] : i >= 0 and i <=  "
+                    "199 and i2 >= 0 and i2 <= 99 and i - 100q = i2)");
+  PresburgerMap<Int> map(1, 1, 0);
 
-TEST(PresburgerSetTest, Empty) {
-  EXPECT_TRUE(
-      setFromString(
-          "(d0) : (exists q0 = [(2d0)/3], q1 = [(2d0)/3], q2 = [(q1)/2], q3 = "
-          "[(2d0)/3], q4 = [(q3)/2] : d0 >= 0 and d0 - 1 >= 0 and 2d0 - 3q0 - "
-          "1 >= 0 and -2d0 + 3q1 >= 0 and -2d0 + 3q3 >= 0)")
-          .isIntegerEmpty());
+  for (const auto &bs: set.getBasicSets())
+    map.addBasicSet(bs);
+
+  map.dump();
+
+  map.lexMinRange();
+
+  EXPECT_TRUE(true);
 }
