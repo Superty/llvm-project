@@ -62,13 +62,3 @@ TEST(PresburgerSetTest, Empty) {
           "1 >= 0 and -2d0 + 3q1 >= 0 and -2d0 + 3q3 >= 0)")
           .isIntegerEmpty());
 }
-
-TEST(PresburgerSet, codeLexMinTest) {
-  PresburgerSet<Int> set =
-      setFromString("(i2, i) : (exists q = [(i) / 100] : i >= 0 and i <=  "
-                    "199 and i2 >= 0 and i2 <= 99 and i - 100q = i2)");
-
-  set = PresburgerSet<Int>::eliminateExistentials(set);
-
-  EXPECT_TRUE(true);
-}
