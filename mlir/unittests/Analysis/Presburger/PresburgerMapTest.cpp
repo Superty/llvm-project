@@ -39,18 +39,19 @@ inline void expectEqual(StringRef sDesc, StringRef tDesc) {
   EXPECT_TRUE(PresburgerSet<Int>::equal(s, t));
 }
 
-TEST(PresburgerSet, codeLexMinTest) {
-  PresburgerSet set =
-      setFromString("(i2, i) : (exists q = [(i) / 100] : i >= 0 and i <=  "
-                    "199 and i2 >= 0 and i2 <= 99 and i - 100q = i2)");
-  PresburgerMap<Int> map(1, 1, 0);
+TEST(PresburgerSet, codeLexMaxTest) {
+  PresburgerSet set = setFromString("(k, i, j)[n, m] : (0 <= i and i <= m and "
+                                    "0 <= j and j <= n and 2i + j = k)");
+  PresburgerMap<Int> map(1, 2, 2);
 
   for (const auto &bs: set.getBasicSets())
     map.addBasicSet(bs);
 
   map.dump();
 
-  map.lexMinRange();
+  map.lexMaxRange();
+
+  map.dump();
 
   EXPECT_TRUE(true);
 }

@@ -47,6 +47,8 @@ public:
 
 private:
   unsigned domainDim, rangeDim;
+
+  SmallVector<Int, 8> convertToRequiredForm(ArrayRef<Int> coeffs);
 };
 
 } // namespace presburger

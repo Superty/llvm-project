@@ -69,6 +69,12 @@ public:
 
   Int getConstant() const { return coeffs.back(); }
 
+  void setCoeff(unsigned pos, Int coeff) {
+    assert(pos >= 0 && pos < coeffs.size() &&
+           "Invalid position for coefficient");
+    coeffs[pos] = coeff;
+  }
+
   void shift(Int x) { coeffs.back() += x; }
 
   void shiftCoeff(unsigned var, Int constant) { coeffs[var] += constant; }
