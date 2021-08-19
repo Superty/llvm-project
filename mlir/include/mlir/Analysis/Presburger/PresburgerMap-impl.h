@@ -133,8 +133,8 @@ void PresburgerMap<Int>::lexMinRange() {
 }
 
 template <typename Int>
-static void negateVariables(PresburgerMap<Int> &set) {
-  for (auto &bs : set.basicSets) {
+void PresburgerMap<Int>::lexMaxRange() {
+  for (auto &bs : this->basicSets) {
     for (auto &con : bs.ineqs)
       for (unsigned i = 0; i < bs.getNumTotalDims(); i++)
         con.setCoeff(i, -con.getCoeffs()[i]);
@@ -145,13 +145,18 @@ static void negateVariables(PresburgerMap<Int> &set) {
       for (unsigned i = 0; i < bs.getNumTotalDims(); i++)
         con.setCoeff(i, -con.getCoeffs()[i]);
   }
-}
-
-template <typename Int>
-void PresburgerMap<Int>::lexMaxRange() {
-  negateVariables(*this);
   lexMinRange();
-  negateVariables(*this);
+  for (auto &bs : this->basicSets) {
+    for (auto &con : bs.ineqs)
+      for (unsigned i = 0; i < bs.getNumTotalDims(); i++)
+        con.setCoeff(i, -con.getCoeffs()[i]);
+    for (auto &con : bs.eqs)
+      for (unsigned i = 0; i < bs.getNumTotalDims(); i++)
+        con.setCoeff(i, -con.getCoeffs()[i]);
+    for (auto &con : bs.divs)
+      for (unsigned i = 0; i < bs.getNumTotalDims(); i++)
+        con.setCoeff(i, -con.getCoeffs()[i]);
+  }
 }
 
 #endif // MLIR_ANALYSIS_PRESBURGER_PRESBURGERMAP_IMPL_H
