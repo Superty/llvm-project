@@ -8,6 +8,6 @@ add_mlir_unittest(MLIRPresburgerTests
 )
 
 target_link_libraries(MLIRPresburgerTests
-  PRIVATE MLIRPresburgerDialect
-  gmpxx
+  PRIVATE "/home/kunwar/.local/lib/libgmpxx.so"
+  MLIRIR
 )

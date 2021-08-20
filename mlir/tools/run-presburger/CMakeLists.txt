@@ -1,5 +1,4 @@
 set (LIBS
-MLIRPresburgerDialect
 )
 
 add_llvm_tool(run-presburger

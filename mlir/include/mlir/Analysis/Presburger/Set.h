@@ -75,7 +75,7 @@ private:
                 unsigned &countNonZero) const;
 };
 
-using DialectSet = PresburgerSet<DefaultInt>;
+using DialectSet = PresburgerSet<int64_t>;
 } // namespace presburger
 } // namespace analysis
 } // namespace mlir

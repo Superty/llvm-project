@@ -12,7 +12,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Support/MlirOptMain.h"
-#include "mlir/Dialect/Presburger/PresburgerOptions.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Location.h"
@@ -27,7 +26,6 @@
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/SourceMgr.h"
 
-#include <chrono>
 using namespace mlir;
 using namespace llvm;
 using llvm::SMLoc;
@@ -57,21 +55,9 @@ static LogicalResult performActions(raw_ostream &os, bool verifyDiagnostics,
   PassManager pm(context, verifyPasses);
   applyPassManagerCLOptions(pm);
 
-  if (printPassManagerRuntime()) {
-
-    auto start = std::chrono::system_clock::now();
-    if (failed(passPipeline.addToPipeline(pm)))
-      return failure();
-    auto end = std::chrono::system_clock::now();
-    llvm::errs() << std::chrono::duration_cast<std::chrono::microseconds>(end -
-                                                                          start)
-                        .count();
-
-  } else {
-    // Build the provided pipeline.
-    if (failed(passPipeline.addToPipeline(pm)))
-      return failure();
-  }
+  // Build the provided pipeline.
+  if (failed(passPipeline.addToPipeline(pm)))
+    return failure();
 
   // Run the pipeline.
   if (failed(pm.run(*module)))

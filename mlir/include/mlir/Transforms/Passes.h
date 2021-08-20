@@ -60,9 +60,6 @@ std::unique_ptr<OperationPass<FuncOp>> createPipelineDataTransferPass();
 /// primitives).
 std::unique_ptr<OperationPass<FuncOp>> createLowerAffinePass();
 
-/// Lowers Presburger operations to Standard dialect operations
-std::unique_ptr<Pass> createPresburgerToStandardPass();
-
 /// Creates a pass that transforms perfectly nested loops with independent
 /// bounds into a single loop.
 std::unique_ptr<OperationPass<FuncOp>> createLoopCoalescingPass();

@@ -205,4 +205,10 @@ LinearTransform<Int>::postMultiplyBasicSet(const PresburgerBasicSet<Int> &bs) {
   return result;
 }
 
+template <typename Int>
+FlatAffineConstraints
+LinearTransform<Int>::postMultiplyBasicSet(const FlatAffineConstraints &bs) {
+  llvm_unreachable("not yet implemented!");
+}
+
 #endif // MLIR_ANALYSIS_PRESBURGER_LINEARTRANSFORM_IMPL_H
