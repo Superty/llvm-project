@@ -47,6 +47,8 @@ public:
   template <typename OInt>
   PresburgerBasicSet(const PresburgerBasicSet<OInt> &o);
 
+  PresburgerBasicSet(const FlatAffineConstraints &fac);
+
   unsigned getNumDims() const { return nDim; }
   unsigned getNumTotalDims() const {
     return nParam + nDim + nExist + divs.size();

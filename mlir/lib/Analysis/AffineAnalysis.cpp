@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Analysis/Presburger/Presburger-impl.h"
 #include "mlir/Analysis/AffineAnalysis.h"
 #include "mlir/Analysis/Utils.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -883,4 +884,109 @@ void mlir::getDependenceComponents(
       }
     }
   }
+}
+
+static void killAnalysisSink(MemRefAccess &sink,
+    SmallVector<MemRefAccess, 8> &sources) {
+
+  // Build access map for sink
+  AffineValueMap sinkAccessMap;
+  sink.getAccessMap(&sinkAccessMap);
+
+  // Build access maps for sources
+  SmallVector<AffineValueMap, 8> sourceAccessMaps;
+  sourceAccessMaps.reserve(sources.size());
+  for (auto &source: sources) {
+    AffineValueMap sourceAccessMap;
+    source.getAccessMap(&sourceAccessMap);
+    sourceAccessMaps.push_back(sourceAccessMap);
+  }
+
+  // Get iteration domain for sink
+  FlatAffineConstraints sinkDomainFAC;
+  getInstIndexSet(sink.opInst, &sinkDomainFAC);
+
+  // Loop depth of sink
+  unsigned loopDepth = sinkDomainFAC.getNumDimIds();
+
+  // Get iteration domain for sources
+  SmallVector<FlatAffineConstraints, 8> sourceDomainFACs;
+  sourceDomainFACs.reserve(sources.size());
+  for (auto &source: sources) {
+    FlatAffineConstraints sourceDomainFAC;
+    getInstIndexSet(source.opInst, &sourceDomainFAC);
+    sourceDomainFACs.push_back(sourceDomainFAC);
+  }
+
+  // Build dependence constraints for each source
+  // The maps are build with sink as domain and source as range
+  //
+  // sink -> source
+  SmallVector<FlatAffineConstraints, 8> dependenceConstraints(sources.size());
+  for (unsigned i = 0, e = sources.size(); i < e; ++i) {
+    ValuePositionMap valuePosMap;
+    buildDimAndSymbolPositionMaps(sinkDomainFAC, sourceDomainFACs[i],
+                                  sinkAccessMap, sourceAccessMaps[i],
+                                  &valuePosMap, &dependenceConstraints[i]);
+    initDependenceConstraints(sinkDomainFAC, sourceDomainFACs[i], sinkAccessMap,
+                              sourceAccessMaps[i], valuePosMap,
+                              &dependenceConstraints[i]);
+    addDomainConstraints(sinkDomainFAC, sourceDomainFACs[i], valuePosMap,
+                         &dependenceConstraints[i]);
+    addMemRefAccessConstraints(sinkAccessMap, sourceAccessMaps[i], valuePosMap,
+                               &dependenceConstraints[i]);
+  }
+
+  for (unsigned depth = loopDepth + 1; depth > 0; depth--) {
+    for (unsigned sourceIdx = 0, e = dependenceConstraints.size();
+         sourceIdx < e; ++sourceIdx) {
+
+      FlatAffineConstraints dep = dependenceConstraints[sourceIdx];
+      unsigned numCommonLoops =
+          getNumCommonLoops(sinkDomainFAC, sourceDomainFACs[sourceIdx]);
+
+      // Check if dependence exists between sink and source
+      if (depth > numCommonLoops &&
+          !srcAppearsBeforeDstInAncestralBlock(sources[sourceIdx], sink,
+                                               sourceDomainFACs[sourceIdx],
+                                               numCommonLoops))
+        continue;
+
+      addOrderingConstraints(sinkDomainFAC, sourceDomainFACs[sourceIdx], depth,
+                             &dep);
+
+      PresburgerBasicSet<int64_t> bs(dep);
+      PresburgerMap<int64_t> depMap(sinkDomainFAC.getNumDimIds(),
+                                    sourceDomainFACs[sourceIdx].getNumDimIds(),
+                                    dep.getNumSymbolIds());
+      depMap.addBasicSet(bs);
+
+      depMap.lexMaxRange();
+    }
+  }
+}
+
+static void killAnalysis(SmallVector<MemRefAccess, 8> &sinks,
+    SmallVector<MemRefAccess, 8> &sources) {
+  // Perform kill analysis for each sink
+  for (MemRefAccess &sink : sinks) {
+    killAnalysisSink(sink, sources);
+  }
+}
+
+void mlir::doValueBasedDepAnalysis(FuncOp f) {
+  // Collect all load and store ops in loop nest rooted at 'forOp'.
+  SmallVector<MemRefAccess, 8> sinks, sources;
+  f.walk([&](Operation *op) -> WalkResult {
+      if (isa<AffineReadOpInterface>(op)) {
+        MemRefAccess sink(op);
+        sinks.push_back(sink);
+      } else if (isa<AffineWriteOpInterface>(op)) {
+        MemRefAccess source(op);
+        sources.push_back(source);
+      }
+    return WalkResult::advance();
+  });
+
+  killAnalysis(sinks, sources);
 }

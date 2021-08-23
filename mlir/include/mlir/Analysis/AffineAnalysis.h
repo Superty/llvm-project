@@ -18,6 +18,7 @@
 #include "mlir/IR/Value.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 namespace mlir {
 
@@ -125,6 +126,8 @@ inline bool hasDependence(DependenceResult result) {
 void getDependenceComponents(
     AffineForOp forOp, unsigned maxLoopDepth,
     std::vector<SmallVector<DependenceComponent, 2>> *depCompsVec);
+
+void doValueBasedDepAnalysis(FuncOp f);
 
 } // end namespace mlir
 

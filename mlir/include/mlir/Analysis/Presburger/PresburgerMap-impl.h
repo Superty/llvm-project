@@ -129,7 +129,7 @@ void PresburgerMap<Int>::lexMinRange() {
   }
 
   *this = lexMinMap;
-  this->simplify();
+  this->simplify(true, true);
 }
 
 template <typename Int>

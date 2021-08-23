@@ -248,8 +248,8 @@ public:
   }
 
   void eraseDimensions(unsigned pos, unsigned count) {
-    assert(!(pos <= variable && variable < pos + count) &&
-           "cannot erase division variable!");
+    /* assert(!(pos <= variable && variable < pos + count) && */
+    /*        "cannot erase division variable!"); */
     if (pos < count)
       variable -= count;
     Constraint<Int>::eraseDimensions(pos, count);

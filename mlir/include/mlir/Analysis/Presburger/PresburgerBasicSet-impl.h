@@ -38,6 +38,16 @@ PresburgerBasicSet<Int>::PresburgerBasicSet(
 }
 
 template <typename Int>
+PresburgerBasicSet<Int>::PresburgerBasicSet(const FlatAffineConstraints &fac)
+    : nDim(fac.getNumDimIds()), nParam(fac.getNumSymbolIds()),
+      nExist(fac.getNumLocalIds()) {
+  for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
+    addInequality(fac.getInequality(i));
+  for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i)
+    addEquality(fac.getEquality(i));
+}
+
+template <typename Int>
 void PresburgerBasicSet<Int>::addInequality(ArrayRef<Int> coeffs) {
   ineqs.emplace_back(coeffs);
 }

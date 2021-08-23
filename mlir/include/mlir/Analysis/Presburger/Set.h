@@ -55,8 +55,7 @@ public:
   // bool containsPoint(const std::vector<INT> &values) const;
   llvm::Optional<SmallVector<Int, 8>> maybeGetCachedSample() const;
 
-  /// Simplfies each DivisionConstraint in each PresburgerBasicSet
-  void simplify(bool aggressive = true);
+  void simplify(bool aggressive = true, bool coalesce = false);
 
   template <typename OInt>
   friend class PresburgerSet;

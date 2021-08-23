@@ -316,8 +316,8 @@ public:
     rhs.abandon();
   }
   ~InFlightDiagnostic() {
-    // if (isInFlight())
-    //   report();
+    if (isInFlight())
+      report();
   }
 
   /// Stream operator for new diagnostic arguments.
