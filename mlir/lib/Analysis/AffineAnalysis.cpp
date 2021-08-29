@@ -1097,8 +1097,16 @@ static void killDep(unsigned sourceIdx, PresburgerMap<int64_t> &depMap,
   }
 }
 
-static void killAnalysisSink(MemRefAccess &sink,
-                             SmallVector<MemRefAccess, 8> &sources) {
+static void killAnalysisSink(MemRefAccess sink,
+                             SmallVector<MemRefAccess, 8> sources) {
+
+  for (int i = 0; i < (int)sources.size(); ++i) {
+    if (sink.memref != sources[i].memref) {
+      sources.erase(sources.begin() + i);
+      i--;
+    }
+  }
+
   // Build access map for sink
   AffineValueMap sinkAccessMap;
   sink.getAccessMap(&sinkAccessMap);
