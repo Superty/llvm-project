@@ -23,10 +23,12 @@ public:
   unsigned getNumBasicSets() const;
   unsigned getNumDims() const;
   unsigned getNumSyms() const;
+  void setNumSyms(unsigned count);
   static PresburgerSet eliminateExistentials(const PresburgerBasicSet<Int> &bs);
   static PresburgerSet eliminateExistentials(const PresburgerSet &set);
   static PresburgerSet eliminateExistentials(PresburgerSet &&set);
   const SmallVector<PresburgerBasicSet<Int>, 4> &getBasicSets() const;
+  SmallVector<PresburgerBasicSet<Int>, 4> &getBasicSets();
   void addBasicSet(const PresburgerBasicSet<Int> &cs);
   void addBasicSet(PresburgerBasicSet<Int> &&cs);
   void unionSet(const PresburgerSet &set);

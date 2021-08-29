@@ -99,7 +99,7 @@ public:
     for (Int &coeff : coeffs)
       currGcd = llvm::greatestCommonDivisor(currGcd, std::abs(coeff));
 
-    if (currGcd != 1) {
+    if (currGcd > 1) {
       for (Int &coeff : coeffs)
         coeff /= currGcd;
     }

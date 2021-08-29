@@ -582,7 +582,8 @@ static bool srcAppearsBeforeDstInAncestralBlock(
 static void addOrderingConstraints(const FlatAffineConstraints &srcDomain,
                                    const FlatAffineConstraints &dstDomain,
                                    unsigned loopDepth,
-                                   FlatAffineConstraints *dependenceDomain) {
+                                   FlatAffineConstraints *dependenceDomain,
+                                   unsigned offset = 0) {
   unsigned numCols = dependenceDomain->getNumCols();
   SmallVector<int64_t, 4> eq(numCols);
   unsigned numSrcDims = srcDomain.getNumDimIds();
@@ -590,8 +591,8 @@ static void addOrderingConstraints(const FlatAffineConstraints &srcDomain,
   unsigned numCommonLoopConstraints = std::min(numCommonLoops, loopDepth);
   for (unsigned i = 0; i < numCommonLoopConstraints; ++i) {
     std::fill(eq.begin(), eq.end(), 0);
-    eq[i] = -1;
-    eq[i + numSrcDims] = 1;
+    eq[offset + i] = -1;
+    eq[offset + i + numSrcDims] = 1;
     if (i == loopDepth - 1) {
       eq[numCols - 1] = -1;
       dependenceDomain->addInequality(eq);
@@ -886,9 +887,218 @@ void mlir::getDependenceComponents(
   }
 }
 
-static void killAnalysisSink(MemRefAccess &sink,
-    SmallVector<MemRefAccess, 8> &sources) {
+static void createDependence(const FlatAffineConstraints &srcDomain,
+                             const FlatAffineConstraints &dstDomain,
+                             const AffineValueMap &srcAccessMap,
+                             const AffineValueMap &dstAccessMap,
+                             FlatAffineConstraints &dep) {
+  ValuePositionMap valuePosMap;
+  buildDimAndSymbolPositionMaps(srcDomain, dstDomain, srcAccessMap,
+                                dstAccessMap, &valuePosMap, &dep);
+  initDependenceConstraints(srcDomain, dstDomain, srcAccessMap, dstAccessMap,
+                            valuePosMap, &dep);
+  addDomainConstraints(srcDomain, dstDomain, valuePosMap, &dep);
+  addMemRefAccessConstraints(srcAccessMap, dstAccessMap, valuePosMap, &dep);
+}
 
+// Swap the posA^th identifier with the posB^th identifier.
+static void swapId(FlatAffineConstraints *A, unsigned posA, unsigned posB) {
+  assert(posA < A->getNumIds() && "invalid position A");
+  assert(posB < A->getNumIds() && "invalid position B");
+
+  if (posA == posB)
+    return;
+
+  for (unsigned r = 0, e = A->getNumInequalities(); r < e; r++) {
+    std::swap(A->atIneq(r, posA), A->atIneq(r, posB));
+  }
+  for (unsigned r = 0, e = A->getNumEqualities(); r < e; r++) {
+    std::swap(A->atEq(r, posA), A->atEq(r, posB));
+  }
+  std::swap(A->getId(posA), A->getId(posB));
+}
+
+/// killMap --> (read -> kill)
+/// writeMap --> (read -> write)
+/// outMap --> (read -> kill) -> write
+static void spaceAlignAndJoin(unsigned readOffset,
+                              const FlatAffineConstraints &killMap,
+                              const FlatAffineConstraints &writeMap,
+                              FlatAffineConstraints &outMap) {
+  FlatAffineConstraints map1 = killMap;
+  FlatAffineConstraints map2 = writeMap;
+
+  // Align Local Ids
+  for (unsigned l = 0, e = map1.getNumLocalIds(); l < e; l++)
+    map2.addLocalId(0);
+  for (unsigned t = 0, e = map2.getNumLocalIds() - map1.getNumLocalIds(); t < e;
+       t++)
+    map1.addLocalId(map1.getNumLocalIds());
+
+  // Add kill to writeMap
+  for (unsigned i = readOffset, e = killMap.getNumDimIds(); i < e; i++) {
+    unsigned offset = i;
+    map2.addDimId(offset, killMap.getIdValue(i));
+  }
+
+  // Add write to killMap
+  for (unsigned i = readOffset, e = writeMap.getNumDimIds(); i < e; i++) {
+    unsigned offset = map1.getNumDimIds();
+    map1.addDimId(offset, writeMap.getIdValue(i));
+  }
+
+  SmallVector<Value, 4> aSymValues;
+  map1.getIdValues(map1.getNumDimIds(), map1.getNumDimAndSymbolIds(), &aSymValues);
+
+  // Merge symbols: merge map1's symbols into map2 first.
+  unsigned s = map2.getNumDimIds();
+  for (auto aSymValue : aSymValues) {
+    unsigned loc;
+    if (map2.findId(aSymValue, &loc))
+      swapId(&map2, s, loc);
+    else
+      map2.addSymbolId(s - map2.getNumDimIds(), aSymValue);
+    s++;
+  }
+
+  // Symbols that are in map2, but not in map1, are added at the end.
+  for (unsigned t = map1.getNumDimAndSymbolIds(),
+                e = map2.getNumDimAndSymbolIds();
+       t < e; t++)
+    map1.addSymbolId(map1.getNumSymbolIds(), map2.getIdValue(t));
+
+  map1.append(map2);
+  outMap = map1;
+}
+
+static void convertDimsToExist(FlatAffineConstraints &fac, unsigned pos,
+    unsigned count) {
+
+  for (unsigned i = 0; i < count; ++i) {
+    fac.addLocalId(fac.getNumLocalIds());
+    swapId(&fac, pos + i,
+           fac.getNumDimAndSymbolIds() + fac.getNumLocalIds() - 1);
+  }
+
+  for (unsigned i = 0; i < count; ++i)
+    fac.removeId(pos);
+}
+
+static void alignSymbols(PresburgerMap<int64_t> &map1,
+                         PresburgerMap<int64_t> &map2,
+                         SmallVector<Value, 4> &symValues1,
+                         SmallVector<Value, 4> &symValues2) {
+
+  // Merge map1's symbols to map2
+  unsigned s = 0;
+  for (auto aSymValue : symValues1) {
+    unsigned loc;
+    bool foundId = false;
+    
+    // Find Id
+    for (unsigned i = 0, e = symValues2.size(); i < e; ++i) {
+      const auto &mayBeId = symValues2[i];
+      if (mayBeId == aSymValue) {
+        loc = i;
+        foundId = true;
+        break;
+      }
+    }
+
+    if (foundId) {
+      std::swap(symValues2[s], symValues2[loc]);
+      for (PresburgerBasicSet<int64_t> &map: map2.getBasicSets())
+        map.swapDims(s + map.getNumDims(), loc + map.getNumDims());
+    } else {
+      symValues2.insert(symValues2.begin() + s, aSymValue);
+      for (PresburgerBasicSet<int64_t> &map: map2.getBasicSets())
+        map.insertSymbol(s, 1);
+    }
+
+    s++;
+  }
+
+  // Add unadded symbols from map2 to map1
+  for (PresburgerBasicSet<int64_t> &map : map1.getBasicSets())
+    map.insertSymbol(map.getNumParams(), symValues2.size() - symValues1.size());
+
+  map1.setNumSyms(symValues2.size());
+  map2.setNumSyms(symValues2.size());
+
+  symValues1 = symValues2;
+}
+
+static void killDep(unsigned sourceIdx, PresburgerMap<int64_t> &depMap,
+                    ArrayRef<FlatAffineConstraints> dependenceConstraints,
+                    const FlatAffineConstraints &sinkDomainFAC,
+                    ArrayRef<FlatAffineConstraints> sourceDomainFACs,
+                    SmallVector<MemRefAccess, 8> &sources,
+                    SmallVector<Value, 4> &symValues) {
+
+  for (unsigned killIdx = 0, e = sourceDomainFACs.size(); killIdx < e;
+       ++killIdx) {
+    if (killIdx == sourceIdx)
+      continue;
+
+    FlatAffineConstraints readDep = dependenceConstraints[killIdx];
+    FlatAffineConstraints writeDep = dependenceConstraints[sourceIdx];
+
+    FlatAffineConstraints joinedDep;
+    spaceAlignAndJoin(sinkDomainFAC.getNumDimIds(), readDep, writeDep,
+                      joinedDep);
+
+    unsigned killCommonLoops = getNumCommonLoops(sourceDomainFACs[sourceIdx],
+                                                 sourceDomainFACs[killIdx]);
+
+    PresburgerMap<int64_t> killMap(depMap.getDomainDims(),
+                                   depMap.getRangeDims(),
+                                   joinedDep.getNumSymbolIds());
+
+    for (unsigned killLoop = killCommonLoops + 1; killLoop > 0; --killLoop) {
+
+      if (killLoop > killCommonLoops + 1)
+        continue;
+      if (killLoop == killCommonLoops + 1 &&
+          !srcAppearsBeforeDstInAncestralBlock(
+              sources[sourceIdx], sources[killIdx], sourceDomainFACs[sourceIdx],
+              killCommonLoops))
+        continue;
+
+      FlatAffineConstraints killDepth = joinedDep;
+
+      addOrderingConstraints(sourceDomainFACs[killIdx],
+                             sourceDomainFACs[sourceIdx], killLoop, &killDepth,
+                             killMap.getDomainDims());
+
+      convertDimsToExist(killDepth, killMap.getDomainDims(),
+                         sourceDomainFACs[killIdx].getNumDimIds());
+
+      PresburgerMap<int64_t> killDepthMap(depMap.getDomainDims(),
+                                          depMap.getRangeDims(),
+                                          killDepth.getNumSymbolIds());
+
+      killDepthMap.addBasicSet(killDepth);
+      killDepthMap.lexMaxRange();
+      killMap.unionSet(killDepthMap);
+    }
+
+    if (killMap.getNumBasicSets() == 0)
+      continue;
+
+    SmallVector<Value, 4> symValuesRead;
+    joinedDep.getIdValues(joinedDep.getNumDimIds(),
+                        joinedDep.getNumDimAndSymbolIds(), &symValuesRead);
+
+    // Align symbols
+    alignSymbols(depMap, killMap, symValues, symValuesRead);
+
+    depMap.subtract(killMap);
+    depMap.simplify();
+  }
+}
+
+static void killAnalysisSink(MemRefAccess &sink,
+                             SmallVector<MemRefAccess, 8> &sources) {
   // Build access map for sink
   AffineValueMap sinkAccessMap;
   sink.getAccessMap(&sinkAccessMap);
@@ -923,30 +1133,25 @@ static void killAnalysisSink(MemRefAccess &sink,
   //
   // sink -> source
   SmallVector<FlatAffineConstraints, 8> dependenceConstraints(sources.size());
-  for (unsigned i = 0, e = sources.size(); i < e; ++i) {
-    ValuePositionMap valuePosMap;
-    buildDimAndSymbolPositionMaps(sinkDomainFAC, sourceDomainFACs[i],
-                                  sinkAccessMap, sourceAccessMaps[i],
-                                  &valuePosMap, &dependenceConstraints[i]);
-    initDependenceConstraints(sinkDomainFAC, sourceDomainFACs[i], sinkAccessMap,
-                              sourceAccessMaps[i], valuePosMap,
-                              &dependenceConstraints[i]);
-    addDomainConstraints(sinkDomainFAC, sourceDomainFACs[i], valuePosMap,
-                         &dependenceConstraints[i]);
-    addMemRefAccessConstraints(sinkAccessMap, sourceAccessMaps[i], valuePosMap,
-                               &dependenceConstraints[i]);
-  }
+  for (unsigned i = 0, e = sources.size(); i < e; ++i)
+    createDependence(sinkDomainFAC, sourceDomainFACs[i], sinkAccessMap,
+                     sourceAccessMaps[i], dependenceConstraints[i]);
 
-  for (unsigned depth = loopDepth + 1; depth > 0; depth--) {
-    for (unsigned sourceIdx = 0, e = dependenceConstraints.size();
-         sourceIdx < e; ++sourceIdx) {
+  std::vector<SmallVector<PresburgerMap<int64_t>, 8>> finalDeps(sources.size());
+
+  for (unsigned depth = loopDepth + 1; depth > 0; --depth) {
+    for (unsigned sourceIdx = 0, e = sources.size(); sourceIdx < e;
+         ++sourceIdx) {
 
       FlatAffineConstraints dep = dependenceConstraints[sourceIdx];
       unsigned numCommonLoops =
           getNumCommonLoops(sinkDomainFAC, sourceDomainFACs[sourceIdx]);
 
-      // Check if dependence exists between sink and source
-      if (depth > numCommonLoops &&
+      // Check if dependence exists between sink and source at this level
+      if (depth > numCommonLoops + 1) 
+        continue;
+
+      if (depth == numCommonLoops + 1 &&
           !srcAppearsBeforeDstInAncestralBlock(sources[sourceIdx], sink,
                                                sourceDomainFACs[sourceIdx],
                                                numCommonLoops))
@@ -960,9 +1165,29 @@ static void killAnalysisSink(MemRefAccess &sink,
                                     sourceDomainFACs[sourceIdx].getNumDimIds(),
                                     dep.getNumSymbolIds());
       depMap.addBasicSet(bs);
-
       depMap.lexMaxRange();
+
+      SmallVector<Value, 4> symValues;
+      dep.getIdValues(dep.getNumDimIds(), dep.getNumDimAndSymbolIds(),
+                      &symValues);
+
+      killDep(sourceIdx, depMap, dependenceConstraints, sinkDomainFAC,
+              sourceDomainFACs, sources, symValues);
+
+      finalDeps[sourceIdx].push_back(depMap);
     }
+  }
+
+  for (unsigned i = 0; i < sources.size(); i++) {
+      llvm::errs() << "Dependence between:\n";
+      sink.opInst->dump();               // DEBUG
+      sources[i].opInst->dump(); // DEBUG
+      llvm::errs() << "\n\n";
+
+      for (auto &bs: finalDeps[i])
+        bs.dump();
+
+      llvm::errs() << "\n\n";
   }
 }
 

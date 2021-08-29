@@ -505,6 +505,23 @@ void PresburgerBasicSet<Int>::removeEquality(unsigned i) {
 }
 
 template <typename Int>
+void PresburgerBasicSet<Int>::insertSymbol(unsigned i, unsigned count) {
+  unsigned offset = getNumDims();
+  insertDimensions(offset + i, count);
+  nParam += count;
+}
+
+template <typename Int>
+void PresburgerBasicSet<Int>::swapDims(unsigned i, unsigned j) {
+  for (auto &ineq : ineqs)
+    ineq.swapCoeffs(i, j);
+  for (auto &eq : eqs)
+    eq.swapCoeffs(i, j);
+  for (auto &div : divs)
+    div.swapCoeffs(i, j);
+}
+
+template <typename Int>
 void PresburgerBasicSet<Int>::insertDimensions(unsigned pos, unsigned count) {
   if (count == 0)
     return;
@@ -1083,7 +1100,7 @@ void PresburgerBasicSet<Int>::recoverDivisionsFromInequalities() {
 
         // Decrement k to reflect deletion of inequality
         k--;
-        continue;
+        break;
       }
 
       unsigned existOffset = getExistOffset();
@@ -1114,7 +1131,7 @@ void PresburgerBasicSet<Int>::recoverDivisionsFromInequalities() {
         else
           newCoeffs = createDivFromLowerBound(coeffs2, existIdx);
 
-        if (constantSum == std::abs(coeffs1[existIdx]) - 1) {
+        if (constantSum - 1 == std::abs(coeffs1[existIdx])) {
           removeInequality(l);
           removeInequality(k);
         }
@@ -1138,7 +1155,7 @@ void PresburgerBasicSet<Int>::recoverDivisionsFromInequalities() {
 
         // Reduce number of existentials and repeat again
         nExist--;
-        break;
+        continue;;
 
         // TODO: One of these inequalities is not needed after finding this.
         //       Remove it.
@@ -1315,14 +1332,14 @@ void PresburgerBasicSet<Int>::removeTriviallyRedundantConstraints() {
     } else if (result == 2) {
       // Constraint system is invalid, Remove all equalities and inequalities
       // other than this constraint
-      Constraint<Int> invalidCon = eqs[i];
+      /* Constraint<Int> invalidCon = eqs[i]; */
 
-      PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(),
-                                     getNumExists(), getDivisions());
-      newSet.addEquality(invalidCon.getCoeffs());
+      /* PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(), */
+      /*                                getNumExists(), getDivisions()); */
+      /* newSet.addEquality(invalidCon.getCoeffs()); */
 
-      *this = newSet;
-      return;
+      /* *this = newSet; */
+      /* return; */
     }
   }
 
@@ -1335,14 +1352,14 @@ void PresburgerBasicSet<Int>::removeTriviallyRedundantConstraints() {
     } else if (result == 2) {
       // Constraint system is invalid, Remove all equalities and inequalities
       // other than this constraint
-      Constraint<Int> invalidCon = ineqs[i];
+      /* Constraint<Int> invalidCon = ineqs[i]; */
 
-      PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(),
-                                     getNumExists(), getDivisions());
-      newSet.addInequality(invalidCon.getCoeffs());
+      /* PresburgerBasicSet<Int> newSet(getNumDims(), getNumParams(), */
+      /*                                getNumExists(), getDivisions()); */
+      /* newSet.addInequality(invalidCon.getCoeffs()); */
 
-      *this = newSet;
-      return;
+      /* *this = newSet; */
+      /* return; */
     }
   }
 }

@@ -84,6 +84,12 @@ public:
   void removeInequality(unsigned i);
   void removeEquality(unsigned i);
 
+  /// Insert `count`symbol starting from the ith symbol position.
+  void insertSymbol(unsigned i, unsigned count);
+
+  /// Works only for dimensions, symbols, existentials
+  void swapDims(unsigned i, unsigned j);
+
   Optional<SmallVector<Int, 8>>
   findIntegerSampleRemoveEqs(bool onlyEmptiness = false) const;
 

@@ -37,6 +37,9 @@ template <typename Int>
 unsigned PresburgerSet<Int>::getNumSyms() const { return nSym; }
 
 template <typename Int>
+void PresburgerSet<Int>::setNumSyms(unsigned count) { nSym = count; }
+
+template <typename Int>
 bool PresburgerSet<Int>::isMarkedEmpty() const {
   return markedEmpty || basicSets.empty();
 }
@@ -54,6 +57,11 @@ bool PresburgerSet<Int>::isUniverse() const {
 
 template <typename Int>
 const SmallVector<PresburgerBasicSet<Int>, 4> &PresburgerSet<Int>::getBasicSets() const {
+  return basicSets;
+}
+
+template <typename Int>
+SmallVector<PresburgerBasicSet<Int>, 4> &PresburgerSet<Int>::getBasicSets() {
   return basicSets;
 }
 
@@ -518,6 +526,7 @@ llvm::hash_code PresburgerSet<Int>::hash_value() const {
 
 template <typename Int>
 void PresburgerSet<Int>::simplify(bool aggressive, bool coalesce) {
+
   if (coalesce)
     *this = mlir::coalesce(*this);
 
