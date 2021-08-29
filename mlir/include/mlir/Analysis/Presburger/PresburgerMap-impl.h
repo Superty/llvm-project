@@ -42,10 +42,7 @@ void PresburgerMap<Int>::print(raw_ostream &os) const {
   }
   os << "]\n";
 
-  if (this->isIntegerEmpty())
-    os << "empty\n";
-  else
-    PresburgerSet<Int>::print(os);
+  PresburgerSet<Int>::print(os);
 }
 
 template <typename Int>
