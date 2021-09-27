@@ -20,7 +20,7 @@ static FlatAffineConstraints makeFACFromConstraints(
     ArrayRef<SmallVector<int64_t, 4>> eqs,
     ArrayRef<std::pair<SmallVector<int64_t, 4>, int64_t>> divs) {
   FlatAffineConstraints fac(ineqs.size(), eqs.size(), dims + syms + 1, dims,
-                            syms);
+                            syms, 0);
   for (const auto &div : divs) {
     fac.addLocalFloorDiv(div.first, div.second);
   }
@@ -240,8 +240,7 @@ TEST(ParserTest, floorDivSimple) {
       {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, 0}}, {{{1, 0, 0}, 3}})});
   set->print(llvm::errs());
   ex.print(llvm::errs());
-  EXPECT_TRUE(false) << "No way to compare as of yet!";
-  // EXPECT_TRUE(set->isEqual(ex));
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivWithCoeffs) {
@@ -257,8 +256,7 @@ TEST(ParserTest, floorDivWithCoeffs) {
                                               {{{1, 1, -13}, 3}})});
   set->print(llvm::errs());
   ex.print(llvm::errs());
-  EXPECT_TRUE(false) << "No way to compare as of yet!";
-  // EXPECT_TRUE(set->isEqual(ex));
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivMultiple) {
@@ -274,8 +272,7 @@ TEST(ParserTest, floorDivMultiple) {
                               {{{1, 0, 0}, 3}, {{0, 1, 0, 0}, 2}})});
   set->print(llvm::errs());
   ex.print(llvm::errs());
-  EXPECT_TRUE(false) << "No way to compare as of yet!";
-  // EXPECT_TRUE(set->isEqual(ex));
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivNested) {
@@ -291,8 +288,7 @@ TEST(ParserTest, floorDivNested) {
                               {{{0, 1, 0}, 2}, {{1, 0, 1, 0}, 3}})});
   set->print(llvm::errs());
   ex.print(llvm::errs());
-  EXPECT_TRUE(false) << "No way to compare as of yet!";
-  // EXPECT_TRUE(set->isEqual(ex));
+  EXPECT_TRUE(set->isEqual(ex));
 }
 
 } // namespace mlir
