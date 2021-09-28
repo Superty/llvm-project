@@ -6,6 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef MLIR_UNITTESTS_ANALYSIS_FACUTILS_H_
+#define MLIR_UNITTESTS_ANALYSIS_FACUTILS_H_
+
 #include "mlir/Analysis/AffineStructures.h"
 
 namespace mlir {
@@ -39,3 +42,5 @@ makeFACFromIneqs(unsigned dims, ArrayRef<SmallVector<int64_t, 4>> ineqs) {
 }
 
 } // namespace mlir
+
+#endif // MLIR_UNITTESTS_ANALYSIS_FACUTILS_H_
