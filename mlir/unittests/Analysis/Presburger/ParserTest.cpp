@@ -72,19 +72,19 @@ TEST(ParserTest, invalid) {
       << "Should check if the end of the string was reached";
 
   // `and` is only allowed inside a convex set.
-  str = "(i)[] : (i <= 2) and (i >= 3)";
+  str = "(i)[] : (-i + 2 >= 0), (i - 3 >= 0)";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set))
       << "`and` should only be allowed inside a convex set";
 
   // Reused variable names are not supported
-  str = "(i,i)[] : (i <= 2) or (i >= 3)";
+  str = "(i,i)[] : (-i + 2 >= 0) or (i - 3 >= 0)";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set)) << "Should detect repeated identifier names";
 
-  str = "(i)[i] : (i <= 2) or (i >= 3)";
+  str = "(i)[i] : (-i + 2 >= 0) or (i - 3 >= 0)";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set)) << "Should detect repeated identifier names";
@@ -92,36 +92,28 @@ TEST(ParserTest, invalid) {
   str = "(i) : ";
 
   set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set)) << "Should not accept inclompleate representations";
+  EXPECT_TRUE(failed(set)) << "Should not accept incomplete representations";
 
-  str = "(i) : (i - >= 2) ";
+  str = "(i) : (i - >= 0) ";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set)) << "Should only parse valid expressions";
 
-  str = "(i) : (1i >= -) ";
+  str = "(i) : (1 * i >= -) ";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set)) << "`-` shouldn't be a valid expression";
 
-  str = "(i) : (-i - -2 >= - -2) ";
-
-  set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(failed(set))
-      << "Two minuses in front of a integer literal should not be valid";
-
-  /*
   str = "(i) : (-i - -2 >= 9223372036854775808) ";
 
   set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(failed(set))
       << "Should complain if integer literals do not fit into int64_t";
-      */
 }
 
 TEST(ParserTest, simpleEq) {
   MLIRContext ctx;
-  auto str = "(i) : (i = 0)";
+  auto str = "(i) : (i == 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -144,7 +136,7 @@ TEST(ParserTest, simpleIneq) {
 
 TEST(ParserTest, simpleAnd) {
   MLIRContext ctx;
-  auto str = "(i)[] : (i >= 0 and i <= 3)";
+  auto str = "(i)[] : (i >= 0, -i + 3 >= 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -156,7 +148,7 @@ TEST(ParserTest, simpleAnd) {
 
 TEST(ParserTest, simpleOr) {
   MLIRContext ctx;
-  auto str = "(i)[] : (i >= 0) or (i <= 3)";
+  auto str = "(i)[] : (i >= 0) or (-i + 3 >= 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -169,7 +161,7 @@ TEST(ParserTest, simpleOr) {
 
 TEST(ParserTest, andOr) {
   MLIRContext ctx;
-  auto str = "(x) : (x >= 0 and x <= 5) or (x >= -2 and x <= -5)";
+  auto str = "(x) : (x >= 0, -x + 5 >= 0) or (x + 2 >= 0, -x - 5 >= 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -183,8 +175,9 @@ TEST(ParserTest, andOr) {
 
 TEST(ParserTest, higherDim) {
   MLIRContext ctx;
-  auto str = "(x,y)[] : (x >= 2 and y >= 2 and x <= 10 and y <= 10 and x + y "
-             ">= 2 and x + y <= 30 and x - y >= 0 and x -y <= 10)";
+  auto str = "(x,y)[] : (x - 2 >= 0, y - 2 >= 0, -x + 10 >= 0, -y + "
+             "10 >= 0, x + y -2 >= 0, -x - y + 30 >= 0, x - y >= 0"
+             ", -x + y + 10 >= 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -205,32 +198,9 @@ TEST(ParserTest, higherDim) {
   EXPECT_TRUE(set->isEqual(ex));
 }
 
-TEST(ParserTest, coeff1) {
-  MLIRContext ctx;
-  auto str = "(x) : (1x -2 >= -2)";
-
-  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(succeeded(set));
-
-  PresburgerSet ex = makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{1, 0}})});
-  EXPECT_TRUE(set->isEqual(ex));
-}
-
-TEST(ParserTest, plusMinus) {
-  MLIRContext ctx;
-  auto str = "(x) : (-1x + -2 >= 2)";
-
-  FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
-  EXPECT_TRUE(succeeded(set));
-
-  PresburgerSet ex =
-      makeSetFromFACs(1, 0, {makeFACFromIneqs(1, 0, {{-1, -4}})});
-  EXPECT_TRUE(set->isEqual(ex));
-}
-
 TEST(ParserTest, floorDivSimple) {
   MLIRContext ctx;
-  auto str = "(x, y) : (y = floor(x / 3))";
+  auto str = "(x, y) : (y - x floordiv 3 == 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -238,14 +208,12 @@ TEST(ParserTest, floorDivSimple) {
   PresburgerSet ex = makeSetFromFACs(
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, 0}}, {{{1, 0, 0}, 3}})});
-  set->print(llvm::errs());
-  ex.print(llvm::errs());
   EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivWithCoeffs) {
   MLIRContext ctx;
-  auto str = "(x, y) : (y = 3floor(x + y - 13 / 3) + 42)";
+  auto str = "(x, y) : (y - 3 * ((x + y - 13) floordiv 3) - 42 == 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -254,14 +222,12 @@ TEST(ParserTest, floorDivWithCoeffs) {
       makeSetFromFACs(2, 0,
                       {makeFACFromConstraints(2, 0, {}, {{0, 1, -3, -42}},
                                               {{{1, 1, -13}, 3}})});
-  set->print(llvm::errs());
-  ex.print(llvm::errs());
   EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivMultiple) {
   MLIRContext ctx;
-  auto str = "(x, y) : (y = floor(x / 3) + floor(y / 2))";
+  auto str = "(x, y) : (y - x floordiv 3 - y floordiv 2 == 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -270,14 +236,12 @@ TEST(ParserTest, floorDivMultiple) {
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, -1, -1, 0}},
                               {{{1, 0, 0}, 3}, {{0, 1, 0, 0}, 2}})});
-  set->print(llvm::errs());
-  ex.print(llvm::errs());
   EXPECT_TRUE(set->isEqual(ex));
 }
 
 TEST(ParserTest, floorDivNested) {
   MLIRContext ctx;
-  auto str = "(x, y) : (y = floor(x + floor(y / 2) / 3))";
+  auto str = "(x, y) : (y - (x + y floordiv 2) floordiv 3 == 0)";
 
   FailureOr<PresburgerSet> set = parsePresburgerSet(str, &ctx);
   EXPECT_TRUE(succeeded(set));
@@ -286,8 +250,6 @@ TEST(ParserTest, floorDivNested) {
       2, 0,
       {makeFACFromConstraints(2, 0, {}, {{0, 1, 0, -1, 0}},
                               {{{0, 1, 0}, 2}, {{1, 0, 1, 0}, 3}})});
-  set->print(llvm::errs());
-  ex.print(llvm::errs());
   EXPECT_TRUE(set->isEqual(ex));
 }
 

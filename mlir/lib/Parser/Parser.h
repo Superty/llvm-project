@@ -10,6 +10,7 @@
 #define MLIR_LIB_PARSER_PARSER_H
 
 #include "ParserState.h"
+#include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OpImplementation.h"
 
@@ -295,6 +296,8 @@ public:
   ParseResult
   parseAffineExprOfSSAIds(AffineExpr &expr,
                           function_ref<ParseResult(bool)> parseElement);
+
+  ParseResult parsePresburgerSet(PresburgerSet &set);
 
 protected:
   /// The Parser is subclassed and reinstantiated.  Do not add additional

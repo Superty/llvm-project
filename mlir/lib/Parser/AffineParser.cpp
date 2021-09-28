@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Parser.h"
+#include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/IntegerSet.h"
 
@@ -58,6 +59,7 @@ public:
   ParseResult parseAffineExprOfSSAIds(AffineExpr &expr);
   void getDimsAndSymbolSSAIds(SmallVectorImpl<StringRef> &dimAndSymbolSSAIds,
                               unsigned &numDims);
+  ParseResult parsePresburgerSet(PresburgerSet &set);
 
 private:
   // Binary affine op parsing.
@@ -506,6 +508,31 @@ AffineParser::parseDimAndOptionalSymbolIdList(unsigned &numDims,
   return parseSymbolIdList(numSymbols);
 }
 
+ParseResult AffineParser::parsePresburgerSet(PresburgerSet &set) {
+  unsigned numDims = 0, numSymbols = 0;
+  if (parseDimAndOptionalSymbolIdList(numDims, numSymbols)) {
+    return failure();
+  }
+
+  if (parseToken(Token::colon, "expected ':'"))
+    return failure();
+
+  set = PresburgerSet::getEmptySet(numDims, numSymbols);
+
+  do {
+    IntegerSet basicSet = parseIntegerSetConstraints(numDims, numSymbols);
+
+    if (!basicSet)
+      return failure();
+
+    FlatAffineConstraints fac(basicSet);
+    set.unionFACInPlace(fac);
+
+  } while (consumeIf(Token::kw_or));
+
+  return success();
+}
+
 /// Parses an ambiguous affine map or integer set definition inline.
 ParseResult AffineParser::parseAffineMapOrIntegerSetInline(AffineMap &map,
                                                            IntegerSet &set) {
@@ -716,4 +743,8 @@ Parser::parseAffineExprOfSSAIds(AffineExpr &expr,
                                 function_ref<ParseResult(bool)> parseElement) {
   return AffineParser(state, /*allowParsingSSAIds=*/true, parseElement)
       .parseAffineExprOfSSAIds(expr);
+}
+
+ParseResult Parser::parsePresburgerSet(PresburgerSet &set) {
+  return AffineParser(state).parsePresburgerSet(set);
 }
