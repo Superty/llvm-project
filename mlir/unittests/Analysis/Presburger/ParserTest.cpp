@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/PresburgerParser.h"
+#include "mlir/Parser.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

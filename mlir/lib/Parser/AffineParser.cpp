@@ -14,6 +14,8 @@
 #include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/IntegerSet.h"
+#include "mlir/Parser/AsmParserState.h"
+#include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
 using namespace mlir::detail;
@@ -747,4 +749,25 @@ Parser::parseAffineExprOfSSAIds(AffineExpr &expr,
 
 ParseResult Parser::parsePresburgerSet(PresburgerSet &set) {
   return AffineParser(state).parsePresburgerSet(set);
+}
+
+FailureOr<PresburgerSet> mlir::parsePresburgerSet(StringRef str,
+                                                  MLIRContext *ctx) {
+  llvm::SourceMgr sourceMgr;
+  sourceMgr.AddNewSourceBuffer(llvm::MemoryBuffer::getMemBuffer(str), SMLoc());
+
+  SymbolState symbols;
+  AsmParserState asmParserState;
+  ParserState state(sourceMgr, ctx, symbols, &asmParserState);
+  Parser parser(state);
+
+  // This set will be overwritten
+  PresburgerSet set = PresburgerSet::getUniverse(1, 1);
+  if (parser.parsePresburgerSet(set))
+    return failure();
+
+  if (!parser.getToken().is(Token::eof))
+    return failure();
+
+  return set;
 }

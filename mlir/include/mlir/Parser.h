@@ -13,6 +13,7 @@
 #ifndef MLIR_PARSER_H
 #define MLIR_PARSER_H
 
+#include "mlir/Analysis/PresburgerSet.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include <cstddef>
@@ -256,6 +257,11 @@ Type parseType(llvm::StringRef typeStr, MLIRContext *context);
 /// `typeStr`. The number of characters of `typeStr` parsed in the process is
 /// returned in `numRead`.
 Type parseType(llvm::StringRef typeStr, MLIRContext *context, size_t &numRead);
+
+/// This parses a single PresburgerSet to an MLIR context if it was valid. If
+/// not, an error message is emitted.
+FailureOr<PresburgerSet> parsePresburgerSet(llvm::StringRef,
+                                            MLIRContext *context);
 } // end namespace mlir
 
 #endif // MLIR_PARSER_H
