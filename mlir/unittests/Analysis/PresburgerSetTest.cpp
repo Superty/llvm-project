@@ -15,7 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/PresburgerSet.h"
-#include "./utils.h"
+#include "./FACUtils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
