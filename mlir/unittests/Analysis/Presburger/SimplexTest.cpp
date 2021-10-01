@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/Simplex.h"
-#include "../FACUtils.h"
+#include "../Utils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -411,32 +411,45 @@ TEST(SimplexTest, appendVariable) {
   EXPECT_EQ(simplex.getNumConstraints(), 0u);
 }
 
-TEST(SimplexTest, isRedundant) {
+TEST(SimplexTest, isRedundantInequality) {
   Simplex simplex(2);
-  simplex.addInequality({0, -1, 2}); // [0]: y <= 2.
-  simplex.addInequality({1, 0, 0});  // [1]: x >= 0.
-  simplex.addEquality({-1, 1, 0});   // [2]: y = x.
+  simplex.addInequality({0, -1, 2}); // y <= 2.
+  simplex.addInequality({1, 0, 0});  // x >= 0.
+  simplex.addEquality({-1, 1, 0});   // y = x.
 
-  EXPECT_TRUE(simplex.isRedundant({-1, 0, 2})); // x <= 2.
-  EXPECT_TRUE(simplex.isRedundant({0, 1, 0}));  // y >= 0.
+  EXPECT_TRUE(simplex.isRedundantInequality({-1, 0, 2})); // x <= 2.
+  EXPECT_TRUE(simplex.isRedundantInequality({0, 1, 0}));  // y >= 0.
 
-  EXPECT_FALSE(simplex.isRedundant({-1, 0, -1})); // x <= -1.
-  EXPECT_FALSE(simplex.isRedundant({0, 1, -2}));  // y >= 2.
-  EXPECT_FALSE(simplex.isRedundant({0, 1, -1}));  // y >= 1.
+  EXPECT_FALSE(simplex.isRedundantInequality({-1, 0, -1})); // x <= -1.
+  EXPECT_FALSE(simplex.isRedundantInequality({0, 1, -2}));  // y >= 2.
+  EXPECT_FALSE(simplex.isRedundantInequality({0, 1, -1}));  // y >= 1.
+}
+
+TEST(SimplexTest, isRedundantEquality) {
+  Simplex simplex(2);
+  simplex.addInequality({0, -1, 2}); // y <= 2.
+  simplex.addInequality({1, 0, 0});  // x >= 0.
+  simplex.addEquality({-1, 1, 0});   // y = x.
+
+  EXPECT_TRUE(simplex.isRedundantEquality({-1, 1, 0})); // y = x.
+  EXPECT_TRUE(simplex.isRedundantEquality({1, -1, 0})); // x = y.
+
+  EXPECT_FALSE(simplex.isRedundantEquality({0, 1, -1})); // y = 1.
+
+  simplex.addEquality({0, -1, 2}); // y = 2.
+
+  EXPECT_TRUE(simplex.isRedundantEquality({-1, 0, 2})); // x = 2.
 }
 
 TEST(SimplexTest, ContainedIn) {
 
   FlatAffineConstraints univ = FlatAffineConstraints::getUniverse(1, 0);
-
   FlatAffineConstraints empty = makeFACFromIneqs(1, {{1, 0},     // x >= 0.
                                                      {-1, -1}}); // x <= -1.
-
-  FlatAffineConstraints s1 = makeFACFromIneqs(1, {{1, 0},    // x >= 0.
-                                                  {-1, 4}}); // x <= 4.
-
-  FlatAffineConstraints s2 = makeFACFromIneqs(1, {{1, -1},   // x >= 1.
-                                                  {-1, 3}}); // x <= 3.
+  FlatAffineConstraints s1 = makeFACFromIneqs(1, {{1, 0},        // x >= 0.
+                                                  {-1, 4}});     // x <= 4.
+  FlatAffineConstraints s2 = makeFACFromIneqs(1, {{1, -1},       // x >= 1.
+                                                  {-1, 3}});     // x <= 3.
 
   Simplex simUniv(univ);
   Simplex simEmpty(empty);

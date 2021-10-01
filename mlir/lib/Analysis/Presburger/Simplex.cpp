@@ -1241,24 +1241,38 @@ void Simplex::print(raw_ostream &os) const {
 void Simplex::dump() const { print(llvm::errs()); }
 
 bool Simplex::containedIn(const FlatAffineConstraints &fac) {
-
   if (isEmpty())
     return true;
 
   for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
-    if (!isRedundant(fac.getInequality(i)))
+    if (!isRedundantInequality(fac.getInequality(i)))
       return false;
 
   for (unsigned i = 0, e = fac.getNumEqualities(); i < e; ++i)
-    if (!isRedundant(fac.getEquality(i)))
+    if (!isRedundantEquality(fac.getEquality(i)))
       return false;
 
   return true;
 }
 
-bool Simplex::isRedundant(ArrayRef<int64_t> coeffs) {
+/// Computes the minimum value `coeffs` can take. If the value is greater
+/// than zero, the entire FAC backing `this` lies in the subplane defined
+/// by `coeffs`.
+bool Simplex::isRedundantInequality(ArrayRef<int64_t> coeffs) {
   Optional<Fraction> minimum = computeOptimum(Direction::Down, coeffs);
   return minimum && *minimum >= Fraction(0, 1);
+}
+
+/// Computes the minimum and maximum value `coeffs` can take. If the
+/// minimum is greater than 0 and the maximum is less than 0, the
+/// FAC backing `this` is entirely contained in the both subplanes
+/// defined by `coeffs`, hence it is contained in the equality defined
+/// by `coeffs`.
+bool Simplex::isRedundantEquality(ArrayRef<int64_t> coeffs) {
+  Optional<Fraction> minimum = computeOptimum(Direction::Down, coeffs);
+  Optional<Fraction> maximum = computeOptimum(Direction::Up, coeffs);
+  return minimum && maximum && *maximum <= Fraction(0, 1) &&
+         *minimum >= Fraction(0, 1);
 }
 
 } // namespace mlir

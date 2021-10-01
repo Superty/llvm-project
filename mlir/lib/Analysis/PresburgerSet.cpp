@@ -382,20 +382,24 @@ bool PresburgerSet::findIntegerSample(SmallVectorImpl<int64_t> &sample) {
 }
 
 PresburgerSet PresburgerSet::coalesce() {
-  PresburgerSet newSet =
-      PresburgerSet::getEmptySet(this->getNumDims(), this->getNumSyms());
-  SmallVector<bool, 4> marked(this->getNumFACs());
+  PresburgerSet newSet = PresburgerSet::getEmptySet(getNumDims(), getNumSyms());
+  // Marking an FAC implies that it will be dropped.
+  llvm::SmallBitVector marked(getNumFACs());
 
-  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; i++) {
+  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; ++i) {
     if (marked[i])
       continue;
     Simplex simplex(flatAffineConstraints[i]);
 
+    // Check whether the FAC backing `simplex` is empty. If so, it can be
+    // marked.
     if (simplex.isEmpty()) {
       marked[i] = true;
       continue;
     }
-    // check if bs1 is contained in any basicSet
+
+    // Check whether `bs1` is contained in any FAC, that is different from
+    // itself and not yet marked.
     for (unsigned j = 0, e = flatAffineConstraints.size(); j < e; ++j) {
       if (j == i || marked[j])
         continue;
@@ -407,10 +411,10 @@ PresburgerSet PresburgerSet::coalesce() {
     }
   }
 
-  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; ++i) {
+  for (unsigned i = 0, e = flatAffineConstraints.size(); i < e; ++i)
     if (!marked[i])
       newSet.unionFACInPlace(flatAffineConstraints[i]);
-  }
+
   return newSet;
 }
 

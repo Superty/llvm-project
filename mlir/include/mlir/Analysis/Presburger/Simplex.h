@@ -238,10 +238,15 @@ public:
   void dump() const;
 
   /// Check if the specified inequality already holds in the polytope.
-  bool isRedundant(ArrayRef<int64_t> coeffs);
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
+
+  /// Check if the specified equality already holds in the polytope.
+  bool isRedundantEquality(ArrayRef<int64_t> coeffs);
 
   /// Check if the specified FAC contains the polytope,
-  /// i.e. whether all inequalities of the specified FAC hold for the polytope.
+  /// i.e. whether all constraints of the specified FAC hold for the polytope.
+  /// If the FAC backing `this` is empty, returns always true.
+  /// If `fac` is empty, returns false unless the FAC backing `this` is empty.
   bool containedIn(const FlatAffineConstraints &fac);
 
 private:

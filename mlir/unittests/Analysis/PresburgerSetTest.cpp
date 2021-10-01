@@ -15,7 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/PresburgerSet.h"
-#include "./FACUtils.h"
+#include "./Utils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -621,6 +621,11 @@ void expectCoalesce(size_t expectedNumBasicSets, PresburgerSet set) {
   EXPECT_TRUE(expectedNumBasicSets == newSet.getNumFACs());
 }
 
+TEST(SetTest, coalesceNoFAC) {
+  PresburgerSet set = makeSetFromFACs(0, {});
+  expectCoalesce(0, set);
+}
+
 TEST(SetTest, coalesceContainedOneDim) {
   PresburgerSet set =
       makeSetFromFACs(1, {
@@ -778,6 +783,21 @@ TEST(SetTest, coalesceSeparateTwoDim) {
                                                   {0, -1, 3}}), // y <= 3
                          });
   expectCoalesce(2, set);
+}
+
+TEST(SetTest, coalesceContainedEq) {
+  PresburgerSet set =
+      makeSetFromFACs(2, {
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, 0},    // x >= 0.
+                                                     {-1, 0, 3}},  // x <= 3.
+                                                    {{1, -1, 0}}), // x = y
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, -1},  // x >= 1.
+                                                     {-1, 0, 2}}, // x <= 2.
+                                                    {{1, -1, 0}}) // x = y
+                         });
+  expectCoalesce(1, set);
 }
 
 } // namespace mlir
