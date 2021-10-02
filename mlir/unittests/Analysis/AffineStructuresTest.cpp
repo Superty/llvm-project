@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/AffineStructures.h"
+#include "./Utils.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/MLIRContext.h"
 
@@ -50,21 +51,6 @@ static void checkSample(bool hasSample, const FlatAffineConstraints &fac,
     EXPECT_EQ(!hasSample, fac.isIntegerEmpty());
     break;
   }
-}
-
-/// Construct a FlatAffineConstraints from a set of inequality and
-/// equality constraints.
-static FlatAffineConstraints
-makeFACFromConstraints(unsigned ids, ArrayRef<SmallVector<int64_t, 4>> ineqs,
-                       ArrayRef<SmallVector<int64_t, 4>> eqs,
-                       unsigned syms = 0) {
-  FlatAffineConstraints fac(ineqs.size(), eqs.size(), ids + 1, ids - syms, syms,
-                            /*numLocals=*/0);
-  for (const auto &eq : eqs)
-    fac.addEquality(eq);
-  for (const auto &ineq : ineqs)
-    fac.addInequality(ineq);
-  return fac;
 }
 
 /// Check sampling for all the permutations of the dimensions for the given
@@ -434,7 +420,7 @@ TEST(FlatAffineConstraintsTest, IsIntegerEmptyTest) {
                                                       {
                                                           {1, -1, 0},
                                                       },
-                                                      1);
+                                                      0, 1);
   EXPECT_FALSE(fac6.isIntegerEmpty());
 }
 

@@ -19,12 +19,13 @@ namespace mlir {
 static FlatAffineConstraints
 makeFACFromConstraints(unsigned numIds, ArrayRef<SmallVector<int64_t, 4>> ineqs,
                        ArrayRef<SmallVector<int64_t, 4>> eqs,
-                       unsigned numLocals = 0) {
+                       unsigned numLocals = 0, unsigned numSymbols = 0) {
   FlatAffineConstraints fac(/*numReservedInequalities=*/ineqs.size(),
                             /*numReservedEqualities=*/eqs.size(),
                             /*numReservedCols=*/numIds + 1,
-                            /*numDims=*/numIds - numLocals,
-                            /*numSymbols=*/0, numLocals);
+                            /*numDims=*/numIds - numLocals - numSymbols,
+                            /*numSymbols=*/numSymbols,
+                            /*numLocals=*/numLocals);
   for (const SmallVector<int64_t, 4> &eq : eqs)
     fac.addEquality(eq);
   for (const SmallVector<int64_t, 4> &ineq : ineqs)

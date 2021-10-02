@@ -800,4 +800,65 @@ TEST(SetTest, coalesceContainedEq) {
   expectCoalesce(1, set);
 }
 
+TEST(SetTest, coalesceCuttingEq) {
+  PresburgerSet set =
+      makeSetFromFACs(2, {
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, -1},   // x >= 1.
+                                                     {-1, 0, 3}},  // x <= 3.
+                                                    {{1, -1, 0}}), // x = y
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, 0},   // x >= 0.
+                                                     {-1, 0, 2}}, // x <= 2.
+                                                    {{1, -1, 0}}) // x = y
+                         });
+  expectCoalesce(2, set);
+}
+
+TEST(SetTest, coalesceSeparateEq) {
+  PresburgerSet set =
+      makeSetFromFACs(2, {
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, -3},   // x >= 3.
+                                                     {-1, 0, 4}},  // x <= 4.
+                                                    {{1, -1, 0}}), // x = y
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, 0},   // x >= 0.
+                                                     {-1, 0, 1}}, // x <= 1.
+                                                    {{1, -1, 0}}) // x = y
+                         });
+  expectCoalesce(2, set);
+}
+
+TEST(SetTest, coalesceContainedEqAsIneq) {
+  PresburgerSet set =
+      makeSetFromFACs(2, {
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, 0},   // x >= 0.
+                                                     {-1, 0, 3},  // x <= 3.
+                                                     {1, -1, 0},  // x >= y
+                                                     {-1, 1, 0}}, // x <= y
+                                                    {}),
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, -1},  // x >= 1.
+                                                     {-1, 0, 2}}, // x <= 2.
+                                                    {{1, -1, 0}}) // x = y
+                         });
+  expectCoalesce(1, set);
+}
+
+TEST(SetTest, coalesceContainedEqComplex) {
+  PresburgerSet set =
+      makeSetFromFACs(2, {
+                             makeFACFromConstraints(2, {},
+                                                    {{1, -1, 0},   // x = y
+                                                     {1, 0, -2}}), // x = 2
+                             makeFACFromConstraints(2,
+                                                    {{1, 0, -1},  // x >= 1.
+                                                     {-1, 0, 2}}, // x <= 2.
+                                                    {{1, -1, 0}}) // x = y
+                         });
+  expectCoalesce(1, set);
+}
+
 } // namespace mlir
