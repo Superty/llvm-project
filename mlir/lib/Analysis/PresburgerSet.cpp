@@ -381,7 +381,7 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
 
   PresburgerSet result(fac.getNumDimIds(), fac.getNumSymbolIds());
   Simplex simplex(fac);
-  subtractRecursively(fac, simplex, set, 0, result);
+  subtractRecursively(fac, simplex, eliminateExistentials(set), 0, result);
   return result;
 }
 
