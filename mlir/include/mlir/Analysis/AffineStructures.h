@@ -30,6 +30,7 @@ class MLIRContext;
 class Value;
 class MemRefType;
 struct MutableAffineMap;
+class PresburgerSet;
 
 /// A flat list of affine equalities and inequalities in the form.
 /// Inequality: c_0*x_0 + c_1*x_1 + .... + c_{n-1}*x_{n-1} >= 0
@@ -548,6 +549,9 @@ protected:
   // don't expect an identifier to have more than 32 lower/upper/equality
   // constraints. This is conservatively set low and can be raised if needed.
   constexpr static unsigned kExplosionFactor = 32;
+
+private:
+  friend class PresburgerSet;
 };
 
 /// An extension of FlatAffineConstraints in which dimensions and symbols can
@@ -901,6 +905,9 @@ protected:
   /// Temporary ones or those that aren't associated with any Value are set to
   /// None.
   SmallVector<Optional<Value>, 8> values;
+
+private:
+  friend class PresburgerSet;
 };
 
 /// Flattens 'expr' into 'flattenedExpr', which contains the coefficients of the

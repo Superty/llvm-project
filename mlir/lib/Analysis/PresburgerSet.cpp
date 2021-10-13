@@ -6,8 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/PresburgerSet.h"
+#include "mlir/Analysis/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/PresburgerSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallBitVector.h"
@@ -82,6 +83,56 @@ PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   PresburgerSet result = *this;
   result.unionSetInPlace(set);
   return result;
+}
+
+PresburgerSet /* why does the formatter want to merge these words?? */
+PresburgerSet::eliminateExistentials(const FlatAffineConstraints &bs) {
+  ParamLexSimplex paramLexSimplex(bs.getNumIds(),
+                                  bs.getNumSymbolIds() + bs.getNumDimIds());
+  // for (const auto &div : bs.getDivisions()) {
+  //   // The division variables must be in the same order they are stored in the
+  //   // basic set.
+  //   paramLexSimplex.addInequality(div.getInequalityLowerBound().getCoeffs());
+  //   paramLexSimplex.addInequality(div.getInequalityUpperBound().getCoeffs());
+  // }
+  for (unsigned i = 0, numIneqs = bs.getNumInequalities();
+       i < numIneqs; ++i)
+    paramLexSimplex.addInequality(bs.getInequality(i));
+  for (unsigned i = 0, numEqs = bs.getNumEqualities(); i < numEqs; ++i)
+    paramLexSimplex.addEquality(bs.getEquality(i));
+
+  // ParamLexSimplex refSimplex(3, 1);
+  // refSimplex.addInequality({1, -1, 0, 0});  // x >= 0
+  // refSimplex.addInequality({0, 0, 1, 0});  // z >= 0
+  // refSimplex.addInequality({0, 1, 0, 0});  // y >= 0
+  // refSimplex.addInequality({0, -1, 0, 1}); // y <= 1
+  // refSimplex.addEquality({1, -1, -3, 0});  // x == y + 3z
+
+  // if (!(refSimplex.tableau == paramLexSimplex.tableau))
+  //   llvm::errs() << "mismatch!\n";
+
+
+  PresburgerSet result(bs.getNumDimIds(), bs.getNumSymbolIds());
+  for (auto &b : paramLexSimplex.findParamLexmin().domain) {
+    b.numSymbols = bs.numSymbols;
+    b.numDims = bs.numDims;
+    result.unionFACInPlace(std::move(b));
+  }
+  // llvm::errs() << "returning!\n";
+  return result;
+}
+
+PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerSet &set) {
+  PresburgerSet unquantifiedSet(set.getNumDims(), set.getNumSyms());
+  for (unsigned i = 0, numFACs = set.getNumFACs(); i < numFACs; ++i) {
+    auto &fac = set.getFlatAffineConstraints(i);
+    if (fac.hasOnlyRepresentableDivs())
+      unquantifiedSet.unionFACInPlace(fac);
+    else
+      unquantifiedSet.unionSetInPlace(PresburgerSet::eliminateExistentials(fac));
+  }
+  // unquantifiedSet.dump();
+  return unquantifiedSet;
 }
 
 /// A point is contained in the union iff any of the parts contain the point.
