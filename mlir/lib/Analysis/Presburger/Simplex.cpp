@@ -833,22 +833,10 @@ public:
       // get the dual from the inequality in column position as explained above.
       if (simplex.con[i].orientation == Orientation::Column) {
         dual.push_back(-simplex.tableau(row, simplex.con[i].pos));
-      } else {
-        if (simplex.con[i + 1].orientation == Orientation::Row) {
-          unsigned ineqRow = simplex.con[i + 1].pos;
-          // Since it is an equality, the sample value must be zero.
-          assert(simplex.tableau(ineqRow, 1) == 0 &&
-                 "Equality's sample value must be zero.");
-          for (unsigned col = 2; col < simplex.nCol; ++col) {
-            if (simplex.tableau(ineqRow, col) != 0) {
-              simplex.pivot(ineqRow, col);
-              break;
-            }
-          }
-          assert(simplex.con[i + 1].orientation == Orientation::Column &&
-                 "No pivot found. Equality has all-zeros row in tableau!");
-        }
+      } else if (simplex.con[i + 1].orientation == Orientation::Column) {
         dual.push_back(simplex.tableau(row, simplex.con[i + 1].pos));
+      } else {
+        dual.push_back(0);
       }
     }
     simplex.rollback(snap);
