@@ -305,7 +305,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     return;
   }
 
-  simplex.detectRedundant();
+  // simplex.detectRedundant();
 
   // Equalities are added to simplex as a pair of inequalities.
   unsigned totalNewSimplexInequalities =
