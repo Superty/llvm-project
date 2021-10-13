@@ -1,4 +1,4 @@
-//===- SetTest.cpp - Tests for PresburgerSet ------------------------------===//
+//===- PresburgerSetTest.cpp - Tests for PresburgerSet --------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -119,7 +119,7 @@ static PresburgerSet makeSetFromFACs(unsigned numDims,
   return set;
 }
 
-TEST(SetTest, containsPoint) {
+TEST(PresburgerSetTest, containsPoint) {
   PresburgerSet setA =
       makeSetFromFACs(1, {
                              makeFACFromIneqs(1, {{1, -2},    // x >= 2.
@@ -163,7 +163,7 @@ TEST(SetTest, containsPoint) {
   }
 }
 
-TEST(SetTest, Union) {
+TEST(PresburgerSetTest, Union) {
   PresburgerSet set =
       makeSetFromFACs(1, {
                              makeFACFromIneqs(1, {{1, -2},    // x >= 2.
@@ -193,7 +193,7 @@ TEST(SetTest, Union) {
                     PresburgerSet::getEmptySet(1), {{1}, {2}, {0}, {-1}});
 }
 
-TEST(SetTest, Intersect) {
+TEST(PresburgerSetTest, Intersect) {
   PresburgerSet set =
       makeSetFromFACs(1, {
                              makeFACFromIneqs(1, {{1, -2},    // x >= 2.
@@ -223,7 +223,7 @@ TEST(SetTest, Intersect) {
                         PresburgerSet::getUniverse(1), {{1}, {2}, {0}, {-1}});
 }
 
-TEST(SetTest, Subtract) {
+TEST(PresburgerSetTest, Subtract) {
   // The interval [2, 8] minus
   // the interval [10, 20].
   testSubtractAtPoints(
@@ -503,7 +503,7 @@ TEST(SetTest, Subtract) {
        {8}});
 }
 
-TEST(SetTest, Complement) {
+TEST(PresburgerSetTest, Complement) {
   // Complement of universe.
   testComplementAtPoints(
       PresburgerSet::getUniverse(1),
@@ -536,7 +536,7 @@ TEST(SetTest, Complement) {
        {1, 10}});
 }
 
-TEST(SetTest, isEqual) {
+TEST(PresburgerSetTest, isEqual) {
   // set = [2, 8] U [10, 20].
   PresburgerSet universe = PresburgerSet::getUniverse(1);
   PresburgerSet emptySet = PresburgerSet::getEmptySet(1);
@@ -611,7 +611,7 @@ void expectEqual(const PresburgerSet &s, const PresburgerSet &t) {
 
 void expectEmpty(PresburgerSet s) { EXPECT_TRUE(s.isIntegerEmpty()); }
 
-TEST(SetTest, divisions) {
+TEST(PresburgerSetTest, divisions) {
   // Note: we currently need to add the equalities as inequalities to the FAC
   // since detecting divisions based on equalities is not yet supported.
 
