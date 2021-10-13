@@ -67,6 +67,15 @@ Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
   return unknownFromIndex(rowUnknown[row]);
 }
 
+void Simplex::addZeroConstraint() {
+  ++nRow;
+  // If the tableau is not big enough to accomodate the extra row, we extend it.
+  if (nRow >= tableau.getNumRows())
+    tableau.resizeVertically(nRow);
+  rowUnknown.push_back(~con.size());
+  con.emplace_back(Orientation::Row, false, nRow - 1);
+}
+
 /// Add a new row to the tableau corresponding to the given constant term and
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
@@ -74,12 +83,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
   assert(coeffs.size() == 1 + var.size() &&
          "Incorrect number of coefficients!");
 
-  ++nRow;
-  // If the tableau is not big enough to accomodate the extra row, we extend it.
-  if (nRow >= tableau.getNumRows())
-    tableau.resizeVertically(nRow);
-  rowUnknown.push_back(~con.size());
-  con.emplace_back(Orientation::Row, false, nRow - 1);
+  addZeroConstraint();
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
@@ -398,6 +402,18 @@ unsigned Simplex::getNumConstraints() const { return con.size(); }
 /// undo log.
 unsigned Simplex::getSnapshot() const { return undoLog.size(); }
 
+unsigned Simplex::getSnapshotBasis() {
+  SmallVector<int, 8> basis;
+  for (int index : colUnknown) {
+    if (index != nullIndex)
+      basis.push_back(index);
+  }
+  savedBases.push_back(std::move(basis));
+
+  undoLog.emplace_back(UndoLogEntry::RestoreBasis);
+  return undoLog.size() - 1;
+}
+
 void Simplex::undo(UndoLogEntry entry) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
     Unknown &constraint = con.back();
@@ -468,6 +484,30 @@ void Simplex::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
+  } else if (entry == UndoLogEntry::RestoreBasis) {
+    assert(!savedBases.empty() && "No bases saved!");
+
+    auto basis = std::move(savedBases.back());
+    savedBases.pop_back();
+
+    for (int index : basis) {
+      Unknown &u = unknownFromIndex(index);
+      if (u.orientation == Orientation::Column)
+        continue;
+      for (unsigned col = 0; col < nCol; col++) {
+        if (colUnknown[col] == nullIndex)
+          continue;
+        if (std::count(basis.begin(), basis.end(), colUnknown[col]) != 0)
+          continue;
+        if (tableau(u.pos, col) == 0)
+          continue;
+        pivot(u.pos, col);
+        break;
+      }
+
+      assert(u.orientation == Orientation::Column &&
+             "Basis unknown is still a row!");
+    }
   }
 }
 
@@ -496,6 +536,22 @@ void Simplex::appendVariable(unsigned count) {
   tableau.resizeHorizontally(nCol);
   undoLog.insert(undoLog.end(), count, UndoLogEntry::RemoveLastVariable);
 }
+
+void Simplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+  appendVariable();
+
+  SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
+  int64_t constTerm = ineq.back();
+  ineq.back() = -denom;
+  ineq.push_back(constTerm);
+  addInequality(ineq);
+
+  for (int64_t &coeff : ineq)
+    coeff = -coeff;
+  ineq.back() += denom - 1;
+  addInequality(ineq);
+}
+
 
 /// Add all the constraints from the given FlatAffineConstraints.
 void Simplex::intersectFlatAffineConstraints(const FlatAffineConstraints &fac) {

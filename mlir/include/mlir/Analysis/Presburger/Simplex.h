@@ -164,12 +164,16 @@ public:
 
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
+
+  void addZeroConstraint();
 
   /// Mark the tableau as being empty.
   void markEmpty();
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() const;
+  unsigned getSnapshotBasis();
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
@@ -237,7 +241,7 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
-private:
+protected:
   friend class GBRSimplex;
 
   enum class Orientation { Row, Column };
@@ -250,11 +254,13 @@ private:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos, bool oZero = false, bool oRedundant = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted), zero(oZero), redundant(oRedundant) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool zero : 1;
+    bool redundant : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -333,7 +339,8 @@ private:
     RemoveLastConstraint,
     RemoveLastVariable,
     UnmarkEmpty,
-    UnmarkLastRedundant
+    UnmarkLastRedundant,
+    RestoreBasis
   };
 
   /// Undo the operation represented by the log entry.
@@ -371,6 +378,8 @@ private:
   /// This is true if the tableau has been detected to be empty, false
   /// otherwise.
   bool empty;
+
+  SmallVector<SmallVector<int, 8>, 8> savedBases;
 
   /// Holds a log of operations, used for rolling back to a previous state.
   SmallVector<UndoLogEntry, 8> undoLog;
