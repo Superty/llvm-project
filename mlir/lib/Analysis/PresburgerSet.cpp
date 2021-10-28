@@ -271,6 +271,8 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   // Add sI's locals to b, after b's locals. Also add b's locals to sI, before
   // sI's locals.
   b.mergeLocalIds(sI);
+  unsigned numLocalsAdded = b.getNumLocalIds() - bInitNumLocals;
+  simplex.appendVariable(numLocalsAdded);
 
   // Mark which inequalities of sI are division inequalities and add all such
   // inequalities to b.
@@ -283,6 +285,9 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     b.addInequality(sI.getInequality(maybePair->first));
     b.addInequality(sI.getInequality(maybePair->second));
 
+    simplex.addInequality(sI.getInequality(maybePair->first));
+    simplex.addInequality(sI.getInequality(maybePair->second));
+
     assert(maybePair->first != maybePair->second &&
            "Upper and lower bounds must be different inequalities!");
     isDivInequality[maybePair->first] = true;
@@ -290,8 +295,6 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   }
 
   unsigned offset = simplex.getNumConstraints();
-  unsigned numLocalsAdded = b.getNumLocalIds() - bInitNumLocals;
-  simplex.appendVariable(numLocalsAdded);
 
   unsigned snapshotBeforeIntersect = simplex.getSnapshot();
   simplex.intersectFlatAffineConstraints(sI);
