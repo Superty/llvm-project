@@ -18,7 +18,7 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
 Simplex::Simplex(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
+    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false), hasBigM(false) {
   colUnknown.push_back(nullIndex);
   colUnknown.push_back(nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
@@ -355,7 +355,10 @@ void Simplex::assertIsConsistent() const {
   for (const Unknown &u : con) {
     if (u.orientation == Orientation::Column)
       continue;
-    assert(tableau(u.pos, 1) >= 0);
+    // if (hasBigM)
+    //   assert(tableau(u.pos, 2) > 0 || (tableau(u.pos, 2) == 0 && tableau(u.pos, 1) >= 0));
+    if (!hasBigM)
+      assert(tableau(u.pos, 1) >= 0);
   }
 
   return;

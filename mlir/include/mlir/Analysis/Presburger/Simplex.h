@@ -382,6 +382,8 @@ protected:
   /// otherwise.
   bool empty;
 
+  bool hasBigM;
+
   SmallVector<SmallVector<int, 8>, 8> savedBases;
 
   /// Holds a log of operations, used for rolling back to a previous state.
