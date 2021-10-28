@@ -237,6 +237,13 @@ static SmallVector<int64_t, 8> getComplementIneq(ArrayRef<int64_t> ineq) {
 static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
                                 const PresburgerSet &s, unsigned i,
                                 PresburgerSet &result) {
+  auto assertSimplexMatchesB = [&b, &simplex]() {
+    assert(b.getNumInequalities() + 2*b.getNumEqualities() == simplex.getNumConstraints());
+    assert(b.getNumIds() == simplex.getNumVariables());
+    simplex.assertIsConsistent();
+  };
+  assertSimplexMatchesB();
+
   if (i == s.getNumFACs()) {
     result.unionFACInPlace(b);
     return;
@@ -260,6 +267,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     b.removeInequalityRange(bInitNumIneqs, b.getNumInequalities());
     b.removeEqualityRange(bInitNumEqs, b.getNumEqualities());
     simplex.rollback(initialSnapshot);
+    assertSimplexMatchesB();
   };
 
   // Find out which inequalities of sI correspond to division inequalities for
@@ -318,6 +326,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     isMarkedRedundant[j] = simplex.isMarkedRedundant(offset + j);
 
   simplex.rollback(snapshotBeforeIntersect);
+  assertSimplexMatchesB();
 
   // Recurse with the part b ^ ~ineq. Note that b is modified throughout
   // subtractRecursively. At the time this function is called, the current b is
@@ -331,6 +340,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     subtractRecursively(b, simplex, s, i + 1, result);
     b.removeInequality(b.getNumInequalities() - 1);
     simplex.rollback(snapshot);
+    assertSimplexMatchesB();
   };
 
   // For each inequality ineq, we first recurse with the part where ineq
@@ -340,6 +350,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
     recurseWithInequality(getComplementIneq(ineq));
     b.addInequality(ineq);
     simplex.addInequality(ineq);
+    assertSimplexMatchesB();
   };
 
   // Process all the inequalities, ignoring redundant inequalities and division
@@ -368,6 +379,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   }
 
   restoreState();
+  assertSimplexMatchesB();
 }
 
 /// Return the set difference fac \ set.
