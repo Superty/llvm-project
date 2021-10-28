@@ -379,8 +379,11 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
   Unknown &u = con[conIndex];
   u.restricted = true;
   LogicalResult result = restoreRow(u);
-  if (failed(result))
+  if (failed(result)) {
+    undoLog.pop_back();
     markEmpty();
+    undoLog.push_back(UndoLogEntry::RemoveLastConstraint);
+  }
 }
 
 /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
@@ -484,6 +487,19 @@ void Simplex::undo(UndoLogEntry entry) {
     nCol--;
   } else if (entry == UndoLogEntry::UnmarkEmpty) {
     empty = false;
+    bool progress;
+    do {
+      progress = false;
+      for (Unknown &u : con) {
+        if (u.orientation == Orientation::Column)
+          continue;
+        if (tableau(u.pos, 1) >= 0)
+          continue;
+        if (failed(restoreRow(u)))
+          llvm_unreachable("Could not restore while undoing!");
+        progress = true;
+      }
+    } while (progress);
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
   } else if (entry == UndoLogEntry::RestoreBasis) {
