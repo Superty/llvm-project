@@ -340,6 +340,27 @@ Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
 
 bool Simplex::isEmpty() const { return empty; }
 
+bool Simplex::unknownIsConsistent(int index) const {
+  const Unknown &u = unknownFromIndex(index);
+  return (u.orientation == Orientation::Row ? rowUnknown : colUnknown)[u.pos] == index;
+}
+
+void Simplex::assertIsConsistent() const {
+  for (int i = -int(con.size()); i < int(var.size()); ++i)
+    assert(unknownIsConsistent(i));
+
+  if (empty)
+    return;
+
+  for (const Unknown &u : con) {
+    if (u.orientation == Orientation::Column)
+      continue;
+    assert(tableau(u.pos, 1) >= 0);
+  }
+
+  return;
+}
+
 void Simplex::swapRows(unsigned i, unsigned j) {
   if (i == j)
     return;
@@ -527,6 +548,7 @@ void Simplex::undo(UndoLogEntry entry) {
              "Basis unknown is still a row!");
     }
   }
+  assertIsConsistent();
 }
 
 /// Rollback to the specified snapshot.

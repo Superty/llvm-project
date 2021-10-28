@@ -241,6 +241,9 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
+  void assertIsConsistent() const;
+  bool unknownIsConsistent(int index) const;
+
 protected:
   friend class GBRSimplex;
 
