@@ -440,6 +440,7 @@ unsigned Simplex::getSnapshotBasis() {
   savedBases.push_back(std::move(basis));
 
   undoLog.emplace_back(UndoLogEntry::RestoreBasis);
+  assertIsConsistent();
   return undoLog.size() - 1;
 }
 
