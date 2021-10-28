@@ -361,6 +361,8 @@ void Simplex::swapColumns(unsigned i, unsigned j) {
 
 /// Mark this tableau empty and push an entry to the undo stack.
 void Simplex::markEmpty() {
+  if (empty)
+    return;
   undoLog.push_back(UndoLogEntry::UnmarkEmpty);
   empty = true;
 }
