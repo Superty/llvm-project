@@ -13,6 +13,7 @@
 #ifndef MLIR_PARSER_H
 #define MLIR_PARSER_H
 
+#include "mlir/Analysis/AffineStructures.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include <cstddef>
@@ -257,10 +258,9 @@ Type parseType(llvm::StringRef typeStr, MLIRContext *context);
 /// returned in `numRead`.
 Type parseType(llvm::StringRef typeStr, MLIRContext *context, size_t &numRead);
 
-IntegerSet parseIntegerSet(llvm::StringRef setStr, MLIRContext *context);
+FailureOr<FlatAffineConstraints>
+parseFlatAffineConstraints(StringRef str, MLIRContext *context);
 
-IntegerSet parseIntegerSet(llvm::StringRef setStr, MLIRContext *context,
-                           size_t &numRead);
 } // end namespace mlir
 
 #endif // MLIR_PARSER_H

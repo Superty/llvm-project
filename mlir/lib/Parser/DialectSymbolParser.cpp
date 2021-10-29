@@ -355,18 +355,3 @@ Type mlir::parseType(StringRef typeStr, MLIRContext *context, size_t &numRead) {
                            [](Parser &parser) { return parser.parseType(); });
 }
 
-IntegerSet mlir::parseIntegerSet(StringRef setStr, MLIRContext *context) {
-  size_t numRead = 0;
-  return parseIntegerSet(setStr, context, numRead);
-}
-
-IntegerSet mlir::parseIntegerSet(StringRef setStr, MLIRContext *context,
-                                 size_t &numRead) {
-  return parseSymbol<IntegerSet>(setStr, context, numRead, [](Parser &parser) {
-    IntegerSet set;
-    if (parser.parseIntegerSetReference(set))
-      return IntegerSet();
-    return set;
-  });
-}
-

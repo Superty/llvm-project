@@ -13,10 +13,13 @@
 #include "Parser.h"
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/IntegerSet.h"
+#include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
 using namespace mlir::detail;
+using llvm::MemoryBuffer;
 using llvm::SMLoc;
+using llvm::SourceMgr;
 
 namespace {
 
@@ -58,6 +61,7 @@ public:
   ParseResult parseAffineExprOfSSAIds(AffineExpr &expr);
   void getDimsAndSymbolSSAIds(SmallVectorImpl<StringRef> &dimAndSymbolSSAIds,
                               unsigned &numDims);
+  ParseResult parseFlatAffineConstraints(FlatAffineConstraints &fac);
 
 private:
   // Binary affine op parsing.
@@ -671,6 +675,15 @@ IntegerSet AffineParser::parseIntegerSetConstraints(unsigned numDims,
   return IntegerSet::get(numDims, numSymbols, constraints, isEqs);
 }
 
+ParseResult
+AffineParser::parseFlatAffineConstraints(FlatAffineConstraints &fac) {
+  IntegerSet set;
+  if (parseIntegerSetReference(set))
+    return failure();
+  fac = FlatAffineConstraints(set);
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // Parser
 //===----------------------------------------------------------------------===//
@@ -716,4 +729,21 @@ Parser::parseAffineExprOfSSAIds(AffineExpr &expr,
                                 function_ref<ParseResult(bool)> parseElement) {
   return AffineParser(state, /*allowParsingSSAIds=*/true, parseElement)
       .parseAffineExprOfSSAIds(expr);
+}
+
+FailureOr<FlatAffineConstraints>
+mlir::parseFlatAffineConstraints(StringRef inputStr, MLIRContext *context) {
+
+  llvm::SourceMgr sourceMgr;
+  auto memBuffer = llvm::MemoryBuffer::getMemBuffer(
+      inputStr, /*BufferName=*/"<mlir_parser_buffer>",
+      /*RequiresNullTerminator=*/false);
+  sourceMgr.AddNewSourceBuffer(std::move(memBuffer), SMLoc());
+  SymbolState symbolState;
+  ParserState state(sourceMgr, context, symbolState, /*asmState=*/nullptr);
+  AffineParser parser(state);
+  FlatAffineConstraints fac;
+  if (parser.parseFlatAffineConstraints(fac))
+    return failure();
+  return fac;
 }

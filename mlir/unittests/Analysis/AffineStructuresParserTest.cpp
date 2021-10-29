@@ -1,5 +1,5 @@
-#include "./ParserUtil.h"
 #include "mlir/Analysis/PresburgerSet.h"
+#include "mlir/Parser.h"
 
 #include <gtest/gtest.h>
 
@@ -26,8 +26,9 @@ static bool facEquality(FlatAffineConstraints &fac1,
 }
 
 TEST(ParseFACTest, simple) {
-  FailureOr<FlatAffineConstraints> fac =
-      parseFAC("(x)[] : (7 * x >= 0, -7 * x + 5 >= 0)");
+  MLIRContext context;
+  FailureOr<FlatAffineConstraints> fac = parseFlatAffineConstraints(
+      "(x)[] : (7 * x >= 0, -7 * x + 5 >= 0)", &context);
   EXPECT_TRUE(succeeded(fac));
 
   FlatAffineConstraints ex = makeFACFromConstraints(1, {{7, 0}, {-7, 5}}, {});
