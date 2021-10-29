@@ -256,6 +256,11 @@ Type parseType(llvm::StringRef typeStr, MLIRContext *context);
 /// `typeStr`. The number of characters of `typeStr` parsed in the process is
 /// returned in `numRead`.
 Type parseType(llvm::StringRef typeStr, MLIRContext *context, size_t &numRead);
+
+IntegerSet parseIntegerSet(llvm::StringRef setStr, MLIRContext *context);
+
+IntegerSet parseIntegerSet(llvm::StringRef setStr, MLIRContext *context,
+                           size_t &numRead);
 } // end namespace mlir
 
 #endif // MLIR_PARSER_H
