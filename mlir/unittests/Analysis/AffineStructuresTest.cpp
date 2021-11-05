@@ -9,6 +9,7 @@
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/Parser.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -98,11 +99,21 @@ static void checkPermutationsSample(bool hasSample, unsigned nDim,
   } while (std::next_permutation(perm.begin(), perm.end()));
 }
 
+static FlatAffineConstraints parseFAC(StringRef str) {
+  MLIRContext context;
+  FailureOr<FlatAffineConstraints> fac =
+      parseFlatAffineConstraints(str, &context);
+
+  EXPECT_TRUE(succeeded(fac));
+
+  return *fac;
+}
+
 TEST(FlatAffineConstraintsTest, FindSampleTest) {
   // Bounded sets with only inequalities.
 
   // 0 <= 7x <= 5
-  checkSample(true, makeFACFromConstraints(1, {{7, 0}, {-7, 5}}, {}));
+  checkSample(true, parseFAC("(x) : (7 * x >= 0, -7 * x + 5 >= 0)"));
 
   // 1 <= 5x and 5x <= 4 (no solution).
   checkSample(false, makeFACFromConstraints(1, {{5, -1}, {-5, 4}}, {}));
