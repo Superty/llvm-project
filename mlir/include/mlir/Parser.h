@@ -258,8 +258,12 @@ Type parseType(llvm::StringRef typeStr, MLIRContext *context);
 /// returned in `numRead`.
 Type parseType(llvm::StringRef typeStr, MLIRContext *context, size_t &numRead);
 
+/// This parses a single IntegerSet to an MLIR context and transforms it to
+/// FlatAffineConstraints if it was valid. If not, a failure is returned. If the
+/// passed `str` has additional tokens that were not part of the IntegerSet, a
+/// failure is returned.
 FailureOr<FlatAffineConstraints>
-parseFlatAffineConstraints(StringRef str, MLIRContext *context);
+parseFlatAffineConstraints(llvm::StringRef str, MLIRContext *context);
 
 } // end namespace mlir
 

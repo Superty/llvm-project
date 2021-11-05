@@ -15,7 +15,6 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/DialectImplementation.h"
-#include "mlir/IR/IntegerSet.h"
 #include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
@@ -354,4 +353,3 @@ Type mlir::parseType(StringRef typeStr, MLIRContext *context, size_t &numRead) {
   return parseSymbol<Type>(typeStr, context, numRead,
                            [](Parser &parser) { return parser.parseType(); });
 }
-

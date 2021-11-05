@@ -745,5 +745,12 @@ mlir::parseFlatAffineConstraints(StringRef inputStr, MLIRContext *context) {
   FlatAffineConstraints fac;
   if (parser.parseFlatAffineConstraints(fac))
     return failure();
+
+  Token endTok = parser.getToken();
+  if (endTok.isNot(Token::eof)) {
+    parser.emitError(endTok.getLoc(), "encountered unexpected token");
+    return failure();
+  }
+
   return fac;
 }
