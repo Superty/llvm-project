@@ -385,6 +385,7 @@ protected:
   bool hasBigM;
 
   SmallVector<SmallVector<int, 8>, 8> savedBases;
+  SmallVector<SmallVector<int64_t, 8>, 8> rowCoeffs;
 
   /// Holds a log of operations, used for rolling back to a previous state.
   SmallVector<UndoLogEntry, 8> undoLog;

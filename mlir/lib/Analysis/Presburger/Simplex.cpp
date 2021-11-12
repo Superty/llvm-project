@@ -80,6 +80,7 @@ void Simplex::addZeroConstraint() {
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
 unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
+  rowCoeffs.emplace_back(llvm::to_vector<8>(coeffs));
   assert(coeffs.size() == 1 + var.size() &&
          "Incorrect number of coefficients!");
 
@@ -349,6 +350,43 @@ void Simplex::assertIsConsistent() const {
   for (int i = -int(con.size()); i < int(var.size()); ++i)
     assert(unknownIsConsistent(i));
 
+  for (unsigned i = 0; i < nRow; ++i) {
+    SmallVector<int64_t, 8> row(var.size() + 1);
+    row.back() = tableau(i, 1);
+    for (unsigned j = 2; j < nCol; ++j) {
+      int index = colUnknown[j];
+      int64_t coeff = tableau(i, j);
+      if (index >= 0) {
+        row[index] += coeff;
+      } else {
+        for (unsigned k = 0; k < rowCoeffs[-index - 1].size(); ++k) {
+          row[k] += rowCoeffs[-index - 1][k] * coeff;
+        }
+      }
+    }
+    int64_t denom = tableau(i, 0);
+    for (int64_t &x : row) {
+      assert(x % denom == 0);
+      x /= denom;
+    }
+
+    SmallVector<int64_t, 8> ref;
+    int index = rowUnknown[i];
+    if (index >= 0) {
+      ref.resize(var.size() + 1);
+      ref[index] = 1;
+    } else {
+      ref = rowCoeffs[-index - 1];
+      assert(ref.size() <= var.size() + 1);
+
+      int64_t constTerm = 0;
+      std::swap(constTerm, ref.back());
+      ref.resize(var.size() + 1);
+      ref.back() = constTerm;
+    }
+    assert(row == ref);
+  }
+
   if (empty)
     return;
 
@@ -490,6 +528,7 @@ void Simplex::undo(UndoLogEntry entry) {
     nRow--;
     rowUnknown.pop_back();
     con.pop_back();
+    rowCoeffs.pop_back();
   } else if (entry == UndoLogEntry::RemoveLastVariable) {
     // Whenever we are rolling back the addition of a variable, it is guaranteed
     // that the variable will be in column position.
