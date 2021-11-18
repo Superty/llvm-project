@@ -281,6 +281,7 @@ static void subtractRecursively(FlatAffineConstraints &b, Simplex &simplex,
   b.mergeLocalIds(sI);
   unsigned numLocalsAdded = b.getNumLocalIds() - bInitNumLocals;
   simplex.appendVariable(numLocalsAdded);
+  assertSimplexMatchesB();
 
   // Mark which inequalities of sI are division inequalities and add all such
   // inequalities to b.
