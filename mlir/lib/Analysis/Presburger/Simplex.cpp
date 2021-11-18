@@ -244,7 +244,7 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
   }
   normalizeRow(pivotRow);
 
-  for (unsigned row = nRedundant; row < nRow; ++row) {
+  for (unsigned row = 0; row < nRow; ++row) {
     if (row == pivotRow)
       continue;
     if (tableau(row, pivotCol) == 0) // Nothing to do.
