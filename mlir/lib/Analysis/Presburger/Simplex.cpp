@@ -346,31 +346,35 @@ bool Simplex::unknownIsConsistent(int index) const {
   return (u.orientation == Orientation::Row ? rowUnknown : colUnknown)[u.pos] == index;
 }
 
+SmallVector<int64_t, 8> Simplex::getCurrentVarCoeffsForRow(unsigned i) const {
+  SmallVector<int64_t, 8> row(var.size() + 1);
+  row.back() = tableau(i, 1);
+  for (unsigned j = 2; j < nCol; ++j) {
+    int index = colUnknown[j];
+    int64_t coeff = tableau(i, j);
+    if (index >= 0) {
+      row[index] += coeff;
+    } else {
+      for (unsigned k = 0; k < rowCoeffs[~index].size() - 1; ++k) {
+        row[k] += rowCoeffs[~index][k] * coeff;
+      }
+      row.back() += rowCoeffs[~index].back() * coeff;
+    }
+  }
+  int64_t denom = tableau(i, 0);
+  for (int64_t &x : row) {
+    assert(x % denom == 0);
+    x /= denom;
+  }
+  return row;
+}
+
 void Simplex::assertIsConsistent() const {
   for (int i = -int(con.size()); i < int(var.size()); ++i)
     assert(unknownIsConsistent(i));
 
+  assert(rowCoeffs.size() == con.size());
   for (unsigned i = 0; i < nRow; ++i) {
-    SmallVector<int64_t, 8> row(var.size() + 1);
-    row.back() = tableau(i, 1);
-    for (unsigned j = 2; j < nCol; ++j) {
-      int index = colUnknown[j];
-      int64_t coeff = tableau(i, j);
-      if (index >= 0) {
-        row[index] += coeff;
-      } else {
-        for (unsigned k = 0; k < rowCoeffs[~index].size() - 1; ++k) {
-          row[k] += rowCoeffs[~index][k] * coeff;
-        }
-        row.back() += rowCoeffs[~index].back() * coeff;
-      }
-    }
-    int64_t denom = tableau(i, 0);
-    for (int64_t &x : row) {
-      assert(x % denom == 0);
-      x /= denom;
-    }
-
     SmallVector<int64_t, 8> ref;
     int index = rowUnknown[i];
     if (index >= 0) {
@@ -385,7 +389,8 @@ void Simplex::assertIsConsistent() const {
       ref.resize(var.size() + 1);
       ref.back() = constTerm;
     }
-    assert(row == ref);
+
+    assert(getCurrentVarCoeffsForRow(i) == ref);
   }
 
   if (empty)

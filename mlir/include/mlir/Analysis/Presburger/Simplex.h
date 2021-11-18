@@ -180,6 +180,7 @@ public:
 
   /// Add all the constraints from the given FlatAffineConstraints.
   void intersectFlatAffineConstraints(const FlatAffineConstraints &fac);
+  SmallVector<int64_t, 8> getCurrentVarCoeffsForRow(unsigned i) const;
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted. On return, the row may
