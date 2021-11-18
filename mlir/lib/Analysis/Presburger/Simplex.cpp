@@ -805,6 +805,10 @@ Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
   unsigned numCon = a.getNumConstraints() + b.getNumConstraints();
   Simplex result(numVar);
 
+  result.rowCoeffs = a.rowCoeffs;
+  result.rowCoeffs.append(b.rowCoeffs);
+  for (unsigned i = a.getNumConstraints(); i < numCon; ++i)
+    result.rowCoeffs[i].insert(result.rowCoeffs[i].begin(), a.getNumVariables(), 0);
   result.tableau.resizeVertically(numCon);
   result.empty = a.empty || b.empty;
 
