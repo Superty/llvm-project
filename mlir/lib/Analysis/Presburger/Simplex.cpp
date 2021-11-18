@@ -359,9 +359,10 @@ void Simplex::assertIsConsistent() const {
       if (index >= 0) {
         row[index] += coeff;
       } else {
-        for (unsigned k = 0; k < rowCoeffs[-index - 1].size(); ++k) {
-          row[k] += rowCoeffs[-index - 1][k] * coeff;
+        for (unsigned k = 0; k < rowCoeffs[~index].size() - 1; ++k) {
+          row[k] += rowCoeffs[~index][k] * coeff;
         }
+        row.back() += rowCoeffs[~index].back() * coeff;
       }
     }
     int64_t denom = tableau(i, 0);
@@ -376,7 +377,7 @@ void Simplex::assertIsConsistent() const {
       ref.resize(var.size() + 1);
       ref[index] = 1;
     } else {
-      ref = rowCoeffs[-index - 1];
+      ref = rowCoeffs[~index];
       assert(ref.size() <= var.size() + 1);
 
       int64_t constTerm = 0;
