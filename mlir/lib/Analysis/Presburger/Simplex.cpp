@@ -391,14 +391,16 @@ void Simplex::assertIsConsistent() const {
   if (empty)
     return;
 
-  for (const Unknown &u : con) {
-    if (u.orientation == Orientation::Column)
-      continue;
-    // if (hasBigM)
-    //   assert(tableau(u.pos, 2) > 0 || (tableau(u.pos, 2) == 0 && tableau(u.pos, 1) >= 0));
-    if (!hasBigM)
-      assert(tableau(u.pos, 1) >= 0);
-  }
+  // for (const Unknown &u : con) {
+  //   if (!u.restricted)
+  //     continue;
+  //   if (u.orientation == Orientation::Column)
+  //     continue;
+  //   // if (hasBigM)
+  //   //   assert(tableau(u.pos, 2) > 0 || (tableau(u.pos, 2) == 0 && tableau(u.pos, 1) >= 0));
+  //   if (!hasBigM)
+  //     assert(tableau(u.pos, 1) >= 0);
+  // }
 
   return;
 }
