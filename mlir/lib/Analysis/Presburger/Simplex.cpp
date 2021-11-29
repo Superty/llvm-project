@@ -17,7 +17,7 @@ using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
-Simplex::Simplex(unsigned nVar)
+SimplexBase::SimplexBase(unsigned nVar)
     : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
   colUnknown.push_back(nullIndex);
   colUnknown.push_back(nullIndex);
@@ -28,8 +28,8 @@ Simplex::Simplex(unsigned nVar)
   }
 }
 
-Simplex::Simplex(const FlatAffineConstraints &constraints)
-    : Simplex(constraints.getNumIds()) {
+SimplexBase::SimplexBase(const FlatAffineConstraints &constraints)
+    : SimplexBase(constraints.getNumIds()) {
   for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
        i < numIneqs; ++i)
     addInequality(constraints.getInequality(i));
@@ -37,37 +37,37 @@ Simplex::Simplex(const FlatAffineConstraints &constraints)
     addEquality(constraints.getEquality(i));
 }
 
-const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
+const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 
-const Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) const {
+const Simplex::Unknown &SimplexBase::unknownFromColumn(unsigned col) const {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colUnknown[col]);
 }
 
-const Simplex::Unknown &Simplex::unknownFromRow(unsigned row) const {
+const Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) const {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowUnknown[row]);
 }
 
-Simplex::Unknown &Simplex::unknownFromIndex(int index) {
+Simplex::Unknown &SimplexBase::unknownFromIndex(int index) {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 
-Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) {
+Simplex::Unknown &SimplexBase::unknownFromColumn(unsigned col) {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colUnknown[col]);
 }
 
-Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
+Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowUnknown[row]);
 }
 
-void Simplex::addZeroConstraint() {
+unsigned SimplexBase::addZeroConstraint() {
   ++nRow;
   // If the tableau is not big enough to accomodate the extra row, we extend it.
   if (nRow >= tableau.getNumRows())
@@ -79,7 +79,7 @@ void Simplex::addZeroConstraint() {
 /// Add a new row to the tableau corresponding to the given constant term and
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
-unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
+unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
   assert(coeffs.size() == 1 + var.size() &&
          "Incorrect number of coefficients!");
 
@@ -125,7 +125,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
 
 /// Normalize the row by removing factors that are common between the
 /// denominator and all the numerator coefficients.
-void Simplex::normalizeRow(unsigned row) {
+void SimplexBase::normalizeRow(unsigned row) {
   int64_t gcd = 0;
   for (unsigned col = 0; col < nCol; ++col) {
     if (gcd == 1)
@@ -159,7 +159,7 @@ Direction flippedDirection(Direction direction) {
 ///
 /// If multiple columns are valid, we break ties by considering a lexicographic
 /// ordering where we prefer unknowns with lower index.
-Optional<Simplex::Pivot> Simplex::findPivot(int row,
+Optional<Simplex::Pivot> SimplexBase::findPivot(int row,
                                             Direction direction) const {
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
@@ -187,7 +187,7 @@ Optional<Simplex::Pivot> Simplex::findPivot(int row,
 ///
 /// First we swap the index associated with the row and column. Then we update
 /// the unknowns to reflect their new position and orientation.
-void Simplex::swapRowWithCol(unsigned row, unsigned col) {
+void SimplexBase::swapRowWithCol(unsigned row, unsigned col) {
   std::swap(rowUnknown[row], colUnknown[col]);
   Unknown &uCol = unknownFromColumn(col);
   Unknown &uRow = unknownFromRow(row);
@@ -197,7 +197,7 @@ void Simplex::swapRowWithCol(unsigned row, unsigned col) {
   uRow.pos = row;
 }
 
-void Simplex::pivot(Pivot pair) { pivot(pair.row, pair.column); }
+void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 
 /// Pivot pivotRow and pivotCol.
 ///
@@ -224,7 +224,7 @@ void Simplex::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// The pivot row transform is accomplished be swapping a with the pivot row's
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
-void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
+void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert(pivotCol >= 2 && "Refusing to pivot invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
@@ -265,7 +265,7 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
 /// Perform pivots until the unknown has a non-negative sample value or until
 /// no more upward pivots can be performed. Return the sign of the final sample
 /// value.
-LogicalResult Simplex::restoreRow(Unknown &u) {
+LogicalResult SimplexBase::restoreRow(Unknown &u) {
   assert(u.orientation == Orientation::Row &&
          "unknown should be in row position");
 
@@ -303,7 +303,7 @@ LogicalResult Simplex::restoreRow(Unknown &u) {
 /// 0 and hence saturates the bound it imposes. We break ties between rows that
 /// impose the same bound by considering a lexicographic ordering where we
 /// prefer unknowns with lower index value.
-Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
+Optional<unsigned> SimplexBase::findPivotRow(Optional<unsigned> skipRow,
                                          Direction direction,
                                          unsigned col) const {
   Optional<unsigned> retRow;
@@ -338,9 +338,9 @@ Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
   return retRow;
 }
 
-bool Simplex::isEmpty() const { return empty; }
+bool SimplexBase::isEmpty() const { return empty; }
 
-void Simplex::swapRows(unsigned i, unsigned j) {
+void SimplexBase::swapRows(unsigned i, unsigned j) {
   if (i == j)
     return;
   tableau.swapRows(i, j);
@@ -349,7 +349,7 @@ void Simplex::swapRows(unsigned i, unsigned j) {
   unknownFromRow(j).pos = j;
 }
 
-void Simplex::swapColumns(unsigned i, unsigned j) {
+void SimplexBase::swapColumns(unsigned i, unsigned j) {
   assert(i < nCol && j < nCol && "Invalid columns provided!");
   if (i == j)
     return;
@@ -360,7 +360,7 @@ void Simplex::swapColumns(unsigned i, unsigned j) {
 }
 
 /// Mark this tableau empty and push an entry to the undo stack.
-void Simplex::markEmpty() {
+void SimplexBase::markEmpty() {
   if (empty)
     return;
   undoLog.push_back(UndoLogEntry::UnmarkEmpty);
@@ -374,7 +374,7 @@ void Simplex::markEmpty() {
 /// We add the inequality and mark it as restricted. We then try to make its
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
-void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
@@ -392,7 +392,7 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 ///
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
-void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
@@ -400,14 +400,14 @@ void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(negatedCoeffs);
 }
 
-unsigned Simplex::getNumVariables() const { return var.size(); }
-unsigned Simplex::getNumConstraints() const { return con.size(); }
+unsigned SimplexBase::getNumVariables() const { return var.size(); }
+unsigned SimplexBase::getNumConstraints() const { return con.size(); }
 
 /// Return a snapshot of the current state. This is just the current size of the
 /// undo log.
-unsigned Simplex::getSnapshot() const { return undoLog.size(); }
+unsigned SimplexBase::getSnapshot() const { return undoLog.size(); }
 
-unsigned Simplex::getSnapshotBasis() {
+unsigned SimplexBase::getSnapshotBasis() {
   SmallVector<int, 8> basis;
   for (int index : colUnknown) {
     if (index != nullIndex)
@@ -419,7 +419,7 @@ unsigned Simplex::getSnapshotBasis() {
   return undoLog.size() - 1;
 }
 
-void Simplex::undo(UndoLogEntry entry) {
+void SimplexBase::undo(UndoLogEntry entry) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
     Unknown &constraint = con.back();
     if (constraint.orientation == Orientation::Column) {
@@ -533,14 +533,14 @@ void Simplex::undo(UndoLogEntry entry) {
 ///
 /// We undo all the log entries until the log size when the snapshot was taken
 /// is reached.
-void Simplex::rollback(unsigned snapshot) {
+void SimplexBase::rollback(unsigned snapshot) {
   while (undoLog.size() > snapshot) {
     undo(undoLog.back());
     undoLog.pop_back();
   }
 }
 
-void Simplex::appendVariable(unsigned count) {
+void SimplexBase::appendVariable(unsigned count) {
   if (count == 0)
     return;
   var.reserve(var.size() + count);
@@ -572,7 +572,7 @@ void Simplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
 
 
 /// Add all the constraints from the given FlatAffineConstraints.
-void Simplex::intersectFlatAffineConstraints(const FlatAffineConstraints &fac) {
+void SimplexBase::intersectFlatAffineConstraints(const FlatAffineConstraints &fac) {
   assert(fac.getNumIds() == getNumVariables() &&
          "FlatAffineConstraints must have same dimensionality as simplex");
   for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
@@ -804,7 +804,7 @@ Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
   return result;
 }
 
-SmallVector<Fraction, 8> Simplex::getRationalSample() const {
+SmallVector<Fraction, 8> SimplexBase::getRationalSample() const {
   assert(!empty && "This should not be called when Simplex is empty.");
 
   SmallVector<Fraction, 8> sample;
@@ -824,7 +824,7 @@ SmallVector<Fraction, 8> Simplex::getRationalSample() const {
   return sample;
 }
 
-Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
+Optional<SmallVector<int64_t, 8>> SimplexBase::getSamplePointIfIntegral() const {
   // If the tableau is empty, no sample point exists.
   if (empty)
     return {};
@@ -1268,7 +1268,7 @@ Simplex::computeIntegerBounds(ArrayRef<int64_t> coeffs) {
   return {minRoundedUp, maxRoundedDown};
 }
 
-void Simplex::print(raw_ostream &os) const {
+void SimplexBase::print(raw_ostream &os) const {
   os << "rows = " << nRow << ", columns = " << nCol << "\n";
   if (empty)
     os << "Simplex marked empty!\n";
@@ -1303,6 +1303,6 @@ void Simplex::print(raw_ostream &os) const {
   os << '\n';
 }
 
-void Simplex::dump() const { print(llvm::errs()); }
+void SimplexBase::dump() const { print(llvm::errs()); }
 
 } // namespace mlir
