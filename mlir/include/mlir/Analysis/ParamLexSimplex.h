@@ -48,7 +48,7 @@ struct PWAFunction {
   }
 };
 
-class ParamLexSimplex : public Simplex {
+class ParamLexSimplex : public SimplexBase {
 public:
   ParamLexSimplex() = delete;
   ParamLexSimplex(unsigned nDim, unsigned paramBegin, unsigned oNParam);

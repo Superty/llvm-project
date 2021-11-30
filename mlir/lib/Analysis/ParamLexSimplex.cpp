@@ -15,7 +15,7 @@ using namespace mlir;
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
-    : Simplex(nVar + 1), nParam(oNParam) {
+    : SimplexBase(nVar + 1), nParam(oNParam) {
   for (unsigned i = 0; i < nParam; ++i) {
     var[1 + paramBegin + i].isParam = true;
     swapColumns(var[1 + paramBegin + i].pos, 3 + i);
