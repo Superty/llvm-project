@@ -354,7 +354,7 @@ unsigned FlatAffineConstraints::insertLocalId(unsigned pos, unsigned num) {
 
 unsigned FlatAffineConstraints::insertId(IdKind kind, unsigned pos,
                                          unsigned num) {
-  assertAtMostNumIdKind(pos, kind);
+  assert(pos <= getNumIdKind(kind));
 
   unsigned absolutePos = getIdKindOffset(kind) + pos;
   if (kind == IdKind::Dimension)
@@ -369,14 +369,13 @@ unsigned FlatAffineConstraints::insertId(IdKind kind, unsigned pos,
   return absolutePos;
 }
 
-void FlatAffineConstraints::assertAtMostNumIdKind(unsigned val,
-                                                  IdKind kind) const {
+unsigned FlatAffineConstraints::getNumIdKind(IdKind kind) const {
   if (kind == IdKind::Dimension)
-    assert(val <= getNumDimIds());
+    return getNumDimIds();
   else if (kind == IdKind::Symbol)
-    assert(val <= getNumSymbolIds());
+    return getNumSymbolIds();
   else if (kind == IdKind::Local)
-    assert(val <= getNumLocalIds());
+    return getNumLocalIds();
   else
     llvm_unreachable("IdKind expected to be Dimension, Symbol or Local!");
 }
@@ -426,7 +425,7 @@ void FlatAffineConstraints::removeId(IdKind kind, unsigned pos) {
 
 void FlatAffineConstraints::removeIdRange(IdKind kind, unsigned idStart,
                                           unsigned idLimit) {
-  assertAtMostNumIdKind(idLimit, kind);
+  assert(idLimit <= getNumIdKind(kind));
   removeIdRange(getIdKindOffset(kind) + idStart,
                 getIdKindOffset(kind) + idLimit);
 }
