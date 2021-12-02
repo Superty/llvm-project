@@ -443,7 +443,7 @@ protected:
   unsigned getIdKindOffset(IdKind kind) const;
 
   /// Retrn the number of ids of the specified kind.
-  unsigned getNumIdKind(unsigned value, IdKind kind) const;
+  unsigned getNumIdKind(IdKind kind) const;
 
   /// Returns false if the fields corresponding to various identifier counts, or
   /// equality/inequality buffer sizes aren't consistent; true otherwise. This
