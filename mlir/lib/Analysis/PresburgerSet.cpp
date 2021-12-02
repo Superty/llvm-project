@@ -87,7 +87,7 @@ PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
 
 PresburgerSet /* why does the formatter want to merge these words?? */
 PresburgerSet::eliminateExistentials(const FlatAffineConstraints &bs) {
-  ParamLexSimplex paramLexSimplex(bs.getNumIds(),
+  ParamLexSimplex paramLexSimplex(bs.getNumIds(), 0,
                                   bs.getNumSymbolIds() + bs.getNumDimIds());
   // for (const auto &div : bs.getDivisions()) {
   //   // The division variables must be in the same order they are stored in the

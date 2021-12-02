@@ -14,20 +14,15 @@
 using namespace mlir;
 
 /// Construct a Simplex object with `nVar` variables.
-ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned oNParam)
+ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
     : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
-  for (unsigned i = 1; i <= nParam; ++i) {
-    colUnknown[nCol - nParam + i - 1] = i;
-    var[i].pos = nCol - nParam + i - 1;
-  }
-  for (unsigned i = nParam + 1; i < var.size(); ++i) {
-    colUnknown[3 + i - (nParam + 1)] = i;
-    var[i].pos = 3 + i - (nParam + 1);
+  for (unsigned i = 0; i < nParam; ++i) {
+    swapColumns(var[1 + paramBegin + i].pos, nCol - nParam + i);
   }
 }
 
 ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
-    : ParamLexSimplex(constraints.getNumIds(), constraints.getNumIds()) {
+    : ParamLexSimplex(constraints.getNumIds(), 0, constraints.getNumIds()) {
   // TODO get symbol count from the FAC!
   llvm_unreachable("not yet implemented!");
   // for (unsigned i = 0, numIneqs = constraints.getNumInequalities();

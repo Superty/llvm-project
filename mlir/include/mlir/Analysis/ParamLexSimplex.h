@@ -51,7 +51,7 @@ struct PWAFunction {
 class ParamLexSimplex : public Simplex {
 public:
   ParamLexSimplex() = delete;
-  ParamLexSimplex(unsigned nDim, unsigned nParam);
+  ParamLexSimplex(unsigned nDim, unsigned paramBegin, unsigned oNParam);
   explicit ParamLexSimplex(const FlatAffineConstraints &constraints);
 
   void addInequality(ArrayRef<int64_t> coeffs);
