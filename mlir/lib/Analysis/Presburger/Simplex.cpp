@@ -67,7 +67,7 @@ Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) {
   return unknownFromIndex(rowUnknown[row]);
 }
 
-unsigned SimplexBase::addZeroConstraint() {
+void SimplexBase::addZeroConstraint() {
   ++nRow;
   // If the tableau is not big enough to accomodate the extra row, we extend it.
   if (nRow >= tableau.getNumRows())
@@ -555,7 +555,7 @@ void SimplexBase::appendVariable(unsigned count) {
   undoLog.insert(undoLog.end(), count, UndoLogEntry::RemoveLastVariable);
 }
 
-void Simplex::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+void SimplexBase::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
   appendVariable();
 
   SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());

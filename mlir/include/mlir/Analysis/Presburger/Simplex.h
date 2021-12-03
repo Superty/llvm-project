@@ -166,8 +166,6 @@ public:
   void appendVariable(unsigned count = 1);
   void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
-  void addZeroConstraint();
-
   /// Mark the tableau as being empty.
   void markEmpty();
 
@@ -188,10 +186,6 @@ public:
   /// Returns the current sample point if it is integral. Otherwise, returns
   /// None.
   Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
-
-  /// Returns an integer sample point if one exists, or None
-  /// otherwise. This should only be called for bounded sets.
-  Optional<SmallVector<int64_t, 8>> findIntegerSample();
 
   /// Print the tableau's internal state.
   void print(raw_ostream &os) const;
@@ -257,6 +251,8 @@ protected:
   Unknown &unknownFromColumn(unsigned col);
   /// Returns the unknown associated with row.
   Unknown &unknownFromRow(unsigned row);
+
+  void addZeroConstraint();
 
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);
@@ -383,6 +379,10 @@ public:
   /// Make a tableau to represent a pair of points in the given tableaus, one in
   /// tableau A and one in B.
   static Simplex makeProduct(const Simplex &a, const Simplex &b);
+
+  /// Returns an integer sample point if one exists, or None
+  /// otherwise. This should only be called for bounded sets.
+  Optional<SmallVector<int64_t, 8>> findIntegerSample();
 
 private:
   friend class GBRSimplex;
