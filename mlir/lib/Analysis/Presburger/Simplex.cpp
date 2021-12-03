@@ -159,7 +159,7 @@ Direction flippedDirection(Direction direction) {
 ///
 /// If multiple columns are valid, we break ties by considering a lexicographic
 /// ordering where we prefer unknowns with lower index.
-Optional<Simplex::Pivot> SimplexBase::findPivot(int row,
+Optional<SimplexBase::Pivot> SimplexBase::findPivot(int row,
                                             Direction direction) const {
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
