@@ -135,11 +135,16 @@ void ParamLexSimplex::appendParameter() {
 // We don't need to care about the big param. Suppose p, q are the coeffs for
 // the big param.
 // A pivot causes the following change:
-//            pivot col   bigparam col    const col                   pivot col
-//            bigparam col    const col
-// pivot row     a            p               b       ->   pivot row     1/a
-// -p/a          -b/a other row     c            q               d other row c/a
-// q - pc/a       d - bc/a
+//            pivot col   bigparam col    const col
+// pivot row     a            p               b
+// other row     c            q               d
+// 
+//                        |
+//                        v
+//                        
+//            pivot col   bigparam col    const col
+// pivot row     1/a         -p/a             b
+// other row     c/a        q - pc/a          d
 //
 // if p is zero, no issues. otherwise, it has to be negative and behaves just
 // like b. taking (-p) as a common factor, the bigparam changes would be
