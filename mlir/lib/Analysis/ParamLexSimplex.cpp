@@ -17,6 +17,7 @@ using namespace mlir;
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
     : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
   for (unsigned i = 0; i < nParam; ++i) {
+    var[1 + paramBegin + i].isParam = true;
     swapColumns(var[1 + paramBegin + i].pos, nCol - nParam + i);
   }
 }

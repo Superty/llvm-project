@@ -255,12 +255,13 @@ protected:
   /// violating other constraints, the tableau is empty.
   struct Unknown {
     Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos, bool oZero = false, bool oRedundant = false)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted), zero(oZero), redundant(oRedundant) {}
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted), zero(oZero), redundant(oRedundant), isParam(false) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
     bool zero : 1;
     bool redundant : 1;
+    bool isParam : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
