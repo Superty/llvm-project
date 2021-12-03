@@ -90,8 +90,7 @@ void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
 ///
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
-void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs,
-                                          int64_t denom) {
+void ParamLexSimplex::appendParameter() {
   // assert(coeffs.size() == var.size() + 1 - 1); // - 1 for M
   // llvm::errs() << "adding div: ";
   // for (auto x : coeffs) {
@@ -437,7 +436,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     // domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv,
     //                        var.size() - nParam - 1, 0); // -1 for M
     // Note: THESE COEFFICIENTS ARE NOT BEING USED!
-    addDivisionVariable(divCoeffs, denom);
+    appendParameter();
 
     addZeroConstraint();
     con.back().restricted = true;
