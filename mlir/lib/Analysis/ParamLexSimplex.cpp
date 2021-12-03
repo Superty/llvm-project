@@ -49,9 +49,11 @@ void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
   llvm::SmallVector<int64_t, 8> newCoeffs;
   newCoeffs.push_back(0);
   newCoeffs.insert(newCoeffs.end(), coeffs.begin(), coeffs.end());
-  for (unsigned i = nParam - nDiv; i < coeffs.size() - 1 - nDiv;
-       ++i) // -1 for constant at the end; - nDiv because divisions don't have M
-    newCoeffs[0] -= coeffs[i];
+
+  // -1 for constant at the end. Params and divs are marked restricted.
+  for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+    if (!var[1 + i].isParam)
+      newCoeffs[0] -= coeffs[i];
 
   assert(newCoeffs.size() == var.size() + 1);
   unsigned conIndex = addRow(newCoeffs);
