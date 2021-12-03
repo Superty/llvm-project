@@ -118,10 +118,11 @@ void ParamLexSimplex::appendParameter() {
 LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
   assert(tableau(row, 2) <=
          0); // if bigparam is positive, moving to col is lexneg change.
-  Optional<unsigned> maybeColumn = findPivot(row);
-  if (!maybeColumn)
+  Optional<Pivot> maybePivot = findPivot(row);
+  if (!maybePivot)
     return failure();
-  pivot(row, *maybeColumn);
+
+  pivot(*maybePivot);
   return success();
 }
 

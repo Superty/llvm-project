@@ -199,7 +199,7 @@ SmallVector<Fraction, 8> SimplexBase::getLexChange(unsigned row, unsigned col) c
 // if p is zero, no issues. otherwise, it has to be negative and behaves just
 // like b. taking (-p) as a common factor, the bigparam changes would be
 // less/greater/equal exactly when the const col changes are.
-Optional<unsigned> SimplexBase::findPivot(unsigned row) const {
+Optional<SimplexBase::Pivot> SimplexBase::findPivot(unsigned row) const {
   // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
 
   Optional<unsigned> maybeColumn;
@@ -221,7 +221,10 @@ Optional<unsigned> SimplexBase::findPivot(unsigned row) const {
       change = std::move(newChange);
     }
   }
-  return maybeColumn;
+
+  if (!maybeColumn)
+    return {};
+  return Pivot{row, *maybeColumn};
 }
 
 /// Find a pivot to change the sample value of the row in the specified
