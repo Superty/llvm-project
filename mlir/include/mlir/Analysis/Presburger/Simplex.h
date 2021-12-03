@@ -223,6 +223,9 @@ protected:
     unsigned row, column;
   };
 
+  SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
+  Optional<unsigned> findPivot(unsigned row) const;
+
   /// Find a pivot to change the sample value of row in the specified
   /// direction. The returned pivot row will be row if and only
   /// if the unknown is unbounded in the specified direction.

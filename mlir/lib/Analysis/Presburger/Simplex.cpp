@@ -147,6 +147,83 @@ Direction flippedDirection(Direction direction) {
 }
 } // anonymous namespace
 
+SmallVector<Fraction, 8> SimplexBase::getLexChange(unsigned row, unsigned col) const {
+  SmallVector<Fraction, 8> change;
+  auto a = tableau(row, col);
+  for (unsigned i = 1; i < var.size(); ++i) {
+    if (var[i].orientation == Orientation::Column) {
+      if (var[i].pos == col)
+        change.emplace_back(1, a);
+      else
+        change.emplace_back(0, 1);
+    } else {
+      assert(var[i].pos != row && "pivot row should be a violated constraint "
+                                  "and so cannot be a variable");
+      change.emplace_back(tableau(var[i].pos, col), a);
+    }
+  }
+  return change;
+}
+
+// Find the pivot column for the given pivot row which would result in the
+// lexicographically smallest positive change in the sample value. The pivot
+// row must be violated.
+//
+// A pivot causes the following change:
+//            pivot col    other col                   pivot col    other col
+// pivot row     a             b       ->   pivot row     1/a         -b/a
+// other row     c             d            other row     c/a        d - bc/a
+//
+// We just compute the change for every column and pick the lexicographically
+// smallest positive one, ignoring columns which the row has 0 coefficient for
+// (since the pivot is then impossible) and columns which correspond to
+// parameters (since we always keep the parameters in the basis).
+//
+// A change is lexicographically positive if it is not all zeros, and the
+// first non-zero value is positive.
+//
+// We don't need to care about the big param. Suppose p, q are the coeffs for
+// the big param.
+// A pivot causes the following change:
+//            pivot col   bigparam col    const col
+// pivot row     a            p               b
+// other row     c            q               d
+// 
+//                        |
+//                        v
+//                        
+//            pivot col   bigparam col    const col
+// pivot row     1/a         -p/a             b
+// other row     c/a        q - pc/a          d
+//
+// if p is zero, no issues. otherwise, it has to be negative and behaves just
+// like b. taking (-p) as a common factor, the bigparam changes would be
+// less/greater/equal exactly when the const col changes are.
+Optional<unsigned> SimplexBase::findPivot(unsigned row) const {
+  // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
+
+  Optional<unsigned> maybeColumn;
+  SmallVector<Fraction, 8> change;
+  for (unsigned col = 3; col < nCol; ++col) {
+    if (unknownFromColumn(col).isParam)
+      continue;
+    if (tableau(row, col) == 0)
+      continue;
+    if (tableau(row, col) <= 0)
+      continue;
+    // // Never remove parameters from the basis.
+    // if (col_var[col] >= 0 && col_var[col] < int(n_param))
+    //   continue;
+
+    auto newChange = getLexChange(row, col);
+    if (!maybeColumn || newChange < change) {
+      maybeColumn = col;
+      change = std::move(newChange);
+    }
+  }
+  return maybeColumn;
+}
+
 /// Find a pivot to change the sample value of the row in the specified
 /// direction. The returned pivot row will involve `row` if and only if the
 /// unknown is unbounded in the specified direction.
