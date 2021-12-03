@@ -70,6 +70,7 @@ private:
   unsigned getSnapshot();
   // SmallVector<int64_t, 8> varCoeffsFromRowCoeffs(ArrayRef<int64_t>
   // rowCoeffs) const;
+  SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
   Optional<unsigned> findPivot(unsigned row) const;
 
   unsigned nParam, nDiv;

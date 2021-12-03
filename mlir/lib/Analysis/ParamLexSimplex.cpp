@@ -115,6 +115,25 @@ void ParamLexSimplex::appendParameter() {
   // addInequality(ineq);
 }
 
+SmallVector<Fraction, 8> ParamLexSimplex::getLexChange(unsigned row, unsigned col) const {
+  SmallVector<Fraction, 8> change;
+  auto a = tableau(row, col);
+  for (unsigned i = 1; i < var.size(); ++i) {
+    if (var[i].orientation == Orientation::Column) {
+      if (var[i].pos == col)
+        change.emplace_back(1, a);
+      else
+        change.emplace_back(0, 1);
+    } else {
+      assert(var[i].pos != row && "pivot row should be a violated constraint "
+                                  "and so cannot be a variable");
+      change.emplace_back(tableau(var[i].pos, col), a);
+    }
+  }
+  return change;
+}
+
+
 // Find the pivot column for the given pivot row which would result in the
 // lexicographically smallest positive change in the sample value. The pivot
 // row must be violated.
@@ -152,24 +171,6 @@ void ParamLexSimplex::appendParameter() {
 Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
   // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
 
-  auto getLexChange = [this, row](unsigned col) -> SmallVector<Fraction, 8> {
-    SmallVector<Fraction, 8> change;
-    auto a = tableau(row, col);
-    for (unsigned i = 1; i < var.size(); ++i) {
-      if (var[i].orientation == Orientation::Column) {
-        if (var[i].pos == col)
-          change.emplace_back(1, a);
-        else
-          change.emplace_back(0, 1);
-      } else {
-        assert(var[i].pos != row && "pivot row should be a violated constraint "
-                                    "and so cannot be a variable");
-        change.emplace_back(tableau(var[i].pos, col), a);
-      }
-    }
-    return change;
-  };
-
   Optional<unsigned> maybeColumn;
   SmallVector<Fraction, 8> change;
   for (unsigned col = 3; col < nCol; ++col) {
@@ -183,7 +184,7 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
     // if (col_var[col] >= 0 && col_var[col] < int(n_param))
     //   continue;
 
-    auto newChange = getLexChange(col);
+    auto newChange = getLexChange(row, col);
     if (!maybeColumn || newChange < change) {
       maybeColumn = col;
       change = std::move(newChange);
