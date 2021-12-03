@@ -71,7 +71,7 @@ private:
   // SmallVector<int64_t, 8> varCoeffsFromRowCoeffs(ArrayRef<int64_t>
   // rowCoeffs) const;
 
-  unsigned nParam, nDiv;
+  unsigned nParam;
   SmallVector<SmallVector<int64_t, 8>, 8> originalCoeffs;
 };
 

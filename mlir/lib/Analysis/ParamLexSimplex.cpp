@@ -15,7 +15,7 @@ using namespace mlir;
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
-    : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
+    : Simplex(nVar + 1), nParam(oNParam) {
   for (unsigned i = 0; i < nParam; ++i) {
     var[1 + paramBegin + i].isParam = true;
     swapColumns(var[1 + paramBegin + i].pos, 3 + i);
@@ -101,7 +101,6 @@ void ParamLexSimplex::appendParameter() {
   swapColumns(3 + nParam, nCol - 1);
   var.back().isParam = true;
   nParam++;
-  nDiv++;
 
   // SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
   // int64_t constTerm = ineq.back();
@@ -320,7 +319,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       // This has to be after we extract the coeffs above!
       appendVariable();
       nParam++;
-      nDiv++;
 
       SmallVector<int64_t, 8> oldRow;
       oldRow.reserve(nCol);
@@ -338,7 +336,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
         tableau(row, col) = oldRow[col];
       domainSimplex.rollback(domainSnapshot);
       nParam--;
-      nDiv--;
       rollback(snapshot);
       return;
     }
@@ -376,7 +373,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     domainSet.removeInequalityRange(domainSet.getNumInequalities() - 2, domainSet.getNumInequalities());
     domainSet.removeId(FlatAffineConstraints::IdKind::Local, domainSet.getNumLocalIds() - 1);
     nParam--;
-    nDiv--;
     rollback(snapshot);
 
     return;
