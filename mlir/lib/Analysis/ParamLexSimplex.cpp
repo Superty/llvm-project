@@ -172,7 +172,11 @@ Optional<unsigned> ParamLexSimplex::findPivot(unsigned row) const {
 
   Optional<unsigned> maybeColumn;
   SmallVector<Fraction, 8> change;
-  for (unsigned col = 3 + nParam; col < nCol; ++col) {
+  for (unsigned col = 3; col < nCol; ++col) {
+    if (unknownFromColumn(col).isParam)
+      continue;
+    if (tableau(row, col) == 0)
+      continue;
     if (tableau(row, col) <= 0)
       continue;
     // // Never remove parameters from the basis.
