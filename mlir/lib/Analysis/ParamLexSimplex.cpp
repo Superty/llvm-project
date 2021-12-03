@@ -18,7 +18,7 @@ ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oN
     : Simplex(nVar + 1), nParam(oNParam), nDiv(0) {
   for (unsigned i = 0; i < nParam; ++i) {
     var[1 + paramBegin + i].isParam = true;
-    swapColumns(var[1 + paramBegin + i].pos, nCol - nParam + i);
+    swapColumns(var[1 + paramBegin + i].pos, 3 + i);
   }
 }
 
@@ -98,6 +98,7 @@ void ParamLexSimplex::appendParameter() {
   // }
   // llvm::errs() << '\n';
   appendVariable();
+  swapColumns(3 + nParam, nCol - 1);
   var.back().isParam = true;
   nParam++;
   nDiv++;
@@ -156,7 +157,7 @@ PWAFunction ParamLexSimplex::findParamLexmin() {
 SmallVector<int64_t, 8> ParamLexSimplex::getRowParamSample(unsigned row) {
   SmallVector<int64_t, 8> sample;
   sample.reserve(nParam + 1);
-  for (unsigned col = nCol - nParam; col < nCol; ++col)
+  for (unsigned col = 3; col < 3 + nParam; ++col)
     sample.push_back(tableau(row, col));
   sample.push_back(tableau(row, 1));
   return sample;
@@ -262,7 +263,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     int64_t denom = tableau(row, 0);
     if (tableau(row, 1) % denom != 0)
       return false;
-    for (unsigned col = nCol - nParam; col < nCol; col++) {
+    for (unsigned col = 3; col < 3 + nParam; col++) {
       if (tableau(row, col) % denom != 0)
         return false;
     }
@@ -279,7 +280,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
     int64_t denom = tableau(row, 0);
     bool paramCoeffsIntegral = true;
-    for (unsigned col = nCol - nParam; col < nCol; col++) {
+    for (unsigned col = 3; col < 3 + nParam; col++) {
       if (mod(tableau(row, col), denom) != 0) {
         paramCoeffsIntegral = false;
         break;
@@ -287,7 +288,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     }
 
     bool otherCoeffsIntegral = true;
-    for (unsigned col = 3; col < nCol - nParam; ++col) {
+    for (unsigned col = 3 + nParam; col < nCol; ++col) {
       if (unknownFromColumn(col).zero)
         continue;
       if (mod(tableau(row, col), denom) != 0) {
@@ -300,7 +301,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
     SmallVector<int64_t, 8> domainDivCoeffs;
     if (otherCoeffsIntegral) {
-      for (unsigned col = nCol - nParam; col < nCol; ++col)
+      for (unsigned col = 3; col < 3 + nParam; ++col)
         domainDivCoeffs.push_back(mod(tableau(row, col), denom));
       domainDivCoeffs.push_back(mod(tableau(row, 1), denom));
       unsigned snapshot = getSnapshot();
@@ -344,7 +345,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     // llvm::errs() << "const: " << constIntegral << ", param: " << paramCoeffsIntegral <<  '\n';
 
     SmallVector<int64_t, 8> divCoeffs;
-    for (unsigned col = nCol - nParam; col < nCol; ++col)
+    for (unsigned col = 3; col < 3 + nParam; ++col)
       domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
     domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), denom));
 
@@ -360,11 +361,11 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     tableau(nRow - 1, 0) = denom;
     tableau(nRow - 1, 1) = -mod(int64_t(-tableau(row, 1)), denom);
     tableau(nRow - 1, 2) = 0;
-    for (unsigned col = 3; col < nCol - nParam; ++col)
+    for (unsigned col = 3 + nParam; col < nCol; ++col)
       tableau(nRow - 1, col) = mod(tableau(row, col), denom);
-    for (unsigned col = nCol - nParam; col < nCol - 1; ++col)
+    for (unsigned col = 3; col < 3 + nParam - 1; ++col)
       tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
-    tableau(nRow - 1, nCol - 1) = denom;
+    tableau(nRow - 1, 3 + nParam - 1) = denom;
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
     assert(succeeded(success));
     // restoreConsistency();
