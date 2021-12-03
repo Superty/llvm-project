@@ -411,8 +411,18 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     }
     // llvm::errs() << "const: " << constIntegral << ", param: " << paramCoeffsIntegral <<  '\n';
 
-    for (unsigned col = nCol - nParam; col < nCol; ++col)
-      domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
+    SmallVector<int64_t, 8> divCoeffs;
+    for (unsigned i = 1; i < var.size(); ++i) {
+      if (var[i].isParam) {
+        assert(var[i].orientation == Orientation::Column);
+        unsigned col = var[i].pos;
+        domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
+        divCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
+      } else {
+        divCoeffs.push_back(0);
+      }
+    }
+    divCoeffs.push_back(mod(int64_t(-tableau(row, 1)), denom));
     domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), denom));
 
     unsigned snapshot = getSnapshot();
@@ -423,9 +433,10 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     // SmallVector<int64_t, 8> divCoeffs = domainDivCoeffs;
     // divCoeffs.insert(divCoeffs.end(),
     //   domainDivCoeffs.begin(), domainDivCoeffs.end());
-    domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv,
-                           var.size() - nParam - 1, 0); // -1 for M
-    addDivisionVariable(domainDivCoeffs, denom);
+    // domainDivCoeffs.insert(domainDivCoeffs.begin() + nParam - nDiv,
+    //                        var.size() - nParam - 1, 0); // -1 for M
+    // Note: THESE COEFFICIENTS ARE NOT BEING USED!
+    addDivisionVariable(divCoeffs, denom);
 
     addZeroConstraint();
     con.back().restricted = true;
