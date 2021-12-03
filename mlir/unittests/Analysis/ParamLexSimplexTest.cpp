@@ -298,7 +298,8 @@ TEST(ParamLexSimplexTest, ParamLexMinTest) {
     simplex.addInequality({1, -1, 0, 0});  // x >= y
     simplex.addInequality({0, 1, 0, -0});  // y >= 0
     simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
-    simplex.findParamLexmin();
+    auto res = simplex.findParamLexmin();
+    EXPECT_EQ(res.value[0].size(), 2);
   }
 }
 
