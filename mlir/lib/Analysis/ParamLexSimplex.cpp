@@ -99,6 +99,7 @@ void ParamLexSimplex::addDivisionVariable(ArrayRef<int64_t> coeffs,
   // }
   // llvm::errs() << '\n';
   appendVariable();
+  var.back().isParam = true;
   nParam++;
   nDiv++;
 
