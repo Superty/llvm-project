@@ -307,6 +307,9 @@ protected:
   /// nRedundant rows.
   unsigned nRedundant;
 
+  /// The number of variables that are parameters. This is used for Parametric Lexical Optimization.
+  unsigned nParam;
+
   /// The matrix representing the tableau.
   Matrix tableau;
 

@@ -18,7 +18,7 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
 SimplexBase::SimplexBase(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
+    : nRow(0), nCol(2), nRedundant(0), nParam(0), tableau(0, 2 + nVar), empty(false) {
   colUnknown.push_back(nullIndex);
   colUnknown.push_back(nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
