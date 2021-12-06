@@ -204,9 +204,7 @@ Optional<SimplexBase::Pivot> SimplexBase::findPivot(unsigned row) const {
 
   Optional<unsigned> maybeColumn;
   SmallVector<Fraction, 8> change;
-  for (unsigned col = 3; col < nCol; ++col) {
-    if (unknownFromColumn(col).isParam)
-      continue;
+  for (unsigned col = 3 + nParam; col < nCol; ++col) {
     if (tableau(row, col) == 0)
       continue;
     if (tableau(row, col) <= 0)
