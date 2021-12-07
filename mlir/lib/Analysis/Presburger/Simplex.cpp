@@ -512,6 +512,16 @@ void SimplexBase::undo(UndoLogEntry entry) {
       // unbounded in both directions and we are free to
       // perform any pivot at all. To do this, we just need to find any row with
       // a non-zero coefficient for the column.
+      //
+      // If undo was called from a lexicographic simplex, we may end up pivoting
+      // using the normal rule below rather than the lexicographic pivot rule.
+      // However this is okay because lex simplex always restores the
+      // exact basis that was used at the time the snapshot was taken. As such,
+      // in the case of lex simplex it doesn't matter at all what
+      // pivot we do here; if we knew we were using the lex simplex,
+      // it would in fact be valid to directly skip to the else block below. We do
+      // not currently do that because this information is not currently stored
+      // in SimplexBase.
       if (Optional<unsigned> maybeRow =
               findPivotRow({}, Direction::Up, column)) {
         row = *maybeRow;
