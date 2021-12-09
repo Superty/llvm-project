@@ -134,13 +134,15 @@ class GBRSimplex;
 ///
 /// Finding an integer sample is done with the Generalized Basis Reduction
 /// algorithm. See the documentation for findIntegerSample and reduceBasis.
-class Simplex {
+
+class SimplexBase {
 public:
   enum class Direction { Up, Down };
+  enum class PivotRule { Normal, Lexicographic };
 
-  Simplex() = delete;
-  explicit Simplex(unsigned nVar);
-  explicit Simplex(const FlatAffineConstraints &constraints);
+  SimplexBase() = delete;
+  SimplexBase(PivotRule rule, unsigned nVar);
+  SimplexBase(PivotRule rule, const FlatAffineConstraints &constraints);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -164,62 +166,20 @@ public:
 
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 
   /// Mark the tableau as being empty.
   void markEmpty();
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() const;
+  unsigned getSnapshotBasis();
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
 
   /// Add all the constraints from the given FlatAffineConstraints.
   void intersectFlatAffineConstraints(const FlatAffineConstraints &fac);
-
-  /// Compute the maximum or minimum value of the given row, depending on
-  /// direction. The specified row is never pivoted. On return, the row may
-  /// have a negative sample value if the direction is down.
-  ///
-  /// Returns a Fraction denoting the optimum, or a null value if no optimum
-  /// exists, i.e., if the expression is unbounded in this direction.
-  Optional<Fraction> computeRowOptimum(Direction direction, unsigned row);
-
-  /// Compute the maximum or minimum value of the given expression, depending on
-  /// direction. Should not be called when the Simplex is empty.
-  ///
-  /// Returns a Fraction denoting the optimum, or a null value if no optimum
-  /// exists, i.e., if the expression is unbounded in this direction.
-  Optional<Fraction> computeOptimum(Direction direction,
-                                    ArrayRef<int64_t> coeffs);
-
-  /// Returns whether the perpendicular of the specified constraint
-  /// is a direction along which the polytope is bounded.
-  bool isBoundedAlongConstraint(unsigned constraintIndex);
-
-  /// Returns whether the specified constraint has been marked as redundant.
-  /// Constraints are numbered from 0 starting at the first added inequality.
-  /// Equalities are added as a pair of inequalities and so correspond to two
-  /// inequalities with successive indices.
-  bool isMarkedRedundant(unsigned constraintIndex) const;
-
-  /// Finds a subset of constraints that is redundant, i.e., such that
-  /// the set of solutions does not change if these constraints are removed.
-  /// Marks these constraints as redundant. Whether a specific constraint has
-  /// been marked redundant can be queried using isMarkedRedundant.
-  void detectRedundant();
-
-  /// Returns a (min, max) pair denoting the minimum and maximum integer values
-  /// of the given expression.
-  std::pair<int64_t, int64_t> computeIntegerBounds(ArrayRef<int64_t> coeffs);
-
-  /// Returns true if the polytope is unbounded, i.e., extends to infinity in
-  /// some direction. Otherwise, returns false.
-  bool isUnbounded();
-
-  /// Make a tableau to represent a pair of points in the given tableaus, one in
-  /// tableau A and one in B.
-  static Simplex makeProduct(const Simplex &a, const Simplex &b);
 
   /// Returns a rational sample point. This should not be called when Simplex is
   /// empty.
@@ -229,27 +189,11 @@ public:
   /// None.
   Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
 
-  /// Returns an integer sample point if one exists, or None
-  /// otherwise. This should only be called for bounded sets.
-  Optional<SmallVector<int64_t, 8>> findIntegerSample();
-
   /// Print the tableau's internal state.
   void print(raw_ostream &os) const;
   void dump() const;
 
-  /// Check if the specified inequality already holds in the polytope.
-  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
-
-  /// Check if the specified equality already holds in the polytope.
-  bool isRedundantEquality(ArrayRef<int64_t> coeffs);
-
-  /// Returns true if this Simplex's polytope is a rational subset of `fac`.
-  /// Otherwise, returns false.
-  bool isRationalSubsetOf(const FlatAffineConstraints &fac);
-
-private:
-  friend class GBRSimplex;
-
+protected:
   enum class Orientation { Row, Column };
 
   /// An Unknown is either a variable or a constraint. It is always associated
@@ -260,11 +204,16 @@ private:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos,
+            bool oZero = false, bool oRedundant = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted),
+          zero(oZero), redundant(oRedundant), isParam(false) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool zero : 1;
+    bool redundant : 1;
+    bool isParam : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -307,6 +256,8 @@ private:
   /// Returns the unknown associated with row.
   Unknown &unknownFromRow(unsigned row);
 
+  void addZeroConstraint();
+
   /// Add a new row to the tableau and the associated data structures.
   unsigned addRow(ArrayRef<int64_t> coeffs);
 
@@ -324,26 +275,13 @@ private:
   /// sample value, failure otherwise.
   LogicalResult restoreRow(Unknown &u);
 
-  /// Compute the maximum or minimum of the specified Unknown, depending on
-  /// direction. The specified unknown may be pivoted. If the unknown is
-  /// restricted, it will have a non-negative sample value on return.
-  /// Should not be called if the Simplex is empty.
-  ///
-  /// Returns a Fraction denoting the optimum, or a null value if no optimum
-  /// exists, i.e., if the expression is unbounded in this direction.
-  Optional<Fraction> computeOptimum(Direction direction, Unknown &u);
-
-  /// Mark the specified unknown redundant. This operation is added to the undo
-  /// log and will be undone by rollbacks. The specified unknown must be in row
-  /// orientation.
-  void markRowRedundant(Unknown &u);
-
   /// Enum to denote operations that need to be undone during rollback.
   enum class UndoLogEntry {
     RemoveLastConstraint,
     RemoveLastVariable,
     UnmarkEmpty,
-    UnmarkLastRedundant
+    UnmarkLastRedundant,
+    RestoreBasis
   };
 
   /// Undo the operation represented by the log entry.
@@ -360,10 +298,10 @@ private:
   Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
                                   Direction direction, unsigned col) const;
 
-  /// Reduce the given basis, starting at the specified level, using general
-  /// basis reduction.
-  void reduceBasis(Matrix &basis, unsigned level);
+  unsigned getNumFixedCols() const;
 
+  // The pivot rule to be used in this simplex object.
+  const PivotRule pivotRule;
   /// The number of rows in the tableau.
   unsigned nRow;
 
@@ -375,12 +313,18 @@ private:
   /// nRedundant rows.
   unsigned nRedundant;
 
+  /// The number of variables that are parameters. This is used for Parametric
+  /// Lexical Optimization.
+  unsigned nParam;
+
   /// The matrix representing the tableau.
   Matrix tableau;
 
   /// This is true if the tableau has been detected to be empty, false
   /// otherwise.
   bool empty;
+
+  SmallVector<SmallVector<int, 8>, 8> savedBases;
 
   /// Holds a log of operations, used for rolling back to a previous state.
   SmallVector<UndoLogEntry, 8> undoLog;
@@ -396,6 +340,108 @@ private:
 
   /// These hold information about each unknown.
   SmallVector<Unknown, 8> con, var;
+};
+
+class LexSimplex : public SimplexBase {
+public:
+  explicit LexSimplex(unsigned nVar)
+      : SimplexBase(PivotRule::Lexicographic, nVar) {}
+  explicit LexSimplex(const FlatAffineConstraints &constraints)
+      : SimplexBase(PivotRule::Lexicographic, constraints) {}
+
+  unsigned getSnapshot();
+
+protected:
+  void restoreConsistency();
+  SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
+  LogicalResult moveRowUnknownToColumn(unsigned row);
+};
+
+class Simplex : public SimplexBase {
+public:
+  Simplex() = delete;
+  explicit Simplex(unsigned nVar) : SimplexBase(PivotRule::Normal, nVar) {}
+  explicit Simplex(const FlatAffineConstraints &constraints)
+      : SimplexBase(PivotRule::Normal, constraints) {}
+
+  /// Compute the maximum or minimum value of the given row, depending on
+  /// direction. The specified row is never pivoted. On return, the row may
+  /// have a negative sample value if the direction is down.
+  ///
+  /// Returns a Fraction denoting the optimum, or a null value if no optimum
+  /// exists, i.e., if the expression is unbounded in this direction.
+  Optional<Fraction> computeRowOptimum(Direction direction, unsigned row);
+
+  /// Compute the maximum or minimum value of the given expression, depending on
+  /// direction. Should not be called when the Simplex is empty.
+  ///
+  /// Returns a Fraction denoting the optimum, or a null value if no optimum
+  /// exists, i.e., if the expression is unbounded in this direction.
+  Optional<Fraction> computeOptimum(Direction direction,
+                                    ArrayRef<int64_t> coeffs);
+
+  /// Returns whether the perpendicular of the specified constraint is a
+  /// is a direction along which the polytope is bounded.
+  bool isBoundedAlongConstraint(unsigned constraintIndex);
+
+  /// Returns whether the specified constraint has been marked as redundant.
+  /// Constraints are numbered from 0 starting at the first added inequality.
+  /// Equalities are added as a pair of inequalities and so correspond to two
+  /// inequalities with successive indices.
+  bool isMarkedRedundant(unsigned constraintIndex) const;
+
+  /// Finds a subset of constraints that is redundant, i.e., such that
+  /// the set of solutions does not change if these constraints are removed.
+  /// Marks these constraints as redundant. Whether a specific constraint has
+  /// been marked redundant can be queried using isMarkedRedundant.
+  void detectRedundant();
+
+  /// Returns a (min, max) pair denoting the minimum and maximum integer values
+  /// of the given expression.
+  std::pair<int64_t, int64_t> computeIntegerBounds(ArrayRef<int64_t> coeffs);
+
+  /// Returns true if the polytope is unbounded, i.e., extends to infinity in
+  /// some direction. Otherwise, returns false.
+  bool isUnbounded();
+
+  /// Make a tableau to represent a pair of points in the given tableaus, one in
+  /// tableau A and one in B.
+  static Simplex makeProduct(const Simplex &a, const Simplex &b);
+
+  /// Returns an integer sample point if one exists, or None
+  /// otherwise. This should only be called for bounded sets.
+  Optional<SmallVector<int64_t, 8>> findIntegerSample();
+
+  /// Check if the specified inequality already holds in the polytope.
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
+
+  /// Check if the specified equality already holds in the polytope.
+  bool isRedundantEquality(ArrayRef<int64_t> coeffs);
+
+  /// Returns true if this Simplex's polytope is a rational subset of `fac`.
+  /// Otherwise, returns false.
+  bool isRationalSubsetOf(const FlatAffineConstraints &fac);
+
+private:
+  friend class GBRSimplex;
+
+  /// Compute the maximum or minimum of the specified Unknown, depending on
+  /// direction. The specified unknown may be pivoted. If the unknown is
+  /// restricted, it will have a non-negative sample value on return.
+  /// Should not be called if the Simplex is empty.
+  ///
+  /// Returns a Fraction denoting the optimum, or a null value if no optimum
+  /// exists, i.e., if the expression is unbounded in this direction.
+  Optional<Fraction> computeOptimum(Direction direction, Unknown &u);
+
+  /// Mark the specified unknown redundant. This operation is added to the undo
+  /// log and will be undone by rollbacks. The specified unknown must be in row
+  /// orientation.
+  void markRowRedundant(Unknown &u);
+
+  /// Reduce the given basis, starting at the specified level, using general
+  /// basis reduction.
+  void reduceBasis(Matrix &basis, unsigned level);
 };
 
 } // namespace mlir

@@ -16,11 +16,19 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
+unsigned SimplexBase::getNumFixedCols() const {
+  if (pivotRule == PivotRule::Normal)
+    return 2;
+  if (pivotRule == PivotRule::Lexicographic)
+    return 3;
+  llvm_unreachable("Pivot rule unknown!");
+}
+
 /// Construct a Simplex object with `nVar` variables.
-Simplex::Simplex(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
-  colUnknown.push_back(nullIndex);
-  colUnknown.push_back(nullIndex);
+SimplexBase::SimplexBase(PivotRule rule, unsigned nVar)
+    : pivotRule(rule), nRow(0), nCol(getNumFixedCols()), nRedundant(0),
+      nParam(0), tableau(0, getNumFixedCols() + nVar), empty(false) {
+  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol);
     colUnknown.push_back(i);
@@ -28,8 +36,9 @@ Simplex::Simplex(unsigned nVar)
   }
 }
 
-Simplex::Simplex(const FlatAffineConstraints &constraints)
-    : Simplex(constraints.getNumIds()) {
+SimplexBase::SimplexBase(PivotRule rule,
+                         const FlatAffineConstraints &constraints)
+    : SimplexBase(rule, constraints.getNumIds()) {
   for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
        i < numIneqs; ++i)
     addInequality(constraints.getInequality(i));
@@ -37,53 +46,68 @@ Simplex::Simplex(const FlatAffineConstraints &constraints)
     addEquality(constraints.getEquality(i));
 }
 
-const Simplex::Unknown &Simplex::unknownFromIndex(int index) const {
+const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 
-const Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) const {
+const Simplex::Unknown &SimplexBase::unknownFromColumn(unsigned col) const {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colUnknown[col]);
 }
 
-const Simplex::Unknown &Simplex::unknownFromRow(unsigned row) const {
+const Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) const {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowUnknown[row]);
 }
 
-Simplex::Unknown &Simplex::unknownFromIndex(int index) {
+Simplex::Unknown &SimplexBase::unknownFromIndex(int index) {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
 }
 
-Simplex::Unknown &Simplex::unknownFromColumn(unsigned col) {
+Simplex::Unknown &SimplexBase::unknownFromColumn(unsigned col) {
   assert(col < nCol && "Invalid column");
   return unknownFromIndex(colUnknown[col]);
 }
 
-Simplex::Unknown &Simplex::unknownFromRow(unsigned row) {
+Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) {
   assert(row < nRow && "Invalid row");
   return unknownFromIndex(rowUnknown[row]);
 }
 
-/// Add a new row to the tableau corresponding to the given constant term and
-/// list of coefficients. The coefficients are specified as a vector of
-/// (variable index, coefficient) pairs.
-unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == 1 + var.size() &&
-         "Incorrect number of coefficients!");
-
+void SimplexBase::addZeroConstraint() {
   ++nRow;
   // If the tableau is not big enough to accomodate the extra row, we extend it.
   if (nRow >= tableau.getNumRows())
     tableau.resizeVertically(nRow);
   rowUnknown.push_back(~con.size());
   con.emplace_back(Orientation::Row, false, nRow - 1);
+}
+
+/// Add a new row to the tableau corresponding to the given constant term and
+/// list of coefficients. The coefficients are specified as a vector of
+/// (variable index, coefficient) pairs.
+unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
+  assert(coeffs.size() == 1 + var.size() &&
+         "Incorrect number of coefficients!");
+
+  addZeroConstraint();
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = 2; col < nCol; ++col)
+  if (pivotRule == PivotRule::Lexicographic) {
+    int64_t bigMCoeff = 0;
+    // We ignore the last term in `coeffs` which corresponds to the constant
+    // term. The bigM coefficient is the sum of the negations of the
+    // coefficients of all the non-parameter variables.
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      if (!var[i].isParam && !var[i].restricted)
+        bigMCoeff -= coeffs[i];
+    tableau(nRow - 1, 2) = bigMCoeff;
+  }
+
+  for (unsigned col = getNumFixedCols(); col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
   // Process each given variable coefficient.
@@ -121,7 +145,7 @@ unsigned Simplex::addRow(ArrayRef<int64_t> coeffs) {
 
 /// Normalize the row by removing factors that are common between the
 /// denominator and all the numerator coefficients.
-void Simplex::normalizeRow(unsigned row) {
+void SimplexBase::normalizeRow(unsigned row) {
   int64_t gcd = 0;
   for (unsigned col = 0; col < nCol; ++col) {
     if (gcd == 1)
@@ -143,6 +167,109 @@ Direction flippedDirection(Direction direction) {
 }
 } // namespace
 
+unsigned LexSimplex::getSnapshot() { return getSnapshotBasis(); }
+
+void LexSimplex::restoreConsistency() {
+  auto maybeGetViolatedRow = [this]() -> Optional<unsigned> {
+    for (unsigned row = 0; row < nRow; ++row) {
+      if (tableau(row, 2) < 0)
+        return row;
+      if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
+        return row;
+    }
+    return {};
+  };
+
+  while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
+    LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
+    if (failed(status)) {
+      markEmpty();
+      return;
+    }
+  }
+}
+
+SmallVector<Fraction, 8> LexSimplex::getLexChange(unsigned row,
+                                                  unsigned col) const {
+  SmallVector<Fraction, 8> change;
+  auto a = tableau(row, col);
+  for (unsigned i = 1; i < var.size(); ++i) {
+    if (var[i].orientation == Orientation::Column) {
+      if (var[i].pos == col)
+        change.emplace_back(1, a);
+      else
+        change.emplace_back(0, 1);
+    } else {
+      assert(var[i].pos != row && "pivot row should be a violated constraint "
+                                  "and so cannot be a variable");
+      change.emplace_back(tableau(var[i].pos, col), a);
+    }
+  }
+  return change;
+}
+
+// Find the pivot column for the given pivot row which would result in the
+// lexicographically smallest positive change in the sample value. The pivot
+// row must be violated.
+//
+// A pivot causes the following change:
+//            pivot col    other col                   pivot col    other col
+// pivot row     a             b       ->   pivot row     1/a         -b/a
+// other row     c             d            other row     c/a        d - bc/a
+//
+// We just compute the change for every column and pick the lexicographically
+// smallest positive one, ignoring columns which the row has 0 coefficient for
+// (since the pivot is then impossible) and columns which correspond to
+// parameters (since we always keep the parameters in the basis).
+//
+// A change is lexicographically positive if it is not all zeros, and the
+// first non-zero value is positive.
+//
+// We don't need to care about the big param. Suppose p, q are the coeffs for
+// the big param.
+// A pivot causes the following change:
+//            pivot col   bigparam col    const col
+// pivot row     a            p               b
+// other row     c            q               d
+//
+//                        |
+//                        v
+//
+//            pivot col   bigparam col    const col
+// pivot row     1/a         -p/a             b
+// other row     c/a        q - pc/a          d
+//
+// if p is zero, no issues. otherwise, it has to be negative and behaves just
+// like b. taking (-p) as a common factor, the bigparam changes would be
+// less/greater/equal exactly when the const col changes are.
+LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
+  // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
+
+  Optional<unsigned> maybeColumn;
+  SmallVector<Fraction, 8> change;
+  for (unsigned col = 3 + nParam; col < nCol; ++col) {
+    if (tableau(row, col) == 0)
+      continue;
+    if (tableau(row, col) <= 0)
+      continue;
+    // // Never remove parameters from the basis.
+    // if (col_var[col] >= 0 && col_var[col] < int(n_param))
+    //   continue;
+
+    auto newChange = getLexChange(row, col);
+    if (!maybeColumn || newChange < change) {
+      maybeColumn = col;
+      change = std::move(newChange);
+    }
+  }
+
+  if (!maybeColumn)
+    return failure();
+
+  pivot(row, *maybeColumn);
+  return success();
+}
+
 /// Find a pivot to change the sample value of the row in the specified
 /// direction. The returned pivot row will involve `row` if and only if the
 /// unknown is unbounded in the specified direction.
@@ -155,8 +282,10 @@ Direction flippedDirection(Direction direction) {
 ///
 /// If multiple columns are valid, we break ties by considering a lexicographic
 /// ordering where we prefer unknowns with lower index.
-Optional<Simplex::Pivot> Simplex::findPivot(int row,
-                                            Direction direction) const {
+Optional<SimplexBase::Pivot> SimplexBase::findPivot(int row,
+                                                    Direction direction) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
@@ -183,7 +312,7 @@ Optional<Simplex::Pivot> Simplex::findPivot(int row,
 ///
 /// First we swap the index associated with the row and column. Then we update
 /// the unknowns to reflect their new position and orientation.
-void Simplex::swapRowWithCol(unsigned row, unsigned col) {
+void SimplexBase::swapRowWithCol(unsigned row, unsigned col) {
   std::swap(rowUnknown[row], colUnknown[col]);
   Unknown &uCol = unknownFromColumn(col);
   Unknown &uRow = unknownFromRow(row);
@@ -193,7 +322,7 @@ void Simplex::swapRowWithCol(unsigned row, unsigned col) {
   uRow.pos = row;
 }
 
-void Simplex::pivot(Pivot pair) { pivot(pair.row, pair.column); }
+void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 
 /// Pivot pivotRow and pivotCol.
 ///
@@ -220,8 +349,8 @@ void Simplex::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// The pivot row transform is accomplished be swapping a with the pivot row's
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
-void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= 2 && "Refusing to pivot invalid column");
+void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
+  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -261,7 +390,7 @@ void Simplex::pivot(unsigned pivotRow, unsigned pivotCol) {
 /// Perform pivots until the unknown has a non-negative sample value or until
 /// no more upward pivots can be performed. Return success if we were able to
 /// bring the row to a non-negative sample value, and failure otherwise.
-LogicalResult Simplex::restoreRow(Unknown &u) {
+LogicalResult SimplexBase::restoreRow(Unknown &u) {
   assert(u.orientation == Orientation::Row &&
          "unknown should be in row position");
 
@@ -299,9 +428,11 @@ LogicalResult Simplex::restoreRow(Unknown &u) {
 /// 0 and hence saturates the bound it imposes. We break ties between rows that
 /// impose the same bound by considering a lexicographic ordering where we
 /// prefer unknowns with lower index value.
-Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
-                                         Direction direction,
-                                         unsigned col) const {
+Optional<unsigned> SimplexBase::findPivotRow(Optional<unsigned> skipRow,
+                                             Direction direction,
+                                             unsigned col) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> retRow;
   int64_t retElem, retConst;
   for (unsigned row = nRedundant; row < nRow; ++row) {
@@ -334,9 +465,9 @@ Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
   return retRow;
 }
 
-bool Simplex::isEmpty() const { return empty; }
+bool SimplexBase::isEmpty() const { return empty; }
 
-void Simplex::swapRows(unsigned i, unsigned j) {
+void SimplexBase::swapRows(unsigned i, unsigned j) {
   if (i == j)
     return;
   tableau.swapRows(i, j);
@@ -345,7 +476,7 @@ void Simplex::swapRows(unsigned i, unsigned j) {
   unknownFromRow(j).pos = j;
 }
 
-void Simplex::swapColumns(unsigned i, unsigned j) {
+void SimplexBase::swapColumns(unsigned i, unsigned j) {
   assert(i < nCol && j < nCol && "Invalid columns provided!");
   if (i == j)
     return;
@@ -356,7 +487,7 @@ void Simplex::swapColumns(unsigned i, unsigned j) {
 }
 
 /// Mark this tableau empty and push an entry to the undo stack.
-void Simplex::markEmpty() {
+void SimplexBase::markEmpty() {
   // If the set is already empty, then we shouldn't add another UnmarkEmpty log
   // entry, since in that case the Simplex will be erroneously marked as
   // non-empty when rolling back past this point.
@@ -373,10 +504,14 @@ void Simplex::markEmpty() {
 /// We add the inequality and mark it as restricted. We then try to make its
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
-void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
+
+  if (pivotRule == PivotRule::Lexicographic)
+    return;
+
   LogicalResult result = restoreRow(u);
   if (failed(result))
     markEmpty();
@@ -388,7 +523,7 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 ///
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
-void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
@@ -396,14 +531,26 @@ void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(negatedCoeffs);
 }
 
-unsigned Simplex::getNumVariables() const { return var.size(); }
-unsigned Simplex::getNumConstraints() const { return con.size(); }
+unsigned SimplexBase::getNumVariables() const { return var.size(); }
+unsigned SimplexBase::getNumConstraints() const { return con.size(); }
 
 /// Return a snapshot of the current state. This is just the current size of the
 /// undo log.
-unsigned Simplex::getSnapshot() const { return undoLog.size(); }
+unsigned SimplexBase::getSnapshot() const { return undoLog.size(); }
 
-void Simplex::undo(UndoLogEntry entry) {
+unsigned SimplexBase::getSnapshotBasis() {
+  SmallVector<int, 8> basis;
+  for (int index : colUnknown) {
+    if (index != nullIndex)
+      basis.push_back(index);
+  }
+  savedBases.push_back(std::move(basis));
+
+  undoLog.emplace_back(UndoLogEntry::RestoreBasis);
+  return undoLog.size() - 1;
+}
+
+void SimplexBase::undo(UndoLogEntry entry) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
     Unknown &constraint = con.back();
     if (constraint.orientation == Orientation::Column) {
@@ -418,13 +565,23 @@ void Simplex::undo(UndoLogEntry entry) {
       // unbounded in both directions and we are free to
       // perform any pivot at all. To do this, we just need to find any row with
       // a non-zero coefficient for the column.
-      if (Optional<unsigned> maybeRow =
-              findPivotRow({}, Direction::Up, column)) {
-        row = *maybeRow;
-      } else if (Optional<unsigned> maybeRow =
-                     findPivotRow({}, Direction::Down, column)) {
-        row = *maybeRow;
-      } else {
+      //
+      // If undo was called from a lexicographic simplex, we just need to find
+      // pivot at all, i.e., any row with non-zero coefficient for the column,
+      // because when rolling back a lexicographic simplex, we always end by
+      // restoring the exact basis that was present at the time of the
+      // snapshot, so what pivots we perform while undoing doesn't matter as
+      // long as we get the unknown to row orientation.
+      if (pivotRule == PivotRule::Normal) {
+        if (Optional<unsigned> maybeRow =
+                findPivotRow({}, Direction::Up, column)) {
+          row = *maybeRow;
+        } else if (Optional<unsigned> maybeRow =
+                       findPivotRow({}, Direction::Down, column)) {
+          row = *maybeRow;
+        }
+      }
+      if (!row) {
         // The loop doesn't find a pivot row only if the column has zero
         // coefficients for every row. But the unknown is a constraint,
         // so it was added initially as a row. Such a row could never have been
@@ -464,6 +621,8 @@ void Simplex::undo(UndoLogEntry entry) {
 
     // Move this variable to the last column and remove the column from the
     // tableau.
+    if (var.back().isParam)
+      nParam--;
     swapColumns(var.back().pos, nCol - 1);
     tableau.resizeHorizontally(nCol - 1);
     var.pop_back();
@@ -473,6 +632,30 @@ void Simplex::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
+  } else if (entry == UndoLogEntry::RestoreBasis) {
+    assert(!savedBases.empty() && "No bases saved!");
+
+    auto basis = std::move(savedBases.back());
+    savedBases.pop_back();
+
+    for (int index : basis) {
+      Unknown &u = unknownFromIndex(index);
+      if (u.orientation == Orientation::Column)
+        continue;
+      for (unsigned col = 0; col < nCol; col++) {
+        if (colUnknown[col] == nullIndex)
+          continue;
+        if (std::count(basis.begin(), basis.end(), colUnknown[col]) != 0)
+          continue;
+        if (tableau(u.pos, col) == 0)
+          continue;
+        pivot(u.pos, col);
+        break;
+      }
+
+      assert(u.orientation == Orientation::Column &&
+             "Basis unknown is still a row!");
+    }
   }
 }
 
@@ -480,14 +663,14 @@ void Simplex::undo(UndoLogEntry entry) {
 ///
 /// We undo all the log entries until the log size when the snapshot was taken
 /// is reached.
-void Simplex::rollback(unsigned snapshot) {
+void SimplexBase::rollback(unsigned snapshot) {
   while (undoLog.size() > snapshot) {
     undo(undoLog.back());
     undoLog.pop_back();
   }
 }
 
-void Simplex::appendVariable(unsigned count) {
+void SimplexBase::appendVariable(unsigned count) {
   if (count == 0)
     return;
   var.reserve(var.size() + count);
@@ -502,8 +685,24 @@ void Simplex::appendVariable(unsigned count) {
   undoLog.insert(undoLog.end(), count, UndoLogEntry::RemoveLastVariable);
 }
 
+void SimplexBase::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+  appendVariable();
+
+  SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
+  int64_t constTerm = ineq.back();
+  ineq.back() = -denom;
+  ineq.push_back(constTerm);
+  addInequality(ineq);
+
+  for (int64_t &coeff : ineq)
+    coeff = -coeff;
+  ineq.back() += denom - 1;
+  addInequality(ineq);
+}
+
 /// Add all the constraints from the given FlatAffineConstraints.
-void Simplex::intersectFlatAffineConstraints(const FlatAffineConstraints &fac) {
+void SimplexBase::intersectFlatAffineConstraints(
+    const FlatAffineConstraints &fac) {
   assert(fac.getNumIds() == getNumVariables() &&
          "FlatAffineConstraints must have same dimensionality as simplex");
   for (unsigned i = 0, e = fac.getNumInequalities(); i < e; ++i)
@@ -558,8 +757,10 @@ Optional<Fraction> Simplex::computeOptimum(Direction direction, Unknown &u) {
   unsigned row = u.pos;
   Optional<Fraction> optimum = computeRowOptimum(direction, row);
   if (u.restricted && direction == Direction::Down &&
-      (!optimum || *optimum < Fraction(0, 1)))
-    (void)restoreRow(u);
+      (!optimum || *optimum < Fraction(0, 1))) {
+    if (failed(restoreRow(u)))
+      llvm_unreachable("Could not restore row!");
+  }
   return optimum;
 }
 
@@ -623,7 +824,8 @@ void Simplex::detectRedundant() {
     if (!minimum || *minimum < Fraction(0, 1)) {
       // Constraint is unbounded below or can attain negative sample values and
       // hence is not redundant.
-      (void)restoreRow(u);
+      if (failed(restoreRow(u)))
+        llvm_unreachable("Could not restore non-redundant row!");
       continue;
     }
 
@@ -733,7 +935,7 @@ Simplex Simplex::makeProduct(const Simplex &a, const Simplex &b) {
   return result;
 }
 
-SmallVector<Fraction, 8> Simplex::getRationalSample() const {
+SmallVector<Fraction, 8> SimplexBase::getRationalSample() const {
   assert(!empty && "This should not be called when Simplex is empty.");
 
   SmallVector<Fraction, 8> sample;
@@ -753,7 +955,8 @@ SmallVector<Fraction, 8> Simplex::getRationalSample() const {
   return sample;
 }
 
-Optional<SmallVector<int64_t, 8>> Simplex::getSamplePointIfIntegral() const {
+Optional<SmallVector<int64_t, 8>>
+SimplexBase::getSamplePointIfIntegral() const {
   // If the tableau is empty, no sample point exists.
   if (empty)
     return {};
@@ -1243,7 +1446,7 @@ Simplex::computeIntegerBounds(ArrayRef<int64_t> coeffs) {
   return {minRoundedUp, maxRoundedDown};
 }
 
-void Simplex::print(raw_ostream &os) const {
+void SimplexBase::print(raw_ostream &os) const {
   os << "rows = " << nRow << ", columns = " << nCol << "\n";
   if (empty)
     os << "Simplex marked empty!\n";
@@ -1278,7 +1481,7 @@ void Simplex::print(raw_ostream &os) const {
   os << '\n';
 }
 
-void Simplex::dump() const { print(llvm::errs()); }
+void SimplexBase::dump() const { print(llvm::errs()); }
 
 bool Simplex::isRationalSubsetOf(const FlatAffineConstraints &fac) {
   if (isEmpty())
