@@ -15,7 +15,7 @@ using namespace mlir;
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
-    : SimplexBase(nVar + 1) {
+    : LexSimplex(nVar + 1) {
   nParam = oNParam;
   for (unsigned i = 0; i < nParam; ++i) {
     var[1 + paramBegin + i].isParam = true;
@@ -113,17 +113,6 @@ void ParamLexSimplex::appendParameter() {
   //   coeff = -coeff;
   // ineq.back() += denom - 1;
   // addInequality(ineq);
-}
-
-LogicalResult ParamLexSimplex::moveRowUnknownToColumn(unsigned row) {
-  assert(tableau(row, 2) <=
-         0); // if bigparam is positive, moving to col is lexneg change.
-  Optional<Pivot> maybePivot = findPivot(row);
-  if (!maybePivot)
-    return failure();
-
-  pivot(*maybePivot);
-  return success();
 }
 
 void ParamLexSimplex::restoreConsistency() {

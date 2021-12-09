@@ -134,13 +134,15 @@ class GBRSimplex;
 ///
 /// Finding an integer sample is done with the Generalized Basis Reduction
 /// algorithm. See the documentation for findIntegerSample and reduceBasis.
+
 class SimplexBase {
 public:
   enum class Direction { Up, Down };
+  enum class PivotRule { Normal, Lexicographic };
 
   SimplexBase() = delete;
-  explicit SimplexBase(unsigned nVar);
-  explicit SimplexBase(const FlatAffineConstraints &constraints);
+  SimplexBase(PivotRule rule, unsigned nVar);
+  SimplexBase(PivotRule rule, const FlatAffineConstraints &constraints);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -223,9 +225,6 @@ protected:
     unsigned row, column;
   };
 
-  SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
-  Optional<Pivot> findPivot(unsigned row) const;
-
   /// Find a pivot to change the sample value of row in the specified
   /// direction. The returned pivot row will be row if and only
   /// if the unknown is unbounded in the specified direction.
@@ -296,6 +295,9 @@ protected:
   /// is unbounded in the specified direction.
   Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
                                   Direction direction, unsigned col) const;
+
+  // The pivot rule to be used in this simplex object.
+  const PivotRule pivotRule;
   /// The number of rows in the tableau.
   unsigned nRow;
 
@@ -335,12 +337,23 @@ protected:
   SmallVector<Unknown, 8> con, var;
 };
 
+class LexSimplex : public SimplexBase {
+public:
+  explicit LexSimplex(unsigned nVar) : SimplexBase(PivotRule::Lexicographic, nVar) {}
+  explicit LexSimplex(const FlatAffineConstraints &constraints)
+      : SimplexBase(PivotRule::Lexicographic, constraints) {}
+
+protected:
+  SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
+  LogicalResult moveRowUnknownToColumn(unsigned row);
+};
+
 class Simplex : public SimplexBase {
 public:
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar) {}
+  explicit Simplex(unsigned nVar) : SimplexBase(PivotRule::Normal, nVar) {}
   explicit Simplex(const FlatAffineConstraints &constraints)
-      : SimplexBase(constraints) {}
+      : SimplexBase(PivotRule::Normal, constraints) {}
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted. On return, the row may

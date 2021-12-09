@@ -48,7 +48,7 @@ struct PWAFunction {
   }
 };
 
-class ParamLexSimplex : public SimplexBase {
+class ParamLexSimplex : public LexSimplex {
 public:
   ParamLexSimplex() = delete;
   ParamLexSimplex(unsigned nDim, unsigned paramBegin, unsigned oNParam);
@@ -65,7 +65,7 @@ public:
 
 private:
   SmallVector<int64_t, 8> getRowParamSample(unsigned row);
-  LogicalResult moveRowUnknownToColumn(unsigned row);
+  // LogicalResult moveRowUnknownToColumn(unsigned row);
   void restoreConsistency();
   unsigned getSnapshot();
   // SmallVector<int64_t, 8> varCoeffsFromRowCoeffs(ArrayRef<int64_t>

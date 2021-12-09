@@ -17,8 +17,8 @@ using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
-SimplexBase::SimplexBase(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), nParam(0), tableau(0, 2 + nVar), empty(false) {
+SimplexBase::SimplexBase(PivotRule rule, unsigned nVar)
+    : pivotRule(rule), nRow(0), nCol(2), nRedundant(0), nParam(0), tableau(0, 2 + nVar), empty(false) {
   colUnknown.push_back(nullIndex);
   colUnknown.push_back(nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
@@ -28,8 +28,8 @@ SimplexBase::SimplexBase(unsigned nVar)
   }
 }
 
-SimplexBase::SimplexBase(const FlatAffineConstraints &constraints)
-    : SimplexBase(constraints.getNumIds()) {
+SimplexBase::SimplexBase(PivotRule rule, const FlatAffineConstraints &constraints)
+    : SimplexBase(rule, constraints.getNumIds()) {
   for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
        i < numIneqs; ++i)
     addInequality(constraints.getInequality(i));
@@ -147,7 +147,7 @@ Direction flippedDirection(Direction direction) {
 }
 } // anonymous namespace
 
-SmallVector<Fraction, 8> SimplexBase::getLexChange(unsigned row, unsigned col) const {
+SmallVector<Fraction, 8> LexSimplex::getLexChange(unsigned row, unsigned col) const {
   SmallVector<Fraction, 8> change;
   auto a = tableau(row, col);
   for (unsigned i = 1; i < var.size(); ++i) {
@@ -199,7 +199,7 @@ SmallVector<Fraction, 8> SimplexBase::getLexChange(unsigned row, unsigned col) c
 // if p is zero, no issues. otherwise, it has to be negative and behaves just
 // like b. taking (-p) as a common factor, the bigparam changes would be
 // less/greater/equal exactly when the const col changes are.
-Optional<SimplexBase::Pivot> SimplexBase::findPivot(unsigned row) const {
+LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   // assert(tableau(row, 1) < 0 && "Pivot row must be violated!");
 
   Optional<unsigned> maybeColumn;
@@ -221,8 +221,10 @@ Optional<SimplexBase::Pivot> SimplexBase::findPivot(unsigned row) const {
   }
 
   if (!maybeColumn)
-    return {};
-  return Pivot{row, *maybeColumn};
+    return failure();
+
+  pivot(row, *maybeColumn);
+  return success();
 }
 
 /// Find a pivot to change the sample value of the row in the specified
@@ -239,6 +241,8 @@ Optional<SimplexBase::Pivot> SimplexBase::findPivot(unsigned row) const {
 /// ordering where we prefer unknowns with lower index.
 Optional<SimplexBase::Pivot> SimplexBase::findPivot(int row,
                                             Direction direction) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
@@ -384,6 +388,8 @@ LogicalResult SimplexBase::restoreRow(Unknown &u) {
 Optional<unsigned> SimplexBase::findPivotRow(Optional<unsigned> skipRow,
                                          Direction direction,
                                          unsigned col) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> retRow;
   int64_t retElem, retConst;
   for (unsigned row = nRedundant; row < nRow; ++row) {
@@ -456,6 +462,10 @@ void SimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
+
+  if (pivotRule == PivotRule::Lexicographic)
+    return;
+
   LogicalResult result = restoreRow(u);
   if (failed(result)) {
     undoLog.pop_back();
@@ -513,22 +523,22 @@ void SimplexBase::undo(UndoLogEntry entry) {
       // perform any pivot at all. To do this, we just need to find any row with
       // a non-zero coefficient for the column.
       //
-      // If undo was called from a lexicographic simplex, we may end up pivoting
-      // using the normal rule below rather than the lexicographic pivot rule.
-      // However this is okay because lex simplex always restores the
-      // exact basis that was used at the time the snapshot was taken. As such,
-      // in the case of lex simplex it doesn't matter at all what
-      // pivot we do here; if we knew we were using the lex simplex,
-      // it would in fact be valid to directly skip to the else block below. We do
-      // not currently do that because this information is not currently stored
-      // in SimplexBase.
-      if (Optional<unsigned> maybeRow =
-              findPivotRow({}, Direction::Up, column)) {
-        row = *maybeRow;
-      } else if (Optional<unsigned> maybeRow =
-                     findPivotRow({}, Direction::Down, column)) {
-        row = *maybeRow;
-      } else {
+      // If undo was called from a lexicographic simplex, we just need to find
+      // pivot at all, i.e., any row with non-zero coefficient for the column,
+      // because when rolling back a lexicographic simplex, we always end by
+      // restoring the exact basis that was present at the time of the
+      // snapshot, so what pivots we perform while undoing doesn't matter as
+      // long as we get the unknown to row orientation.
+      if (pivotRule == PivotRule::Normal) {
+        if (Optional<unsigned> maybeRow =
+                findPivotRow({}, Direction::Up, column)) {
+          row = *maybeRow;
+        } else if (Optional<unsigned> maybeRow =
+                       findPivotRow({}, Direction::Down, column)) {
+          row = *maybeRow;
+        } 
+      }
+      if (!row) {
         // The loop doesn't find a pivot row only if the column has zero
         // coefficients for every row. But the unknown is a constraint,
         // so it was added initially as a row. Such a row could never have been
