@@ -435,13 +435,13 @@ public:
   /// Removes all equalities and inequalities.
   void clearConstraints();
 
+  /// Return the index at which the specified kind of id starts.
+  unsigned getIdKindOffset(IdKind kind) const;
+
   void print(raw_ostream &os) const;
   void dump() const;
 
 protected:
-  /// Return the index at which the specified kind of id starts.
-  unsigned getIdKindOffset(IdKind kind) const;
-
   /// Retrn the number of ids of the specified kind.
   unsigned getNumIdKind(IdKind kind) const;
 
