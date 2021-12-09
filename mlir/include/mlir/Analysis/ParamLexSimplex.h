@@ -62,9 +62,7 @@ public:
 
 private:
   SmallVector<int64_t, 8> getRowParamSample(unsigned row);
-  // LogicalResult moveRowUnknownToColumn(unsigned row);
   void restoreConsistency();
-  unsigned getSnapshot();
   // SmallVector<int64_t, 8> varCoeffsFromRowCoeffs(ArrayRef<int64_t>
   // rowCoeffs) const;
 

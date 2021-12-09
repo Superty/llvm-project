@@ -127,8 +127,6 @@ SmallVector<int64_t, 8> ParamLexSimplex::getRowParamSample(unsigned row) {
 //   return varCoeffs;
 // }
 
-unsigned ParamLexSimplex::getSnapshot() { return getSnapshotBasis(); }
-
 void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
                                                  FlatAffineConstraints &domainSet,
                                                  PWAFunction &result) {

@@ -164,6 +164,8 @@ Direction flippedDirection(Direction direction) {
 }
 } // anonymous namespace
 
+unsigned LexSimplex::getSnapshot() { return getSnapshotBasis(); }
+
 SmallVector<Fraction, 8> LexSimplex::getLexChange(unsigned row, unsigned col) const {
   SmallVector<Fraction, 8> change;
   auto a = tableau(row, col);

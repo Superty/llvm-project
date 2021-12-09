@@ -345,6 +345,8 @@ public:
   explicit LexSimplex(const FlatAffineConstraints &constraints)
       : SimplexBase(PivotRule::Lexicographic, constraints) {}
 
+  unsigned getSnapshot();
+
 protected:
   SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
   LogicalResult moveRowUnknownToColumn(unsigned row);
