@@ -385,6 +385,8 @@ protected:
     return success(gaussianEliminateIds(position, position + 1) == 1);
   }
 
+  bool hasOnlyRepresentableDivs() const;
+
   /// Removes local variables using equalities. Each equality is checked if it
   /// can be reduced to the form: `e = affine-expr`, where `e` is a local
   /// variable and `affine-expr` is an affine expression not containing `e`.

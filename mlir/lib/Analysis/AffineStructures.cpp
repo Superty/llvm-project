@@ -2814,6 +2814,13 @@ void FlatAffineConstraints::print(raw_ostream &os) const {
 
 void FlatAffineConstraints::dump() const { print(llvm::errs()); }
 
+bool FlatAffineConstraints::hasOnlyRepresentableDivs() const {
+  std::vector<llvm::Optional<std::pair<unsigned, unsigned>>> repr(
+      getNumLocalIds());
+  getLocalReprs(repr);
+  return llvm::all_of(repr, [](const auto &x){ return x.hasValue(); });
+}
+
 /// Removes duplicate constraints, trivially true constraints, and constraints
 /// that can be detected as redundant as a result of differing only in their
 /// constant term part. A constraint of the form <non-negative constant> >= 0 is
