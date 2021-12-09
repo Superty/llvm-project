@@ -99,7 +99,7 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
     // We ignore the last term in `coeffs` which corresponds to the constant term.
     // The bigM coefficient is the sum of the negations of the coefficients of all the non-parameter variables.
     for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-      if (!var[i].isParam)
+      if (!var[i].isParam && !var[i].restricted)
         bigMCoeff -= coeffs[i];
     tableau(nRow - 1, 2) = bigMCoeff;
   }
