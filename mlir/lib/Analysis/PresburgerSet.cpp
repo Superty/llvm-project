@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/PresburgerSet.h"
+#include "mlir/Analysis/ParamLexSimplex.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
@@ -81,6 +82,39 @@ PresburgerSet PresburgerSet::unionSet(const PresburgerSet &set) const {
   PresburgerSet result = *this;
   result.unionSetInPlace(set);
   return result;
+}
+
+PresburgerSet /* why does the formatter want to merge these words?? */
+PresburgerSet::eliminateExistentials(const FlatAffineConstraints &bs) {
+  ParamLexSimplex paramLexSimplex(bs.getNumIds(), 0,
+                                  bs.getNumSymbolIds() + bs.getNumDimIds());
+  for (unsigned i = 0, numIneqs = bs.getNumInequalities(); i < numIneqs; ++i)
+    paramLexSimplex.addInequality(bs.getInequality(i));
+  for (unsigned i = 0, numEqs = bs.getNumEqualities(); i < numEqs; ++i)
+    paramLexSimplex.addEquality(bs.getEquality(i));
+
+
+  PresburgerSet result(bs.getNumDimIds(), bs.getNumSymbolIds());
+  for (auto &b : paramLexSimplex.findParamLexmin().domain) {
+    b.numSymbols = bs.numSymbols;
+    b.numDims = bs.numDims;
+    result.unionFACInPlace(std::move(b));
+  }
+  return result;
+}
+
+PresburgerSet PresburgerSet::eliminateExistentials(const PresburgerSet &set) {
+  PresburgerSet unquantifiedSet(set.getNumDims(), set.getNumSyms());
+  for (unsigned i = 0, numFACs = set.getNumFACs(); i < numFACs; ++i) {
+    auto &fac = set.getFlatAffineConstraints(i);
+    if (fac.hasOnlyRepresentableDivs())
+      unquantifiedSet.unionFACInPlace(fac);
+    else
+      unquantifiedSet.unionSetInPlace(
+          PresburgerSet::eliminateExistentials(fac));
+  }
+  // unquantifiedSet.dump();
+  return unquantifiedSet;
 }
 
 /// A point is contained in the union iff any of the parts contain the point.
@@ -329,7 +363,7 @@ PresburgerSet PresburgerSet::getSetDifference(FlatAffineConstraints fac,
 
   PresburgerSet result(fac.getNumDimIds(), fac.getNumSymbolIds());
   Simplex simplex(fac);
-  subtractRecursively(fac, simplex, set, 0, result);
+  subtractRecursively(fac, simplex, eliminateExistentials(set), 0, result);
   return result;
 }
 

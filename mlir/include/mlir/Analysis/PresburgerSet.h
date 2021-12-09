@@ -47,6 +47,9 @@ public:
   /// Return the FlatAffineConstraints at the specified index.
   const FlatAffineConstraints &getFlatAffineConstraints(unsigned index) const;
 
+  static PresburgerSet eliminateExistentials(const FlatAffineConstraints &bs);
+  static PresburgerSet eliminateExistentials(const PresburgerSet &set);
+
   /// Mutate this set, turning it into the union of this set and the given
   /// FlatAffineConstraints.
   void unionFACInPlace(const FlatAffineConstraints &fac);

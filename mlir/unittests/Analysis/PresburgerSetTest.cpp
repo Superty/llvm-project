@@ -840,4 +840,24 @@ TEST(SetTest, coalesceContainedEqComplex) {
   expectCoalesce(1, set);
 }
 
+TEST(PresburgerSetTest, Equality) {
+  // expectEqual(
+  //     "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
+  //     "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)");
+  FlatAffineConstraints fac(1, 0, 2);
+  fac.addEquality({1, -1, -3, 0});
+  fac.addInequality({1, -1, 0, 0});
+
+  FlatAffineConstraints facBounded = fac;
+  facBounded.addInequality({0, 1, 0, 0});
+  facBounded.addInequality({0, 0, 1, 0});
+  PresburgerSet setBounded = makeSetFromFACs(1, {facBounded});
+  expectEqual(setBounded, setBounded);
+
+  // expectEqual(
+  //     "(x) : (exists y, z : x = y + 3z and x >= y and z >= 0 and y >= 0)",
+  //     "(x) : (x >= 0)");
+  expectEqual(setBounded, makeSetFromFACs(1, {makeFACFromIneqs(1, {{1, 0}})}));
+}
+
 } // namespace mlir
