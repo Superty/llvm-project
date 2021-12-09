@@ -103,26 +103,6 @@ SmallVector<int64_t, 8> ParamLexSimplex::getRowParamSample(unsigned row) {
   return sample;
 }
 
-// // SmallVector<int64_t, 8>
-// ParamLexSimplex::varCoeffsFromRowCoeffs(ArrayRef<int64_t> rowCoeffs)
-// const {
-//   SmallVector<int64_t, 8> varCoeffs(var.size() + 1, 0);
-
-//   // Copy the constant term.
-//   varCoeffs.back() = rowCoeffs.back();
-//   for (unsigned i = 0; i < rowCoeffs.size() - 1; ++i) {
-//     if (colUnknown[i] >= 0) {
-//       varCoeffs[colUnknown[i]] += rowCoeffs[i];
-//       continue;
-//     }
-
-//     // Include the constant term of the row.
-//     for (unsigned j = 0; j < rowCoeffs.size(); ++j)
-//       varCoeffs[j] += rowCoeffs[i] * originalCoeffs[~colUnknown[i]][j];
-//   }
-//   return varCoeffs;
-// }
-
 void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
                                                  FlatAffineConstraints &domainSet,
                                                  PWAFunction &result) {
