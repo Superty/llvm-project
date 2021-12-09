@@ -617,6 +617,8 @@ void SimplexBase::undo(UndoLogEntry entry) {
 
     // Move this variable to the last column and remove the column from the
     // tableau.
+    if (var.back().isParam)
+      nParam--;
     swapColumns(var.back().pos, nCol - 1);
     tableau.resizeHorizontally(nCol - 1);
     var.pop_back();

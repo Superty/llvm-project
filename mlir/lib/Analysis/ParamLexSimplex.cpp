@@ -184,8 +184,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       domainSet.addInequality(ineqCoeffs);
 
       // This has to be after we extract the coeffs above!
-      appendVariable();
-      nParam++;
+      appendParameter();
 
       SmallVector<int64_t, 8> oldRow;
       oldRow.reserve(nCol);
@@ -202,7 +201,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       for (unsigned col = 0; col < nCol; ++col)
         tableau(row, col) = oldRow[col];
       domainSimplex.rollback(domainSnapshot);
-      nParam--;
       rollback(snapshot);
       return;
     }
@@ -237,7 +235,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     domainSimplex.rollback(domainSnapshot);
     domainSet.removeInequalityRange(domainSet.getNumInequalities() - 2, domainSet.getNumInequalities());
     domainSet.removeId(FlatAffineConstraints::IdKind::Local, domainSet.getNumLocalIds() - 1);
-    nParam--;
     rollback(snapshot);
 
     return;
