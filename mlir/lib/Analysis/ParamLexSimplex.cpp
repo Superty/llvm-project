@@ -66,26 +66,6 @@ void ParamLexSimplex::appendParameter() {
   // addInequality(ineq);
 }
 
-void ParamLexSimplex::restoreConsistency() {
-  auto maybeGetViolatedRow = [this]() -> Optional<unsigned> {
-    for (unsigned row = 0; row < nRow; ++row) {
-      if (tableau(row, 2) < 0)
-        return row;
-      if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
-        return row;
-    }
-    return {};
-  };
-
-  while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
-    LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
-    if (failed(status)) {
-      markEmpty();
-      return;
-    }
-  }
-}
-
 PWAFunction ParamLexSimplex::findParamLexmin() {
   PWAFunction result;
   FlatAffineConstraints domainSet(nParam, 0, 0);

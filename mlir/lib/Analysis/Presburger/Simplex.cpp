@@ -166,6 +166,26 @@ Direction flippedDirection(Direction direction) {
 
 unsigned LexSimplex::getSnapshot() { return getSnapshotBasis(); }
 
+void LexSimplex::restoreConsistency() {
+  auto maybeGetViolatedRow = [this]() -> Optional<unsigned> {
+    for (unsigned row = 0; row < nRow; ++row) {
+      if (tableau(row, 2) < 0)
+        return row;
+      if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
+        return row;
+    }
+    return {};
+  };
+
+  while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
+    LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
+    if (failed(status)) {
+      markEmpty();
+      return;
+    }
+  }
+}
+
 SmallVector<Fraction, 8> LexSimplex::getLexChange(unsigned row, unsigned col) const {
   SmallVector<Fraction, 8> change;
   auto a = tableau(row, col);

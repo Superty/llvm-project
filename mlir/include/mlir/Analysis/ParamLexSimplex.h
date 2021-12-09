@@ -62,7 +62,6 @@ public:
 
 private:
   SmallVector<int64_t, 8> getRowParamSample(unsigned row);
-  void restoreConsistency();
 
   SmallVector<SmallVector<int64_t, 8>, 8> originalCoeffs;
 };

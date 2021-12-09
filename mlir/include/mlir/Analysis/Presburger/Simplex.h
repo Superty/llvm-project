@@ -348,6 +348,7 @@ public:
   unsigned getSnapshot();
 
 protected:
+  void restoreConsistency();
   SmallVector<Fraction, 8> getLexChange(unsigned row, unsigned col) const;
   LogicalResult moveRowUnknownToColumn(unsigned row);
 };
