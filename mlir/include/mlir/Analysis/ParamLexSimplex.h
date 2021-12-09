@@ -54,10 +54,7 @@ public:
   ParamLexSimplex(unsigned nDim, unsigned paramBegin, unsigned oNParam);
   explicit ParamLexSimplex(const FlatAffineConstraints &constraints);
 
-  void addInequality(ArrayRef<int64_t> coeffs);
-  void addEquality(ArrayRef<int64_t> coeffs);
   void appendParameter();
-
   PWAFunction findParamLexmin();
   void findParamLexminRecursively(Simplex &domainSimplex,
                                   FlatAffineConstraints &domainSet,

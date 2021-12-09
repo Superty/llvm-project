@@ -35,51 +35,6 @@ ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
   //   addEquality(constraints.getEquality(i));
 }
 
-/// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-/// is the curent number of variables, then the corresponding inequality is
-/// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
-///
-/// We add the inequality and mark it as restricted. We then try to make its
-/// sample value non-negative. If this is not possible, the tableau has become
-/// empty and we mark it as such.
-///
-/// Our internal nonparameters are M + x1, M + x2...
-/// Such that the initial state M + x1 = 0 => x1 = -M, so x1 starts at min. val.
-/// Therefore ax1 + bx2 = a(M + x1) + b(M + x2) - (a + b)M.
-void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
-  // llvm::SmallVector<int64_t, 8> newCoeffs;
-  // newCoeffs.push_back(0);
-  // newCoeffs.insert(newCoeffs.end(), coeffs.begin(), coeffs.end());
-
-  // // -1 for constant at the end. Params and divs are marked restricted.
-  // for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-  //   if (!var[1 + i].isParam)
-  //     newCoeffs[0] -= coeffs[i];
-
-  assert(coeffs.size() == var.size() + 1);
-  unsigned conIndex = addRow(coeffs);
-  Unknown &u = con[conIndex];
-  u.restricted = true;
-  // restoreConsistency();
-}
-
-/// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-/// is the curent number of variables, then the corresponding equality is
-/// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
-///
-/// We simply add two opposing inequalities, which force the expression to
-/// be zero.
-void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == var.size() + 1); // - 1 for M
-  addInequality(coeffs);
-  con.back().zero = true;
-  SmallVector<int64_t, 8> negatedCoeffs;
-  for (int64_t coeff : coeffs)
-    negatedCoeffs.emplace_back(-coeff);
-  addInequality(negatedCoeffs);
-  con.back().zero = true;
-}
-
 /// Add a division variable to the tableau. If coeffs is c_0, c_1, ... c_n,
 /// where n is the curent number of variables, then the corresponding variable
 /// is q = floor(c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1})/denom.
