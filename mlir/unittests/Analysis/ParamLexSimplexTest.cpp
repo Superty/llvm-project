@@ -301,5 +301,14 @@ TEST(ParamLexSimplexTest, ParamLexMinTest) {
     auto res = simplex.findParamLexmin();
     EXPECT_EQ(res.value[0].size(), 2u);
   }
+
+  { // [x] -> {[y, z] : x = y + 3z and x >= y and y >= 0}
+    ParamLexSimplex simplex(3, 1, 1);
+    simplex.addInequality({-1, 1, 0, 0});  // x >= y
+    simplex.addInequality({1, 0, 0, -0});  // y >= 0
+    simplex.addEquality({-1, 1, -3, 0});  // x == y + 3z
+    auto res = simplex.findParamLexmin();
+    EXPECT_EQ(res.value[0].size(), 2u);
+  }
 }
 

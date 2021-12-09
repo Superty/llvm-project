@@ -245,8 +245,7 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
   result.domain.push_back(domainSet);
   SmallVector<SmallVector<int64_t, 8>, 8> lexmin;
-  // start at 1 to avoid bigM
-  for (unsigned i = 1; i < var.size(); ++i) {
+  for (unsigned i = 0; i < var.size(); ++i) {
     if (var[i].isParam)
       continue;
     if (var[i].orientation == Orientation::Column) {
