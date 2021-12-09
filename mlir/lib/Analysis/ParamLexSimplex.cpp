@@ -13,7 +13,6 @@
 
 using namespace mlir;
 
-/// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
     : LexSimplex(nVar) {
   nParam = oNParam;
@@ -31,39 +30,11 @@ ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
     addEquality(constraints.getEquality(i));
 }
 
-/// Add a division variable to the tableau. If coeffs is c_0, c_1, ... c_n,
-/// where n is the curent number of variables, then the corresponding variable
-/// is q = floor(c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1})/denom.
-///
-/// This is implemented by adding a new variable, q, and adding the two
-/// inequalities:
-///
-/// 0 <= c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} - denom*q <= denom - 1.
-///
-/// We simply add two opposing inequalities, which force the expression to
-/// be zero.
 void ParamLexSimplex::appendParameter() {
-  // assert(coeffs.size() == var.size() + 1 - 1); // - 1 for M
-  // llvm::errs() << "adding div: ";
-  // for (auto x : coeffs) {
-  //   llvm::errs() << x << ' ';
-  // }
-  // llvm::errs() << '\n';
   appendVariable();
   swapColumns(3 + nParam, nCol - 1);
   var.back().isParam = true;
   nParam++;
-
-  // SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
-  // int64_t constTerm = ineq.back();
-  // ineq.back() = -denom;
-  // ineq.push_back(constTerm);
-  // addInequality(ineq);
-
-  // for (int64_t &coeff : ineq)
-  //   coeff = -coeff;
-  // ineq.back() += denom - 1;
-  // addInequality(ineq);
 }
 
 PWAFunction ParamLexSimplex::findParamLexmin() {
@@ -86,9 +57,6 @@ SmallVector<int64_t, 8> ParamLexSimplex::getRowParamSample(unsigned row) {
 void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
                                                  FlatAffineConstraints &domainSet,
                                                  PWAFunction &result) {
-  // dump();
-  // domainSet.dump();
-  // llvm::errs() << "nParam = " << nParam << '\n';
   if (empty || domainSimplex.isEmpty())
     return;
 
@@ -238,7 +206,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
       rollback(snapshot);
       return;
     }
-    // llvm::errs() << "const: " << constIntegral << ", param: " << paramCoeffsIntegral <<  '\n';
 
     SmallVector<int64_t, 8> divCoeffs;
     for (unsigned col = 3; col < 3 + nParam; ++col)
@@ -264,7 +231,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     tableau(nRow - 1, 3 + nParam - 1) = denom;
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
     assert(succeeded(success));
-    // restoreConsistency();
 
     findParamLexminRecursively(domainSimplex, domainSet, result);
 
@@ -279,8 +245,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
   result.domain.push_back(domainSet);
   SmallVector<SmallVector<int64_t, 8>, 8> lexmin;
-  // domainSet.dump();
-  // dump();
   // start at 1 to avoid bigM
   for (unsigned i = 1; i < var.size(); ++i) {
     if (var[i].isParam)
@@ -291,7 +255,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     }
 
     unsigned row = var[i].pos;
-    // assert(tableau(row, 2) <= 1); // M + x = kM + ...; x = (k-1)M + ...; k-1<=0
     if (tableau(row, 2) <= 0) {
       // lexmin is unbounded; we push an empty entry for this lexmin.
       lexmin.clear();
@@ -308,6 +271,5 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
     lexmin.push_back(std::move(value));
   }
   result.value.push_back(lexmin);
-  // result.dump();
 }
 
