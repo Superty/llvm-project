@@ -24,15 +24,11 @@ ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oN
 }
 
 ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
-    : ParamLexSimplex(constraints.getNumIds(), 0, constraints.getNumIds()) {
-  // TODO get symbol count from the FAC!
-  llvm_unreachable("not yet implemented!");
-  // for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
-  //      i < numIneqs; ++i)
-  //   addInequality(constraints.getInequality(i));
-  // for (unsigned i = 0, numEqs = constraints.getNumEqualities(); i < numEqs;
-  // ++i)
-  //   addEquality(constraints.getEquality(i));
+    : ParamLexSimplex(constraints.getNumIds(), constraints.getIdKindOffset(FlatAffineConstraints::IdKind::Symbol), constraints.getNumSymbolIds()) {
+  for (unsigned i = 0, numIneqs = constraints.getNumInequalities(); i < numIneqs; ++i)
+    addInequality(constraints.getInequality(i));
+  for (unsigned i = 0, numEqs = constraints.getNumEqualities(); i < numEqs; ++i)
+    addEquality(constraints.getEquality(i));
 }
 
 /// Add a division variable to the tableau. If coeffs is c_0, c_1, ... c_n,
