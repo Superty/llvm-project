@@ -16,11 +16,18 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
+unsigned SimplexBase::getNumFixedCols() const {
+  if (pivotRule == PivotRule::Normal)
+    return 2;
+  if (pivotRule == PivotRule::Lexicographic)
+    return 3;
+  llvm_unreachable("Pivot rule unknown!");
+}
+
 /// Construct a Simplex object with `nVar` variables.
 SimplexBase::SimplexBase(PivotRule rule, unsigned nVar)
-    : pivotRule(rule), nRow(0), nCol(2), nRedundant(0), nParam(0), tableau(0, 2 + nVar), empty(false) {
-  colUnknown.push_back(nullIndex);
-  colUnknown.push_back(nullIndex);
+    : pivotRule(rule), nRow(0), nCol(getNumFixedCols()), nRedundant(0), nParam(0), tableau(0, getNumFixedCols() + nVar), empty(false) {
+  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol);
     colUnknown.push_back(i);
@@ -87,7 +94,17 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = 2; col < nCol; ++col)
+  if (pivotRule == PivotRule::Lexicographic) {
+    int64_t bigMCoeff = 0;
+    // We ignore the last term in `coeffs` which corresponds to the constant term.
+    // The bigM coefficient is the sum of the negations of the coefficients of all the non-parameter variables.
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      if (!var[i].isParam)
+        bigMCoeff -= coeffs[i];
+    tableau(nRow - 1, 2) = bigMCoeff;
+  }
+
+  for (unsigned col = getNumFixedCols(); col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
   // Process each given variable coefficient.
@@ -307,7 +324,7 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= 2 && "Refusing to pivot invalid column");
+  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));

@@ -15,11 +15,11 @@ using namespace mlir;
 
 /// Construct a Simplex object with `nVar` variables.
 ParamLexSimplex::ParamLexSimplex(unsigned nVar, unsigned paramBegin, unsigned oNParam)
-    : LexSimplex(nVar + 1) {
+    : LexSimplex(nVar) {
   nParam = oNParam;
   for (unsigned i = 0; i < nParam; ++i) {
-    var[1 + paramBegin + i].isParam = true;
-    swapColumns(var[1 + paramBegin + i].pos, 3 + i);
+    var[paramBegin + i].isParam = true;
+    swapColumns(var[paramBegin + i].pos, 3 + i);
   }
 }
 
@@ -47,17 +47,17 @@ ParamLexSimplex::ParamLexSimplex(const FlatAffineConstraints &constraints)
 /// Such that the initial state M + x1 = 0 => x1 = -M, so x1 starts at min. val.
 /// Therefore ax1 + bx2 = a(M + x1) + b(M + x2) - (a + b)M.
 void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
-  llvm::SmallVector<int64_t, 8> newCoeffs;
-  newCoeffs.push_back(0);
-  newCoeffs.insert(newCoeffs.end(), coeffs.begin(), coeffs.end());
+  // llvm::SmallVector<int64_t, 8> newCoeffs;
+  // newCoeffs.push_back(0);
+  // newCoeffs.insert(newCoeffs.end(), coeffs.begin(), coeffs.end());
 
-  // -1 for constant at the end. Params and divs are marked restricted.
-  for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-    if (!var[1 + i].isParam)
-      newCoeffs[0] -= coeffs[i];
+  // // -1 for constant at the end. Params and divs are marked restricted.
+  // for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+  //   if (!var[1 + i].isParam)
+  //     newCoeffs[0] -= coeffs[i];
 
-  assert(newCoeffs.size() == var.size() + 1);
-  unsigned conIndex = addRow(newCoeffs);
+  assert(coeffs.size() == var.size() + 1);
+  unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
   // restoreConsistency();
@@ -70,7 +70,7 @@ void ParamLexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
 void ParamLexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == var.size() + 1 - 1); // - 1 for M
+  assert(coeffs.size() == var.size() + 1); // - 1 for M
   addInequality(coeffs);
   con.back().zero = true;
   SmallVector<int64_t, 8> negatedCoeffs;

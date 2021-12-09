@@ -296,6 +296,8 @@ protected:
   Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
                                   Direction direction, unsigned col) const;
 
+  unsigned getNumFixedCols() const;
+
   // The pivot rule to be used in this simplex object.
   const PivotRule pivotRule;
   /// The number of rows in the tableau.
