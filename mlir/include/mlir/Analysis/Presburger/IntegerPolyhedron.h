@@ -185,10 +185,10 @@ public:
   /// Removes all equalities and inequalities.
   void clearConstraints();
 
-protected:
   /// Return the index at which the specified kind of id starts.
   unsigned getIdKindOffset(IdKind kind) const;
 
+protected:
   /// Get the number of ids of the specified kind.
   unsigned getNumIdKind(IdKind kind) const;
 
