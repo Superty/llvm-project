@@ -16,6 +16,7 @@
 
 #include "mlir/Analysis/AffineStructures.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
+#include "mlir/Analysis/PWAFunction.h"
 // #include "mlir/Analysis/AffineStructures.h"
 // #include "mlir/Analysis/Presburger/Fraction.h"
 // #include "mlir/Analysis/Presburger/Matrix.h"
@@ -26,28 +27,6 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
-struct PWAFunction {
-  SmallVector<FlatAffineConstraints, 8> domain;
-  SmallVector<SmallVector<SmallVector<int64_t, 8>, 8>, 8> value;
-
-  void dump() {
-    for (unsigned i = 0; i < value.size(); ++i) {
-      domain[i].dump();
-      llvm::errs() << "\n";
-      for (unsigned j = 0; j < value[i].size(); ++j) {
-        llvm::errs() << "a" << j << " = ";
-        for (unsigned k = 0; k < value[i][j].size() - 1; ++k) {
-          if (value[i][j][k] == 0)
-            continue;
-          llvm::errs() << value[i][j][k] << "x" << k << " + ";
-        }
-        llvm::errs() << value[i][j].back() << '\n';
-      }
-      llvm::errs() << '\n';
-    }
-  }
-};
-
 class ParamLexSimplex : public LexSimplex {
 public:
   ParamLexSimplex() = delete;

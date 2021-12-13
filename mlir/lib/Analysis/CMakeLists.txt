@@ -13,6 +13,7 @@ set(LLVM_OPTIONAL_SOURCES
   NumberOfExecutions.cpp
   PresburgerSet.cpp
   ParamLexSimplex.cpp
+  PWAFunction.cpp
   SliceAnalysis.cpp
   Utils.cpp
 
@@ -54,6 +55,7 @@ add_mlir_library(MLIRLoopAnalysis
   NestedMatcher.cpp
   PresburgerSet.cpp
   ParamLexSimplex.cpp
+  PWAFunction.cpp
   Utils.cpp
 
   ADDITIONAL_HEADER_DIRS
