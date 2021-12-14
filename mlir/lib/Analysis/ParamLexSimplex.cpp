@@ -155,8 +155,6 @@ void ParamLexSimplex::findParamLexminRecursively(Simplex &domainSimplex,
 
     bool otherCoeffsIntegral = true;
     for (unsigned col = 3 + nParam; col < nCol; ++col) {
-      if (unknownFromColumn(col).zero)
-        continue;
       if (mod(tableau(row, col), denom) != 0) {
         otherCoeffsIntegral = false;
         break;

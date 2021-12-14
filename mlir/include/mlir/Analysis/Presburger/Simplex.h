@@ -207,11 +207,10 @@ protected:
     Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos,
             bool oZero = false, bool oRedundant = false)
         : pos(oPos), orientation(oOrientation), restricted(oRestricted),
-          zero(oZero), redundant(oRedundant), isParam(false) {}
+          redundant(oRedundant), isParam(false) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
-    bool zero : 1;
     bool redundant : 1;
     bool isParam : 1;
 
