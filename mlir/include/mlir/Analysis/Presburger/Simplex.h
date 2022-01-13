@@ -156,7 +156,7 @@ public:
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
-  void addInequality(ArrayRef<int64_t> coeffs);
+  virtual void addInequality(ArrayRef<int64_t> coeffs) = 0;
 
   /// Returns the number of variables in the tableau.
   unsigned getNumVariables() const;
@@ -191,16 +191,11 @@ public:
   /// Add all the constraints from the given IntegerPolyhedron.
   void intersectIntegerPolyhedron(const IntegerPolyhedron &poly);
 
-  /// Returns a rational sample point, or an empty optional if Simplex is empty.
-  ///
-  /// Also returns empty when lexicographic pivot rule is used and a variable
-  /// has a non-zero big M coefficient, meaning its value is infinite or
-  /// unbounded.
+  /// Returns the current sample point, which may contain non-integer (rational) coordinates.
+  /// 
+  /// Note that the big M coefficient from LexSimplex is ignored even if it is
+  /// present; SimplexBase does not know about it.
   Optional<SmallVector<Fraction, 8>> getRationalSample() const;
-
-  /// Returns the current sample point if it is integral. Otherwise, returns
-  /// None.
-  Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
 
   /// Print the tableau's internal state.
   void print(raw_ostream &os) const;
@@ -265,7 +260,10 @@ protected:
   Unknown &unknownFromRow(unsigned row);
 
   /// Add a new row to the tableau and the associated data structures.
-  unsigned addRow(ArrayRef<int64_t> coeffs);
+  /// The new row is considered to be a constraint; the new Unknown lives in con.
+  /// 
+  /// Returns the index of the new Unknown in con.
+  unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false, Optional<int64_t> bigMCoeff = {});
 
   /// Normalize the given row by removing common factors between the numerator
   /// and the denominator.
@@ -289,6 +287,12 @@ protected:
     UnmarkLastRedundant,
     RestoreBasis
   };
+
+  // Remove the last constraint.
+  virtual void undoLastConstraint() = 0;
+
+  // Remove the last constraint, which must be in row orientation.
+  void removeLastConstraintRowOrientation();
 
   /// Undo the operation represented by the log entry.
   void undo(UndoLogEntry entry);
@@ -368,7 +372,20 @@ public:
   explicit LexSimplex(unsigned nVar)
       : SimplexBase(PivotRule::Lexicographic, nVar) {}
   explicit LexSimplex(const IntegerPolyhedron &constraints)
-      : SimplexBase(PivotRule::Lexicographic, constraints) {}
+      : LexSimplex(constraints.getNumIds()) {
+        intersectIntegerPolyhedron(constraints);
+      }
+  virtual ~LexSimplex() = default;
+
+  /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+  /// is the current number of variables, then the corresponding inequality is
+  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
+  /// 
+  /// This just adds the inequality to the tableau and does not try to create a
+  /// consistent tableau configuration.
+  void addInequality(ArrayRef<int64_t> coeffs) final {
+    addRow(coeffs, /*makeRestricted=*/true);
+  }
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
@@ -377,6 +394,12 @@ public:
   Optional<SmallVector<Fraction, 8>> getRationalLexMin();
 
 protected:
+  /// Add a new row to the tableau and the associated data structures.
+  /// The new row is considered to be a constraint; the new Unknown lives in con.
+  /// 
+  /// Returns the index of the new Unknown in con.
+  unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false);
+
   /// Make the tableau configuration consistent.
   void restoreRationalConsistency();
 
@@ -415,6 +438,15 @@ public:
   explicit Simplex(unsigned nVar) : SimplexBase(PivotRule::Normal, nVar) {}
   explicit Simplex(const IntegerPolyhedron &constraints)
       : SimplexBase(PivotRule::Normal, constraints) {}
+  virtual ~Simplex() = default;
+
+  /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
+  /// is the current number of variables, then the corresponding inequality is
+  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
+  /// 
+  /// This also tries to restore the tableau configuration to a consistent
+  /// state and marks the Simplex empty if this is not possible.
+  void addInequality(ArrayRef<int64_t> coeffs) final;
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted. On return, the row may
@@ -476,6 +508,10 @@ public:
 
 private:
   friend class GBRSimplex;
+
+  /// Returns the current sample point if it is integral. Otherwise, returns
+  /// None.
+  Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
 
   /// Compute the maximum or minimum of the specified Unknown, depending on
   /// direction. The specified unknown may be pivoted. If the unknown is

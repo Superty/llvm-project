@@ -28,15 +28,6 @@ SimplexBase::SimplexBase(PivotRule rule, unsigned nVar)
   }
 }
 
-SimplexBase::SimplexBase(PivotRule rule, const IntegerPolyhedron &constraints)
-    : SimplexBase(rule, constraints.getNumIds()) {
-  for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
-       i < numIneqs; ++i)
-    addInequality(constraints.getInequality(i));
-  for (unsigned i = 0, numEqs = constraints.getNumEqualities(); i < numEqs; ++i)
-    addEquality(constraints.getEquality(i));
-}
-
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
@@ -67,11 +58,29 @@ Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) {
   return unknownFromIndex(rowUnknown[row]);
 }
 
+// When the lexicographic pivot rule is used, instead of the variables
+//
+// x, y, z ...
+//
+// we internally use the variables
+//
+// M, M + x, M + y, M + z, ...
+//
+// where M is the big M parameter. As such, when the user tries to add
+// a row ax + by + cz + d, we express it in terms of our internal variables
+// as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
+unsigned LexSimplex::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
+  int64_t bigMCoeff = 0;
+  for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+    bigMCoeff -= coeffs[i];
+  return SimplexBase::addRow(coeffs, makeRestricted, bigMCoeff);
+}
+
 /// Add a new row to the tableau corresponding to the given constant term and
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
-unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
-  assert(coeffs.size() == 1 + var.size() &&
+unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted, Optional<int64_t> bigMCoeff) {
+  assert(coeffs.size() == var.size() + 1 &&
          "Incorrect number of coefficients!");
 
   ++nRow;
@@ -79,32 +88,18 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
   if (nRow >= tableau.getNumRows())
     tableau.resizeVertically(nRow);
   rowUnknown.push_back(~con.size());
-  con.emplace_back(Orientation::Row, false, nRow - 1);
+  con.emplace_back(Orientation::Row, makeRestricted, nRow - 1);
+
+  // Zero out the new row.
+  tableau.fillRow(nRow - 1, 0);
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  if (pivotRule == PivotRule::Lexicographic) {
-    // When the lexicographic pivot rule is used, instead of the variables
-    //
-    // x, y, z ...
-    //
-    // we internally use the variables
-    //
-    // M, M + x, M + y, M + z, ...
-    //
-    // where M is the big M parameter. As such, when the user tries to add
-    // a row ax + by + cz + d, we express it in terms of our internal variables
-    // as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
-    //
-    // The coefficient to the big M parameter is stored in column 2.
-    int64_t bigMCoeff = 0;
-    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-      bigMCoeff -= coeffs[i];
-    tableau(nRow - 1, 2) = bigMCoeff;
+  if (bigMCoeff) {
+    assert(tableau.getNumColumns() == var.size() + 3 && "Big M coefficient provided but invalid column count for LexSimplex!");
+    // The coefficient to the big M parameter is stored in column 2. See LexSimplex for more information.
+    tableau(nRow - 1, 2) = *bigMCoeff;
   }
-
-  for (unsigned col = getNumFixedCols(); col < nCol; ++col)
-    tableau(nRow - 1, col) = 0;
 
   // Process each given variable coefficient.
   for (unsigned i = 0; i < var.size(); ++i) {
@@ -170,6 +165,18 @@ Direction flippedDirection(Direction direction) {
 
 Optional<SmallVector<Fraction, 8>> LexSimplex::getRationalLexMin() {
   restoreRationalConsistency();
+
+  if (empty)
+    return {};
+
+  // Each variable x is represented as M + x, so its sample value should be
+  // of the form 1*M + c. If the coefficient of M is not one then the sample
+  // value is undefined or infinite, and we return an empty optional.
+  for (const Unknown &u : var)
+    if (u.orientation == Orientation::Row)
+      if (tableau(u.pos, 2) != tableau(u.pos, 0))
+        return {};
+
   return getRationalSample();
 }
 
@@ -535,15 +542,9 @@ void SimplexBase::markEmpty() {
 /// We add the inequality and mark it as restricted. We then try to make its
 /// sample value non-negative. If this is not possible, the tableau has become
 /// empty and we mark it as such.
-void SimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
-  unsigned conIndex = addRow(coeffs);
-  Unknown &u = con[conIndex];
-  u.restricted = true;
-
-  if (pivotRule == PivotRule::Lexicographic)
-    return;
-
-  LogicalResult result = restoreRow(u);
+void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
+  unsigned conIndex = addRow(coeffs, /*makeRestricted=*/true);
+  LogicalResult result = restoreRow(con[conIndex]);
   if (failed(result))
     markEmpty();
 }
@@ -581,8 +582,36 @@ unsigned SimplexBase::getSnapshotBasis() {
   return undoLog.size() - 1;
 }
 
+void SimplexBase::removeLastConstraintRowOrientation() {
+  assert(con.back().orientation == Orientation::Row);
+
+  // Move this unknown to the last row and remove the last row from the
+  // tableau.
+  swapRows(con.back().pos, nRow - 1);
+  // It is not strictly necessary to shrink the tableau, but for now we
+  // maintain the invariant that the tableau has exactly nRow rows.
+  tableau.resizeVertically(nRow - 1);
+  nRow--;
+  rowUnknown.pop_back();
+  con.pop_back();
+}
+
+void Simplex::undoLastConstraint() {
+  if (con.back().orientation == Orientation::Column) {
+    unsigned column = con.back().pos;
+    if (Optional<unsigned> maybeRow =
+            findPivotRow({}, Direction::Up, column)) {
+      pivot(*maybeRow, column);
+    } else if (Optional<unsigned> maybeRow =
+                   findPivotRow({}, Direction::Down, column)) {
+      pivot(*maybeRow, column);
+    } else {
+    }
+}
+
 void SimplexBase::undo(UndoLogEntry entry) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
+    undoLastConstraint();
     Unknown &constraint = con.back();
     if (constraint.orientation == Orientation::Column) {
       unsigned column = constraint.pos;
@@ -627,16 +656,6 @@ void SimplexBase::undo(UndoLogEntry entry) {
       assert(row.hasValue() && "No pivot row found!");
       pivot(*row, column);
     }
-
-    // Move this unknown to the last row and remove the last row from the
-    // tableau.
-    swapRows(constraint.pos, nRow - 1);
-    // It is not strictly necessary to shrink the tableau, but for now we
-    // maintain the invariant that the tableau has exactly nRow rows.
-    tableau.resizeVertically(nRow - 1);
-    nRow--;
-    rowUnknown.pop_back();
-    con.pop_back();
   } else if (entry == UndoLogEntry::RemoveLastVariable) {
     // Whenever we are rolling back the addition of a variable, it is guaranteed
     // that the variable will be in column position.
@@ -962,22 +981,14 @@ Optional<SmallVector<Fraction, 8>> SimplexBase::getRationalSample() const {
       // If the variable is in row position, its sample value is the entry in
       // the constant column divided by the entry in the common denominator
       // column.
-      //
-      // If the pivot rule is lexicographic, then there is also a big M column.
-      // If that has a non-zero coefficient, then the sample value is
-      // infinite or undefined and we return an empty optional.
-      int64_t denom = tableau(u.pos, 0);
-      if (pivotRule == PivotRule::Lexicographic)
-        if (tableau(u.pos, 2) != denom)
-          return {};
-      sample.emplace_back(tableau(u.pos, 1), denom);
+      sample.emplace_back(tableau(u.pos, 1), tableau(u.pos, 0));
     }
   }
   return sample;
 }
 
 Optional<SmallVector<int64_t, 8>>
-SimplexBase::getSamplePointIfIntegral() const {
+Simplex::getSamplePointIfIntegral() const {
   // If the tableau is empty, no sample point exists.
   if (empty)
     return {};
