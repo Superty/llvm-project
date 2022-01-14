@@ -142,12 +142,25 @@ class GBRSimplex;
 
 class SimplexBase {
 public:
-  enum class Direction { Up, Down };
-  enum class PivotRule { Normal, Lexicographic };
-
   SimplexBase() = delete;
-  SimplexBase(PivotRule rule, unsigned nVar);
-  SimplexBase(PivotRule rule, const IntegerPolyhedron &constraints);
+  virtual ~SimplexBase() = default;
+
+  /// Construct a SimplexBase with the specified number of variables and fixed
+  /// columns.
+  ///
+  /// For example, Simplex uses two fixed columns: the denominator and the
+  /// constant term, whereas LexSimplex has an extra fixed column for the
+  /// so-called big M parameter. For more information see the documentation for
+  /// LexSimplex.
+  SimplexBase(unsigned nFixedCols, unsigned nVar);
+
+  /// Return the number of fixed columns, as described in the constructor above,
+  /// this is the number of columns beyond those for the variables in var.
+  unsigned getNumFixedCols() const {
+    assert(tableau.getNumColumns() >= var.size() &&
+           "Invalid tableau dimensions!");
+    return tableau.getNumColumns() - var.size();
+  }
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -191,8 +204,9 @@ public:
   /// Add all the constraints from the given IntegerPolyhedron.
   void intersectIntegerPolyhedron(const IntegerPolyhedron &poly);
 
-  /// Returns the current sample point, which may contain non-integer (rational) coordinates.
-  /// 
+  /// Returns the current sample point, which may contain non-integer (rational)
+  /// coordinates.
+  ///
   /// Note that the big M coefficient from LexSimplex is ignored even if it is
   /// present; SimplexBase does not know about it.
   Optional<SmallVector<Fraction, 8>> getRationalSample() const;
@@ -230,13 +244,13 @@ protected:
     unsigned row, column;
   };
 
-  /// Find a pivot to change the sample value of row in the specified
-  /// direction. The returned pivot row will be row if and only
-  /// if the unknown is unbounded in the specified direction.
+  /// Return any row that this column can be pivoted with, ignoring tableau
+  /// consistency.
   ///
-  /// Returns a (row, col) pair denoting a pivot, or an empty Optional if
-  /// no valid pivot exists.
-  Optional<Pivot> findPivot(int row, Direction direction) const;
+  /// Returns an empty optional if no pivot is possible, which happens only when
+  /// the column unknown is a variable and no constraint has a non-zero
+  /// coefficient for it.
+  Optional<unsigned> findAnyPivotRow(unsigned col);
 
   /// Swap the row with the column in the tableau's data structures but not the
   /// tableau itself. This is used by pivot.
@@ -260,10 +274,12 @@ protected:
   Unknown &unknownFromRow(unsigned row);
 
   /// Add a new row to the tableau and the associated data structures.
-  /// The new row is considered to be a constraint; the new Unknown lives in con.
-  /// 
+  /// The new row is considered to be a constraint; the new Unknown lives in
+  /// con.
+  ///
   /// Returns the index of the new Unknown in con.
-  unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false, Optional<int64_t> bigMCoeff = {});
+  unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false,
+                  Optional<int64_t> bigMCoeff = {});
 
   /// Normalize the given row by removing common factors between the numerator
   /// and the denominator.
@@ -272,12 +288,6 @@ protected:
   /// Swap the two rows/columns in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
   void swapColumns(unsigned i, unsigned j);
-
-  /// Restore the unknown to a non-negative sample value.
-  ///
-  /// Returns success if the unknown was successfully restored to a non-negative
-  /// sample value, failure otherwise.
-  LogicalResult restoreRow(Unknown &u);
 
   /// Enum to denote operations that need to be undone during rollback.
   enum class UndoLogEntry {
@@ -288,40 +298,15 @@ protected:
     RestoreBasis
   };
 
-  // Remove the last constraint.
+  /// Undo the addition of the last constraint. This will only be called from
+  /// undo, when rolling back.
   virtual void undoLastConstraint() = 0;
 
-  // Remove the last constraint, which must be in row orientation.
+  /// Remove the last constraint, which must be in row orientation.
   void removeLastConstraintRowOrientation();
 
   /// Undo the operation represented by the log entry.
   void undo(UndoLogEntry entry);
-
-  /// Find a row that can be used to pivot the column in the specified
-  /// direction. If skipRow is not null, then this row is excluded
-  /// from consideration. The returned pivot will maintain all constraints
-  /// except the column itself and skipRow, if it is set. (if these unknowns
-  /// are restricted).
-  ///
-  /// Returns the row to pivot to, or an empty Optional if the column
-  /// is unbounded in the specified direction.
-  Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
-                                  Direction direction, unsigned col) const;
-
-  /// Get the number of fixed columns. Under the normal pivot rule, this is two:
-  /// the denominator column and the constant term column. When the lex pivot
-  /// rule is used, this is three, since in that case we also have the big M
-  /// coefficient.
-  unsigned getNumFixedCols() const {
-    if (pivotRule == PivotRule::Normal)
-      return 2;
-    if (pivotRule == PivotRule::Lexicographic)
-      return 3;
-    llvm_unreachable("Pivot rule unknown!");
-  }
-
-  /// The pivot rule to be used in this simplex object.
-  const PivotRule pivotRule;
 
   /// The number of rows in the tableau.
   unsigned nRow;
@@ -369,18 +354,17 @@ protected:
 /// documentation of that function for more details.
 class LexSimplex : public SimplexBase {
 public:
-  explicit LexSimplex(unsigned nVar)
-      : SimplexBase(PivotRule::Lexicographic, nVar) {}
+  explicit LexSimplex(unsigned nVar) : SimplexBase(3, nVar) {}
   explicit LexSimplex(const IntegerPolyhedron &constraints)
       : LexSimplex(constraints.getNumIds()) {
-        intersectIntegerPolyhedron(constraints);
-      }
-  virtual ~LexSimplex() = default;
+    intersectIntegerPolyhedron(constraints);
+  }
+  ~LexSimplex() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
-  /// 
+  ///
   /// This just adds the inequality to the tableau and does not try to create a
   /// consistent tableau configuration.
   void addInequality(ArrayRef<int64_t> coeffs) final {
@@ -394,9 +378,14 @@ public:
   Optional<SmallVector<Fraction, 8>> getRationalLexMin();
 
 protected:
+  /// Undo the addition of the last constraint. This is only called while
+  /// rolling back.
+  void undoLastConstraint() final;
+
   /// Add a new row to the tableau and the associated data structures.
-  /// The new row is considered to be a constraint; the new Unknown lives in con.
-  /// 
+  /// The new row is considered to be a constraint; the new Unknown lives in
+  /// con.
+  ///
   /// Returns the index of the new Unknown in con.
   unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false);
 
@@ -434,16 +423,20 @@ protected:
 /// algorithm. See the documentation for findIntegerSample and reduceBasis.
 class Simplex : public SimplexBase {
 public:
+  enum class Direction { Up, Down };
+
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(PivotRule::Normal, nVar) {}
+  explicit Simplex(unsigned nVar) : SimplexBase(2, nVar) {}
   explicit Simplex(const IntegerPolyhedron &constraints)
-      : SimplexBase(PivotRule::Normal, constraints) {}
-  virtual ~Simplex() = default;
+      : Simplex(constraints.getNumIds()) {
+    intersectIntegerPolyhedron(constraints);
+  }
+  ~Simplex() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
-  /// 
+  ///
   /// This also tries to restore the tableau configuration to a consistent
   /// state and marks the Simplex empty if this is not possible.
   void addInequality(ArrayRef<int64_t> coeffs) final;
@@ -506,12 +499,43 @@ public:
   /// Otherwise, returns false.
   bool isRationalSubsetOf(const IntegerPolyhedron &poly);
 
-private:
-  friend class GBRSimplex;
-
   /// Returns the current sample point if it is integral. Otherwise, returns
   /// None.
   Optional<SmallVector<int64_t, 8>> getSamplePointIfIntegral() const;
+
+private:
+  friend class GBRSimplex;
+
+  /// Restore the unknown to a non-negative sample value.
+  ///
+  /// Returns success if the unknown was successfully restored to a non-negative
+  /// sample value, failure otherwise.
+  LogicalResult restoreRow(Unknown &u);
+
+  /// Find a pivot to change the sample value of row in the specified
+  /// direction while preserving tableau consistency, except that if the
+  /// direction is down then the pivot may make the specified row take a
+  /// negative value. The returned pivot row will be row if and only if the
+  /// unknown is unbounded in the specified direction.
+  ///
+  /// Returns a (row, col) pair denoting a pivot, or an empty Optional if
+  /// no valid pivot exists.
+  Optional<Pivot> findPivot(int row, Direction direction) const;
+
+  /// Find a row that can be used to pivot the column in the specified
+  /// direction. If skipRow is not null, then this row is excluded
+  /// from consideration. The returned pivot will maintain all constraints
+  /// except the column itself and skipRow, if it is set. (if these unknowns
+  /// are restricted).
+  ///
+  /// Returns the row to pivot to, or an empty Optional if the column
+  /// is unbounded in the specified direction.
+  Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
+                                  Direction direction, unsigned col) const;
+
+  /// Undo the addition of the last constraint while preserving tableau
+  /// consistency.
+  void undoLastConstraint() final;
 
   /// Compute the maximum or minimum of the specified Unknown, depending on
   /// direction. The specified unknown may be pivoted. If the unknown is
