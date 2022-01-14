@@ -7,7 +7,8 @@
 //===----------------------------------------------------------------------===//
 //
 // Functionality to perform analysis on an IntegerPolyhedron. In particular,
-// support for performing emptiness checks and redundancy checks.
+// support for performing emptiness checks, redundancy checks and obtaining the
+// lexicographically minimum rational element in a set.
 //
 //===----------------------------------------------------------------------===//
 
@@ -142,10 +143,11 @@ class GBRSimplex;
 class SimplexBase {
 public:
   enum class Direction { Up, Down };
+  enum class PivotRule { Normal, Lexicographic };
 
   SimplexBase() = delete;
-  explicit SimplexBase(unsigned nVar);
-  explicit SimplexBase(const IntegerPolyhedron &constraints);
+  SimplexBase(PivotRule rule, unsigned nVar);
+  SimplexBase(PivotRule rule, const IntegerPolyhedron &constraints);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -174,7 +176,14 @@ public:
   void markEmpty();
 
   /// Get a snapshot of the current state. This is used for rolling back.
+  /// The same basis will not necessarily be restored on rolling back.
+  /// The snapshot only captures the set of variables and constraints present
+  /// in the Simplex.
   unsigned getSnapshot() const;
+
+  /// Get a snapshot of the current state including the basis. When rolling
+  /// back, the exact basis will be restored.
+  unsigned getSnapshotBasis();
 
   /// Rollback to a snapshot. This invalidates all later snapshots.
   void rollback(unsigned snapshot);
@@ -182,8 +191,11 @@ public:
   /// Add all the constraints from the given IntegerPolyhedron.
   void intersectIntegerPolyhedron(const IntegerPolyhedron &poly);
 
-  /// Returns a rational sample point. Returns an empty optional if Simplex is
-  /// empty.
+  /// Returns a rational sample point, or an empty optional if Simplex is empty.
+  ///
+  /// Also returns empty when lexicographic pivot rule is used and a variable
+  /// has a non-zero big M coefficient, meaning its value is infinite or
+  /// unbounded.
   Optional<SmallVector<Fraction, 8>> getRationalSample() const;
 
   /// Returns the current sample point if it is integral. Otherwise, returns
@@ -274,7 +286,8 @@ protected:
     RemoveLastConstraint,
     RemoveLastVariable,
     UnmarkEmpty,
-    UnmarkLastRedundant
+    UnmarkLastRedundant,
+    RestoreBasis
   };
 
   /// Undo the operation represented by the log entry.
@@ -290,6 +303,21 @@ protected:
   /// is unbounded in the specified direction.
   Optional<unsigned> findPivotRow(Optional<unsigned> skipRow,
                                   Direction direction, unsigned col) const;
+
+  /// Get the number of fixed columns. Under the normal pivot rule, this is two:
+  /// the denominator column and the constant term column. When the lex pivot
+  /// rule is used, this is three, since in that case we also have the big M
+  /// coefficient.
+  unsigned getNumFixedCols() const {
+    if (pivotRule == PivotRule::Normal)
+      return 2;
+    if (pivotRule == PivotRule::Lexicographic)
+      return 3;
+    llvm_unreachable("Pivot rule unknown!");
+  }
+
+  /// The pivot rule to be used in this simplex object.
+  const PivotRule pivotRule;
 
   /// The number of rows in the tableau.
   unsigned nRow;
@@ -309,6 +337,8 @@ protected:
   /// otherwise.
   bool empty;
 
+  SmallVector<SmallVector<int, 8>, 8> savedBases;
+
   /// Holds a log of operations, used for rolling back to a previous state.
   SmallVector<UndoLogEntry, 8> undoLog;
 
@@ -325,12 +355,66 @@ protected:
   SmallVector<Unknown, 8> con, var;
 };
 
+/// Simplex class using the lexicographic pivot rule. Used for lexicographic
+/// optimization.
+///
+/// The fundamental building block of the lexicographic optimization algorithms
+/// is the moveRowUnknownToColumn operation. This finds an appropriate pivot
+/// and moves a violated row to column position, thus bringing its sample value
+/// to zero and making it not violated anymore. See the implementation
+/// documentation of that function for more details.
+class LexSimplex : public SimplexBase {
+public:
+  explicit LexSimplex(unsigned nVar)
+      : SimplexBase(PivotRule::Lexicographic, nVar) {}
+  explicit LexSimplex(const IntegerPolyhedron &constraints)
+      : SimplexBase(PivotRule::Lexicographic, constraints) {}
+
+  /// Get a snapshot of the current state. This is used for rolling back.
+  unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
+
+  /// Return the lexicographically minimum rational solution to the constraints.
+  Optional<SmallVector<Fraction, 8>> getRationalLexMin();
+
+protected:
+  /// Make the tableau configuration consistent.
+  void restoreRationalConsistency();
+
+  /// Get a constraint row that is violated, if one exists.
+  /// Otherwise, return an empty optional.
+  Optional<unsigned> maybeGetViolatedRow() const;
+
+  /// Given two potential pivot columns for a row, return the one that results
+  /// in the lexicographically smallest sample vector.
+  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
+                                unsigned colB) const;
+
+  /// Find the pivot column for the given pivot row which would result in the
+  /// lexicographically smallest positive change in the sample value.
+  /// Only pivot columns with a positive pivot element are considered.
+  LogicalResult moveRowUnknownToColumn(unsigned row);
+};
+
+/// The Simplex class uses the Normal pivot rule and supports integer emptiness
+/// checks as well as detecting redundancies.
+///
+/// The Simplex class supports redundancy checking via detectRedundant and
+/// isMarkedRedundant. A redundant constraint is one which is never violated as
+/// long as the other constraints are not violated, i.e., removing a redundant
+/// constraint does not change the set of solutions to the constraints. As a
+/// heuristic, constraints that have been marked redundant can be ignored for
+/// most operations. Therefore, these constraints are kept in rows 0 to
+/// nRedundant - 1, where nRedundant is a member variable that tracks the number
+/// of constraints that have been marked redundant.
+///
+/// Finding an integer sample is done with the Generalized Basis Reduction
+/// algorithm. See the documentation for findIntegerSample and reduceBasis.
 class Simplex : public SimplexBase {
 public:
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar) {}
+  explicit Simplex(unsigned nVar) : SimplexBase(PivotRule::Normal, nVar) {}
   explicit Simplex(const IntegerPolyhedron &constraints)
-      : SimplexBase(constraints) {}
+      : SimplexBase(PivotRule::Normal, constraints) {}
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted. On return, the row may

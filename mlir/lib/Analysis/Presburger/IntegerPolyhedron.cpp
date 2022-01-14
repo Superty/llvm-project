@@ -62,6 +62,11 @@ void IntegerPolyhedron::append(const IntegerPolyhedron &other) {
   }
 }
 
+Optional<SmallVector<Fraction, 8>>
+IntegerPolyhedron::getRationalLexMin() const {
+  return LexSimplex(*this).getRationalLexMin();
+}
+
 unsigned IntegerPolyhedron::insertDimId(unsigned pos, unsigned num) {
   return insertId(IdKind::Dimension, pos, num);
 }

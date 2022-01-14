@@ -17,10 +17,10 @@ using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
 /// Construct a Simplex object with `nVar` variables.
-SimplexBase::SimplexBase(unsigned nVar)
-    : nRow(0), nCol(2), nRedundant(0), tableau(0, 2 + nVar), empty(false) {
-  colUnknown.push_back(nullIndex);
-  colUnknown.push_back(nullIndex);
+SimplexBase::SimplexBase(PivotRule rule, unsigned nVar)
+    : pivotRule(rule), nRow(0), nCol(getNumFixedCols()), nRedundant(0),
+      tableau(0, getNumFixedCols() + nVar), empty(false) {
+  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol);
     colUnknown.push_back(i);
@@ -28,8 +28,8 @@ SimplexBase::SimplexBase(unsigned nVar)
   }
 }
 
-SimplexBase::SimplexBase(const IntegerPolyhedron &constraints)
-    : SimplexBase(constraints.getNumIds()) {
+SimplexBase::SimplexBase(PivotRule rule, const IntegerPolyhedron &constraints)
+    : SimplexBase(rule, constraints.getNumIds()) {
   for (unsigned i = 0, numIneqs = constraints.getNumInequalities();
        i < numIneqs; ++i)
     addInequality(constraints.getInequality(i));
@@ -83,7 +83,27 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs) {
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  for (unsigned col = 2; col < nCol; ++col)
+  if (pivotRule == PivotRule::Lexicographic) {
+    // When the lexicographic pivot rule is used, instead of the variables
+    //
+    // x, y, z ...
+    //
+    // we internally use the variables
+    //
+    // M, M + x, M + y, M + z, ...
+    //
+    // where M is the big M parameter. As such, when the user tries to add
+    // a row ax + by + cz + d, we express it in terms of our internal variables
+    // as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
+    //
+    // The coefficient to the big M parameter is stored in column 2.
+    int64_t bigMCoeff = 0;
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      bigMCoeff -= coeffs[i];
+    tableau(nRow - 1, 2) = bigMCoeff;
+  }
+
+  for (unsigned col = getNumFixedCols(); col < nCol; ++col)
     tableau(nRow - 1, col) = 0;
 
   // Process each given variable coefficient.
@@ -148,6 +168,135 @@ Direction flippedDirection(Direction direction) {
 }
 } // namespace
 
+Optional<SmallVector<Fraction, 8>> LexSimplex::getRationalLexMin() {
+  restoreRationalConsistency();
+  return getRationalSample();
+}
+
+// Let the coefficient of the big M parameter be p and the constant term be p.
+// Then since M is arbitrarily large, pM + q < 0 iff p < 0 or (p == 0 and q < 0).
+Optional<unsigned> LexSimplex::maybeGetViolatedRow() const {
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+    if (tableau(row, 2) < 0)
+      return row;
+    if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
+      return row;
+  }
+  return {};
+}
+
+// We simply look for violated rows and move them to column position.
+void LexSimplex::restoreRationalConsistency() {
+  while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
+    LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
+    if (failed(status)) {
+      markEmpty();
+      return;
+    }
+  }
+}
+
+unsigned LexSimplex::getLexMinPivotColumn(unsigned row, unsigned colA,
+                                          unsigned colB) const {
+  // A pivot causes the following change:
+  //            pivot col    big M col      const col
+  // pivot row     a            p               b
+  // other row     c            q               d
+  //                        |
+  //                        v
+  //
+  //            pivot col    big M col      const col
+  // pivot row     1/a         -p/a           -b/a
+  // other row     c/a        q - pc/a       d - bc/a
+  //
+  // Let the sample value of the pivot row be s = pM + b before the pivot. Since
+  // the pivot row represents a violated constraint we know that s < 0.
+  //
+  // If the variable is a non-pivot column, its sample value is zero before and
+  // after the pivot.
+  //
+  // If the variable is the pivot column, then its sample value goes from 0 to
+  // (-p/a)M + (-b/a), i.e. 0 to -(pM + b)/a. Thus the change in the sample
+  // value is -s/a.
+  //
+  // If the variable is the pivot row, it sampel value goes from s to 0, for a
+  // change of -s.
+  //
+  // If the variable is a non-pivot row, its sample value changes from
+  // qM + d to qM + d + (-pc/a)M + (-bc/a). Thus the change in sample value
+  // is -(pM + b)(c/a) = -sc/a.
+  //
+  // Thus the change in sample value is either 0, -s/a, -s, or -sc/a. Here -s is
+  // fixed for all calls to this function since the row and tableau are fixed.
+  // The callee just wants to compare the return values with the return value of
+  // other invocations of the same function. So the -s is common for all
+  // comparisons involved and can be ignored, since -s is strictly positive.
+  //
+  // Thus we take away this common factor and just return 0, 1/a, 1, or c/a as
+  // appropriate. This allows us to run the entire algorithm without ever having
+  // to fix a value of M.
+  auto getSampleChangeCoeffForVar = [this, row](unsigned col,
+                                                const Unknown &u) -> Fraction {
+    int64_t a = tableau(row, col);
+    if (u.orientation == Orientation::Column) {
+      // Pivot column case.
+      if (u.pos == col)
+        return {1, a};
+
+      // Non-pivot column case.
+      return {0, 1};
+    }
+
+    // Pivot row case.
+    if (u.pos == row)
+      return {1, 1};
+
+    // Non-pivot row case.
+    int64_t c = tableau(u.pos, col);
+    return {c, a};
+  };
+
+  for (const Unknown &u : var) {
+    Fraction changeA = getSampleChangeCoeffForVar(colA, u);
+    Fraction changeB = getSampleChangeCoeffForVar(colB, u);
+    if (changeA < changeB)
+      return colA;
+    if (changeA > changeB)
+      return colB;
+  }
+
+  // If we reached here, both result in exactly the same changes, so it
+  // doesn't matter which we return.
+  return colA;
+}
+
+// Find the pivot column for the given pivot row which would result in the
+// lexicographically smallest positive change in the sample value. The row must
+// be a violated constraint.
+//
+// We just compute the change for every column and pick the lexicographically
+// smallest one, ignoring columns which the row has 0 coefficient for
+// (since the pivot is then impossible) and ignoring columns for which the row
+// has a negative coefficient, as described in the paper
+// "Parametric Integer Programming" by Paul Feautrier.
+LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
+  Optional<unsigned> maybeColumn;
+  for (unsigned col = 3; col < nCol; ++col) {
+    if (tableau(row, col) <= 0)
+      continue;
+    maybeColumn =
+        !maybeColumn ? col : getLexMinPivotColumn(row, *maybeColumn, col);
+  }
+
+  if (!maybeColumn)
+    return failure();
+
+  pivot(row, *maybeColumn);
+  return success();
+}
+
 /// Find a pivot to change the sample value of the row in the specified
 /// direction. The returned pivot row will involve `row` if and only if the
 /// unknown is unbounded in the specified direction.
@@ -162,6 +311,8 @@ Direction flippedDirection(Direction direction) {
 /// ordering where we prefer unknowns with lower index.
 Optional<SimplexBase::Pivot> SimplexBase::findPivot(int row,
                                                     Direction direction) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
@@ -226,7 +377,7 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= 2 && "Refusing to pivot invalid column");
+  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -307,6 +458,8 @@ LogicalResult SimplexBase::restoreRow(Unknown &u) {
 Optional<unsigned> SimplexBase::findPivotRow(Optional<unsigned> skipRow,
                                              Direction direction,
                                              unsigned col) const {
+  assert(pivotRule == PivotRule::Normal);
+
   Optional<unsigned> retRow;
   // Initialize these to zero in order to silence a warning about retElem and
   // retConst being used uninitialized in the initialization of `diff` below. In
@@ -386,6 +539,10 @@ void SimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   unsigned conIndex = addRow(coeffs);
   Unknown &u = con[conIndex];
   u.restricted = true;
+
+  if (pivotRule == PivotRule::Lexicographic)
+    return;
+
   LogicalResult result = restoreRow(u);
   if (failed(result))
     markEmpty();
@@ -412,6 +569,18 @@ unsigned SimplexBase::getNumConstraints() const { return con.size(); }
 /// undo log.
 unsigned SimplexBase::getSnapshot() const { return undoLog.size(); }
 
+unsigned SimplexBase::getSnapshotBasis() {
+  SmallVector<int, 8> basis;
+  for (int index : colUnknown) {
+    if (index != nullIndex)
+      basis.push_back(index);
+  }
+  savedBases.push_back(std::move(basis));
+
+  undoLog.emplace_back(UndoLogEntry::RestoreBasis);
+  return undoLog.size() - 1;
+}
+
 void SimplexBase::undo(UndoLogEntry entry) {
   if (entry == UndoLogEntry::RemoveLastConstraint) {
     Unknown &constraint = con.back();
@@ -424,16 +593,26 @@ void SimplexBase::undo(UndoLogEntry entry) {
       // deallocated anyway).
       //
       // If no pivot row is found in either direction, then the unknown is
-      // unbounded in both directions and we are free to
-      // perform any pivot at all. To do this, we just need to find any row with
-      // a non-zero coefficient for the column.
-      if (Optional<unsigned> maybeRow =
-              findPivotRow({}, Direction::Up, column)) {
-        row = *maybeRow;
-      } else if (Optional<unsigned> maybeRow =
-                     findPivotRow({}, Direction::Down, column)) {
-        row = *maybeRow;
-      } else {
+      // unbounded in both directions and we are free to perform any pivot at
+      // all. To do this, we just need to find any row with a non-zero
+      // coefficient for the column.
+      //
+      // If undo was called from a lexicographic simplex, we just need to find
+      // any pivot at all, i.e., any row with non-zero coefficient for the
+      // column, because when rolling back a lexicographic simplex, we always
+      // end by restoring the exact basis that was present at the time of the
+      // snapshot, so what pivots we perform while undoing doesn't matter as
+      // long as we get the unknown to row orientation.
+      if (pivotRule == PivotRule::Normal) {
+        if (Optional<unsigned> maybeRow =
+                findPivotRow({}, Direction::Up, column)) {
+          row = *maybeRow;
+        } else if (Optional<unsigned> maybeRow =
+                       findPivotRow({}, Direction::Down, column)) {
+          row = *maybeRow;
+        }
+      }
+      if (!row) {
         // The loop doesn't find a pivot row only if the column has zero
         // coefficients for every row. But the unknown is a constraint,
         // so it was added initially as a row. Such a row could never have been
@@ -482,6 +661,29 @@ void SimplexBase::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
+  } else if (entry == UndoLogEntry::RestoreBasis) {
+    assert(!savedBases.empty() && "No bases saved!");
+
+    SmallVector<int, 8> basis = std::move(savedBases.back());
+    savedBases.pop_back();
+
+    for (int index : basis) {
+      Unknown &u = unknownFromIndex(index);
+      if (u.orientation == Orientation::Column)
+        continue;
+      for (unsigned col = getNumFixedCols(); col < nCol; col++) {
+        assert(colUnknown[col] != nullIndex &&
+               "Column should not be a fixed column!");
+        if (std::find(basis.begin(), basis.end(), colUnknown[col]) != basis.end())
+          continue;
+        if (tableau(u.pos, col) == 0)
+          continue;
+        pivot(u.pos, col);
+        break;
+      }
+
+      assert(u.orientation == Orientation::Column && "No pivot found!");
+    }
   }
 }
 
@@ -760,7 +962,15 @@ Optional<SmallVector<Fraction, 8>> SimplexBase::getRationalSample() const {
       // If the variable is in row position, its sample value is the entry in
       // the constant column divided by the entry in the common denominator
       // column.
-      sample.emplace_back(tableau(u.pos, 1), tableau(u.pos, 0));
+      //
+      // If the pivot rule is lexicographic, then there is also a big M column.
+      // If that has a non-zero coefficient, then the sample value is
+      // infinite or undefined and we return an empty optional.
+      int64_t denom = tableau(u.pos, 0);
+      if (pivotRule == PivotRule::Lexicographic)
+        if (tableau(u.pos, 2) != denom)
+          return {};
+      sample.emplace_back(tableau(u.pos, 1), denom);
     }
   }
   return sample;
