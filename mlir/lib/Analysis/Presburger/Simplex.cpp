@@ -17,8 +17,8 @@ using Direction = Simplex::Direction;
 const int nullIndex = std::numeric_limits<int>::max();
 
 SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM)
-    : nRow(0), nCol(getNumFixedCols() + nVar), nRedundant(0), tableau(0, nCol),
-      empty(false), usingBigM(mustUseBigM) {
+    : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar), nRedundant(0), tableau(0, nCol),
+      empty(false) {
   colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,

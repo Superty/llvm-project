@@ -311,6 +311,9 @@ protected:
   /// this is the number of columns beyond those for the variables in var.
   unsigned getNumFixedCols() const { return usingBigM ? 3u : 2u; }
 
+  /// Stores whether or not a big M column is present in the tableau.
+  const bool usingBigM;
+
   /// The number of rows in the tableau.
   unsigned nRow;
 
@@ -348,9 +351,6 @@ protected:
 
   /// These hold information about each unknown.
   SmallVector<Unknown, 8> con, var;
-
-  /// Stores whether or not a big M column is present in the tableau.
-  const bool usingBigM;
 };
 
 /// Simplex class using the lexicographic pivot rule. Used for lexicographic
