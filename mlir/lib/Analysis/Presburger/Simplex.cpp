@@ -16,14 +16,14 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nFixedCols, unsigned nVar)
-    : nRow(0), nCol(nFixedCols), nRedundant(0),
-      tableau(0, nFixedCols + nVar), empty(false) {
-  colUnknown.insert(colUnknown.begin(), nFixedCols, nullIndex);
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM)
+    : nRow(0), nCol(getNumFixedCols() + nVar), nRedundant(0), tableau(0, nCol),
+      empty(false), usingBigM(mustUseBigM) {
+  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
-    var.emplace_back(Orientation::Column, /*restricted=*/false, /*pos=*/nCol);
+    var.emplace_back(Orientation::Column, /*restricted=*/false,
+                     /*pos=*/getNumFixedCols() + i);
     colUnknown.push_back(i);
-    nCol++;
   }
 }
 
@@ -57,29 +57,10 @@ Simplex::Unknown &SimplexBase::unknownFromRow(unsigned row) {
   return unknownFromIndex(rowUnknown[row]);
 }
 
-// When the lexicographic pivot rule is used, instead of the variables
-//
-// x, y, z ...
-//
-// we internally use the variables
-//
-// M, M + x, M + y, M + z, ...
-//
-// where M is the big M parameter. As such, when the user tries to add
-// a row ax + by + cz + d, we express it in terms of our internal variables
-// as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
-unsigned LexSimplex::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
-  int64_t bigMCoeff = 0;
-  for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-    bigMCoeff -= coeffs[i];
-  return SimplexBase::addRow(coeffs, makeRestricted, bigMCoeff);
-}
-
 /// Add a new row to the tableau corresponding to the given constant term and
 /// list of coefficients. The coefficients are specified as a vector of
 /// (variable index, coefficient) pairs.
-unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted,
-                             Optional<int64_t> bigMCoeff) {
+unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
   assert(coeffs.size() == var.size() + 1 &&
          "Incorrect number of coefficients!");
 
@@ -95,13 +76,23 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted,
 
   tableau(nRow - 1, 0) = 1;
   tableau(nRow - 1, 1) = coeffs.back();
-  if (bigMCoeff) {
-    assert(
-        tableau.getNumColumns() == var.size() + 3 &&
-        "Big M coefficient provided but invalid column count for LexSimplex!");
-    // The coefficient to the big M parameter is stored in column 2. See
-    // LexSimplex for more information.
-    tableau(nRow - 1, 2) = *bigMCoeff;
+  if (usingBigM) {
+    // When the lexicographic pivot rule is used, instead of the variables
+    //
+    // x, y, z ...
+    //
+    // we internally use the variables
+    //
+    // M, M + x, M + y, M + z, ...
+    //
+    // where M is the big M parameter. As such, when the user tries to add
+    // a row ax + by + cz + d, we express it in terms of our internal variables
+    // as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
+    int64_t bigMCoeff = 0;
+    for (unsigned i = 0; i < coeffs.size() - 1; ++i)
+      bigMCoeff -= coeffs[i];
+    // The coefficient to the big M parameter is stored in column 2.
+    tableau(nRow - 1, 2) = bigMCoeff;
   }
 
   // Process each given variable coefficient.
@@ -168,50 +159,119 @@ Direction flippedDirection(Direction direction) {
 
 Optional<SmallVector<Fraction, 8>> LexSimplex::getRationalLexMin() {
   restoreRationalConsistency();
-
-  if (empty)
-    return {};
-
-  // Each variable x is represented as M + x, so its sample value should be
-  // of the form 1*M + c. If the coefficient of M is not one then the sample
-  // value is undefined or infinite, and we return an empty optional.
-  for (const Unknown &u : var)
-    if (u.orientation == Orientation::Row)
-      if (tableau(u.pos, 2) != tableau(u.pos, 0))
-        return {};
-
   return getRationalSample();
 }
 
-// Let the coefficient of the big M parameter be p and the constant term be p.
-// Then since M is arbitrarily large, pM + q < 0 iff p < 0 or (p == 0 and q <
-// 0).
+bool LexSimplex::rowIsViolated(unsigned row) const {
+  if (tableau(row, 2) < 0)
+    return true;
+  if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
+    return true;
+  return false;
+}
+
 Optional<unsigned> LexSimplex::maybeGetViolatedRow() const {
-  for (unsigned row = 0; row < nRow; ++row) {
-    if (!unknownFromRow(row).restricted)
-      continue;
-    if (tableau(row, 2) < 0)
+  for (unsigned row = 0; row < nRow; ++row)
+    if (rowIsViolated(row))
       return row;
-    if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
-      return row;
-  }
   return {};
 }
 
-// We simply look for violated rows and move them to column position.
+// We simply look for violated rows and keep trying to move them to column
+// orientation, which always succeeds unless the constraints have no solution
+// in which case we just give up and return.
 void LexSimplex::restoreRationalConsistency() {
   while (Optional<unsigned> maybeViolatedRow = maybeGetViolatedRow()) {
     LogicalResult status = moveRowUnknownToColumn(*maybeViolatedRow);
-    if (failed(status)) {
-      markEmpty();
+    if (failed(status))
       return;
-    }
   }
+}
+
+// Move the row unknown to column orientation while preserving lexicopositivity
+// of the basis transform.
+//
+// We only consider pivots where the pivot element is positive. Suppose no such
+// pivot exists, i.e., some violated row has no positive coefficient for any
+// basis unknown. The row can be represented as (s + c_1*u_1 + ... + c_n*u_n)/d,
+// where d is the denominator, s is the sample value and the c_i are the basis
+// coefficients. Since any feasible assignment of the basis satisfies u_i >= 0
+// for all i, and we have s < 0 as well as c_i < 0 for all i, any feasible
+// assignment would violate this row and therefore the constraints have no
+// solution.
+//
+// We can preserve lexicopositivity by picking the pivot column with positive
+// pivot element that makes the lexicographically smallest change to the sample
+// point.
+//
+// Proof. Let
+// x = (x_1, ... x_n) be the variables,
+// z = (z_1, ... z_m) be the constraints,
+// y = (y_1, ... y_n) be the current basis, and
+// define w = (x_1, ... x_n, z_1, ... z_m) = B*y + s.
+// B is basically the simplex tableau of our implementation except that instead
+// of only describing the transform to get back the non-basis unknowns, it
+// defines the values of all the unknowns in terms of the basis unknowns.
+// Similarly, s is the column for the sample value.
+//
+// Our goal is to show that each column in B, restricted to the first n
+// rows, is lexicopositive after the pivot if it is so before. This is
+// equivalent to saying the columns in the whole matrix are lexicopositive;
+// there must be some non-zero element in every column in the first n rows since
+// the n variables cannot be spanned without using all the n basis unknowns.
+//
+// Consider a pivot where z_i replaces y_j in the basis. Recall the pivot
+// transform for the tableau derived for SimplexBase::pivot:
+//
+//            pivot col    other col                   pivot col    other col
+// pivot row     a             b       ->   pivot row     1/a         -b/a
+// other row     c             d            other row     c/a        d - bc/a
+//
+// Similarly, a pivot results in B changing to B' and c to c'; the difference
+// between the tableau and these matrices B and B' is that there is no special
+// case for the pivot row, since it continues to represent the same unknown. The
+// same formula applies for all rows:
+//
+// B'.col(j) = B.col(j) / B(i,j)
+// B'.col(k) = B.col(k) - B(i,k) * B.col(j) / B(i,j) for k != j
+// and similarly, s' = s - s_i * B.col(j) / B(i,j).
+//
+// We can see that the change in sample value when pivoting with column a is
+// lexicographically smaller than that when pivoting with column b iff
+// B.col(a) / B(i, a) is lexicographically smaller than B.col(b) / B(i, b).
+//
+// Since B(i, j) > 0, column j remains lexicopositive.
+//
+// For the other columns, suppose C.col(k) is not lexicopositive.
+// This means that for some p, for all t < p,
+// C(t,k) = 0 => B(t,k) = B(t,j) * B(i,k) / B(i,j) and
+// C(t,k) < 0 => B(p,k) < B(t,j) * B(i,k) / B(i,j),
+// which is in contradiction to the fact that B.col(j) / B(i,j) must be
+// lexicographically smaller than B.col(k) / B(i,k), since it lexicographically
+// minimizes the change in sample value.
+LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
+  Optional<unsigned> maybeColumn;
+  for (unsigned col = 3; col < nCol; ++col) {
+    if (tableau(row, col) <= 0)
+      continue;
+    maybeColumn =
+        !maybeColumn ? col : getLexMinPivotColumn(row, *maybeColumn, col);
+  }
+
+  if (!maybeColumn) {
+    markEmpty();
+    return failure();
+  }
+
+  pivot(row, *maybeColumn);
+  return success();
 }
 
 unsigned LexSimplex::getLexMinPivotColumn(unsigned row, unsigned colA,
                                           unsigned colB) const {
-  // A pivot causes the following change:
+  // A pivot causes the following change. (in the diagram the matrix elements
+  // are shown as rationals and there is no common denominator used)
+  //
   //            pivot col    big M col      const col
   // pivot row     a            p               b
   // other row     c            q               d
@@ -283,31 +343,6 @@ unsigned LexSimplex::getLexMinPivotColumn(unsigned row, unsigned colA,
   return colA;
 }
 
-// Find the pivot column for the given pivot row which would result in the
-// lexicographically smallest positive change in the sample value. The row must
-// be a violated constraint.
-//
-// We just compute the change for every column and pick the lexicographically
-// smallest one, ignoring columns which the row has 0 coefficient for
-// (since the pivot is then impossible) and ignoring columns for which the row
-// has a negative coefficient, as described in the paper
-// "Parametric Integer Programming" by Paul Feautrier.
-LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
-  Optional<unsigned> maybeColumn;
-  for (unsigned col = 3; col < nCol; ++col) {
-    if (tableau(row, col) <= 0)
-      continue;
-    maybeColumn =
-        !maybeColumn ? col : getLexMinPivotColumn(row, *maybeColumn, col);
-  }
-
-  if (!maybeColumn)
-    return failure();
-
-  pivot(row, *maybeColumn);
-  return success();
-}
-
 /// Find a pivot to change the sample value of the row in the specified
 /// direction. The returned pivot row will involve `row` if and only if the
 /// unknown is unbounded in the specified direction.
@@ -321,7 +356,7 @@ LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
 /// If multiple columns are valid, we break ties by considering a lexicographic
 /// ordering where we prefer unknowns with lower index.
 Optional<SimplexBase::Pivot> Simplex::findPivot(int row,
-                                                    Direction direction) const {
+                                                Direction direction) const {
   Optional<unsigned> col;
   for (unsigned j = 2; j < nCol; ++j) {
     int64_t elem = tableau(row, j);
@@ -465,8 +500,8 @@ LogicalResult Simplex::restoreRow(Unknown &u) {
 /// impose the same bound by considering a lexicographic ordering where we
 /// prefer unknowns with lower index value.
 Optional<unsigned> Simplex::findPivotRow(Optional<unsigned> skipRow,
-                                             Direction direction,
-                                             unsigned col) const {
+                                         Direction direction,
+                                         unsigned col) const {
   Optional<unsigned> retRow;
   // Initialize these to zero in order to silence a warning about retElem and
   // retConst being used uninitialized in the initialization of `diff` below. In
@@ -986,10 +1021,19 @@ Optional<SmallVector<Fraction, 8>> SimplexBase::getRationalSample() const {
       // If the variable is in column position, its sample value is zero.
       sample.emplace_back(0, 1);
     } else {
-      // If the variable is in row position, its sample value is the entry in
-      // the constant column divided by the entry in the common denominator
-      // column.
-      sample.emplace_back(tableau(u.pos, 1), tableau(u.pos, 0));
+      int64_t denom = tableau(u.pos, 0);
+
+      // When the big M parameter is being used, each variable x is represented
+      // as M + x, so its sample value is finite only if it is of the form
+      // 1*M + c. If the coefficient of M is not one then the sample value is
+      // infinite, and we return an empty optional.
+      if (usingBigM)
+        if (tableau(u.pos, 2) != denom)
+          return {};
+
+      // Otherwise, If the variable is in row position, its sample value is the
+      // entry in the constant column divided by the denominator.
+      sample.emplace_back(tableau(u.pos, 1), denom);
     }
   }
   return sample;
