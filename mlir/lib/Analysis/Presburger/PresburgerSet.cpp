@@ -395,38 +395,74 @@ Optional<uint64_t> PresburgerSet::computeVolume() const {
   return result;
 }
 
+bool containedFacet(ArrayRef<int64_t> ineq, Simplex simp,
+                    ArrayRef<ArrayRef<int64_t>> cut) {
+  simp.addEquality(ineq);
+  for (ArrayRef<int64_t> curr : cut) {
+    if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
+      return false;
+    }
+  }
+  return true;
+}
+
 PresburgerSet PresburgerSet::coalesce() const {
   PresburgerSet newSet =
       PresburgerSet::getEmptySet(getNumDimIds(), getNumSymbolIds());
-  llvm::SmallBitVector isRedundant(getNumPolys());
+  llvm::SmallBitVector toDelete(getNumPolys());
 
   for (unsigned i = 0, e = integerPolyhedrons.size(); i < e; ++i) {
-    if (isRedundant[i])
+    if (toDelete[i])
       continue;
     Simplex simplex(integerPolyhedrons[i]);
 
     // Check whether the polytope of `simplex` is empty. If so, it is trivially
     // redundant.
     if (simplex.isEmpty()) {
-      isRedundant[i] = true;
+      toDelete[i] = true;
       continue;
     }
 
     // Check whether `IntegerPolyhedron[i]` is contained in any Poly, that is
     // different from itself and not yet marked as redundant.
     for (unsigned j = 0, e = integerPolyhedrons.size(); j < e; ++j) {
-      if (j == i || isRedundant[j])
+      if (j == i || toDelete[j])
         continue;
 
-      if (simplex.isRationalSubsetOf(integerPolyhedrons[j])) {
-        isRedundant[i] = true;
+      for (unsigned l = 0, e = integerPolyhedrons[j].getNumEqualities(); l < e;
+           ++l)
+        if (!simplex.isRedundantEquality(integerPolyhedrons[j].getEquality(l)))
+          continue;
+
+      SmallVector<ArrayRef<int64_t>, 2> redundant_ineqs;
+      SmallVector<ArrayRef<int64_t>, 2> cutting_ineqs;
+      SmallVector<ArrayRef<int64_t>, 2> separate_ineqs;
+      for (unsigned l = 0, e = integerPolyhedrons[j].getNumInequalities();
+           l < e; ++l) {
+        Simplex::IneqType type =
+            simplex.ineqType(integerPolyhedrons[j].getInequality(l));
+        if (type == Simplex::IneqType::Redundant) {
+          redundant_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
+        } else if (type == Simplex::IneqType::Cut) {
+          cutting_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
+        } else {
+          separate_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
+        }
+      }
+
+      if (separate_ineqs.size() != 0) {
+        continue;
+      }
+
+      if (cutting_ineqs.size() == 0) {
+        toDelete[i] = true;
         break;
       }
     }
   }
 
   for (unsigned i = 0, e = integerPolyhedrons.size(); i < e; ++i)
-    if (!isRedundant[i])
+    if (!toDelete[i])
       newSet.unionPolyInPlace(integerPolyhedrons[i]);
 
   return newSet;
