@@ -1582,6 +1582,31 @@ bool Simplex::isRationalSubsetOf(const IntegerPolyhedron &poly) {
   return true;
 }
 
+/// returns the type of the inequality `coeffs`. Possible types are:
+/// Redundant   The inequality is satisfied in the polytope
+/// Cut         The inequality is satisfied by some points, but not by others
+/// Separate    The inequality is not satisfied by any point
+///
+/// Internally, this computes the minimum and the maximum `coeffs` can take. If
+/// the minimum exists and it is >= 0, the inequality holds for all points in
+/// the polytope, so `coeffs` is redundant.  If the minimum does not exists or
+/// is <= 0 and the maximum does not exists or is >= 0, the points in between
+/// the minimum and `coeffs` do not satisfy the inequality, the points in
+/// between `coeffs` and the maximum satisfy the inequality. Hence, it is a cut
+/// inequality. In any other case, separate is returned.
+Simplex::IneqType Simplex::ineqType(ArrayRef<int64_t> coeffs) {
+  Optional<Fraction> minimum = computeOptimum(Direction::Down, coeffs);
+  if (minimum && *minimum >= Fraction(0, 1)) {
+    return IneqType::Redundant;
+  }
+  Optional<Fraction> maximum = computeOptimum(Direction::Up, coeffs);
+  if ((!minimum || *minimum <= Fraction(0, 1)) &&
+      (!maximum || *maximum >= Fraction(0, 1))) {
+    return IneqType::Cut;
+  }
+  return IneqType::Separate;
+}
+
 /// Computes the minimum value `coeffs` can take. If the value is greater than
 /// or equal to zero, the polytope entirely lies in the half-space defined by
 /// `coeffs >= 0`.

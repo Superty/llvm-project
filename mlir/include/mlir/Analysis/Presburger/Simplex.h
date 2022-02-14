@@ -488,6 +488,8 @@ class Simplex : public SimplexBase {
 public:
   enum class Direction { Up, Down };
 
+  enum class IneqType { Redundant, Cut, Separate };
+
   Simplex() = delete;
   explicit Simplex(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/false) {}
   explicit Simplex(const IntegerPolyhedron &constraints)
@@ -554,6 +556,14 @@ public:
   /// Returns an integer sample point if one exists, or None
   /// otherwise. This should only be called for bounded sets.
   Optional<SmallVector<int64_t, 8>> findIntegerSample();
+
+  /// returns the type of the inequality `coeffs`.
+  ///
+  /// Possible types are:
+  /// Redundant   The inequality is satisfied in the polytope
+  /// Cut         The inequality is satisfied by some points, but not by others
+  /// Separate    The inequality is not satisfied by any point
+  Simplex::IneqType ineqType(ArrayRef<int64_t> coeffs);
 
   /// Check if the specified inequality already holds in the polytope.
   bool isRedundantInequality(ArrayRef<int64_t> coeffs);
