@@ -406,64 +406,118 @@ bool containedFacet(ArrayRef<int64_t> ineq, Simplex simp,
   return true;
 }
 
+void addCoalescedPolyhedron(SmallVector<IntegerPolyhedron, 2> &polyhedrons,
+                            unsigned i, unsigned j,
+                            const IntegerPolyhedron &poly) {
+  IntegerPolyhedron newSet(poly.getNumDimIds(), poly.getNumSymbolIds());
+
+  for (unsigned i = 0, e = poly.getNumEqualities(); i < e; ++i)
+    newSet.addEquality(poly.getEquality(i));
+
+  for (unsigned i = 0, e = poly.getNumInequalities(); i < e; ++i)
+    newSet.addInequality(poly.getInequality(i));
+
+  if (i < j) {
+    polyhedrons.erase(polyhedrons.begin() + j);
+    polyhedrons.erase(polyhedrons.begin() + i);
+  } else {
+    polyhedrons.erase(polyhedrons.begin() + i);
+    polyhedrons.erase(polyhedrons.begin() + j);
+  }
+
+  polyhedrons.push_back(newSet);
+}
+
+bool coalescePair(unsigned i, unsigned j,
+                  SmallVector<IntegerPolyhedron, 2> &polyhedrons) {
+
+  IntegerPolyhedron &A = polyhedrons[i];
+  IntegerPolyhedron &B = polyhedrons[j];
+  Simplex simplex1(A);
+  Simplex simplex2(B);
+
+  if (simplex1.isEmpty()) {
+    addCoalescedPolyhedron(polyhedrons, i, j, B);
+    return true;
+  }
+
+  if (simplex2.isEmpty()) {
+    addCoalescedPolyhedron(polyhedrons, i, j, A);
+    return true;
+  }
+
+  bool only_redundant_eqsA = true;
+  for (unsigned l = 0, e = A.getNumEqualities(); l < e; ++l)
+    only_redundant_eqsA &= simplex2.isRedundantEquality(A.getEquality(l));
+
+  bool only_redundant_eqsB = true;
+  for (unsigned l = 0, e = B.getNumEqualities(); l < e; ++l)
+    only_redundant_eqsB &= simplex1.isRedundantEquality(B.getEquality(l));
+
+  SmallVector<ArrayRef<int64_t>, 2> redundant_ineqsA;
+  SmallVector<ArrayRef<int64_t>, 2> cutting_ineqsA;
+
+  SmallVector<ArrayRef<int64_t>, 2> redundant_ineqsB;
+  SmallVector<ArrayRef<int64_t>, 2> cutting_ineqsB;
+
+  for (unsigned l = 0, e = A.getNumInequalities(); l < e; ++l) {
+    Simplex::IneqType type = simplex2.ineqType(A.getInequality(l));
+    if (type == Simplex::IneqType::Redundant) {
+      redundant_ineqsA.push_back(A.getInequality(l));
+    } else if (type == Simplex::IneqType::Cut) {
+      cutting_ineqsA.push_back(A.getInequality(l));
+    } else {
+      return false;
+    }
+  }
+  for (unsigned l = 0, e = B.getNumInequalities(); l < e; ++l) {
+    Simplex::IneqType type = simplex1.ineqType(B.getInequality(l));
+    if (type == Simplex::IneqType::Redundant) {
+      redundant_ineqsB.push_back(B.getInequality(l));
+    } else if (type == Simplex::IneqType::Cut) {
+      cutting_ineqsB.push_back(B.getInequality(l));
+    } else {
+      return false;
+    }
+  }
+
+  if (cutting_ineqsA.size() == 0 && only_redundant_eqsA) {
+    addCoalescedPolyhedron(polyhedrons, i, j, A);
+    return true;
+  }
+
+  if (cutting_ineqsB.size() == 0 && only_redundant_eqsB) {
+    addCoalescedPolyhedron(polyhedrons, i, j, B);
+    return true;
+  }
+  return false;
+}
+
 PresburgerSet PresburgerSet::coalesce() const {
   PresburgerSet newSet =
       PresburgerSet::getEmptySet(getNumDimIds(), getNumSymbolIds());
   llvm::SmallBitVector toDelete(getNumPolys());
+  SmallVector<IntegerPolyhedron, 2> polyhedrons = integerPolyhedrons;
 
-  for (unsigned i = 0, e = integerPolyhedrons.size(); i < e; ++i) {
-    if (toDelete[i])
-      continue;
-    Simplex simplex(integerPolyhedrons[i]);
-
-    // Check whether the polytope of `simplex` is empty. If so, it is trivially
-    // redundant.
-    if (simplex.isEmpty()) {
-      toDelete[i] = true;
-      continue;
-    }
-
-    // Check whether `IntegerPolyhedron[i]` is contained in any Poly, that is
-    // different from itself and not yet marked as redundant.
-    for (unsigned j = 0, e = integerPolyhedrons.size(); j < e; ++j) {
-      if (j == i || toDelete[j])
-        continue;
-
-      for (unsigned l = 0, e = integerPolyhedrons[j].getNumEqualities(); l < e;
-           ++l)
-        if (!simplex.isRedundantEquality(integerPolyhedrons[j].getEquality(l)))
-          continue;
-
-      SmallVector<ArrayRef<int64_t>, 2> redundant_ineqs;
-      SmallVector<ArrayRef<int64_t>, 2> cutting_ineqs;
-      SmallVector<ArrayRef<int64_t>, 2> separate_ineqs;
-      for (unsigned l = 0, e = integerPolyhedrons[j].getNumInequalities();
-           l < e; ++l) {
-        Simplex::IneqType type =
-            simplex.ineqType(integerPolyhedrons[j].getInequality(l));
-        if (type == Simplex::IneqType::Redundant) {
-          redundant_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
-        } else if (type == Simplex::IneqType::Cut) {
-          cutting_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
-        } else {
-          separate_ineqs.push_back(integerPolyhedrons[j].getInequality(l));
-        }
-      }
-
-      if (separate_ineqs.size() != 0) {
-        continue;
-      }
-
-      if (cutting_ineqs.size() == 0) {
-        toDelete[i] = true;
+  for (unsigned i = 0; i < polyhedrons.size(); ++i) {
+    for (unsigned j = i + 1; j < polyhedrons.size(); ++j) {
+      bool res_status = coalescePair(i, j, polyhedrons);
+      if (res_status) {
+        i--;
         break;
       }
     }
   }
 
-  for (unsigned i = 0, e = integerPolyhedrons.size(); i < e; ++i)
-    if (!toDelete[i])
-      newSet.unionPolyInPlace(integerPolyhedrons[i]);
+  if (polyhedrons.size() == 1) {
+    Simplex s(polyhedrons[0]);
+    if (s.isEmpty()) {
+      return newSet;
+    }
+  }
+
+  for (unsigned i = 0, e = polyhedrons.size(); i < e; ++i)
+    newSet.unionPolyInPlace(polyhedrons[i]);
 
   return newSet;
 }
