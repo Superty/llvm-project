@@ -395,8 +395,9 @@ Optional<uint64_t> PresburgerSet::computeVolume() const {
   return result;
 }
 
-bool containedFacet(ArrayRef<int64_t> ineq, Simplex simp,
+bool containedFacet(ArrayRef<int64_t> ineq, IntegerPolyhedron p,
                     ArrayRef<ArrayRef<int64_t>> cut) {
+  Simplex simp(p);
   simp.addEquality(ineq);
   for (ArrayRef<int64_t> curr : cut) {
     if (simp.ineqType(curr) != Simplex::IneqType::Redundant) {
@@ -426,6 +427,35 @@ void addCoalescedPolyhedron(SmallVector<IntegerPolyhedron, 2> &polyhedrons,
   }
 
   polyhedrons.push_back(newSet);
+}
+
+bool cutCase(SmallVector<IntegerPolyhedron, 2> &polyhedrons, unsigned i,
+             unsigned j, ArrayRef<ArrayRef<int64_t>> redundant_ineqsA,
+             ArrayRef<ArrayRef<int64_t>> cutting_ineqsA,
+             ArrayRef<ArrayRef<int64_t>> redundant_ineqsB,
+             ArrayRef<ArrayRef<int64_t>> cutting_ineqsB) {
+  for (ArrayRef<int64_t> curr : cutting_ineqsA) {
+    if (!containedFacet(curr, polyhedrons[i], cutting_ineqsB)) {
+      return false;
+    }
+  }
+  IntegerPolyhedron newSet(polyhedrons[i].getNumDimIds(),
+                           polyhedrons[i].getNumSymbolIds());
+
+  for (unsigned l = 0, e = redundant_ineqsA.size(); l < e; ++l)
+    newSet.addInequality(redundant_ineqsA[l]);
+
+  for (unsigned l = 0, e = redundant_ineqsB.size(); l < e; ++l)
+    newSet.addInequality(redundant_ineqsB[l]);
+
+  for (unsigned l = 0, e = polyhedrons[i].getNumEqualities(); l < e; l++)
+    newSet.addEquality(polyhedrons[i].getEquality(l));
+
+  for (unsigned l = 0, e = polyhedrons[j].getNumEqualities(); l < e; l++)
+    newSet.addEquality(polyhedrons[j].getEquality(l));
+
+  addCoalescedPolyhedron(polyhedrons, i, j, newSet);
+  return true;
 }
 
 bool coalescePair(unsigned i, unsigned j,
@@ -490,6 +520,17 @@ bool coalescePair(unsigned i, unsigned j,
     addCoalescedPolyhedron(polyhedrons, i, j, B);
     return true;
   }
+
+  if (cutCase(polyhedrons, i, j, redundant_ineqsA, cutting_ineqsA,
+              redundant_ineqsB, cutting_ineqsB)) {
+    return true;
+  }
+
+  if (cutCase(polyhedrons, j, i, redundant_ineqsB, cutting_ineqsB,
+              redundant_ineqsA, cutting_ineqsA)) {
+    return true;
+  }
+
   return false;
 }
 

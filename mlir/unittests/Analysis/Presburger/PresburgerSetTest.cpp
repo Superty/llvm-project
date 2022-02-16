@@ -589,7 +589,7 @@ TEST(SetTest, coalesceCutOneDim) {
                                             "(x) : ( x - 2 >= 0, -x + 4 >= 0)",
                                         },
                                         &context);
-  expectCoalesce(2, set);
+  expectCoalesce(1, set);
 }
 
 TEST(SetTest, coalesceSeparateOneDim) {
@@ -621,7 +621,7 @@ TEST(SetTest, coalesceCutTwoDim) {
           "(x,y) : (x >= 0, -x + 3 >= 0, y - 1 >= 0, -y + 3 >= 0)",
       },
       &context);
-  expectCoalesce(2, set);
+  expectCoalesce(1, set);
 }
 
 TEST(SetTest, coalesceSeparateTwoDim) {
@@ -657,7 +657,7 @@ TEST(SetTest, coalesceCuttingEq) {
           "(x,y) : (x >= 0, -x + 2 >= 0, x - y == 0)",
       },
       &context);
-  expectCoalesce(2, set);
+  expectCoalesce(1, set);
 }
 
 TEST(SetTest, coalesceSeparateEq) {
