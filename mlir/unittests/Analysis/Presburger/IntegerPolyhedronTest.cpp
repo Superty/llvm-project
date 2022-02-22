@@ -8,6 +8,7 @@
 
 #include "mlir/Analysis/Presburger/IntegerPolyhedron.h"
 #include "./Utils.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/IR/MLIRContext.h"
 
@@ -1188,6 +1189,20 @@ TEST(IntegerPolyhedronTest, findIntegerLexMin) {
                                   &context));
 }
 
+void expectSymbolicIntegerLexMin(
+    StringRef polyStr,
+    ArrayRef<std::pair<StringRef, SmallVector<SmallVector<int64_t, 8>, 8>>>
+        result) {
+  MLIRContext context;
+  IntegerPolyhedron poly = parsePoly(polyStr, &context);
+
+  ASSERT_NE(poly.getNumDimIds(), 0u);
+  ASSERT_NE(poly.getNumSymbolIds(), 0u);
+  EXPECT_TRUE(poly.findSymbolicIntegerLexMin().isEqual(
+      parsePWMAF(/*numInputs=*/poly.getNumSymbolIds(),
+                 /*numOutputs=*/poly.getNumDimIds(), result)));
+}
+
 TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
   { // a] -> {[x] : x >= a}
     LexSimplex simplex(2, 0, 1);
@@ -1289,13 +1304,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
     simplex.findSymbolicIntegerLexMin();
   }
 
-  {
-    /*
-    [x, y] -> {[z] : 0 <= x and x <= 1 and
-                     0 <= y and y <= 1 and
-                     0 <= z and z <= 1 and
-                     x + y + z >= 1}
-    */
+  { // [x, y] -> {[z] : 0 <= x and x <= 1 and 0 <= y and y <= 1 and 0 <= z and z <= 1 and x + y + z >= 1}
     LexSimplex simplex(3, 0, 2);
     simplex.addInequality({1, 0, 0, 0});
     simplex.addInequality({0, 1, 0, 0});
@@ -1306,32 +1315,6 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
     simplex.addInequality({1, 1, 1, -1});
     simplex.findSymbolicIntegerLexMin();
   }
-
-  // {
-  //   // [x, y, z, w] -> {[z] : 0 <= x and x <= 1 and
-  //   //                  0 <= y and y <= 1 and
-  //   //                  0 <= z and z <= 1 and
-  //   //                  0 <= w and w <= 1 and
-  //   //                  x + y + z >= 1 and
-  //   //                  3 - x - y - w >= 1 and
-  //   //                  w + x + 1 - y >= 1}
-  //   //                  
-  //   LexSimplex simplex(4, 0, 4);
-  //   simplex.addInequality({1, 0, 0, 0, 0});
-  //   simplex.addInequality({0, 1, 0, 0, 0});
-  //   simplex.addInequality({0, 0, 1, 0, 0});
-  //   simplex.addInequality({0, 0, 0, 1, 0});
-
-  //   simplex.addInequality({-1, 0, 0, 0, 1});
-  //   simplex.addInequality({0, -1, 0, 0, 1});
-  //   simplex.addInequality({0, 0, -1, 0, 1});
-  //   simplex.addInequality({0, 0, 0, -1, 1});
-
-  //   simplex.addInequality({1, 1, 1, 0, -1});
-  //   simplex.addInequality({-1, -1, 0, -1, 2});
-  //   simplex.addInequality({1, -1, 0, 1, 0});
-  //   simplex.findSymbolicIntegerLexMin();
-  // }
 
   { // [a] -> {[x] : x = a}
     LexSimplex simplex(2, 0, 1);
@@ -1349,7 +1332,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
     simplex.addEquality({-1, 0, 1, 0});
     simplex.addInequality({0, -1, 1, 0});
     simplex.findSymbolicIntegerLexMin();
-  }  
+  }
 
   { // [x] -> {[y] : x = 1 + 3y and y >= 0}
     LexSimplex simplex(2, 0, 1);
@@ -1385,10 +1368,9 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
     simplex.addInequality({0, 1, 0, 0}); // y >= 0
     simplex.addInequality({0, 0, 1, 0}); // z >= 0
     simplex.addEquality({1, -1, -3, 0}); // x == y + 3z
-    simplex.addEquality({0, 1, 0, -2});   // y == 2
+    simplex.addEquality({0, 1, 0, -2});  // y == 2
     simplex.findSymbolicIntegerLexMin();
   }
-
 
   { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 0 <= y and y <= 1}
     LexSimplex simplex(3, 0, 1);
@@ -1409,7 +1391,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
     simplex.addInequality({0, 1, 0, -1}); // y >= 1
     simplex.addInequality({0, -1, 0, 2}); // y <= 2
     simplex.findSymbolicIntegerLexMin();
-  } 
+  }
 
   { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 2 <= y and y <= 2}
     LexSimplex simplex(3, 0, 1);
@@ -1424,7 +1406,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
 
   { // [x] -> {[y, z] : x = y + 3z and z >= 0 and 0 <= y and y <= 2}
     LexSimplex simplex(3, 0, 1);
-    simplex.addInequality({1, -1, 0, 0});  // x >= 0
+    simplex.addInequality({1, -1, 0, 0}); // x >= 0
     simplex.addInequality({0, 0, 1, 0});  // z >= 0
     simplex.addInequality({0, 1, 0, 0});  // y >= 0
     simplex.addInequality({0, -1, 0, 1}); // y <= 1
@@ -1434,7 +1416,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
 
   { // [x] -> {[y, z] : x = y + 3z and x >= y and z >= 0 and y >= 0}
     LexSimplex simplex(3, 0, 1);
-    simplex.addInequality({1, -1, 0, 0});  // x >= y
+    simplex.addInequality({1, -1, 0, 0}); // x >= y
     simplex.addInequality({0, 1, 0, 0});  // y >= 0
     simplex.addInequality({0, 0, 1, 0});  // z >= 0
     simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
@@ -1443,8 +1425,8 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
 
   { // [x] -> {[y, z] : x = y + 3z and x >= y and y >= 0}
     LexSimplex simplex(3, 0, 1);
-    simplex.addInequality({1, -1, 0, 0});  // x >= y
-    simplex.addInequality({0, 1, 0, -0});  // y >= 0
+    simplex.addInequality({1, -1, 0, 0}); // x >= y
+    simplex.addInequality({0, 1, 0, -0}); // y >= 0
     simplex.addEquality({1, -1, -3, 0});  // x == y + 3z
     auto res = simplex.findSymbolicIntegerLexMin();
     // EXPECT_EQ(res.value[0].size(), 2u);
@@ -1452,8 +1434,8 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
 
   { // [x] -> {[y, z] : x = y + 3z and x >= y and y >= 0}
     LexSimplex simplex(3, 1, 1);
-    simplex.addInequality({-1, 1, 0, 0});  // x >= y
-    simplex.addInequality({1, 0, 0, -0});  // y >= 0
+    simplex.addInequality({-1, 1, 0, 0}); // x >= y
+    simplex.addInequality({1, 0, 0, -0}); // y >= 0
     simplex.addEquality({-1, 1, -3, 0});  // x == y + 3z
     auto res = simplex.findSymbolicIntegerLexMin();
     // EXPECT_EQ(res.value[0].size(), 2u);
