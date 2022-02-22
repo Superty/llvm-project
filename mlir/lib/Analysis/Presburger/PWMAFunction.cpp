@@ -178,6 +178,8 @@ void PWMAFunction::print(raw_ostream &os) const {
     piece.print(os);
 }
 
+void PWMAFunction::dump() const { print(llvm::errs()); }
+
 /// The hasCompatibleDimensions functions don't check the number of local ids;
 /// functions are still compatible if they have differing number of locals.
 bool MultiAffineFunction::hasCompatibleDimensions(
@@ -196,3 +198,4 @@ bool PWMAFunction::hasCompatibleDimensions(const PWMAFunction &f) const {
          getNumSymbolIds() == f.getNumSymbolIds() &&
          getNumOutputs() == f.getNumOutputs();
 }
+
