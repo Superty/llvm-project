@@ -18,14 +18,18 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM)
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset, unsigned nSymbol)
     : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
-      nRedundant(0), tableau(0, nCol), empty(false) {
+      nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
   colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
                      /*pos=*/getNumFixedCols() + i);
     colUnknown.push_back(i);
+  }
+  for (unsigned i = 0; i < nSymbol; ++i) {
+    var[symbolOffset + i].isSymbol = true;
+    swapColumns(var[symbolOffset + i].pos, getNumFixedCols() + i);
   }
 }
 
@@ -165,6 +169,7 @@ Direction flippedDirection(Direction direction) {
 } // namespace
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::findRationalLexMin() {
+  assert(nSymbols == 0 && "Symbols are not supported!");
   restoreRationalConsistency();
   return getRationalSample();
 }
@@ -195,6 +200,7 @@ Optional<unsigned> LexSimplex::maybeGetNonIntegeralVarRow() const {
 }
 
 MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
+  assert(nSymbols == 0 && "Use findSymbolicIntegerLexMin when symbols are involved!");
   while (!empty) {
     restoreRationalConsistency();
     if (empty)
@@ -217,6 +223,10 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
 
   // Polytope is integer empty.
   return OptimumKind::Empty;
+}
+
+PWMAFunction LexSimplex::findSymbolicIntegerLexMin() {
+
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {

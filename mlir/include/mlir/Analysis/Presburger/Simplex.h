@@ -18,6 +18,7 @@
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/IntegerPolyhedron.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -159,7 +160,8 @@ public:
   /// constant term, whereas LexSimplex has an extra fixed column for the
   /// so-called big M parameter. For more information see the documentation for
   /// LexSimplex.
-  SimplexBase(unsigned nVar, bool mustUseBigM);
+  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -223,6 +225,7 @@ protected:
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool isSymbol : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -321,6 +324,10 @@ protected:
   /// nRedundant rows.
   unsigned nRedundant;
 
+  /// The number of parameters. This must be consistent with the number of
+  /// Unknowns in `var` below that have `isParam` set to true.
+  unsigned nSymbol;
+
   /// The matrix representing the tableau.
   Matrix tableau;
 
@@ -416,12 +423,19 @@ protected:
 /// A*y is zero and we are done.
 class LexSimplex : public SimplexBase {
 public:
+  LexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
   explicit LexSimplex(unsigned nVar)
-      : SimplexBase(nVar, /*mustUseBigM=*/true) {}
+      : LexSimplex(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
+
   explicit LexSimplex(const IntegerPolyhedron &constraints)
-      : LexSimplex(constraints.getNumIds()) {
+      : LexSimplex(
+            constraints.getNumIds(),
+            constraints.getIdKindOffset(IntegerPolyhedron::IdKind::Symbol),
+            constraints.getNumSymbolIds()) {
     intersectIntegerPolyhedron(constraints);
   }
+
   ~LexSimplex() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
@@ -438,13 +452,19 @@ public:
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
   /// Return the lexicographically minimum rational solution to the constraints.
+  /// This should not be called when symbols are involved.
   presburger_utils::MaybeOptimum<SmallVector<Fraction, 8>> findRationalLexMin();
 
   /// Return the lexicographically minimum integer solution to the constraints.
+  /// When symbols are involved, findSymbolicIntegerLexMin should be used
+  /// instead of this function.
   ///
   /// Note: this should be used only when the lexmin is really needed. To obtain
   /// any integer sample, use Simplex::findIntegerSample as that is more robust.
   presburger_utils::MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
+
+  /// Return the integer lexmin of the Simplex. This is intended
+  PWMAFunction findSymbolicIntegerLexMin();
 
 protected:
   /// Returns the current sample point, which may contain non-integer (rational)
@@ -514,7 +534,9 @@ public:
   enum class Direction { Up, Down };
 
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/false) {}
+  explicit Simplex(unsigned nVar)
+      : SimplexBase(nVar, /*mustUseBigM=*/false, /*symbolOffset=*/0,
+                    /*nSymbol=*/0) {}
   explicit Simplex(const IntegerPolyhedron &constraints)
       : Simplex(constraints.getNumIds()) {
     intersectIntegerPolyhedron(constraints);
