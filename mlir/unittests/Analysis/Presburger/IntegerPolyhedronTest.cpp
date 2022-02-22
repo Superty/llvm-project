@@ -50,7 +50,7 @@ static void dump(ArrayRef<int64_t> vec) {
 ///   non-empty lexmin.
 ///
 ///   If hasSample is false, check that findIntegerSample returns None and
-///   getIntegerLexMin returns Empty.
+///   findIntegerLexMin returns Empty.
 ///
 /// If fn is TestFunction::Empty, check that isIntegerEmpty returns the
 /// opposite of hasSample.
@@ -72,7 +72,7 @@ static void checkSample(bool hasSample, const IntegerPolyhedron &poly,
 
       EXPECT_TRUE(maybeLexMin.isEmpty());
       if (maybeLexMin.isBounded()) {
-        llvm::errs() << "getIntegerLexMin gave sample: ";
+        llvm::errs() << "findIntegerLexMin gave sample: ";
         dump(*maybeLexMin);
       }
     } else {
@@ -1092,7 +1092,7 @@ void expectNoRationalLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
   EXPECT_EQ(poly.findRationalLexMin().getKind(), kind);
 }
 
-TEST(IntegerPolyhedronTest, getRationalLexMin) {
+TEST(IntegerPolyhedronTest, findRationalLexMin) {
   MLIRContext context;
   expectRationalLexMin(
       parsePoly("(x, y, z) : (x + 10 >= 0, y + 40 >= 0, z + 30 >= 0)",
@@ -1175,7 +1175,7 @@ void expectNoIntegerLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
   EXPECT_EQ(poly.findRationalLexMin().getKind(), kind);
 }
 
-TEST(IntegerPolyhedronTest, getIntegerLexMin) {
+TEST(IntegerPolyhedronTest, findIntegerLexMin) {
   MLIRContext context;
   expectIntegerLexMin(parsePoly("(x, y, z) : (2*x + 13 >= 0, 4*y - 3*x - 2  >= "
                                 "0, 11*z + 5*y - 3*x + 7 >= 0)",
@@ -1186,6 +1186,10 @@ TEST(IntegerPolyhedronTest, getIntegerLexMin) {
                         parsePoly("(x, y, z) : (2*x + 13 >= 0, 4*y - 3*x - 2  "
                                   ">= 0, -11*z + 5*y - 3*x + 7 >= 0)",
                                   &context));
+}
+
+TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
+
 }
 
 static void

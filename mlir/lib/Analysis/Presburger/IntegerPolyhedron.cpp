@@ -13,6 +13,7 @@
 #include "mlir/Analysis/Presburger/IntegerPolyhedron.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/PresburgerSet.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "llvm/ADT/DenseMap.h"
@@ -110,6 +111,10 @@ IntegerPolyhedron::findIntegerLexMin() const {
          "Incorrect number of vars in lexMin!");
   maybeLexMin->resize(getNumDimAndSymbolIds());
   return maybeLexMin;
+}
+
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
+  return LexSimplex(*this).findSymbolicIntegerLexMin();
 }
 
 unsigned IntegerPolyhedron::insertDimId(unsigned pos, unsigned num) {

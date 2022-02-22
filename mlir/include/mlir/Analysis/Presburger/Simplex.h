@@ -186,6 +186,11 @@ public:
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
 
+  /// Add new symbolic variables to the end of the list of variables.
+  void appendSymbol();
+
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
+
   /// Mark the tableau as being empty.
   void markEmpty();
 
@@ -356,6 +361,8 @@ protected:
   SmallVector<Unknown, 8> con, var;
 };
 
+class Simplex;
+
 /// Simplex class using the lexicographic pivot rule. Used for lexicographic
 /// optimization. The implementation of this class is based on the paper
 /// "Parametric Integer Programming" by Paul Feautrier.
@@ -464,7 +471,9 @@ public:
   presburger_utils::MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
 
   /// Return the integer lexmin of the Simplex. This is intended
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain);
   PWMAFunction findSymbolicIntegerLexMin();
+  void findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
 
 protected:
   /// Returns the current sample point, which may contain non-integer (rational)
@@ -475,6 +484,8 @@ protected:
   /// or unbounded.
   presburger_utils::MaybeOptimum<SmallVector<Fraction, 8>>
   getRationalSample() const;
+
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row);
 
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added
