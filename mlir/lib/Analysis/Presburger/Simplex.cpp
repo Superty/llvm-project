@@ -444,7 +444,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
     return;
   }
 
-  Matrix output(lexmin.getNumOutputs(), lexmin.getNumInputs() + 1);
+  Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
     if (u.isSymbol)
