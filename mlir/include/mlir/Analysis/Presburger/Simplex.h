@@ -225,8 +225,8 @@ protected:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos, bool oIsSymbol = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted), isSymbol(oIsSymbol) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
