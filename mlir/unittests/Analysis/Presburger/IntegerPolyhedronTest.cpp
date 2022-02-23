@@ -1192,7 +1192,7 @@ TEST(IntegerPolyhedronTest, findIntegerLexMin) {
 void expectSymbolicIntegerLexMin(
     StringRef polyStr,
     ArrayRef<std::pair<StringRef, SmallVector<SmallVector<int64_t, 8>, 8>>>
-        result) {
+        result, ArrayRef<StringRef> unboundedDomain) {
   MLIRContext context;
   IntegerPolyhedron poly = parsePoly(polyStr, &context);
 
@@ -1201,130 +1201,138 @@ void expectSymbolicIntegerLexMin(
 
   PWMAFunction resultF = parsePWMAF(/*numInputs=*/poly.getNumSymbolIds(),
                                     /*numOutputs=*/poly.getNumDimIds(), result);
-  PWMAFunction output = poly.findSymbolicIntegerLexMin();
+
+  PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(poly.getNumSymbolIds(), unboundedDomain, &context);
+  auto unboundedDomainOutput = PresburgerSet::getEmptySet(0, 0);
+  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);
+
   EXPECT_TRUE(output.isEqual(resultF));
   if (!output.isEqual(resultF))
     output.dump();
+
+  EXPECT_TRUE(unboundedDomainOutput.isEqual(unboundedDomainSet));
+  if (!unboundedDomainOutput.isEqual(unboundedDomainSet))
+    unboundedDomainOutput.dump();
 }
 
+void expectSymbolicIntegerLexMin(
+    StringRef polyStr,
+    ArrayRef<std::pair<StringRef, SmallVector<SmallVector<int64_t, 8>, 8>>>
+        result) {
+  expectSymbolicIntegerLexMin(polyStr, result, {});
+}
+
+
 TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
-  expectSymbolicIntegerLexMin("(x)[a] : (x - a >= 0)",
-                              {
-                                  {"(a) : ()", {{1, 0}}}, // a
-                              });
+  // expectSymbolicIntegerLexMin("(x)[a] : (x - a >= 0)",
+  //                             {
+  //                                 {"(a) : ()", {{1, 0}}}, // a
+  //                             });
 
-  expectSymbolicIntegerLexMin(
-      "(x)[a, b] : (x - a >= 0, x - b >= 0)",
-      {
-          {"(a, b) : (a - b >= 0)", {{1, 0, 0}}},     // a
-          {"(a, b) : (b - a - 1 >= 0)", {{0, 1, 0}}}, // b
-      });
+  // expectSymbolicIntegerLexMin(
+  //     "(x)[a, b] : (x - a >= 0, x - b >= 0)",
+  //     {
+  //         {"(a, b) : (a - b >= 0)", {{1, 0, 0}}},     // a
+  //         {"(a, b) : (b - a - 1 >= 0)", {{0, 1, 0}}}, // b
+  //     });
 
-  expectSymbolicIntegerLexMin(
-      "(x)[a, b, c] : (x -a >= 0, x - b >= 0, x - c >= 0)",
-      {
-          {"(a, b, c) : (a - b >= 0, a - c >= 0)", {{1, 0, 0, 0}}},         // a
-          {"(a, b, c) : (b - a - 1 >= 0, b - c >= 0)", {{0, 1, 0, 0}}},     // b
-          {"(a, b, c) : (c - a - 1 >= 0, c - b - 1 >= 0)", {{0, 0, 1, 0}}}, // c
-      });
+  // expectSymbolicIntegerLexMin(
+  //     "(x)[a, b, c] : (x -a >= 0, x - b >= 0, x - c >= 0)",
+  //     {
+  //         {"(a, b, c) : (a - b >= 0, a - c >= 0)", {{1, 0, 0, 0}}},         // a
+  //         {"(a, b, c) : (b - a - 1 >= 0, b - c >= 0)", {{0, 1, 0, 0}}},     // b
+  //         {"(a, b, c) : (c - a - 1 >= 0, c - b - 1 >= 0)", {{0, 0, 1, 0}}}, // c
+  //     });
 
-  expectSymbolicIntegerLexMin("(x, y)[a] : (x - a >= 0, x + y >= 0)",
-                              {
-                                  {"(a) : ()", {{1, 0}, {-1, 0}}}, // (a, -a)
-                              });
+  // expectSymbolicIntegerLexMin("(x, y)[a] : (x - a >= 0, x + y >= 0)",
+  //                             {
+  //                                 {"(a) : ()", {{1, 0}, {-1, 0}}}, // (a, -a)
+  //                             });
 
-  expectSymbolicIntegerLexMin(
-      "(x, y)[a] : (x - a >= 0, x + y >= 0, y >= 0)",
-      {
-          {"(a) : (a >= 0)", {{1, 0}, {0, 0}}},       // (a, 0)
-          {"(a) : (-a - 1 >= 0)", {{1, 0}, {-1, 0}}}, // (a, -a)
-      });
+  // expectSymbolicIntegerLexMin(
+  //     "(x, y)[a] : (x - a >= 0, x + y >= 0, y >= 0)",
+  //     {
+  //         {"(a) : (a >= 0)", {{1, 0}, {0, 0}}},       // (a, 0)
+  //         {"(a) : (-a - 1 >= 0)", {{1, 0}, {-1, 0}}}, // (a, -a)
+  //     });
 
-  expectSymbolicIntegerLexMin("(x, y)[a, b, c] : (x - a >= 0, y - b >= 0, c - x - y >= 0)", {
-    {"(a, b, c) : ()", {{}}},
+  // expectSymbolicIntegerLexMin(
+  //     "(x, y)[a, b, c] : (x - a >= 0, y - b >= 0, c - x - y >= 0)",
+  //     {
+  //         {"(a, b, c) : (c - a - b >= 0)",
+  //          {{1, 0, 0, 0}, {0, 1, 0, 0}}}, // (a, b)
+  //     });
+
+  // expectSymbolicIntegerLexMin(
+  //     "(x, y, z)[a, b, c] : (c - z >= 0, b - y >= 0, x + y + z - a == 0)",
+  //     {
+  //         {"(a, b, c) : ()",
+  //          {{1, -1, -1, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}}}, // (a - b - c, b, c)
+  //     });
+
+  // expectSymbolicIntegerLexMin(
+  //     "(x)[a, b] : (a >= 0, b >= 0, x >= 0, a + b + x - 1 >= 0)",
+  //     {
+  //         {"(a, b) : (a >= 0, b >= 0, a + b - 1 >= 0)", {{0, 0, 0}}}, // 0
+  //         {"(a, b) : (a == 0, b == 0)",             {{0, 0, 1}}},     // 1
+  //     });
+
+  // expectSymbolicIntegerLexMin("(x)[a, b] : (1 - a >= 0, a >= 0, 1 - b >= 0, b >= 0, 1 - x >= 0, x >= 0, a + b + x - 1 >= 0)",
+  // {
+  //     {"(a, b) : (1 - a >= 0, a >= 0, 1 - b >= 0, b >= 0, a + b - 1 >= 0)", {{0, 0, 0}}}, // 0
+  //     {"(a, b) : (a == 0, b == 0)",             {{0, 0, 1}}},     // 1
+  // });
+
+  // expectSymbolicIntegerLexMin("(x, y, z)[a, b] : (x - a == 0, y - b == 0, x >= 0, y >= 0, z >= 0, x + y + z - 1 >= 0)", {
+  //   {"(a, b) : (a >= 0, b >= 0, 1 - a - b >= 0)", {{1, 0, 0}, {0, 1, 0}, {-1, -1, 1}}}, // (a, b, 1 - a - b)
+  //   {"(a, b) : (a >= 0, b >= 0, a + b - 2 >= 0)", {{1, 0, 0}, {0, 1, 0}, {0, 0, 0}}}, // (a, b, 0)
+  // });
+
+  // expectSymbolicIntegerLexMin("(x)[a, b] : (x - a == 0, x - b >= 0)", {
+  //   {"(a, b) : (a - b >= 0)", {{1, 0, 0}}}, // a
+  // });
+
+  expectSymbolicIntegerLexMin("(q)[a] : (a - 1 - 3*q == 0, q >= 0)", {
+    {"(a) : (a - 1 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 1, 0}}}, // a floordiv 3
   });
 
-  // expectSymbolicIntegerLexMin("(x, y, z)[a, b, c] : (z <= c, y <= b, x + y +
-  // z = a)", {
-  //   {"(a, b, c) : ()", {{}}},
-  // });
+  expectSymbolicIntegerLexMin("(r, q)[a] : (a - r - 3*q == 0, q >= 0, 1 - r >= 0, r >= 0)", {
+    {"(a) : (a - 0 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 0}, {0, 1, 0}}}, // (0, a floordiv 3)
+    {"(a) : (a - 1 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 1}, {0, 1, 0}}}, // (1 a floordiv 3)
+  });
 
-  // expectSymbolicIntegerLexMin("(z)[x, y] : (x >= 0, y >= 0, z >= 0, x + y + z
-  // >= 1)", {
-  //   {"(x, y) : ()", {{}}},
-  // });
+  expectSymbolicIntegerLexMin("(r, q)[a] : (a - r - 3*q == 0, q >= 0, 2 - r >= 0, r - 1 >= 0)", {
+    {"(a) : (a - 1 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 1}, {0, 1, 0}}}, // (1, a floordiv 3)
+    {"(a) : (a - 2 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 2}, {0, 1, 0}}}, // (2, a floordiv 3)
+  });
 
-  // expectSymbolicIntegerLexMin("(x, y, z)[a, b] : (x = a, y = b, x >= 0, y >=
-  // 0, z >= 0, x + y + z >= 1)", {
-  //   {"(a, b) : ()", {{}}},
-  // });
+  expectSymbolicIntegerLexMin("(r, q)[a] : (a - r - 3*q == 0, q >= 0, r >= 0)", {
+    {"(a) : (a - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 0}, {0, 1, 0}}},     // (0, a floordiv 3)
+    {"(a) : (a - 1 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 1}, {0, 1, 0}}}, // (1, a floordiv 3)
+    {"(a) : (a - 2 - 3*(a floordiv 3) == 0, a >= 0)", {{0, 0, 2}, {0, 1, 0}}}, // (2, a floordiv 3)
+  });
 
-  // expectSymbolicIntegerLexMin("(x, y)[a] : (x = a, x >= 0, y >= 0, x + y >=
-  // 1)", {
-  //   {"(a) : ()", {{}}},
-  // });
+ expectSymbolicIntegerLexMin(
+   "(x, y, z, w)[g] : ("
+   // x, y, z, w are boolean variables.
+   "1 - x >= 0, x >= 0, 1 - y >= 0, y >= 0,"
+   "1 - z >= 0, z >= 0, 1 - w >= 0, w >= 0,"
+   // We have some constraints on them:
+   "x + y + z - 1 >= 0," // x or y or z
+   "x + y + w - 1 >= 0," // x or y or w
+   "1 - x + 1 - y + 1 - w - 1 >= 0," // ~x or ~y or ~w
+   // What's the lexmin solution using exactly g true vars?
+   "g - x - y - z - w == 0)",
+   {
+     {"(g) : (g - 1 == 0)", {{0, 0}, {0, 1}, {0, 0}, {0, 0}}}, // (0, 1, 0, 0)
+     {"(g) : (g - 2 == 0)", {{0, 0}, {0, 0}, {0, 1}, {0, 1}}}, // (0, 0, 1, 1)
+     {"(g) : (g - 3 == 0)", {{0, 0}, {0, 1}, {0, 1}, {0, 1}}}, // (0, 1, 1, 1)
+ });
 
-  // expectSymbolicIntegerLexMin("(z)[x, y] : (0 <= x, x <= 1, 0 <= y, y <= 1, 0
-  // <= z, z <= 1, x + y + z >= 1)", {
-  //   {"(x, y) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(x)[a] : (x = a)", {
-  //   {"(a) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(x)[a, b] : (x = a, x >= b)", {
-  //   {"(a, b) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y)[x] : (x = 1 + 3y, y >= 0)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, y = 1)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, y = 0)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, y = 2)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, 0 <= y, y <=
-  // 1)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 2z, z >= 0, 1 <= y, y <=
-  // 2)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, 2 <= y, y <=
-  // 2)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, z >= 0, 0 <= y, y <=
-  // 2)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, x >= y, z >= 0, y >=
-  // 0)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, x >= y, y >= 0)", {
-  //   {"(x) : ()", {{}}},
-  // });
-
-  // expectSymbolicIntegerLexMin("(y, z)[x] : (x = y + 3z, x >= y, y >= 0)", {
-  //   {"(x) : ()", {{}}},
-  // });
+ // Bezout's lemma: if a, b are constants,
+ // the set of values that ax + by can take is all multiples of gcd(a, b).
+ expectSymbolicIntegerLexMin(
+   "(x, y)[a, r] : (a >= 0, r - a + 14*x + 35*y == 0)", {}, {"(a, r) : (a >= 0, r - a + 7*(a floordiv 7) == 0)"});
 }
 
 static void

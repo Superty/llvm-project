@@ -31,6 +31,19 @@ inline IntegerPolyhedron parsePoly(StringRef str, MLIRContext *context) {
   return *poly;
 }
 
+/// Parse a list of StringRefs to IntegerPolyhedron and combine them into a
+/// PresburgerSet be using the union operation. It is expected that the strings
+/// are all valid IntegerSet representation and that all of them have the same
+/// number of dimensions as is specified by the numDims argument.
+inline PresburgerSet parsePresburgerSetFromPolyStrings(unsigned numDims,
+                                                       ArrayRef<StringRef> strs,
+                                                       MLIRContext *context) {
+  PresburgerSet set = PresburgerSet::getEmptySet(numDims);
+  for (StringRef str : strs)
+    set.unionPolyInPlace(parsePoly(str, context));
+  return set;
+}
+
 inline Matrix makeMatrix(unsigned numRow, unsigned numColumns,
                          ArrayRef<SmallVector<int64_t, 8>> matrix) {
   Matrix results(numRow, numColumns);
@@ -57,6 +70,7 @@ inline PWMAFunction parsePWMAF(
   PWMAFunction result(numInputs - numSymbols, numSymbols, numOutputs);
   for (const auto &pair : data) {
     IntegerPolyhedron domain = parsePoly(pair.first, &context);
+
     result.addPiece(
         domain, makeMatrix(numOutputs, domain.getNumIds() + 1, pair.second));
   }

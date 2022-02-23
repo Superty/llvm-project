@@ -13,6 +13,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_PRESBURGERSET_H
 #define MLIR_ANALYSIS_PRESBURGER_PRESBURGERSET_H
 
+#include "mlir/Analysis/Presburger/PresburgerSpace.h"
 #include "mlir/Analysis/Presburger/IntegerPolyhedron.h"
 
 namespace mlir {

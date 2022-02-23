@@ -23,19 +23,6 @@
 
 namespace mlir {
 
-/// Parse a list of StringRefs to IntegerPolyhedron and combine them into a
-/// PresburgerSet be using the union operation. It is expected that the strings
-/// are all valid IntegerSet representation and that all of them have the same
-/// number of dimensions as is specified by the numDims argument.
-static PresburgerSet parsePresburgerSetFromPolyStrings(unsigned numDims,
-                                                       ArrayRef<StringRef> strs,
-                                                       MLIRContext *context) {
-  PresburgerSet set = PresburgerSet::getEmptySet(numDims);
-  for (StringRef str : strs)
-    set.unionPolyInPlace(parsePoly(str, context));
-  return set;
-}
-
 /// Compute the union of s and t, and check that each of the given points
 /// belongs to the union iff it belongs to at least one of s and t.
 static void testUnionAtPoints(const PresburgerSet &s, const PresburgerSet &t,

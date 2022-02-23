@@ -22,6 +22,7 @@
 namespace mlir {
 
 class PWMAFunction;
+class PresburgerSet;
 
 /// An IntegerRelation is a PresburgerLocalSpace subject to affine constraints.
 /// Affine constraints can be inequalities or equalities in the form:
@@ -267,6 +268,7 @@ public:
   findIntegerLexMin() const;
 
   PWMAFunction findSymbolicIntegerLexMin() const;
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);

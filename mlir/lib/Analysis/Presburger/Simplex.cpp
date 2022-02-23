@@ -244,6 +244,7 @@ PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomai
   PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0, /*numOutputs=*/var.size() - nSymbol);
   IntegerPolyhedron domainPoly(/*numDims=*/nSymbol, /*numSymbols=*/0, /*numLocals=*/0);
   Simplex domainSimplex(/*nVar=*/nSymbol);
+  unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
   findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
   return lexmin;
 }

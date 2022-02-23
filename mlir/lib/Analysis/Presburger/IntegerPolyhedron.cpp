@@ -117,6 +117,11 @@ PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
   return LexSimplex(*this).findSymbolicIntegerLexMin();
 }
 
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const {
+  return LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
+}
+
+
 unsigned IntegerPolyhedron::insertDimId(unsigned pos, unsigned num) {
   return insertId(IdKind::SetDim, pos, num);
 }
@@ -625,7 +630,13 @@ void removeConstraintsInvolvingSuffixDims(IntegerPolyhedron &poly,
 }
 
 bool IntegerPolyhedron::isIntegerEmpty() const {
-  return !findIntegerSample().hasValue();
+  auto sample = findIntegerSample();
+  if (sample) {
+    for (auto x : *sample)
+      llvm::errs() << x << ' ';
+    llvm::errs() << '\n';
+  }
+  return !sample;
 }
 
 /// Let this set be S. If S is bounded then we directly call into the GBR
