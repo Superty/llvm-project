@@ -630,13 +630,7 @@ void removeConstraintsInvolvingSuffixDims(IntegerPolyhedron &poly,
 }
 
 bool IntegerPolyhedron::isIntegerEmpty() const {
-  auto sample = findIntegerSample();
-  if (sample) {
-    for (auto x : *sample)
-      llvm::errs() << x << ' ';
-    llvm::errs() << '\n';
-  }
-  return !sample;
+  return !findIntegerSample().hasValue();
 }
 
 /// Let this set be S. If S is bounded then we directly call into the GBR

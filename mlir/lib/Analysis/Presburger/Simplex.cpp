@@ -241,11 +241,14 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
 PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) {
   // Our symbols are the non-symbolic domain variables of the result
   // PWMAFunction. Our non-symbols are the outputs of the result.
-  PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0, /*numOutputs=*/var.size() - nSymbol);
-  IntegerPolyhedron domainPoly(/*numDims=*/nSymbol, /*numSymbols=*/0, /*numLocals=*/0);
+  PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
+                      /*numOutputs=*/var.size() - nSymbol);
+  IntegerPolyhedron domainPoly(/*numDims=*/nSymbol, /*numSymbols=*/0,
+                               /*numLocals=*/0);
   Simplex domainSimplex(/*nVar=*/nSymbol);
   unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
-  findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+  findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                       unboundedDomain);
   return lexmin;
 }
 
@@ -263,7 +266,9 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
   return sample;
 }
 
-void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) {
+void LexSimplex::findSymbolicIntegerLexMinRecursively(
+    IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin,
+    PresburgerSet &unboundedDomain) {
   if (empty || domainSimplex.isEmpty())
     return;
 
@@ -277,12 +282,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
       return;
     }
 
     auto paramSample = getRowParamSample(row);
-    auto maybeMin = domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
+    auto maybeMin =
+        domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
     bool nonNegative = maybeMin.isBounded() && *maybeMin >= Fraction(0, 1);
     if (nonNegative)
       continue;
@@ -294,7 +301,8 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
       return;
     }
 
@@ -304,7 +312,8 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
     domainPoly.addInequality(paramSample);
     auto idx = rowUnknown[row];
 
-    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                         unboundedDomain);
 
     domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
     domainSimplex.rollback(domainSnapshot);
@@ -323,7 +332,8 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
     auto &u = unknownFromIndex(idx);
     assert(u.orientation == Orientation::Row);
     if (succeeded(moveRowUnknownToColumn(u.pos)))
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
 
     domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
     domainSimplex.rollback(domainSnapshot);
@@ -344,6 +354,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
   };
 
   for (const Unknown &u : var) {
+    // TODO: add failing case and exit. Should ignore non-params
     if (u.orientation == Orientation::Column)
       continue;
 
@@ -399,10 +410,13 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
       }
       tableau(row, nCol - 1) += 1;
 
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
 
-      domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 3, domainPoly.getNumInequalities());
-      domainPoly.removeId(IntegerPolyhedron::IdKind::Local, domainPoly.getNumLocalIds() - 1);
+      domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 3,
+                                       domainPoly.getNumInequalities());
+      domainPoly.removeId(IntegerPolyhedron::IdKind::Local,
+                          domainPoly.getNumLocalIds() - 1);
       for (unsigned col = 0; col < nCol; ++col)
         tableau(row, col) = oldRow[col];
       domainSimplex.rollback(domainSnapshot);
@@ -435,11 +449,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
     assert(succeeded(success));
 
-    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin, unboundedDomain);
+    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                         unboundedDomain);
 
     domainSimplex.rollback(domainSnapshot);
-    domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 2, domainPoly.getNumInequalities());
-    domainPoly.removeId(IntegerPolyhedron::IdKind::Local, domainPoly.getNumLocalIds() - 1);
+    domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 2,
+                                     domainPoly.getNumInequalities());
+    domainPoly.removeId(IntegerPolyhedron::IdKind::Local,
+                        domainPoly.getNumLocalIds() - 1);
     rollback(snapshot);
 
     return;
@@ -452,19 +469,23 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainP
       continue;
 
     if (u.orientation == Orientation::Column) {
-      // This output is always zero, leave the row in its zero initialized state and continue.
-      row++;
-      continue;
-    }
-
-    if (tableau(u.pos, 2) <= 0) {
-      // lexmin is unbounded; add the current domainPoly to the unboundedDomain and return.
+      // M + u has a sample value of zero so u has a sample value of -M, i.e,
+      // unbounded.
       unboundedDomain.unionPolyInPlace(domainPoly);
       return;
     }
 
-    auto coeffs = getRowParamSample(u.pos);
     int64_t denom = tableau(u.pos, 0);
+    if (tableau(u.pos, 2) < denom) {
+      // M + u has a sample value of fM + something, where f < 1, so
+      // u = (f - 1)M + something, which has a negative coefficient for M,
+      // and so is unbounded.
+      unboundedDomain.unionPolyInPlace(domainPoly);
+      return;
+    }
+    assert(tableau(u.pos, 2) == denom);
+
+    auto coeffs = getRowParamSample(u.pos);
     for (unsigned col = 0, e = coeffs.size(); col < e; ++col) {
       assert(coeffs[col] % denom == 0 && "coefficient is fractional!");
       output(row, col) = coeffs[col] / denom;
@@ -770,6 +791,7 @@ void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
     tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
     normalizeRow(row);
   }
+  dump();
 }
 
 /// Perform pivots until the unknown has a non-negative sample value or until
