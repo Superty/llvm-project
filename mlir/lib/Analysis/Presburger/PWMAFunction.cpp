@@ -100,7 +100,8 @@ void MultiAffineFunction::removeIdRange(unsigned idStart, unsigned idLimit) {
 
 void MultiAffineFunction::eliminateRedundantLocalId(unsigned posA,
                                                     unsigned posB) {
-  output.addToColumn(posB, posA, /*scale=*/1);
+  unsigned localOffset = getIdKindOffset(IdKind::Local);
+  output.addToColumn(localOffset + posB, localOffset + posA, /*scale=*/1);
   IntegerPolyhedron::eliminateRedundantLocalId(posA, posB);
 }
 

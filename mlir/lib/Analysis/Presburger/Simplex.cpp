@@ -354,9 +354,9 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
   };
 
   for (const Unknown &u : var) {
-    // TODO: add failing case and exit. Should ignore non-params
     if (u.orientation == Orientation::Column)
       continue;
+    assert(!u.isSymbol && "Symbol should not be in row orientation!");
 
     unsigned row = u.pos;
     if (rowHasIntegerCoeffs(row))
@@ -379,7 +379,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       }
     }
 
-    // bool constIntegral = mod(tableau(row, 1), denom) == 0;
+    bool constIntegral = mod(tableau(row, 1), denom) == 0;
 
     SmallVector<int64_t, 8> domainDivCoeffs;
     if (otherCoeffsIntegral) {
@@ -431,10 +431,12 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
 
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
-    domainSimplex.addDivisionVariable(domainDivCoeffs, denom);
-    domainPoly.addLocalFloorDiv(domainDivCoeffs, denom);
+    if (!paramCoeffsIntegral) {
+      domainSimplex.addDivisionVariable(domainDivCoeffs, denom);
+      domainPoly.addLocalFloorDiv(domainDivCoeffs, denom);
 
-    appendSymbol();
+      appendSymbol();
+    }
 
     addZeroRow();
     con.back().restricted = true;
@@ -443,9 +445,16 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     tableau(nRow - 1, 2) = 0;
     for (unsigned col = 3 + nSymbol; col < nCol; ++col)
       tableau(nRow - 1, col) = mod(tableau(row, col), denom);
-    for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
-      tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
-    tableau(nRow - 1, 3 + nSymbol - 1) = denom;
+
+    if (paramCoeffsIntegral) {
+      for (unsigned col = 3; col < 3 + nSymbol; ++col)
+        tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
+    } else {
+      for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
+        tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
+      tableau(nRow - 1, 3 + nSymbol - 1) = denom;
+    }
+
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
     assert(succeeded(success));
 
@@ -453,12 +462,13 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
                                          unboundedDomain);
 
     domainSimplex.rollback(domainSnapshot);
-    domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 2,
-                                     domainPoly.getNumInequalities());
-    domainPoly.removeId(IntegerPolyhedron::IdKind::Local,
-                        domainPoly.getNumLocalIds() - 1);
     rollback(snapshot);
-
+    if (!paramCoeffsIntegral) {
+      domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 2,
+                                       domainPoly.getNumInequalities());
+      domainPoly.removeId(IntegerPolyhedron::IdKind::Local,
+                          domainPoly.getNumLocalIds() - 1);
+    }
     return;
   }
 
@@ -791,7 +801,6 @@ void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
     tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
     normalizeRow(row);
   }
-  dump();
 }
 
 /// Perform pivots until the unknown has a non-negative sample value or until

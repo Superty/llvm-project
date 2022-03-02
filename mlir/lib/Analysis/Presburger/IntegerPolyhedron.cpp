@@ -113,14 +113,16 @@ IntegerPolyhedron::findIntegerLexMin() const {
   return maybeLexMin;
 }
 
-PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
-  return LexSimplex(*this).findSymbolicIntegerLexMin();
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const {
+  PWMAFunction result = LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
+  result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
+  return result;
 }
 
-PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const {
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
+  auto unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/getNumSymbolIds());
   return LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
 }
-
 
 unsigned IntegerPolyhedron::insertDimId(unsigned pos, unsigned num) {
   return insertId(IdKind::SetDim, pos, num);
