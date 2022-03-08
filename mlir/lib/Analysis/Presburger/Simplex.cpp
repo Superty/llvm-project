@@ -382,6 +382,11 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
 
     SmallVector<int64_t, 8> domainDivCoeffs;
     if (otherCoeffsIntegral) {
+      if (paramCoeffsIntegral) {
+        assert(!constIntegral);
+        return;
+      }
+
       for (unsigned col = 3; col < 3 + nSymbol; ++col)
         domainDivCoeffs.push_back(mod(tableau(row, col), denom));
       domainDivCoeffs.push_back(mod(tableau(row, 1), denom));
