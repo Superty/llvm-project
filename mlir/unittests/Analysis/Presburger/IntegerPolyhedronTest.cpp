@@ -1451,7 +1451,7 @@ TEST(IntegerPolyhedronTest, broken) {
   expectSymbolicIntegerLexMin(
     "(a, b, c, d)[i, k, j] : (8*(b floordiv 8) - b == 0, 255 - k >= 0, "
     "255 - a >= 0, 255 - c >= 0, 255 - j - d >= 0, "
-    "7*d - j + 255 >= 0, 7 - i - 7*d >= 0, 239 + a - 240*d >= 0, "
+    "7*d + j - 255 >= 0, 7 - i - 7*d >= 0, 239 + a - 240*d >= 0, "
     "247 + k - j - 247*d >= 0, 247 + k - b - 247*d >= 0, "
     "247 + i -247*d >= 0, 248*d + b - 248 >= 0, c - 248*d >= 0, "
     "254*d - i + a - b >= 0, 254*d + a - b >= 0, "
