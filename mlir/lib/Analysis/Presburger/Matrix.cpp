@@ -19,6 +19,23 @@ Matrix::Matrix(unsigned rows, unsigned columns, unsigned reservedRows,
   data.reserve(std::max(nRows, reservedRows) * nReservedColumns);
 }
 
+Matrix::RowIterator::RowIterator(Matrix &matrix, unsigned row) : matrix(matrix), row(row) {}
+Matrix::ConstRowIterator::ConstRowIterator(const Matrix &matrix, unsigned row) : matrix(matrix), row(row) {}
+MutableArrayRef<int64_t> Matrix::RowIterator::operator*() const {
+  return matrix.getRow(row);
+}
+ArrayRef<int64_t> Matrix::ConstRowIterator::operator*() const {
+  return matrix.getRow(row);
+}
+Matrix::RowIterator &Matrix::RowIterator::operator++() {
+  ++row;
+  return *this;
+}
+Matrix::ConstRowIterator &Matrix::ConstRowIterator::operator++() {
+  ++row;
+  return *this;
+}
+
 Matrix Matrix::identity(unsigned dimension) {
   Matrix matrix(dimension, dimension);
   for (unsigned i = 0; i < dimension; ++i)
@@ -98,6 +115,10 @@ void Matrix::swapColumns(unsigned column, unsigned otherColumn) {
     return;
   for (unsigned row = 0; row < nRows; row++)
     std::swap(at(row, column), at(row, otherColumn));
+}
+
+MutableArrayRef<int64_t> Matrix::getRow(unsigned row) {
+  return {&data[row * nReservedColumns], nColumns};
 }
 
 ArrayRef<int64_t> Matrix::getRow(unsigned row) const {
