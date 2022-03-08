@@ -113,6 +113,10 @@ IntegerPolyhedron::findIntegerLexMin() const {
   return maybeLexMin;
 }
 
+static bool rangeIsZero(ArrayRef<int64_t> range) {
+  return llvm::all_of(range, [](int64_t x) { return x == 0; });
+}
+
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const {
   PWMAFunction result = LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
@@ -620,30 +624,17 @@ Matrix IntegerPolyhedron::getBoundedDirections() const {
   return dirs;
 }
 
-bool eqInvolvesSuffixDims(const IntegerPolyhedron &poly, unsigned eqIndex,
-                          unsigned numDims) {
-  for (unsigned e = poly.getNumIds(), j = e - numDims; j < e; ++j)
-    if (poly.atEq(eqIndex, j) != 0)
-      return true;
-  return false;
-}
-bool ineqInvolvesSuffixDims(const IntegerPolyhedron &poly, unsigned ineqIndex,
-                            unsigned numDims) {
-  for (unsigned e = poly.getNumIds(), j = e - numDims; j < e; ++j)
-    if (poly.atIneq(ineqIndex, j) != 0)
-      return true;
-  return false;
-}
-
-void removeConstraintsInvolvingSuffixDims(IntegerPolyhedron &poly,
-                                          unsigned unboundedDims) {
+void removeConstraintsInvolvingIdRange(IntegerPolyhedron &poly, unsigned begin,
+                                       unsigned count) {
   // We iterate backwards so that whether we remove constraint i - 1 or not, the
   // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
   for (unsigned i = poly.getNumEqualities(); i > 0; i--)
-    if (eqInvolvesSuffixDims(poly, i - 1, unboundedDims))
+    if (!rangeIsZero(poly.getEquality(i - 1).slice(begin, count)))
       poly.removeEquality(i - 1);
   for (unsigned i = poly.getNumInequalities(); i > 0; i--)
-    if (ineqInvolvesSuffixDims(poly, i - 1, unboundedDims))
+    if (!rangeIsZero(poly.getInequality(i - 1).slice(begin, count)))
       poly.removeInequality(i - 1);
 }
 
@@ -730,7 +721,8 @@ Optional<SmallVector<int64_t, 8>> IntegerPolyhedron::findIntegerSample() const {
   IntegerPolyhedron boundedSet(transformedSet);
   unsigned numBoundedDims = result.first;
   unsigned numUnboundedDims = getNumIds() - numBoundedDims;
-  removeConstraintsInvolvingSuffixDims(boundedSet, numUnboundedDims);
+  removeConstraintsInvolvingIdRange(boundedSet, numBoundedDims,
+                                    numUnboundedDims);
   boundedSet.removeIdRange(numBoundedDims, boundedSet.getNumIds());
 
   // 3) Try to obtain a sample from the bounded set.
