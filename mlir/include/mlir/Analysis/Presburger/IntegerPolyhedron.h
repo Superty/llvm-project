@@ -489,6 +489,13 @@ protected:
   void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> constraint);
   void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> coeffs,
                      int64_t constant);
+  std::pair<const Matrix&, const Matrix&> getConstraintMatrices() const {
+    return {inequalities, equalities};
+  }
+  std::pair<Matrix&, Matrix&> getConstraintMatrices() {
+    return {inequalities, equalities};
+  }
+
   /// Checks all rows of equality/inequality constraints for trivial
   /// contradictions (for example: 1 == 0, 0 >= 1), which may have surfaced
   /// after elimination. Returns true if an invalid constraint is found;
