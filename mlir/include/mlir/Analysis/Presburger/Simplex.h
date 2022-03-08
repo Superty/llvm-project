@@ -471,8 +471,8 @@ public:
   presburger_utils::MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
 
   /// Return the integer lexmin of the Simplex. This is intended
-  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain);
-  PWMAFunction findSymbolicIntegerLexMin();
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain);
+  PWMAFunction findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain);
   void findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
 
 protected:

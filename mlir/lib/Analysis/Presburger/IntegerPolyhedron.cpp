@@ -117,15 +117,43 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
-PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const {
-  PWMAFunction result = LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
+IntegerPolyhedron IntegerPolyhedron::extractOutSymbolConstraints() {
+  IntegerPolyhedron extractedConstraints(getNumSymbolIds());
+  for (int i = getNumInequalities(); i > 0; --i) {
+    ArrayRef<int64_t> ineq = getInequality(i - 1);
+    ArrayRef<int64_t> symbolCoeffs =
+        ineq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
+    if (rangeIsZero(symbolCoeffs)) {
+      extractedConstraints.addInequality(symbolCoeffs, ineq.back());
+      removeInequality(i - 1);
+    }
+  }
+  for (int i = getNumEqualities(); i > 0; --i) {
+    ArrayRef<int64_t> eq = getEquality(i - 1);
+    ArrayRef<int64_t> symbolCoeffs =
+        eq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
+    if (rangeIsZero(symbolCoeffs)) {
+      extractedConstraints.addEquality(symbolCoeffs, eq.back());
+      removeEquality(i - 1);
+    }
+  }
+  return extractedConstraints;
+}
+
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
+    PresburgerSet &unboundedDomain) const {
+  IntegerPolyhedron copy = *this;
+  IntegerPolyhedron symbolDomain = copy.extractOutSymbolConstraints();
+  PWMAFunction result =
+      LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
   return result;
 }
 
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
-  auto unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/getNumSymbolIds());
-  return LexSimplex(*this).findSymbolicIntegerLexMin(unboundedDomain);
+  auto unboundedDomain =
+      PresburgerSet::getEmptySet(/*numDims=*/getNumSymbolIds());
+  return findSymbolicIntegerLexMin(unboundedDomain);
 }
 
 unsigned IntegerPolyhedron::insertDimId(unsigned pos, unsigned num) {

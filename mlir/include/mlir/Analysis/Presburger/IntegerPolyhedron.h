@@ -272,6 +272,7 @@ public:
   presburger_utils::MaybeOptimum<SmallVector<int64_t, 8>>
   findIntegerLexMin() const;
 
+  IntegerPolyhedron extractOutSymbolConstraints();
   PWMAFunction findSymbolicIntegerLexMin() const;
   PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const;
 

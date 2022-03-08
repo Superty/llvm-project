@@ -238,23 +238,22 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
   return OptimumKind::Empty;
 }
 
-PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) {
+PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain) {
   // Our symbols are the non-symbolic domain variables of the result
   // PWMAFunction. Our non-symbols are the outputs of the result.
   PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
                       /*numOutputs=*/var.size() - nSymbol);
-  IntegerPolyhedron domainPoly(/*numDims=*/nSymbol, /*numSymbols=*/0,
-                               /*numLocals=*/0);
-  Simplex domainSimplex(/*nVar=*/nSymbol);
+  IntegerPolyhedron domainPoly = symbolDomain;
+  Simplex domainSimplex(domainPoly);
   unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
   findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                        unboundedDomain);
   return lexmin;
 }
 
-PWMAFunction LexSimplex::findSymbolicIntegerLexMin() {
+PWMAFunction LexSimplex::findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain) {
   auto unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
-  return findSymbolicIntegerLexMin(unboundedDomain);
+  return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
 }
 
 SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
