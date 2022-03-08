@@ -227,10 +227,15 @@ public:
   unsigned appendSymbolId(unsigned num = 1);
   unsigned appendLocalId(unsigned num = 1);
 
-  /// Adds an inequality (>= 0) from the coefficients specified in `inEq`.
-  void addInequality(ArrayRef<int64_t> inEq);
-  /// Adds an equality from the coefficients specified in `eq`.
+  /// Adds an inequality (>= 0).
+  /// In the first form, `ineq` contains the coefficients of the ids, followed
+  /// by the constant term. In the second form, `coeffs` constaints the
+  /// coefficients of the ids, and `constant` is the constant term.
+  void addInequality(ArrayRef<int64_t> ineq);
+  void addInequality(ArrayRef<int64_t> coeffs, int64_t constant);
+  /// Same as above, but add an equality (== 0).
   void addEquality(ArrayRef<int64_t> eq);
+  void addEquality(ArrayRef<int64_t> coeffs, int64_t constant);
 
   /// Eliminate the `posB^th` local identifier, replacing every instance of it
   /// with the `posA^th` local identifier. This should be used when the two
@@ -481,6 +486,9 @@ public:
   void dump() const;
 
 protected:
+  void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> constraint);
+  void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> coeffs,
+                     int64_t constant);
   /// Checks all rows of equality/inequality constraints for trivial
   /// contradictions (for example: 1 == 0, 0 >= 1), which may have surfaced
   /// after elimination. Returns true if an invalid constraint is found;

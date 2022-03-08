@@ -163,18 +163,34 @@ unsigned IntegerPolyhedron::appendLocalId(unsigned num) {
   return pos;
 }
 
+void IntegerPolyhedron::addConstraint(Matrix &constraintMatrix,
+                                      ArrayRef<int64_t> constraint) {
+  assert(constraint.size() == getNumCols());
+  unsigned row = constraintMatrix.appendExtraRow();
+  constraintMatrix.copy(constraint, row, 0);
+}
+void IntegerPolyhedron::addInequality(ArrayRef<int64_t> ineq) {
+  addConstraint(inequalities, ineq);
+}
 void IntegerPolyhedron::addEquality(ArrayRef<int64_t> eq) {
-  assert(eq.size() == getNumCols());
-  unsigned row = equalities.appendExtraRow();
-  for (unsigned i = 0, e = eq.size(); i < e; ++i)
-    equalities(row, i) = eq[i];
+  addConstraint(equalities, eq);
 }
 
-void IntegerPolyhedron::addInequality(ArrayRef<int64_t> inEq) {
-  assert(inEq.size() == getNumCols());
-  unsigned row = inequalities.appendExtraRow();
-  for (unsigned i = 0, e = inEq.size(); i < e; ++i)
-    inequalities(row, i) = inEq[i];
+void IntegerPolyhedron::addConstraint(Matrix &constraintMatrix,
+                                      ArrayRef<int64_t> coeffs,
+                                      int64_t constant) {
+  assert(coeffs.size() == getNumCols() - 1);
+  unsigned row = constraintMatrix.appendExtraRow();
+  constraintMatrix.copy(coeffs, row, 0);
+  constraintMatrix(row, coeffs.size()) = constant;
+}
+void IntegerPolyhedron::addInequality(ArrayRef<int64_t> coeffs,
+                                      int64_t constant) {
+  addConstraint(inequalities, coeffs, constant);
+}
+void IntegerPolyhedron::addEquality(ArrayRef<int64_t> coeffs,
+                                    int64_t constant) {
+  addConstraint(equalities, coeffs, constant);
 }
 
 void IntegerPolyhedron::removeId(IdKind kind, unsigned pos) {
