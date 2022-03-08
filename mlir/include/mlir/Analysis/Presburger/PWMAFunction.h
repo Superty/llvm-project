@@ -186,7 +186,7 @@ public:
     assert(count <= numOutputs);
     for (auto &piece : pieces)
       piece.truncateOutput(count);
-    numOutputs -= count;
+    numOutputs = count;
   }
 
   void print(raw_ostream &os) const;
