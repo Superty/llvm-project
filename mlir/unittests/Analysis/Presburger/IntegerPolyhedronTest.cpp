@@ -1444,8 +1444,10 @@ expectSymbolicIntegerLexMin("(a, b)[K, N, x, y] : (N - K - 2 >= 0, K + 4 - N >= 
         {"(K, N, x, y) : (x + 6 - 2*N >= 0, 2*N - 5 - x >= 0, x + 1 -3*K + N >= 0, N + K - 2 - x >= 0, x - 4 >= 0)",
         {{0, 0, 1, 0, 1}, {0, 1, 0, 0, 0}} // (1 + x, N)
       }
-});
- 
+  });
+}
+
+TEST(IntegerPolyhedronTest, broken) {
   expectSymbolicIntegerLexMin(
     "(a, b, c, d)[i, k, j] : (8*(b floordiv 8) - b == 0, 255 - k >= 0, "
     "255 - a >= 0, 255 - c >= 0, 255 - j - d >= 0, "
