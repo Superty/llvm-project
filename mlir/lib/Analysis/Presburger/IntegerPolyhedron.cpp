@@ -119,20 +119,28 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
 
 IntegerPolyhedron IntegerPolyhedron::extractOutSymbolConstraints() {
   IntegerPolyhedron extractedConstraints(getNumSymbolIds());
-  for (int i = getNumInequalities(); i > 0; --i) {
+  for (unsigned i = getNumInequalities(); i > 0; --i) {
     ArrayRef<int64_t> ineq = getInequality(i - 1);
+    ArrayRef<int64_t> dimCoeffs =
+        ineq.slice(getIdKindOffset(IdKind::SetDim), getNumDimIds());
     ArrayRef<int64_t> symbolCoeffs =
         ineq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
-    if (rangeIsZero(symbolCoeffs)) {
+    ArrayRef<int64_t> localCoeffs =
+        ineq.slice(getIdKindOffset(IdKind::Local), getNumLocalIds());
+    if (rangeIsZero(dimCoeffs) && rangeIsZero(localCoeffs)) {
       extractedConstraints.addInequality(symbolCoeffs, ineq.back());
       removeInequality(i - 1);
     }
   }
-  for (int i = getNumEqualities(); i > 0; --i) {
+  for (unsigned i = getNumEqualities(); i > 0; --i) {
     ArrayRef<int64_t> eq = getEquality(i - 1);
+    ArrayRef<int64_t> dimCoeffs =
+        eq.slice(getIdKindOffset(IdKind::SetDim), getNumDimIds());
     ArrayRef<int64_t> symbolCoeffs =
         eq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
-    if (rangeIsZero(symbolCoeffs)) {
+    ArrayRef<int64_t> localCoeffs =
+        eq.slice(getIdKindOffset(IdKind::Local), getNumLocalIds());
+    if (rangeIsZero(dimCoeffs) && rangeIsZero(localCoeffs)) {
       extractedConstraints.addEquality(symbolCoeffs, eq.back());
       removeEquality(i - 1);
     }
