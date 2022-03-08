@@ -32,6 +32,25 @@ namespace mlir {
 /// space in the underlying SmallVector's capacity.
 class Matrix {
 public:
+  class RowIterator {
+  public:
+    RowIterator(Matrix &matrix, unsigned row);
+    MutableArrayRef<int64_t> operator*() const;
+    RowIterator &operator++();
+  private:
+    Matrix &matrix;
+    unsigned row;
+  };
+  class ConstRowIterator {
+  public:
+    ConstRowIterator(const Matrix &matrix, unsigned row);
+    ArrayRef<int64_t> operator*() const;
+    ConstRowIterator &operator++();
+  private:
+    const Matrix &matrix;
+    unsigned row;
+  };
+
   Matrix() = delete;
 
   /// Construct a matrix with the specified number of rows and columns.
@@ -71,7 +90,8 @@ public:
   /// reallocations.
   void reserveRows(unsigned rows);
 
-  /// Get an ArrayRef corresponding to the specified row.
+  /// Get a (Mutable)ArrayRef corresponding to the specified row.
+  MutableArrayRef<int64_t> getRow(unsigned row);
   ArrayRef<int64_t> getRow(unsigned row) const;
 
   /// Insert columns having positions pos, pos + 1, ... pos + count - 1.
