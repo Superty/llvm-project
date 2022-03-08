@@ -105,6 +105,7 @@ public:
   void removeRow(unsigned pos);
 
   void copyRow(unsigned sourceRow, unsigned targetRow);
+  void copy(ArrayRef<int64_t> range, unsigned row, unsigned column);
 
   void fillRow(unsigned row, int64_t value);
 
