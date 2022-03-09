@@ -117,7 +117,7 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
-/// TODO: handle locals depending only on symbols.
+/// TODO: support extracting locals depending only on symbols.
 IntegerPolyhedron IntegerPolyhedron::extractOutSymbolConstraints() {
   IntegerPolyhedron extractedConstraints(getNumSymbolIds());
   for (unsigned i = getNumInequalities(); i > 0; --i) {

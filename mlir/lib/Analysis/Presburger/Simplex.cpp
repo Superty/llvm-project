@@ -151,22 +151,29 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
   return con.size() - 1;
 }
 
+int64_t gcdRange(ArrayRef<int64_t> range) {
+  int64_t gcd = 0;
+  for (int64_t elem : range) {
+    gcd = llvm::greatestCommonDivisor(gcd, std::abs(elem));
+    if (gcd == 1)
+      return gcd;
+  }
+  return gcd;
+}
+
+int64_t normalizeRange(MutableArrayRef<int64_t> range) {
+  int64_t gcd = gcdRange(range);
+  if (gcd == 0 || gcd == 1)
+    return gcd;
+  for (int64_t &elem : range)
+    elem /= gcd;
+  return gcd;
+}
+
 /// Normalize the row by removing factors that are common between the
 /// denominator and all the numerator coefficients.
 void SimplexBase::normalizeRow(unsigned row) {
-  int64_t gcd = 0;
-  for (unsigned col = 0; col < nCol; ++col) {
-    gcd = llvm::greatestCommonDivisor(gcd, std::abs(tableau(row, col)));
-    // If the gcd becomes 1 then the row is already normalized.
-    if (gcd == 1)
-      return;
-  }
-
-  // Note that the gcd can never become zero since the first element of the row,
-  // the denominator, is non-zero.
-  assert(gcd != 0);
-  for (unsigned col = 0; col < nCol; ++col)
-    tableau(row, col) /= gcd;
+  normalizeRange(tableau.getRow(row));
 }
 
 namespace {
@@ -209,6 +216,19 @@ Optional<unsigned> LexSimplex::maybeGetNonIntegeralVarRow() const {
       return row;
   }
   return {};
+}
+
+void normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom) {
+  int64_t gcd = llvm::greatestCommonDivisor(gcdRange(num), denom);
+  for (int64_t x : num)
+    llvm::errs() << x << ' ';
+  llvm::errs() << "/ " << denom << '\n';
+  for (int64_t &coeff : num)
+    coeff /= gcd;
+  denom /= gcd;
+  for (int64_t x : num)
+    llvm::errs() << x << ' ';
+  llvm::errs() << "/ " << denom << '\n';
 }
 
 MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
@@ -262,13 +282,21 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
     sample.push_back(tableau(row, col));
   sample.push_back(tableau(row, 1));
+  // for (int64_t x : sample)
+  //   llvm::errs() << x << ' ';
+  // llvm::errs() << "\ngcd: ";
+  // normalizeRange(sample);
+  // for (int64_t x : sample)
+  //   llvm::errs() << x << ' ';
+  // llvm::errs() << '\n';
+
   return sample;
 }
 
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
     IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin,
     PresburgerSet &unboundedDomain) {
-  if (empty || domainSimplex.isEmpty())
+  if (empty || domainSimplex.isEmpty() || domainPoly.isIntegerEmpty())
     return;
 
   for (unsigned row = 0; row < nRow; ++row) {
@@ -287,6 +315,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     }
 
     auto paramSample = getRowParamSample(row);
+    normalizeRange(paramSample);
     auto maybeMin =
         domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
     bool nonNegative = maybeMin.isBounded() && *maybeMin >= Fraction(0, 1);
@@ -387,13 +416,15 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
         return;
       }
 
+      int64_t divDenom = denom;
       for (unsigned col = 3; col < 3 + nSymbol; ++col)
         domainDivCoeffs.push_back(mod(tableau(row, col), denom));
       domainDivCoeffs.push_back(mod(tableau(row, 1), denom));
+      normalizeDiv(domainDivCoeffs, divDenom);
       unsigned snapshot = getSnapshot();
       unsigned domainSnapshot = domainSimplex.getSnapshot();
-      domainSimplex.addDivisionVariable(domainDivCoeffs, denom);
-      domainPoly.addLocalFloorDiv(domainDivCoeffs, denom);
+      domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
+      domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
 
       SmallVector<int64_t, 8> ineqCoeffs;
       for (auto x : domainDivCoeffs)
@@ -428,10 +459,11 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    SmallVector<int64_t, 8> divCoeffs;
     for (unsigned col = 3; col < 3 + nSymbol; ++col)
       domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
     domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), denom));
+    int64_t divDenom = denom;
+    normalizeDiv(domainDivCoeffs, denom);
 
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
