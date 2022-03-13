@@ -296,7 +296,7 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
     IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin,
     PresburgerSet &unboundedDomain) {
-  if (empty || domainSimplex.isEmpty() || domainPoly.isIntegerEmpty())
+  if (empty || domainSimplex.isEmpty())
     return;
 
   for (unsigned row = 0; row < nRow; ++row) {
