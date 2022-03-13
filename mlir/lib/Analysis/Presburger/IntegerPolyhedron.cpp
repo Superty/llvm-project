@@ -118,41 +118,53 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
 }
 
 /// TODO: support extracting locals depending only on symbols.
-IntegerPolyhedron IntegerPolyhedron::extractOutSymbolConstraints() {
-  IntegerPolyhedron extractedConstraints(getNumSymbolIds());
-  for (unsigned i = getNumInequalities(); i > 0; --i) {
-    ArrayRef<int64_t> ineq = getInequality(i - 1);
-    ArrayRef<int64_t> dimCoeffs =
-        ineq.slice(getIdKindOffset(IdKind::SetDim), getNumDimIds());
-    ArrayRef<int64_t> symbolCoeffs =
-        ineq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
-    ArrayRef<int64_t> localCoeffs =
-        ineq.slice(getIdKindOffset(IdKind::Local), getNumLocalIds());
-    if (rangeIsZero(dimCoeffs) && rangeIsZero(localCoeffs)) {
-      extractedConstraints.addInequality(symbolCoeffs, ineq.back());
-      removeInequality(i - 1);
-    }
-  }
-  for (unsigned i = getNumEqualities(); i > 0; --i) {
-    ArrayRef<int64_t> eq = getEquality(i - 1);
-    ArrayRef<int64_t> dimCoeffs =
-        eq.slice(getIdKindOffset(IdKind::SetDim), getNumDimIds());
-    ArrayRef<int64_t> symbolCoeffs =
-        eq.slice(getIdKindOffset(IdKind::Symbol), getNumSymbolIds());
-    ArrayRef<int64_t> localCoeffs =
-        eq.slice(getIdKindOffset(IdKind::Local), getNumLocalIds());
-    if (rangeIsZero(dimCoeffs) && rangeIsZero(localCoeffs)) {
-      extractedConstraints.addEquality(symbolCoeffs, eq.back());
-      removeEquality(i - 1);
-    }
-  }
-  return extractedConstraints;
+IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
+  IntegerPolyhedron symbolDomain = *this;
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
+  return symbolDomain;
+}
+
+void removeConstraintsInvolvingIdRange(IntegerPolyhedron &poly, unsigned begin,
+                                       unsigned count) {
+  // We iterate backwards so that whether we remove constraint i - 1 or not, the
+  // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
+  for (unsigned i = poly.getNumEqualities(); i > 0; i--)
+    if (!rangeIsZero(poly.getEquality(i - 1).slice(begin, count)))
+      poly.removeEquality(i - 1);
+  for (unsigned i = poly.getNumInequalities(); i > 0; i--)
+    if (!rangeIsZero(poly.getInequality(i - 1).slice(begin, count)))
+      poly.removeInequality(i - 1);
+}
+
+bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin, unsigned count) {
+  return rangeIsZero(constraint.slice(0, begin)) &&
+         rangeIsZero(constraint.slice(begin + count, constraint.size() - 1 - (begin + count)));
+}
+
+void removeConstraintsInvolvingOnlyIdRange(IntegerPolyhedron &poly, unsigned begin,
+                                       unsigned count) {
+  // We iterate backwards so that whether we remove constraint i - 1 or not, the
+  // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
+  for (unsigned i = poly.getNumEqualities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getEquality(i - 1), begin, count))
+      poly.removeEquality(i - 1);
+  for (unsigned i = poly.getNumInequalities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getInequality(i - 1), begin, count))
+      poly.removeInequality(i - 1);
 }
 
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
     PresburgerSet &unboundedDomain) const {
+  IntegerPolyhedron symbolDomain = getSymbolDomainOverapprox();
+
   IntegerPolyhedron copy = *this;
-  IntegerPolyhedron symbolDomain = copy.extractOutSymbolConstraints();
+  removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
+
   PWMAFunction result =
       LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
@@ -659,20 +671,6 @@ Matrix IntegerPolyhedron::getBoundedDirections() const {
   }
 
   return dirs;
-}
-
-void removeConstraintsInvolvingIdRange(IntegerPolyhedron &poly, unsigned begin,
-                                       unsigned count) {
-  // We iterate backwards so that whether we remove constraint i - 1 or not, the
-  // next constraint to be tested is always i - 2.
-  //
-  // We use i > 0 and index into i - 1 to avoid sign issues.
-  for (unsigned i = poly.getNumEqualities(); i > 0; i--)
-    if (!rangeIsZero(poly.getEquality(i - 1).slice(begin, count)))
-      poly.removeEquality(i - 1);
-  for (unsigned i = poly.getNumInequalities(); i > 0; i--)
-    if (!rangeIsZero(poly.getInequality(i - 1).slice(begin, count)))
-      poly.removeInequality(i - 1);
 }
 
 bool IntegerPolyhedron::isIntegerEmpty() const {
