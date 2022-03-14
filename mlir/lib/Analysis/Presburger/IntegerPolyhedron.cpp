@@ -65,6 +65,13 @@ void IntegerPolyhedron::append(const IntegerPolyhedron &other) {
   }
 }
 
+IntegerPolyhedron IntegerPolyhedron::intersect(IntegerPolyhedron other) const {
+  IntegerPolyhedron result = *this;
+  result.mergeLocalIds(other);
+  result.append(other);
+  return result;
+}
+
 bool IntegerPolyhedron::isEqual(const IntegerPolyhedron &other) const {
   return PresburgerSet(*this).isEqual(PresburgerSet(other));
 }
@@ -122,6 +129,13 @@ IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
   IntegerPolyhedron symbolDomain = *this;
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
+  symbolDomain.turnAllIdsIntoDimIds();
+
+  // IntegerPolyhedron exactSymbolDomain = *this;
+  // exactSymbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
+  // exactSymbolDomain.changeIdKind(IdKind::Symbol, 0, getNumSymbolIds(), IdKind::SetDim);
+  // assert(symbolDomain.isSubsetOf(exactSymbolDomain));
+
   return symbolDomain;
 }
 
@@ -159,9 +173,7 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerPolyhedron &poly, unsigned beg
 }
 
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
-    PresburgerSet &unboundedDomain) const {
-  IntegerPolyhedron symbolDomain = getSymbolDomainOverapprox();
-
+    PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain) const {
   IntegerPolyhedron copy = *this;
   removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
@@ -169,6 +181,11 @@ PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
       LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
   return result;
+}
+
+PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
+    PresburgerSet &unboundedDomain) const {
+  return findSymbolicIntegerLexMin(unboundedDomain, getSymbolDomainOverapprox());
 }
 
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin() const {
@@ -198,22 +215,22 @@ unsigned IntegerPolyhedron::insertId(IdKind kind, unsigned pos, unsigned num) {
   return insertPos;
 }
 
-unsigned IntegerPolyhedron::appendDimId(unsigned num) {
-  unsigned pos = getNumDimIds();
-  insertId(IdKind::SetDim, pos, num);
+unsigned IntegerPolyhedron::appendId(IdKind kind, unsigned num) {
+  unsigned pos = getNumIdKind(kind);
+  insertId(kind, pos, num);
   return pos;
+}
+
+unsigned IntegerPolyhedron::appendDimId(unsigned num) {
+  return appendId(IdKind::SetDim, num);
 }
 
 unsigned IntegerPolyhedron::appendSymbolId(unsigned num) {
-  unsigned pos = getNumSymbolIds();
-  insertId(IdKind::Symbol, pos, num);
-  return pos;
+  return appendId(IdKind::Symbol, num);
 }
 
 unsigned IntegerPolyhedron::appendLocalId(unsigned num) {
-  unsigned pos = getNumLocalIds();
-  insertId(IdKind::Local, pos, num);
-  return pos;
+  return appendId(IdKind::Local, num);
 }
 
 void IntegerPolyhedron::addConstraint(Matrix &constraintMatrix,
@@ -1259,6 +1276,27 @@ void IntegerPolyhedron::removeRedundantLocalVars() {
   }
 }
 
+void IntegerPolyhedron::changeIdKind(IdKind srcKind, unsigned begin,
+                                          unsigned end, IdKind dstKind) {
+  assert(end <= getNumIdKind(srcKind) && "Invalid dim pos range");
+
+  if (begin >= end)
+    return;
+
+  // Append new local variables corresponding to the dimensions to be converted.
+  unsigned newIdsBegin = getIdKindEnd(dstKind);
+  unsigned convertCount = end - begin;
+  appendId(dstKind, convertCount);
+
+  // Swap the new local variables with dimensions.
+  unsigned offset = getIdKindOffset(srcKind);
+  for (unsigned i = 0; i < convertCount; ++i)
+    swapId(offset + begin + i, newIdsBegin + i);
+
+  // Remove dimensions converted to local variables.
+  removeIdRange(srcKind, begin, end);
+}
+
 void IntegerPolyhedron::convertDimToLocal(unsigned dimStart,
                                           unsigned dimLimit) {
   assert(dimLimit <= getNumDimIds() && "Invalid dim pos range");
@@ -1272,6 +1310,7 @@ void IntegerPolyhedron::convertDimToLocal(unsigned dimStart,
   appendLocalId(convertCount);
 
   // Swap the new local variables with dimensions.
+
   for (unsigned i = 0; i < convertCount; ++i)
     swapId(i + dimStart, i + newLocalIdStart);
 

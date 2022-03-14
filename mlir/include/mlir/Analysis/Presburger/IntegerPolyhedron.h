@@ -159,6 +159,7 @@ public:
   /// Appends constraints from `other` into `this`. This is equivalent to an
   /// intersection with no simplification of any sort attempted.
   void append(const IntegerPolyhedron &other);
+  IntegerPolyhedron intersect(IntegerPolyhedron other) const;
 
   /// Return whether `this` and `other` are equal. This is integer-exact
   /// and somewhat expensive, since it uses the integer emptiness check
@@ -223,6 +224,7 @@ public:
   /// of that kind. Return the position of the first appended column. The
   /// coefficient columns corresponding to the added identifiers are initialized
   /// to zero.
+  unsigned appendId(IdKind kind, unsigned num = 1);
   unsigned appendDimId(unsigned num = 1);
   unsigned appendSymbolId(unsigned num = 1);
   unsigned appendLocalId(unsigned num = 1);
@@ -275,6 +277,7 @@ public:
   IntegerPolyhedron getSymbolDomainOverapprox() const;
   PWMAFunction findSymbolicIntegerLexMin() const;
   PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const;
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain) const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);
@@ -470,6 +473,7 @@ public:
   /// Converts identifiers in the column range [idStart, idLimit) to local
   /// variables.
   void convertDimToLocal(unsigned dimStart, unsigned dimLimit);
+  void changeIdKind(IdKind srcKind, unsigned begin, unsigned end, IdKind dstKind);
 
   /// Adds additional local ids to the sets such that they both have the union
   /// of the local ids in each set, without changing the set of points that

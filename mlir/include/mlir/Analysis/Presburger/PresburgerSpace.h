@@ -89,6 +89,11 @@ public:
     return numDomain + numRange + numSymbols + numLocals;
   }
 
+  void turnAllIdsIntoDimIds() {
+    numRange = getNumIds();
+    numDomain = numSymbols = numLocals = 0;
+  }
+
   /// Get the number of ids of the specified kind.
   unsigned getNumIdKind(IdKind kind) const;
 

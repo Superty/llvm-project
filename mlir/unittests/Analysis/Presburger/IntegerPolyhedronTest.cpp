@@ -1197,7 +1197,7 @@ void expectSymbolicIntegerLexMin(
     ArrayRef<StringRef> unboundedDomain) {
   MLIRContext context;
   IntegerPolyhedron poly = parsePoly(polyStr, &context);
-  // poly.dump();
+  // poly.getSymbolDomainOverapprox().dump();
 
   ASSERT_NE(poly.getNumDimIds(), 0u);
   ASSERT_NE(poly.getNumSymbolIds(), 0u);
@@ -1208,7 +1208,9 @@ void expectSymbolicIntegerLexMin(
   PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(
       poly.getNumSymbolIds(), unboundedDomain, &context);
   auto unboundedDomainOutput = PresburgerSet::getEmptySet(0, 0);
-  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);
+  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);//, resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
+
+  // ASSERT_TRUE(output.getDomain().unionSet(unboundedDomainOutput).isSubsetOf(PresburgerSet(poly.getSymbolDomainOverapprox())));
 
   EXPECT_TRUE(output.isEqual(resultF));
   if (!output.isEqual(resultF)) {
@@ -1465,7 +1467,6 @@ TEST(IntegerPolyhedronTest, broken) {
       },
     }
   });
-
 }
 
 static void
