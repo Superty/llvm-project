@@ -126,10 +126,12 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
 
 /// TODO: support extracting locals depending only on symbols.
 IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
+  return IntegerPolyhedron(getNumSymbolIds());
   IntegerPolyhedron symbolDomain = *this;
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
+  symbolDomain.dump();
 
   // IntegerPolyhedron exactSymbolDomain = *this;
   // exactSymbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
