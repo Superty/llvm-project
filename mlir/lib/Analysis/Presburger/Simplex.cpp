@@ -454,8 +454,8 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
 
       int64_t divDenom = denom;
       for (unsigned col = 3; col < 3 + nSymbol; ++col)
-        domainDivCoeffs.push_back(mod(tableau(row, col), denom));
-      domainDivCoeffs.push_back(mod(tableau(row, 1), denom));
+        domainDivCoeffs.push_back(mod(tableau(row, col), divDenom));
+      domainDivCoeffs.push_back(mod(tableau(row, 1), divDenom));
       normalizeDiv(domainDivCoeffs, divDenom);
       unsigned snapshot = getSnapshot();
       unsigned domainSnapshot = domainSimplex.getSnapshot();
@@ -495,17 +495,17 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    for (unsigned col = 3; col < 3 + nSymbol; ++col)
-      domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), denom));
-    domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), denom));
     int64_t divDenom = denom;
-    normalizeDiv(domainDivCoeffs, denom);
+    for (unsigned col = 3; col < 3 + nSymbol; ++col)
+      domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), divDenom));
+    domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), divDenom));
+    normalizeDiv(domainDivCoeffs, divDenom);
 
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     if (!paramCoeffsIntegral) {
-      domainSimplex.addDivisionVariable(domainDivCoeffs, denom);
-      domainPoly.addLocalFloorDiv(domainDivCoeffs, denom);
+      domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
+      domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
 
       appendSymbol();
     }
