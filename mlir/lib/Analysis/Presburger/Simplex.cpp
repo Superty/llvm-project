@@ -322,12 +322,12 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     normalizeRange(paramSample);
     auto maybeMin =
         domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
-    bool nonNegative = maybeMin.isBounded() && *maybeMin >= Fraction(0, 1);
+    bool nonNegative = maybeMin.isBounded() && *maybeMin > Fraction(-1, 1);
     if (nonNegative)
       continue;
 
     auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
-    bool negative = maybeMax.isBounded() && *maybeMax < Fraction(0, 1);
+    bool negative = maybeMax.isBounded() && *maybeMax <= Fraction(-1, 1);
 
     if (negative) {
       auto status = moveRowUnknownToColumn(row);
