@@ -473,7 +473,7 @@ public:
   /// Return the integer lexmin of the Simplex. This is intended
   PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain);
   PWMAFunction findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain);
-  void findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
+  void findSymbolicIntegerLexMinRecursively(IntegerPolyhedron &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
 
 protected:
   /// Returns the current sample point, which may contain non-integer (rational)

@@ -264,7 +264,7 @@ PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomai
   PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
                       /*numOutputs=*/var.size() - nSymbol);
   IntegerPolyhedron domainPoly = symbolDomain;
-  Simplex domainSimplex(domainPoly);
+  LexSimplex domainSimplex(domainPoly);
   unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
   findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                        unboundedDomain);
@@ -274,6 +274,29 @@ PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomai
 PWMAFunction LexSimplex::findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain) {
   auto unboundedDomain = PresburgerSet::getEmptySet(/*numDims=*/nSymbol);
   return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
+}
+
+/// Return `coeffs` with all the elements negated.
+inline SmallVector<int64_t, 8> getNegatedCoeffs(ArrayRef<int64_t> coeffs) {
+  SmallVector<int64_t, 8> negatedCoeffs;
+  negatedCoeffs.reserve(coeffs.size());
+  for (int64_t coeff : coeffs)
+    negatedCoeffs.emplace_back(-coeff);
+  return negatedCoeffs;
+}
+
+/// Return the complement of the given inequality.
+///
+/// The complement of a_1 x_1 + ... + a_n x_ + c >= 0 is
+/// a_1 x_1 + ... + a_n x_ + c < 0, i.e., -a_1 x_1 - ... - a_n x_ - c - 1 >= 0,
+/// since all the variables are constrained to be integers.
+inline SmallVector<int64_t, 8> getComplementIneq(ArrayRef<int64_t> ineq) {
+  SmallVector<int64_t, 8> coeffs;
+  coeffs.reserve(ineq.size());
+  for (int64_t coeff : ineq)
+    coeffs.emplace_back(-coeff);
+  --coeffs.back();
+  return coeffs;
 }
 
 SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
@@ -294,9 +317,9 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
 }
 
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
-    IntegerPolyhedron &domainPoly, Simplex &domainSimplex, PWMAFunction &lexmin,
+    IntegerPolyhedron &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin,
     PresburgerSet &unboundedDomain) {
-  if (empty || domainSimplex.isEmpty())
+  if (empty || domainSimplex.findIntegerLexMin().isEmpty())
     return;
 
   for (unsigned row = 0; row < nRow; ++row) {
@@ -320,16 +343,25 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     assert(tableau(row, 2) == 0);
     auto paramSample = getRowParamSample(row);
     normalizeRange(paramSample);
-    auto maybeMin =
-        domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
-    bool nonNegative = maybeMin.isBounded() && *maybeMin > Fraction(-1, 1);
-    if (nonNegative)
+
+    unsigned snapshot = domainSimplex.getSnapshot();
+    domainSimplex.addInequality(getComplementIneq(paramSample));
+    // auto maybeMin =
+    //     domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
+    // bool nonNegative = maybeMin.isBounded() && *maybeMin > Fraction(-1, 1);
+    bool alwaysNonNegative = domainSimplex.findIntegerLexMin().isEmpty();
+    domainSimplex.rollback(snapshot);
+    if (alwaysNonNegative)
       continue;
 
-    auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
-    bool negative = maybeMax.isBounded() && *maybeMax <= Fraction(-1, 1);
+    snapshot = domainSimplex.getSnapshot();
+    // auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
+    // bool negative = maybeMax.isBounded() && *maybeMax <= Fraction(-1, 1);
 
-    if (negative) {
+    domainSimplex.addInequality(paramSample);
+    bool alwaysNegative = domainSimplex.findIntegerLexMin().isEmpty();
+    domainSimplex.rollback(snapshot);
+    if (alwaysNegative) {
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
@@ -338,7 +370,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    unsigned snapshot = getSnapshot();
+    snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     domainSimplex.addInequality(paramSample);
     domainPoly.addInequality(paramSample);
