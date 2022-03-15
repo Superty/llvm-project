@@ -177,7 +177,7 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerPolyhedron &poly, unsigned beg
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
     PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain) const {
   IntegerPolyhedron copy = *this;
-  removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
+  // removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
   PWMAFunction result =
       LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);

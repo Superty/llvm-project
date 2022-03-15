@@ -1208,7 +1208,7 @@ void expectSymbolicIntegerLexMin(
   PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(
       poly.getNumSymbolIds(), unboundedDomain, &context);
   auto unboundedDomainOutput = PresburgerSet::getEmptySet(0, 0);
-  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput, parsePoly("(k, j) : (255 - k >= 0, j - 248 >= 0, 254 - j >= 0, k - j >= 0, k >= 0)", &context));//, resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
+  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);//, resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
 
   // ASSERT_TRUE(output.getDomain().unionSet(unboundedDomainOutput).isSubsetOf(PresburgerSet(poly.getSymbolDomainOverapprox())));
 
@@ -1469,14 +1469,14 @@ TEST(IntegerPolyhedronTest, broken) {
   // });
 
   expectSymbolicIntegerLexMin(
-    "(a, b, c, d)[k, j] : (j - 248 >= 0, 254 - j >= 0, 8*(b floordiv 8) - b == 0, 255 - k >= 0, "
+    "(a, b, c, d)[k, j] : (j - 248 >= 0, 254 - j >= 0, k - j >= 0, 8*(b floordiv 8) - b == 0, 255 - k >= 0, "
     "255 - a >= 0, 255 - c >= 0, 255 - j - d >= 0, "
     "7*d + j - 255 >= 0, 7 - 7*d >= 0, 239 + a - 240*d >= 0, "
     "247 + k - j - 247*d >= 0, 247 + k - b - 247*d >= 0, "
     "247 -247*d >= 0, 248*d + b - 248 >= 0, c - 248*d >= 0, "
     "254*d + a - b >= 0, 254*d + a - b >= 0, "
     "255*d - a + b >= 0, 1792*d + 63736 - 257*b >= 0)", {
-    {"(k, j) : (255 - k >= 0, j - 248 >= 0, 254 - j >= 0)", {
+    {"(k, j) : (255 - k >= 0, j - 248 >= 0, 254 - j >= 0, k - j >= 0)", {
         {0, 0, 1}, {0, 0, 0}, {0, 0, 248}, {0, 0, 1} // (-127762 + i + 502j, -62992 + 248j, 63240 - 248j, 255 - j)
       },
     }
