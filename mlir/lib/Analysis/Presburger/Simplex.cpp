@@ -302,9 +302,6 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
-
-    if (tableau(row, 2) > 0) // nonNegative
-      continue;
     if (tableau(row, 2) < 0) { // negative
       auto status = moveRowUnknownToColumn(row);
       if (failed(status))
@@ -313,7 +310,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
                                            unboundedDomain);
       return;
     }
+  }
 
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+    if (tableau(row, 2) > 0) // nonNegative
+      continue;
+    assert(tableau(row, 2) == 0);
     auto paramSample = getRowParamSample(row);
     normalizeRange(paramSample);
     auto maybeMin =
