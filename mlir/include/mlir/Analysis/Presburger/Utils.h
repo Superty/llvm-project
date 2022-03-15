@@ -14,7 +14,9 @@
 #define MLIR_ANALYSIS_PRESBURGER_UTILS_H
 
 #include "mlir/Support/LLVM.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Support/MathExtras.h"
 
 namespace mlir {
 
@@ -130,6 +132,29 @@ void removeDuplicateDivs(
     std::vector<SmallVector<int64_t, 8>> &divs,
     SmallVectorImpl<unsigned> &denoms, unsigned localOffset,
     llvm::function_ref<bool(unsigned i, unsigned j)> merge);
+
+inline int64_t gcdRange(ArrayRef<int64_t> range) {
+  int64_t gcd = 0;
+  for (int64_t elem : range) {
+    gcd = llvm::greatestCommonDivisor(gcd, std::abs(elem));
+    if (gcd == 1)
+      return gcd;
+  }
+  return gcd;
+}
+
+inline void divideRange(MutableArrayRef<int64_t> range, int64_t divisor) {
+  for (int64_t &elem : range)
+    elem /= divisor;
+}
+
+inline int64_t normalizeRange(MutableArrayRef<int64_t> range) {
+  int64_t gcd = gcdRange(range);
+  if (gcd == 0 || gcd == 1)
+    return gcd;
+  divideRange(range, gcd);
+  return gcd;
+}
 
 } // namespace presburger_utils
 } // namespace mlir

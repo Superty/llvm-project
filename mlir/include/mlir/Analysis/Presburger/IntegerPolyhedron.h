@@ -138,6 +138,15 @@ public:
     return IntegerPolyhedron(numDims, numSymbols);
   }
 
+  static IntegerPolyhedron getEmpty(unsigned numDims = 0, unsigned numSymbols = 0, unsigned numLocals = 0) {
+    IntegerPolyhedron result(numDims, numSymbols, numLocals);
+
+    SmallVector<int64_t, 8> ineq(result.getNumCols());
+    ineq.back() = -1;
+    result.addInequality(ineq);
+    return result;
+  }
+
   /// Return the kind of this IntegerPolyhedron.
   virtual Kind getKind() const { return Kind::IntegerPolyhedron; }
 
@@ -210,6 +219,15 @@ public:
     return inequalities.getRow(idx);
   }
 
+  inline MutableArrayRef<int64_t> getEquality(unsigned idx) {
+    return equalities.getRow(idx);
+  }
+
+  inline MutableArrayRef<int64_t> getInequality(unsigned idx) {
+    return inequalities.getRow(idx);
+  }
+
+
   /// Insert `num` identifiers of the specified kind at position `pos`.
   /// Positions are relative to the kind of identifier. The coefficient columns
   /// corresponding to the added identifiers are initialized to zero. Return the
@@ -273,6 +291,12 @@ public:
   /// robust and should be preferred.
   presburger_utils::MaybeOptimum<SmallVector<int64_t, 8>>
   findIntegerLexMin() const;
+
+  void normalizeInequalities();
+  void normalizeEqualities();
+  void addConstToDivId(unsigned pos, int64_t delta, int64_t denom, const presburger_utils::MaybeLocalRepr &repr);
+  void simplifyDivs();
+  void simplify();
 
   IntegerPolyhedron getSymbolDomainOverapprox() const;
   PWMAFunction findSymbolicIntegerLexMin() const;

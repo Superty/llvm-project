@@ -151,25 +151,6 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
   return con.size() - 1;
 }
 
-int64_t gcdRange(ArrayRef<int64_t> range) {
-  int64_t gcd = 0;
-  for (int64_t elem : range) {
-    gcd = llvm::greatestCommonDivisor(gcd, std::abs(elem));
-    if (gcd == 1)
-      return gcd;
-  }
-  return gcd;
-}
-
-int64_t normalizeRange(MutableArrayRef<int64_t> range) {
-  int64_t gcd = gcdRange(range);
-  if (gcd == 0 || gcd == 1)
-    return gcd;
-  for (int64_t &elem : range)
-    elem /= gcd;
-  return gcd;
-}
-
 /// Normalize the row by removing factors that are common between the
 /// denominator and all the numerator coefficients.
 void SimplexBase::normalizeRow(unsigned row) {

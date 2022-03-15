@@ -124,16 +124,158 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
+void IntegerPolyhedron::normalizeEqualities() {
+  for (unsigned i = getNumEqualities(); i > 0; --i) {
+    MutableArrayRef<int64_t> eq = getEquality(i - 1);
+    int64_t gcd = gcdRange(eq.drop_back());
+    if (gcd == 0) {
+      if (eq.back() == 0) {
+        removeEquality(i - 1);
+        i++;
+        continue;
+      } 
+
+      *this = IntegerPolyhedron::getEmpty(getNumDimIds(), getNumSymbolIds(), getNumLocalIds());
+      return;
+    } 
+
+    if (eq.back() % gcd != 0) {
+      *this = IntegerPolyhedron::getEmpty(getNumDimIds(), getNumSymbolIds(), getNumLocalIds());
+      return;
+    }
+
+    for (int64_t &coeff : eq)
+      coeff /= gcd;
+  }
+}
+
+void IntegerPolyhedron::normalizeInequalities() {
+  for (unsigned i = getNumInequalities(); i > 0; --i) {
+    MutableArrayRef<int64_t> ineq = getInequality(i - 1);
+    int64_t gcd = gcdRange(ineq.drop_back());
+    if (gcd == 0) {
+      if (ineq.back() >= 0) {
+        removeInequality(i - 1);
+        i++;
+        continue;
+      }
+
+      *this = IntegerPolyhedron::getEmpty(getNumDimIds(), getNumSymbolIds(), getNumLocalIds());
+      return;
+    }
+
+    for (int64_t &coeff : ineq.drop_back())
+      coeff /= gcd;
+    // gx >= c
+    // iff x >= ceil(c/g) (integers)
+    // iff x - ceil(c/g) >= 0
+    // iff x + floor(-c/g) >= 0
+    floorDiv(ineq.back(), gcd);
+  }
+}
+
+void IntegerPolyhedron::addConstToDivId(unsigned pos, int64_t delta, int64_t denom, const MaybeLocalRepr &repr) {
+  // d = denom
+  // q -> q + delta/d
+  // a*q + c -> a*(q + delta/d) + c - a*delta/d
+  unsigned constColumn = getNumCols() - 1;
+  unsigned offset = getIdKindOffset(IdKind::Local);
+  for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
+    if (repr.kind == ReprKind::Inequality) {
+      // 0 <= ax + c - dq <= d - 1
+      // 0 <= ax + c + delta - dq <= d - 1
+      if (i == repr.repr.inequalityPair.lowerBoundIdx) {
+        atIneq(i, constColumn) -= delta;
+        continue;
+      }
+      if (i == repr.repr.inequalityPair.upperBoundIdx) {
+        atIneq(i, constColumn) += delta;
+        continue;
+      }
+    }
+    int64_t a = atIneq(i, offset + pos);
+    atIneq(i, constColumn) -= a*(delta/denom);
+  }
+
+  for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
+    if (repr.kind == ReprKind::Equality &&
+        repr.repr.equalityIdx == i) {
+      // ax + c - dq == 0
+      // ax + c + delta - dq == 0
+      atEq(i, constColumn) += delta;
+      continue;
+    }
+    int64_t a = atEq(i, offset + pos);
+    atEq(i, constColumn) -= a*(delta/denom);
+  }
+}
+
+void IntegerPolyhedron::simplifyDivs() {
+  std::vector<MaybeLocalRepr> repr;
+  std::vector<SmallVector<int64_t, 8>> divs;
+  SmallVector<unsigned, 4> denoms;
+  getLocalReprs(divs, denoms, repr);
+
+  for (unsigned i = 0, e = getNumLocalIds(); i < e; ++i) {
+    if (!repr[i])
+      continue;
+
+    int64_t denom = denoms[i];
+
+    // change (c + g*num)/g*d ---> (c/g + num)/d
+    // c/(gd) - (c/g)/d
+    // = (c - g(c/g))/gd
+    // = (c % g)/gd = 0
+    MutableArrayRef<int64_t> coeffs = divs[i];
+    coeffs = coeffs.drop_back();
+
+    int64_t gcd = llvm::greatestCommonDivisor(denom, gcdRange(coeffs));
+    assert(gcd != 0 && "GCD cannot be zero since denom must be non-zero!");
+    divideRange(coeffs, denom);
+    floorDiv(divs[i].back(), denom);
+
+    // Normalize const between denom/2 - (denom - 1) to denom/2.
+    // e.g. denom=7: -3 to 3
+    // e.g. denom=6: -2 to 3
+    int64_t low = denom/2 - (denom - 1);
+    int64_t high = denom/2;
+
+    int64_t constant = divs[i].back();
+    if (low <= constant && constant <= high)
+      continue;
+    int64_t newConstant = constant % denom;
+    if (newConstant > high)
+      newConstant -= denom;
+
+    addConstToDivId(i, newConstant - constant, denom, repr[i]);
+  }
+
+  // Merge function that merges the local variables in both sets by treating
+  // them as the same identifier.
+  auto merge = [this](unsigned i, unsigned j) -> bool {
+    eliminateRedundantLocalId(i, j);
+    return true;
+  };
+  unsigned localOffset = getIdKindOffset(IdKind::Local);
+  removeDuplicateDivs(divs, denoms, localOffset, merge);
+}
+
+void IntegerPolyhedron::simplify() {
+  normalizeEqualities();
+  normalizeInequalities();
+  simplifyDivs();
+}
+
 /// TODO: support extracting locals depending only on symbols.
 IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
   IntegerPolyhedron symbolDomain = *this;
-  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
+  // symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
+  // IntegerPolyhedron exactSymbolDomain = *this;
+  symbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
+  symbolDomain.changeIdKind(IdKind::Symbol, 0, getNumSymbolIds(), IdKind::SetDim);
+  symbolDomain.simplify();
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
-
-  // IntegerPolyhedron exactSymbolDomain = *this;
-  // exactSymbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
-  // exactSymbolDomain.changeIdKind(IdKind::Symbol, 0, getNumSymbolIds(), IdKind::SetDim);
   // assert(symbolDomain.isSubsetOf(exactSymbolDomain));
 
   return symbolDomain;
