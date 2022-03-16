@@ -307,6 +307,7 @@ protected:
     RemoveLastVariable,
     UnmarkEmpty,
     UnmarkLastRedundant,
+    UnmarkLastEquality,
     RestoreBasis
   };
 
@@ -320,12 +321,11 @@ protected:
   /// Undo the operation represented by the log entry.
   void undo(UndoLogEntry entry);
 
-  /// Return the number of fixed columns, as described in the constructor above,
-  /// this is the number of columns beyond those for the variables in var.
-  unsigned getNumFixedCols() const { return usingBigM ? 3u : 2u; }
-
   /// Stores whether or not a big M column is present in the tableau.
   const bool usingBigM;
+
+  /// denom + const + maybe M + equality columns
+  unsigned numFixedCols;
 
   /// The number of rows in the tableau.
   unsigned nRow;
@@ -463,6 +463,8 @@ public:
   void addInequality(ArrayRef<int64_t> coeffs) final {
     addRow(coeffs, /*makeRestricted=*/true);
   }
+
+  void addEquality(ArrayRef<int64_t> coeffs);
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }

@@ -20,25 +20,30 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
                          unsigned nSymbol)
-    : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
+    : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0), nCol(numFixedCols + nVar),
       nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
-  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
+  colUnknown.insert(colUnknown.begin(), numFixedCols, nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
-                     /*pos=*/getNumFixedCols() + i);
+                     /*pos=*/numFixedCols + i);
     colUnknown.push_back(i);
   }
   for (unsigned i = 0; i < nSymbol; ++i) {
     var[symbolOffset + i].isSymbol = true;
-    swapColumns(var[symbolOffset + i].pos, getNumFixedCols() + i);
+    swapColumns(var[symbolOffset + i].pos, numFixedCols + i);
   }
+  numFixedCols += nSymbol;
 }
 
 void SimplexBase::appendSymbol() {
   appendVariable();
   swapColumns(3 + nSymbol, nCol - 1);
-  var.back().isSymbol = true;
   nSymbol++;
+  if (numFixedCols > 3 + nSymbol)
+    swapColumns(numFixedCols, nCol - 1);
+  numFixedCols++;
+  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
+  var.back().isSymbol = true;
 }
 
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
@@ -436,7 +441,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     }
 
     bool otherCoeffsIntegral = true;
-    for (unsigned col = 3 + nSymbol; col < nCol; ++col) {
+    for (unsigned col = numFixedCols; col < nCol; ++col) {
       if (mod(tableau(row, col), denom) != 0) {
         otherCoeffsIntegral = false;
         break;
@@ -528,10 +533,10 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     }
 
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
-    assert(succeeded(success));
 
-    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                         unboundedDomain);
+    if (succeeded(success))
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
 
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
@@ -668,7 +673,7 @@ void LexSimplex::restoreRationalConsistency() {
 // minimizes the change in sample value.
 LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
-  for (unsigned col = 3 + nSymbol; col < nCol; ++col) {
+  for (unsigned col = numFixedCols; col < nCol; ++col) {
     if (tableau(row, col) <= 0)
       continue;
     maybeColumn =
@@ -838,7 +843,8 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+  assert(pivotCol >= numFixedCols && "Refusing to pivot invalid column");
+  assert(!unknownFromColumn(pivotCol).isSymbol);
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -1151,6 +1157,8 @@ void SimplexBase::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
+  } else if (entry == UndoLogEntry::UnmarkLastEquality) {
+    numFixedCols--;
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
 
@@ -1161,7 +1169,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
       Unknown &u = unknownFromIndex(index);
       if (u.orientation == Orientation::Column)
         continue;
-      for (unsigned col = getNumFixedCols(); col < nCol; col++) {
+      for (unsigned col = numFixedCols; col < nCol; col++) {
         assert(colUnknown[col] != nullIndex &&
                "Column should not be a fixed column!");
         if (std::find(basis.begin(), basis.end(), colUnknown[col]) !=
@@ -1472,6 +1480,18 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
     }
   }
   return sample;
+}
+
+void LexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
+  const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
+  Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
+  if (!pivotCol)
+    return;
+
+  pivot(u.pos, *pivotCol);
+  swapColumns(*pivotCol, numFixedCols);
+  numFixedCols++;
+  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
 }
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::getRationalSample() const {
