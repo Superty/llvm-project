@@ -1064,6 +1064,15 @@ Optional<unsigned> SimplexBase::findAnyPivotRow(unsigned col) {
   return {};
 }
 
+// This doesn't find a pivot column only if the row has zero coefficients for every column
+// not marked as an equality.
+Optional<unsigned> SimplexBase::findAnyPivotCol(unsigned row) {
+  for (unsigned col = numFixedCols; col < nCol; ++col)
+    if (tableau(row, col) != 0)
+      return col;
+  return {};
+}
+
 // It's not valid to remove the constraint by deleting the column since this
 // would result in an invalid basis.
 void Simplex::undoLastConstraint() {

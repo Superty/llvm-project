@@ -252,6 +252,15 @@ protected:
   /// coefficient for it.
   Optional<unsigned> findAnyPivotRow(unsigned col);
 
+  /// Return any column that this row can be pivoted with, ignoring tableau
+  /// consistency. Equality rows are not considered.
+  ///
+  /// Returns an empty optional if no pivot is possible, which happens only when
+  /// the column unknown is a variable and no constraint has a non-zero
+  /// coefficient for it.
+  Optional<unsigned> findAnyPivotCol(unsigned row);
+
+
   /// Swap the row with the column in the tableau's data structures but not the
   /// tableau itself. This is used by pivot.
   void swapRowWithCol(unsigned row, unsigned col);
