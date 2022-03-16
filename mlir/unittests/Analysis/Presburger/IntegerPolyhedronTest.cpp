@@ -1190,6 +1190,13 @@ TEST(IntegerPolyhedronTest, findIntegerLexMin) {
                                   &context));
 }
 
+int64_t maxAbsRange(ArrayRef<int64_t> range) {
+  int64_t max = 0;
+  for (int64_t elem : range)
+    max = std::max(max, std::abs(elem));
+  return max;
+}
+
 void expectSymbolicIntegerLexMin(
     StringRef polyStr,
     ArrayRef<std::pair<StringRef, SmallVector<SmallVector<int64_t, 8>, 8>>>

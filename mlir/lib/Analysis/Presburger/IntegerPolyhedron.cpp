@@ -124,13 +124,36 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
+int64_t maxAbsRange(ArrayRef<int64_t> range) {
+  int64_t max = 0;
+  for (int64_t elem : range)
+    max = std::max(max, std::abs(elem));
+  return max;
+}
+
 /// TODO: support extracting locals depending only on symbols.
 IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
-  return IntegerPolyhedron(getNumSymbolIds());
+  // return IntegerPolyhedron(getNumSymbolIds());
   IntegerPolyhedron symbolDomain = *this;
+  int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(), symbolDomain.inequalities.getMaxAbsElem());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
+  for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
+    if (maxAbsRange(symbolDomain.getInequality(j - 1)) > max) {
+      symbolDomain.removeInequality(j - 1);
+      ++j;
+      continue;
+    }
+  }
+  for (unsigned j = symbolDomain.getNumEqualities(); j > 0; --j) {
+    if (maxAbsRange(symbolDomain.getEquality(j - 1)) > max) {
+      symbolDomain.removeEquality(j - 1);
+      ++j;
+      continue;
+    }
+  }
+
   symbolDomain.dump();
 
   // IntegerPolyhedron exactSymbolDomain = *this;

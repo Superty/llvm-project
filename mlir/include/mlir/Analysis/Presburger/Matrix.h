@@ -161,6 +161,8 @@ public:
   /// Add an extra row at the bottom of the matrix and return its position.
   unsigned appendExtraRow();
 
+  int64_t getMaxAbsElem() const;
+
   /// Print the matrix.
   void print(raw_ostream &os) const;
   void dump() const;
