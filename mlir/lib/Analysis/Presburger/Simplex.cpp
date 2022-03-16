@@ -532,6 +532,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       tableau(nRow - 1, 3 + nSymbol - 1) = denom;
     }
 
+    llvm::errs() << "nRow = " << tableau.getNumRows() << "; ";
+    if (!paramCoeffsIntegral)
+      llvm::errs() << "parametric: ";
+    llvm::errs() << "cut for " << row << ": ";
+    for (int64_t coeff : tableau.getRow(nRow - 1))
+      llvm::errs() << coeff << ' ';
+    llvm::errs() << '\n';
+
     LogicalResult success = moveRowUnknownToColumn(nRow - 1);
 
     if (succeeded(success))
@@ -549,6 +557,8 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     return;
   }
 
+  llvm::errs() << "output with domain:";
+  domainPoly.dump();
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {

@@ -1215,6 +1215,23 @@ void expectSymbolicIntegerLexMin(
   PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(
       poly.getNumSymbolIds(), unboundedDomain, &context);
   auto unboundedDomainOutput = PresburgerSet::getEmptySet(0, 0);
+  // auto domain = parsePoly("(i, k, j, e) : (255 - k >= 0, 247 + i - 247*e >= 0, 509*e + i >= 0, 255 - j - e >= 0, 7*e - 255 + j >= 0, 7 - i - 7*e >= 0, 247 + k - j - 247*e >= 0)", &context);
+  // int64_t max = 0;
+  // for (unsigned j = 0, e = domain.getNumInequalities(); j < e; ++j)
+  //   max = std::max(max, maxAbsRange(domain.getInequality(j)));
+  // domain.projectOut(3);
+  // for (unsigned j = domain.getNumInequalities(); j > 0; --j) {
+  //   if (maxAbsRange(domain.getInequality(j - 1)) > 100*max) {
+  //     domain.removeInequality(j - 1);
+  //     ++j;
+  //     continue;
+  //   }
+  // }
+  // domain.dump();
+
+
+  auto domain = parsePoly("(k, j) : (j - 248 >= 0, 254 - j >= 0, k - j >= 0, 255 - k >= 0)", &context);
+
   PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);//, resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
 
   // ASSERT_TRUE(output.getDomain().unionSet(unboundedDomainOutput).isSubsetOf(PresburgerSet(poly.getSymbolDomainOverapprox())));

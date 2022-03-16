@@ -139,6 +139,8 @@ IntegerPolyhedron IntegerPolyhedron::getSymbolDomainOverapprox() const {
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
+
+  llvm::errs() << "max = " << max << '\n';
   for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
     if (maxAbsRange(symbolDomain.getInequality(j - 1)) > max) {
       symbolDomain.removeInequality(j - 1);
@@ -200,7 +202,7 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerPolyhedron &poly, unsigned beg
 PWMAFunction IntegerPolyhedron::findSymbolicIntegerLexMin(
     PresburgerSet &unboundedDomain, const IntegerPolyhedron &symbolDomain) const {
   IntegerPolyhedron copy = *this;
-  // removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
+  removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
   PWMAFunction result =
       LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
