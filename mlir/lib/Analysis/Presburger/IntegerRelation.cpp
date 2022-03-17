@@ -1149,7 +1149,29 @@ void IntegerRelation::removeRedundantLocalVars() {
   }
 }
 
-void IntegerRelation::convertDimToLocal(unsigned dimStart, unsigned dimLimit) {
+void IntegerRelation::changeIdKind(IdKind srcKind, unsigned begin,
+                                          unsigned end, IdKind dstKind) {
+  assert(end <= getNumIdKind(srcKind) && "Invalid dim pos range");
+
+  if (begin >= end)
+    return;
+
+  // Append new local variables corresponding to the dimensions to be converted.
+  unsigned newIdsBegin = getIdKindEnd(dstKind);
+  unsigned convertCount = end - begin;
+  appendId(dstKind, convertCount);
+
+  // Swap the new local variables with dimensions.
+  unsigned offset = getIdKindOffset(srcKind);
+  for (unsigned i = 0; i < convertCount; ++i)
+    swapId(offset + begin + i, newIdsBegin + i);
+
+  // Remove dimensions converted to local variables.
+  removeIdRange(srcKind, begin, end);
+}
+
+void IntegerRelation::convertDimToLocal(unsigned dimStart,
+                                          unsigned dimLimit) {
   assert(dimLimit <= getNumDimIds() && "Invalid dim pos range");
 
   if (dimStart >= dimLimit)

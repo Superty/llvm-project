@@ -396,6 +396,7 @@ public:
   /// Converts identifiers in the column range [idStart, idLimit) to local
   /// variables.
   void convertDimToLocal(unsigned dimStart, unsigned dimLimit);
+  void changeIdKind(IdKind srcKind, unsigned begin, unsigned end, IdKind dstKind);
 
   /// Adds additional local ids to the sets such that they both have the union
   /// of the local ids in each set, without changing the set of points that
