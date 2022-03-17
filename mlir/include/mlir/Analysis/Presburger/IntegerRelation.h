@@ -94,6 +94,7 @@ public:
   /// Appends constraints from `other` into `this`. This is equivalent to an
   /// intersection with no simplification of any sort attempted.
   void append(const IntegerRelation &other);
+  IntegerRelation intersect(IntegerRelation other) const;
 
   /// Return whether `this` and `other` are equal. This is integer-exact
   /// and somewhat expensive, since it uses the integer emptiness check
