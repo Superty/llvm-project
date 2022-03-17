@@ -789,6 +789,13 @@ bool IntegerRelation::containsPoint(ArrayRef<int64_t> point) const {
   return true;
 }
 
+bool IntegerRelation::containsPointNoLocal(ArrayRef<int64_t> point) const {
+  assert(point.size() == getNumIds() - getNumLocalIds());
+  auto copy = *this;
+  copy.setAndEliminate(0, point);
+  return !copy.isIntegerEmpty();
+}
+
 void IntegerRelation::getLocalReprs(std::vector<MaybeLocalRepr> &repr) const {
   std::vector<SmallVector<int64_t, 8>> dividends(getNumLocalIds());
   SmallVector<unsigned, 4> denominators(getNumLocalIds());

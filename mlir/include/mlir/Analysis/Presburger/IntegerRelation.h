@@ -268,6 +268,7 @@ public:
   /// Note: currently, if the relation contains local ids, the values of
   /// the local ids must also be provided.
   bool containsPoint(ArrayRef<int64_t> point) const;
+  bool containsPointNoLocal(ArrayRef<int64_t> point) const;
 
   /// Find equality and pairs of inequality contraints identified by their
   /// position indices, using which an explicit representation for each local
