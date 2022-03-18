@@ -208,15 +208,9 @@ Optional<unsigned> LexSimplex::maybeGetNonIntegeralVarRow() const {
 
 void normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom) {
   int64_t gcd = llvm::greatestCommonDivisor(gcdRange(num), denom);
-  // for (int64_t x : num)
-  //   llvm::errs() << x << ' ';
-  // llvm::errs() << "/ " << denom << '\n';
   for (int64_t &coeff : num)
     coeff /= gcd;
   denom /= gcd;
-  // for (int64_t x : num)
-  //   llvm::errs() << x << ' ';
-  // llvm::errs() << "/ " << denom << '\n';
 }
 
 MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
@@ -270,14 +264,6 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
     sample.push_back(tableau(row, col));
   sample.push_back(tableau(row, 1));
-  // for (int64_t x : sample)
-  //   llvm::errs() << x << ' ';
-  // llvm::errs() << "\ngcd: ";
-  // normalizeRange(sample);
-  // for (int64_t x : sample)
-  //   llvm::errs() << x << ' ';
-  // llvm::errs() << '\n';
-
   return sample;
 }
 
