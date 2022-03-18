@@ -1152,7 +1152,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
     nRedundant--;
   } else if (entry == UndoLogEntry::UnmarkLastEquality) {
     numFixedCols--;
-    assert(numFixedCols >= 2 + mustUseBigM + nSymbol && "The denominator, constant, big M and symbols are always fixed!");
+    assert(numFixedCols >= 2 + usingBigM + nSymbol && "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
 
