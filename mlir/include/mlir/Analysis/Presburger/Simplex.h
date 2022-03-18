@@ -18,6 +18,7 @@
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -471,10 +472,17 @@ public:
   MaybeOptimum<SmallVector<Fraction, 8>> findRationalLexMin();
 
   /// Return the lexicographically minimum integer solution to the constraints.
+  /// When symbols are involved, findSymbolicIntegerLexMin should be used
+  /// instead of this function.
   ///
   /// Note: this should be used only when the lexmin is really needed. To obtain
   /// any integer sample, use Simplex::findIntegerSample as that is more robust.
   MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
+
+  /// Return the integer lexmin of the Simplex. This is intended
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain);
+  PWMAFunction findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain);
+  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
 
 protected:
   /// Returns the current sample point, which may contain non-integer (rational)
@@ -484,6 +492,8 @@ protected:
   /// variable has a non-zero big M coefficient, meaning its value is infinite
   /// or unbounded.
   MaybeOptimum<SmallVector<Fraction, 8>> getRationalSample() const;
+
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row);
 
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added

@@ -24,6 +24,10 @@
 namespace mlir {
 namespace presburger {
 
+class PWMAFunction;
+class PresburgerSet;
+class IntegerPolyhedron;
+
 /// An IntegerRelation is a PresburgerLocalSpace subject to affine constraints.
 /// Affine constraints can be inequalities or equalities in the form:
 ///
@@ -201,6 +205,11 @@ public:
   /// robust and should be preferred. Note that Domain is minimized first, then
   /// range.
   MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin() const;
+
+  IntegerRelation getSymbolDomainOverapprox() const;
+  PWMAFunction findSymbolicIntegerLexMin() const;
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const;
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);

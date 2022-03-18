@@ -304,7 +304,7 @@ void presburger::removeDuplicateDivs(
   }
 }
 
-int64_t gcdRange(ArrayRef<int64_t> range) {
+int64_t presburger::gcdRange(ArrayRef<int64_t> range) {
   int64_t gcd = 0;
   for (int64_t elem : range) {
     gcd = llvm::greatestCommonDivisor(gcd, std::abs(elem));
@@ -314,7 +314,7 @@ int64_t gcdRange(ArrayRef<int64_t> range) {
   return gcd;
 }
 
-int64_t normalizeRange(MutableArrayRef<int64_t> range) {
+int64_t presburger::normalizeRange(MutableArrayRef<int64_t> range) {
   int64_t gcd = gcdRange(range);
   if (gcd == 0 || gcd == 1)
     return gcd;

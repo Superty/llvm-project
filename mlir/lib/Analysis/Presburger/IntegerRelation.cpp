@@ -14,6 +14,7 @@
 
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
@@ -113,6 +114,48 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
+int64_t maxAbsRange(ArrayRef<int64_t> range) {
+  int64_t max = 0;
+  for (int64_t elem : range)
+    max = std::max(max, std::abs(elem));
+  return max;
+}
+
+/// TODO: support extracting locals depending only on symbols.
+IntegerRelation IntegerRelation::getSymbolDomainOverapprox() const {
+  // return IntegerRelation(getNumSymbolIds());
+  IntegerRelation symbolDomain = *this;
+  int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(), symbolDomain.inequalities.getMaxAbsElem());
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
+  symbolDomain.turnAllIdsIntoDimIds();
+
+  llvm::errs() << "max = " << max << '\n';
+  for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
+    if (maxAbsRange(symbolDomain.getInequality(j - 1)) > max) {
+      symbolDomain.removeInequality(j - 1);
+      ++j;
+      continue;
+    }
+  }
+  for (unsigned j = symbolDomain.getNumEqualities(); j > 0; --j) {
+    if (maxAbsRange(symbolDomain.getEquality(j - 1)) > max) {
+      symbolDomain.removeEquality(j - 1);
+      ++j;
+      continue;
+    }
+  }
+
+  symbolDomain.dump();
+
+  // IntegerRelation exactSymbolDomain = *this;
+  // exactSymbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
+  // exactSymbolDomain.changeIdKind(IdKind::Symbol, 0, getNumSymbolIds(), IdKind::SetDim);
+  // assert(symbolDomain.isSubsetOf(exactSymbolDomain));
+
+  return symbolDomain;
+}
+
 void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
                                        unsigned count) {
   // We iterate backwards so that whether we remove constraint i - 1 or not, the
@@ -126,6 +169,48 @@ void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
     if (!rangeIsZero(poly.getInequality(i - 1).slice(begin, count)))
       poly.removeInequality(i - 1);
 }
+
+bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin, unsigned count) {
+  return rangeIsZero(constraint.slice(0, begin)) &&
+         rangeIsZero(constraint.slice(begin + count, constraint.size() - 1 - (begin + count)));
+}
+
+void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly, unsigned begin,
+                                       unsigned count) {
+  // We iterate backwards so that whether we remove constraint i - 1 or not, the
+  // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
+  for (unsigned i = poly.getNumEqualities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getEquality(i - 1), begin, count))
+      poly.removeEquality(i - 1);
+  for (unsigned i = poly.getNumInequalities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getInequality(i - 1), begin, count))
+      poly.removeInequality(i - 1);
+}
+
+PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
+    PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) const {
+  IntegerRelation copy = *this;
+  removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
+
+  PWMAFunction result =
+      LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
+  result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
+  return result;
+}
+
+PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
+    PresburgerSet &unboundedDomain) const {
+  return findSymbolicIntegerLexMin(unboundedDomain, getSymbolDomainOverapprox());
+}
+
+PWMAFunction IntegerRelation::findSymbolicIntegerLexMin() const {
+  auto unboundedDomain =
+      PresburgerSet::getEmpty(/*numDims=*/getNumSymbolIds());
+  return findSymbolicIntegerLexMin(unboundedDomain);
+}
+
 unsigned IntegerRelation::insertId(IdKind kind, unsigned pos, unsigned num) {
   assert(pos <= getNumIdKind(kind));
 
