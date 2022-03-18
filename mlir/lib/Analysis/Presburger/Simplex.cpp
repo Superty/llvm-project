@@ -258,13 +258,25 @@ PWMAFunction LexSimplex::findSymbolicIntegerLexMin(const IntegerRelation &symbol
   return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
 }
 
-SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) {
+SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) const {
   SmallVector<int64_t, 8> sample;
   sample.reserve(nSymbol + 1);
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
     sample.push_back(tableau(row, col));
   sample.push_back(tableau(row, 1));
   return sample;
+}
+
+bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
+  return llvm::all_of(range, [=](int64_t x){ return x % divisor == 0; });
+}
+
+bool LexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const {
+  int64_t denom = tableau(row, 0);
+  constIntegral = tableau(row, 1) % denom == 0;
+  paramCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
+  otherCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(numFixedCols, nCol - numFixedCols), denom);
+  return constIntegral && paramCoeffsIntegral;
 }
 
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
@@ -331,53 +343,25 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     return;
   }
 
-  auto rowHasIntegerCoeffs = [this](unsigned row) {
-    int64_t denom = tableau(row, 0);
-    if (tableau(row, 1) % denom != 0)
-      return false;
-    for (unsigned col = 3; col < 3 + nSymbol; col++) {
-      if (tableau(row, col) % denom != 0)
-        return false;
-    }
-    return true;
-  };
-
   for (const Unknown &u : var) {
     if (u.orientation == Orientation::Column)
       continue;
     assert(!u.isSymbol && "Symbol should not be in row orientation!");
 
     unsigned row = u.pos;
-    if (rowHasIntegerCoeffs(row))
+    bool constIntegral, paramCoeffsIntegral, otherCoeffsIntegral;
+    if (isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral, otherCoeffsIntegral))
       continue;
 
     int64_t denom = tableau(row, 0);
-    bool paramCoeffsIntegral = true;
-    for (unsigned col = 3; col < 3 + nSymbol; col++) {
-      if (mod(tableau(row, col), denom) != 0) {
-        paramCoeffsIntegral = false;
-        break;
-      }
-    }
-
-    bool otherCoeffsIntegral = true;
-    for (unsigned col = numFixedCols; col < nCol; ++col) {
-      if (mod(tableau(row, col), denom) != 0) {
-        otherCoeffsIntegral = false;
-        break;
-      }
-    }
-
-    bool constIntegral = mod(tableau(row, 1), denom) == 0;
-
-    SmallVector<int64_t, 8> domainDivCoeffs;
     if (otherCoeffsIntegral) {
       if (paramCoeffsIntegral) {
         assert(!constIntegral);
         return;
       }
 
-      int64_t divDenom = denom;
+      int64_t divDenom = tableau(row, 0);
+      SmallVector<int64_t, 8> domainDivCoeffs;
       for (unsigned col = 3; col < 3 + nSymbol; ++col)
         domainDivCoeffs.push_back(mod(tableau(row, col), divDenom));
       domainDivCoeffs.push_back(mod(tableau(row, 1), divDenom));
@@ -421,6 +405,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     }
 
     int64_t divDenom = denom;
+    SmallVector<int64_t, 8> domainDivCoeffs;
     for (unsigned col = 3; col < 3 + nSymbol; ++col)
       domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), divDenom));
     domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), divDenom));

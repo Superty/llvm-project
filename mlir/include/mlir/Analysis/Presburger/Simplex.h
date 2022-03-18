@@ -504,7 +504,8 @@ protected:
   /// or unbounded.
   MaybeOptimum<SmallVector<Fraction, 8>> getRationalSample() const;
 
-  SmallVector<int64_t, 8> getRowParamSample(unsigned row);
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
+  bool isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const;
 
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added
