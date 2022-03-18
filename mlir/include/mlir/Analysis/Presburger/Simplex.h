@@ -461,6 +461,8 @@ public:
     addRow(coeffs, /*makeRestricted=*/true);
   }
 
+  void addEquality(ArrayRef<int64_t> coeffs);
+
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
