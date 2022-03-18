@@ -18,14 +18,21 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM)
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+                         unsigned nSymbol)
     : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
-      nRedundant(0), tableau(0, nCol), empty(false) {
+      nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
   colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
                      /*pos=*/getNumFixedCols() + i);
     colUnknown.push_back(i);
+  }
+
+  assert(symbolOffset + nSymbol <= nVar);
+  for (unsigned i = 0; i < nSymbol; ++i) {
+    var[symbolOffset + i].isSymbol = true;
+    swapColumns(var[symbolOffset + i].pos, numFixedCols + i);
   }
 }
 
@@ -95,9 +102,13 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
     // where M is the big M parameter. As such, when the user tries to add
     // a row ax + by + cz + d, we express it in terms of our internal variables
     // as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
+    //
+    // Symbols don't use the big M parameter since they do not get lex
+    // optimized.
     int64_t bigMCoeff = 0;
     for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-      bigMCoeff -= coeffs[i];
+      if (!var[i].isSymbol)
+        bigMCoeff -= coeffs[i];
     // The coefficient to the big M parameter is stored in column 2.
     tableau(nRow - 1, 2) = bigMCoeff;
   }
@@ -165,6 +176,7 @@ Direction flippedDirection(Direction direction) {
 } // namespace
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::findRationalLexMin() {
+  assert(nSymbol == 0 && "Symbols are not supported!");
   restoreRationalConsistency();
   return getRationalSample();
 }
@@ -220,6 +232,7 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {
+  assert(nSymbol == 0 && "Symbols not supported!");
   if (tableau(row, 2) < 0)
     return true;
   if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
@@ -480,6 +493,7 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+  assert(!unknownFromColumn(pivotCol).isSymbol);
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -768,6 +782,9 @@ void SimplexBase::undo(UndoLogEntry entry) {
     // be part of the basis.
     assert(var.back().orientation == Orientation::Column &&
            "Variable to be removed must be in column orientation!");
+
+    if (var.back().isSymbol)
+      nSymbol--;
 
     // Move this variable to the last column and remove the column from the
     // tableau.

@@ -160,7 +160,8 @@ public:
   /// constant term, whereas LexSimplex has an extra fixed column for the
   /// so-called big M parameter. For more information see the documentation for
   /// LexSimplex.
-  SimplexBase(unsigned nVar, bool mustUseBigM);
+  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol);
 
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
@@ -219,11 +220,12 @@ protected:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos, bool oIsSymbol = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted), isSymbol(oIsSymbol) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool isSymbol : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -322,6 +324,10 @@ protected:
   /// nRedundant rows.
   unsigned nRedundant;
 
+  /// The number of parameters. This must be consistent with the number of
+  /// Unknowns in `var` below that have `isParam` set to true.
+  unsigned nSymbol;
+
   /// The matrix representing the tableau.
   Matrix tableau;
 
@@ -417,12 +423,19 @@ protected:
 /// A*y is zero and we are done.
 class LexSimplex : public SimplexBase {
 public:
+  LexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
   explicit LexSimplex(unsigned nVar)
-      : SimplexBase(nVar, /*mustUseBigM=*/true) {}
+      : LexSimplex(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
+
   explicit LexSimplex(const IntegerRelation &constraints)
-      : LexSimplex(constraints.getNumIds()) {
+      : LexSimplex(
+            constraints.getNumIds(),
+            constraints.getIdKindOffset(IdKind::Symbol),
+            constraints.getNumSymbolIds()) {
     intersectIntegerRelation(constraints);
   }
+
   ~LexSimplex() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
@@ -439,6 +452,7 @@ public:
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
   /// Return the lexicographically minimum rational solution to the constraints.
+  /// This should not be called when symbols are involved.
   MaybeOptimum<SmallVector<Fraction, 8>> findRationalLexMin();
 
   /// Return the lexicographically minimum integer solution to the constraints.
@@ -514,7 +528,9 @@ public:
   enum class Direction { Up, Down };
 
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/false) {}
+  explicit Simplex(unsigned nVar)
+      : SimplexBase(nVar, /*mustUseBigM=*/false, /*symbolOffset=*/0,
+                    /*nSymbol=*/0) {}
   explicit Simplex(const IntegerRelation &constraints)
       : Simplex(constraints.getNumIds()) {
     intersectIntegerRelation(constraints);
