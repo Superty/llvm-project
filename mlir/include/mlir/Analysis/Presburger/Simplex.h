@@ -452,14 +452,6 @@ public:
 
   ~LexSimplex() override = default;
 
-  template <class Function>
-  auto runAndRollback(const Function &f) -> decltype(f(*this)) {
-    unsigned snapshot = getSnapshot();
-    auto result = f(*this);
-    rollback(snapshot);
-    return result;
-  }
-
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
@@ -515,6 +507,7 @@ protected:
   /// cut made the polytope empty, and success if it didn't. Failure status
   /// indicates that the polytope didn't have any integer points.
   LogicalResult addCut(unsigned row);
+  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex);
 
   bool isIntegerRedundantIneq(ArrayRef<int64_t> coeffs);
 
@@ -714,6 +707,14 @@ private:
   /// basis reduction.
   void reduceBasis(Matrix &basis, unsigned level);
 };
+
+template <class Function>
+auto runAndRollback(LexSimplex &simplex, const Function &f) -> decltype(f()) {
+  unsigned snapshot = simplex.getSnapshot();
+  auto result = f();
+  simplex.rollback(snapshot);
+  return result;
+}
 
 } // namespace presburger
 } // namespace mlir

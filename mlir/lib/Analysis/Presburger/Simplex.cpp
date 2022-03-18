@@ -267,8 +267,19 @@ SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) const {
   return sample;
 }
 
+bool LexSimplex::isSeparateInequality(ArrayRef<int64_t> coeffs) {
+  return runAndRollback(*this, [this, coeffs](){
+    addInequality(coeffs);
+    return findIntegerLexMin().isEmpty();
+  });
+}
+
+bool LexSimplex::isRedundantInequality(ArrayRef<int64_t> coeffs) {
+  return isSeparateInequality(getComplementIneq(coeffs));
+}
+
 bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
-  return llvm::all_of(range, [=](int64_t x){ return x % divisor == 0; });
+  return llvm::all_of(range, [divisor](int64_t x){ return x % divisor == 0; });
 }
 
 bool LexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const {
@@ -278,6 +289,49 @@ bool LexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &
   otherCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(numFixedCols, nCol - numFixedCols), denom);
   return constIntegral && paramCoeffsIntegral;
 }
+
+LogicalResult LexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex) {
+  int64_t denom = tableau(row, 0);
+
+  int64_t divDenom = denom;
+  SmallVector<int64_t, 8> domainDivCoeffs;
+  for (unsigned col = 3; col < 3 + nSymbol; ++col)
+    domainDivCoeffs.push_back(mod(-tableau(row, col), divDenom));
+  domainDivCoeffs.push_back(mod(-tableau(row, 1), divDenom));
+  normalizeDiv(domainDivCoeffs, divDenom);
+  if (!paramCoeffsIntegral) {
+    domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
+    domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
+    appendSymbol();
+  }
+
+  addZeroRow(/*makeRestricted=*/true);
+  tableau(nRow - 1, 0) = denom;
+  tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
+  tableau(nRow - 1, 2) = 0;
+  for (unsigned col = 3 + nSymbol; col < nCol; ++col)
+    tableau(nRow - 1, col) = mod(tableau(row, col), denom);
+
+  if (paramCoeffsIntegral) {
+    for (unsigned col = 3; col < 3 + nSymbol; ++col)
+      tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
+  } else {
+    for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
+      tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
+    tableau(nRow - 1, 3 + nSymbol - 1) = denom;
+  }
+
+  llvm::errs() << "nRow = " << tableau.getNumRows() << "; ";
+  if (!paramCoeffsIntegral)
+    llvm::errs() << "parametric: ";
+  llvm::errs() << "cut for " << row << ": ";
+  for (int64_t coeff : tableau.getRow(nRow - 1))
+    llvm::errs() << coeff << ' ';
+  llvm::errs() << '\n';
+
+  return moveRowUnknownToColumn(nRow - 1);
+}
+
 
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
     IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin,
@@ -289,7 +343,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     if (!unknownFromRow(row).restricted)
       continue;
     if (tableau(row, 2) < 0) { // negative
-      auto status = moveRowUnknownToColumn(row);
+      LogicalResult status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
@@ -334,9 +388,15 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       rollback(snapshot);
     };
 
-    const Unknown &u = unknownFromRow(row);
-    recurseWithDomainIneq(paramSample);
+    int index = rowUnknown[row];
     // On return, the basis as a set is preserved but not the internal ordering within rows or columns.
+    // Thus, we take not of the index of the Unknown we are working on the moment, which may be in a
+    // different row when we come back from recursing.
+    // 
+    // Note that we have to capture the index above and not a reference to the Unknown itself, since
+    // the array it lives in might get reallocated.
+    recurseWithDomainIneq(paramSample);
+    const Unknown &u = unknownFromIndex(index);
     assert(u.orientation == Orientation::Row);
     if (succeeded(moveRowUnknownToColumn(u.pos)))
       recurseWithDomainIneq(getComplementIneq(paramSample));
@@ -404,61 +464,20 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    int64_t divDenom = denom;
-    SmallVector<int64_t, 8> domainDivCoeffs;
-    for (unsigned col = 3; col < 3 + nSymbol; ++col)
-      domainDivCoeffs.push_back(mod(int64_t(-tableau(row, col)), divDenom));
-    domainDivCoeffs.push_back(mod(int64_t(-tableau(row, 1)), divDenom));
-    normalizeDiv(domainDivCoeffs, divDenom);
 
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
-    if (!paramCoeffsIntegral) {
-      domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
-      domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
+    unsigned initNumDomainIneqs = domainPoly.getNumInequalities();
+    unsigned initNumDomainLocals = domainPoly.getNumLocalIds();
 
-      appendSymbol();
-    }
-
-    addZeroRow();
-    con.back().restricted = true;
-    tableau(nRow - 1, 0) = denom;
-    tableau(nRow - 1, 1) = -mod(int64_t(-tableau(row, 1)), denom);
-    tableau(nRow - 1, 2) = 0;
-    for (unsigned col = 3 + nSymbol; col < nCol; ++col)
-      tableau(nRow - 1, col) = mod(tableau(row, col), denom);
-
-    if (paramCoeffsIntegral) {
-      for (unsigned col = 3; col < 3 + nSymbol; ++col)
-        tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
-    } else {
-      for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
-        tableau(nRow - 1, col) = -mod(int64_t(-tableau(row, col)), denom);
-      tableau(nRow - 1, 3 + nSymbol - 1) = denom;
-    }
-
-    llvm::errs() << "nRow = " << tableau.getNumRows() << "; ";
-    if (!paramCoeffsIntegral)
-      llvm::errs() << "parametric: ";
-    llvm::errs() << "cut for " << row << ": ";
-    for (int64_t coeff : tableau.getRow(nRow - 1))
-      llvm::errs() << coeff << ' ';
-    llvm::errs() << '\n';
-
-    LogicalResult success = moveRowUnknownToColumn(nRow - 1);
-
-    if (succeeded(success))
+    if (addParametricCut(row, paramCoeffsIntegral, domainPoly, domainSimplex).succeeded())
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                            unboundedDomain);
 
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
-    if (!paramCoeffsIntegral) {
-      domainPoly.removeInequalityRange(domainPoly.getNumInequalities() - 2,
-                                       domainPoly.getNumInequalities());
-      domainPoly.removeId(IdKind::Local,
-                          domainPoly.getNumLocalIds() - 1);
-    }
+    domainPoly.removeInequalityRange(initNumDomainIneqs, domainPoly.getNumInequalities());
+    domainPoly.removeIdRange(IdKind::Local, initNumDomainLocals, domainPoly.getNumLocalIds());
     return;
   }
 
