@@ -20,12 +20,12 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
                          unsigned nSymbol)
-    : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
+    : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0), nCol(numFixedCols + nVar),
       nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
-  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
+  colUnknown.insert(colUnknown.begin(), numFixedCols, nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
-                     /*pos=*/getNumFixedCols() + i);
+                     /*pos=*/numFixedCols + i);
     colUnknown.push_back(i);
   }
 
@@ -34,6 +34,7 @@ SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
     var[symbolOffset + i].isSymbol = true;
     swapColumns(var[symbolOffset + i].pos, numFixedCols + i);
   }
+  numFixedCols += nSymbol;
 }
 
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
@@ -322,7 +323,7 @@ void LexSimplex::restoreRationalConsistency() {
 // minimizes the change in sample value.
 LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
-  for (unsigned col = 3; col < nCol; ++col) {
+  for (unsigned col = numFixedCols; col < nCol; ++col) {
     if (tableau(row, col) <= 0)
       continue;
     maybeColumn =
@@ -492,7 +493,7 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+  assert(pivotCol >= numFixedCols && "Refusing to pivot invalid column");
   assert(!unknownFromColumn(pivotCol).isSymbol);
 
   swapRowWithCol(pivotRow, pivotCol);
@@ -719,6 +720,15 @@ Optional<unsigned> SimplexBase::findAnyPivotRow(unsigned col) {
   return {};
 }
 
+// This doesn't find a pivot column only if the row has zero coefficients for every column
+// not marked as an equality.
+Optional<unsigned> SimplexBase::findAnyPivotCol(unsigned row) {
+  for (unsigned col = numFixedCols; col < nCol; ++col)
+    if (tableau(row, col) != 0)
+      return col;
+  return {};
+}
+
 // It's not valid to remove the constraint by deleting the column since this
 // would result in an invalid basis.
 void Simplex::undoLastConstraint() {
@@ -797,6 +807,9 @@ void SimplexBase::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
+  } else if (entry == UndoLogEntry::UnmarkLastEquality) {
+    numFixedCols--;
+    assert(numFixedCols >= 2 + mustUseBigM + nSymbol && "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
 
@@ -807,7 +820,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
       Unknown &u = unknownFromIndex(index);
       if (u.orientation == Orientation::Column)
         continue;
-      for (unsigned col = getNumFixedCols(); col < nCol; col++) {
+      for (unsigned col = numFixedCols; col < nCol; col++) {
         assert(colUnknown[col] != nullIndex &&
                "Column should not be a fixed column!");
         if (std::find(basis.begin(), basis.end(), colUnknown[col]) !=
@@ -1103,6 +1116,18 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
     }
   }
   return sample;
+}
+
+void LexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
+  const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
+  Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
+  if (!pivotCol)
+    return;
+
+  pivot(u.pos, *pivotCol);
+  swapColumns(*pivotCol, numFixedCols);
+  numFixedCols++;
+  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
 }
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::getRationalSample() const {

@@ -247,6 +247,14 @@ protected:
   /// coefficient for it.
   Optional<unsigned> findAnyPivotRow(unsigned col);
 
+  /// Return any column that this row can be pivoted with, ignoring tableau
+  /// consistency. Equality rows are not considered.
+  ///
+  /// Returns an empty optional if no pivot is possible, which happens only when
+  /// the column unknown is a variable and no constraint has a non-zero
+  /// coefficient for it.
+  Optional<unsigned> findAnyPivotCol(unsigned row);
+
   /// Swap the row with the column in the tableau's data structures but not the
   /// tableau itself. This is used by pivot.
   void swapRowWithCol(unsigned row, unsigned col);
@@ -293,6 +301,7 @@ protected:
     RemoveLastVariable,
     UnmarkEmpty,
     UnmarkLastRedundant,
+    UnmarkLastEquality,
     RestoreBasis
   };
 
@@ -306,12 +315,11 @@ protected:
   /// Undo the operation represented by the log entry.
   void undo(UndoLogEntry entry);
 
-  /// Return the number of fixed columns, as described in the constructor above,
-  /// this is the number of columns beyond those for the variables in var.
-  unsigned getNumFixedCols() const { return usingBigM ? 3u : 2u; }
-
   /// Stores whether or not a big M column is present in the tableau.
   bool usingBigM;
+
+  /// denom + const + maybe M + equality columns
+  unsigned numFixedCols;
 
   /// The number of rows in the tableau.
   unsigned nRow;
