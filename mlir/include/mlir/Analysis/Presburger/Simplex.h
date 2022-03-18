@@ -186,6 +186,8 @@ public:
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
 
+  /// Add new symbolic variables to the end of the list of variables.
+  void appendSymbol();
 
   void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
 

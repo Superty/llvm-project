@@ -37,6 +37,17 @@ SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
   numFixedCols += nSymbol;
 }
 
+void SimplexBase::appendSymbol() {
+  appendVariable();
+  swapColumns(3 + nSymbol, nCol - 1);
+  nSymbol++;
+  if (numFixedCols > 3 + nSymbol)
+    swapColumns(numFixedCols, nCol - 1);
+  numFixedCols++;
+  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
+  var.back().isSymbol = true;
+}
+
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
   assert(index != nullIndex && "nullIndex passed to unknownFromIndex");
   return index >= 0 ? var[index] : con[~index];
