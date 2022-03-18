@@ -293,67 +293,41 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       continue;
     assert(tableau(row, 2) == 0);
     auto paramSample = getRowParamSample(row);
+    // We only care about whether the inequality is separate, redundant, or neither.
     normalizeRange(paramSample);
 
-    unsigned snapshot = domainSimplex.getSnapshot();
-    domainSimplex.addInequality(getComplementIneq(paramSample));
-    // auto maybeMin =
-    //     domainSimplex.computeOptimum(Simplex::Direction::Down, paramSample);
-    // bool nonNegative = maybeMin.isBounded() && *maybeMin > Fraction(-1, 1);
-    bool alwaysNonNegative = domainSimplex.findIntegerLexMin().isEmpty();
-    domainSimplex.rollback(snapshot);
-    if (alwaysNonNegative)
+    bool sampleAlwaysNonNegative = domainSimplex.isRedundantInequality(paramSample);
+    if (sampleAlwaysNonNegative)
       continue;
 
-    snapshot = domainSimplex.getSnapshot();
-    // auto maybeMax = domainSimplex.computeOptimum(Direction::Up, paramSample);
-    // bool negative = maybeMax.isBounded() && *maybeMax <= Fraction(-1, 1);
-
-    domainSimplex.addInequality(paramSample);
-    bool alwaysNegative = domainSimplex.findIntegerLexMin().isEmpty();
-    domainSimplex.rollback(snapshot);
-    if (alwaysNegative) {
-      auto status = moveRowUnknownToColumn(row);
-      if (failed(status))
-        return;
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                           unboundedDomain);
+    bool sampleAlwaysNegative = domainSimplex.isSeparateInequality(paramSample);
+    if (sampleAlwaysNegative) {
+      if (moveRowUnknownToColumn(row).succeeded())
+        findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                             unboundedDomain);
       return;
     }
 
-    snapshot = getSnapshot();
-    unsigned domainSnapshot = domainSimplex.getSnapshot();
-    domainSimplex.addInequality(paramSample);
-    domainPoly.addInequality(paramSample);
-    auto idx = rowUnknown[row];
+    auto recurseWithDomainIneq = [&](ArrayRef<int64_t> ineq) {
+      unsigned snapshot = getSnapshot();
+      unsigned domainSnapshot = domainSimplex.getSnapshot();
+      domainSimplex.addInequality(ineq);
+      domainPoly.addInequality(ineq);
 
-    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                         unboundedDomain);
-
-    domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
-    domainSimplex.rollback(domainSnapshot);
-    rollback(snapshot);
-
-    SmallVector<int64_t, 8> complementIneq;
-    for (int64_t coeff : paramSample)
-      complementIneq.push_back(-coeff);
-    complementIneq.back() -= 1;
-
-    snapshot = getSnapshot();
-    domainSnapshot = domainSimplex.getSnapshot();
-    domainSimplex.addInequality(complementIneq);
-    domainPoly.addInequality(complementIneq);
-
-    auto &u = unknownFromIndex(idx);
-    assert(u.orientation == Orientation::Row);
-    if (succeeded(moveRowUnknownToColumn(u.pos)))
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                            unboundedDomain);
 
-    domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
-    domainSimplex.rollback(domainSnapshot);
-    rollback(snapshot);
+      domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
+      domainSimplex.rollback(domainSnapshot);
+      rollback(snapshot);
+    };
 
+    const Unknown &u = unknownFromRow(row);
+    recurseWithDomainIneq(paramSample);
+    // On return, the basis as a set is preserved but not the internal ordering within rows or columns.
+    assert(u.orientation == Orientation::Row);
+    if (succeeded(moveRowUnknownToColumn(u.pos)))
+      recurseWithDomainIneq(getComplementIneq(paramSample));
     return;
   }
 

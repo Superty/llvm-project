@@ -472,6 +472,9 @@ public:
 
   void addEquality(ArrayRef<int64_t> coeffs);
 
+  bool isSeparateInequality(ArrayRef<int64_t> coeffs);
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
+
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
@@ -511,6 +514,8 @@ protected:
   /// cut made the polytope empty, and success if it didn't. Failure status
   /// indicates that the polytope didn't have any integer points.
   LogicalResult addCut(unsigned row);
+
+  bool isIntegerRedundantIneq(ArrayRef<int64_t> coeffs);
 
   /// Undo the addition of the last constraint. This is only called while
   /// rolling back.
