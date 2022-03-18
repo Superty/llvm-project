@@ -848,6 +848,21 @@ void SimplexBase::rollback(unsigned snapshot) {
   }
 }
 
+void SimplexBase::addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+  appendVariable();
+
+  SmallVector<int64_t, 8> ineq(coeffs.begin(), coeffs.end());
+  int64_t constTerm = ineq.back();
+  ineq.back() = -denom;
+  ineq.push_back(constTerm);
+  addInequality(ineq);
+
+  for (int64_t &coeff : ineq)
+    coeff = -coeff;
+  ineq.back() += denom - 1;
+  addInequality(ineq);
+}
+
 void SimplexBase::appendVariable(unsigned count) {
   if (count == 0)
     return;

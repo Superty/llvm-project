@@ -186,6 +186,9 @@ public:
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
 
+
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
+
   /// Mark the tableau as being empty.
   void markEmpty();
 
