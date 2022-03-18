@@ -40,12 +40,12 @@ SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
 void SimplexBase::appendSymbol() {
   appendVariable();
   swapColumns(3 + nSymbol, nCol - 1);
-  nSymbol++;
   if (numFixedCols > 3 + nSymbol)
     swapColumns(numFixedCols, nCol - 1);
-  numFixedCols++;
-  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
   var.back().isSymbol = true;
+
+  nSymbol++;
+  numFixedCols++;
 }
 
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
@@ -1136,8 +1136,10 @@ void SimplexBase::undo(UndoLogEntry entry) {
     assert(var.back().orientation == Orientation::Column &&
            "Variable to be removed must be in column orientation!");
 
-    if (var.back().isSymbol)
+    if (var.back().isSymbol) {
       nSymbol--;
+      numFixedCols--;
+    }
 
     // Move this variable to the last column and remove the column from the
     // tableau.
