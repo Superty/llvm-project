@@ -452,6 +452,14 @@ public:
 
   ~LexSimplex() override = default;
 
+  template <class Function>
+  auto runAndRollback(const Function &f) -> decltype(f(*this)) {
+    unsigned snapshot = getSnapshot();
+    auto result = f(*this);
+    rollback(snapshot);
+    return result;
+  }
+
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} >= 0.
