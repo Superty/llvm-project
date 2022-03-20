@@ -413,12 +413,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     if (isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral, otherCoeffsIntegral))
       continue;
 
+    if (paramCoeffsIntegral && otherCoeffsIntegral) {
+      assert(!constIntegral);
+      return;
+    }
+
     int64_t denom = tableau(row, 0);
     if (otherCoeffsIntegral) {
-      if (paramCoeffsIntegral) {
-        assert(!constIntegral);
-        return;
-      }
+      assert(!paramCoeffsIntegral);
 
       int64_t divDenom = tableau(row, 0);
       SmallVector<int64_t, 8> domainDivCoeffs;
