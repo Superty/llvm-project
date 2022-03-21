@@ -123,14 +123,12 @@ int64_t maxAbsRange(ArrayRef<int64_t> range) {
 
 /// TODO: support extracting locals depending only on symbols.
 IntegerRelation IntegerRelation::getSymbolDomainOverapprox() const {
-  // return IntegerRelation(getNumSymbolIds());
   IntegerRelation symbolDomain = *this;
   int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(), symbolDomain.inequalities.getMaxAbsElem());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
   symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
 
-  llvm::errs() << "max = " << max << '\n';
   for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
     if (maxAbsRange(symbolDomain.getInequality(j - 1)) > max) {
       symbolDomain.removeInequality(j - 1);
@@ -145,14 +143,6 @@ IntegerRelation IntegerRelation::getSymbolDomainOverapprox() const {
       continue;
     }
   }
-
-  symbolDomain.dump();
-
-  // IntegerRelation exactSymbolDomain = *this;
-  // exactSymbolDomain.changeIdKind(IdKind::SetDim, 0, getNumDimIds(), IdKind::Local);
-  // exactSymbolDomain.changeIdKind(IdKind::Symbol, 0, getNumSymbolIds(), IdKind::SetDim);
-  // assert(symbolDomain.isSubsetOf(exactSymbolDomain));
-
   return symbolDomain;
 }
 

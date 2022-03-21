@@ -321,20 +321,10 @@ LogicalResult LexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegra
     tableau(nRow - 1, 3 + nSymbol - 1) = denom;
   }
 
-  llvm::errs() << "nRow = " << tableau.getNumRows() << "; ";
-  if (!paramCoeffsIntegral)
-    llvm::errs() << "parametric: ";
-  llvm::errs() << "cut for " << row << ": ";
-  for (int64_t coeff : tableau.getRow(nRow - 1))
-    llvm::errs() << coeff << ' ';
-  llvm::errs() << '\n';
-
   return moveRowUnknownToColumn(nRow - 1);
 }
 
 void LexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
-  llvm::errs() << "output with domain:";
-  domainPoly.dump();
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
