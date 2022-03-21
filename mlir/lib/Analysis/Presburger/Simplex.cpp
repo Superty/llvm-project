@@ -390,7 +390,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
 
     int index = rowUnknown[row];
     // On return, the basis as a set is preserved but not the internal ordering within rows or columns.
-    // Thus, we take not of the index of the Unknown we are working on the moment, which may be in a
+    // Thus, we take note of the index of the Unknown we are working on the moment, which may be in a
     // different row when we come back from recursing.
     // 
     // Note that we have to capture the index above and not a reference to the Unknown itself, since
