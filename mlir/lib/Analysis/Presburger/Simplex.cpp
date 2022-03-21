@@ -409,20 +409,6 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    auto recurseWithDomainIneq = [&](ArrayRef<int64_t> ineq) {
-      unsigned snapshot = getSnapshot();
-      unsigned domainSnapshot = domainSimplex.getSnapshot();
-      domainSimplex.addInequality(ineq);
-      domainPoly.addInequality(ineq);
-
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                           unboundedDomain);
-
-      domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
-      domainSimplex.rollback(domainSnapshot);
-      rollback(snapshot);
-    };
-
     int index = rowUnknown[row];
     // On return, the basis as a set is preserved but not the internal ordering within rows or columns.
     // Thus, we take note of the index of the Unknown we are working on the moment, which may be in a
@@ -430,11 +416,33 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     // 
     // Note that we have to capture the index above and not a reference to the Unknown itself, since
     // the array it lives in might get reallocated.
-    recurseWithDomainIneq(paramSample);
+    unsigned snapshot = getSnapshot();
+    unsigned domainSnapshot = domainSimplex.getSnapshot();
+    domainSimplex.addInequality(paramSample);
+    domainPoly.addInequality(paramSample);
+
+    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                         unboundedDomain);
+
+    domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
+    domainSimplex.rollback(domainSnapshot);
+    rollback(snapshot);
+
     const Unknown &u = unknownFromIndex(index);
     assert(u.orientation == Orientation::Row);
-    if (succeeded(moveRowUnknownToColumn(u.pos)))
-      recurseWithDomainIneq(getComplementIneq(paramSample));
+    if (succeeded(moveRowUnknownToColumn(u.pos))) {
+      unsigned snapshot = getSnapshot();
+      unsigned domainSnapshot = domainSimplex.getSnapshot();
+      domainSimplex.addInequality(getComplementIneq(paramSample));
+      domainPoly.addInequality(getComplementIneq(paramSample));
+
+      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
+                                           unboundedDomain);
+
+      domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
+      domainSimplex.rollback(domainSnapshot);
+      rollback(snapshot);
+    }
     return;
   }
 
