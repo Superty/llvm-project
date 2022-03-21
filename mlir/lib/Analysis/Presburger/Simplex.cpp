@@ -418,30 +418,27 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     // the array it lives in might get reallocated.
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
+    unsigned initNumDomainIneqs = domainPoly.getNumInequalities();
+    unsigned initNumDomainLocals = domainPoly.getNumLocalIds();
     domainSimplex.addInequality(paramSample);
     domainPoly.addInequality(paramSample);
 
     findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                          unboundedDomain);
 
-    domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
+    domainPoly.removeInequalityRange(initNumDomainIneqs, domainPoly.getNumInequalities());
+    domainPoly.removeIdRange(IdKind::Local, initNumDomainLocals, domainPoly.getNumLocalIds());
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
 
     const Unknown &u = unknownFromIndex(index);
     assert(u.orientation == Orientation::Row);
     if (succeeded(moveRowUnknownToColumn(u.pos))) {
-      unsigned snapshot = getSnapshot();
-      unsigned domainSnapshot = domainSimplex.getSnapshot();
       domainSimplex.addInequality(getComplementIneq(paramSample));
       domainPoly.addInequality(getComplementIneq(paramSample));
 
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                            unboundedDomain);
-
-      domainPoly.removeInequality(domainPoly.getNumInequalities() - 1);
-      domainSimplex.rollback(domainSnapshot);
-      rollback(snapshot);
     }
     return;
   }
@@ -461,19 +458,9 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    unsigned snapshot = getSnapshot();
-    unsigned domainSnapshot = domainSimplex.getSnapshot();
-    unsigned initNumDomainIneqs = domainPoly.getNumInequalities();
-    unsigned initNumDomainLocals = domainPoly.getNumLocalIds();
-
     if (addParametricCut(row, paramCoeffsIntegral, domainPoly, domainSimplex).succeeded())
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                            unboundedDomain);
-
-    domainSimplex.rollback(domainSnapshot);
-    rollback(snapshot);
-    domainPoly.removeInequalityRange(initNumDomainIneqs, domainPoly.getNumInequalities());
-    domainPoly.removeIdRange(IdKind::Local, initNumDomainLocals, domainPoly.getNumLocalIds());
     return;
   }
   recordOutputForDomain(domainPoly, lexmin, unboundedDomain);
