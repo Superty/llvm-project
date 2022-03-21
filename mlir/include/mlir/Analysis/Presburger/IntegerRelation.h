@@ -149,6 +149,13 @@ public:
     return inequalities.getRow(idx);
   }
 
+  struct Counts {
+    PresburgerLocalSpace space;
+    unsigned numIneqs, numEqs;
+  };
+  Counts getCounts() const;
+  void truncate(const Counts &counts);
+
   /// Insert `num` identifiers of the specified kind at position `pos`.
   /// Positions are relative to the kind of identifier. The coefficient columns
   /// corresponding to the added identifiers are initialized to zero. Return the

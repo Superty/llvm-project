@@ -408,16 +408,14 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     // the array it lives in might get reallocated.
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
-    unsigned initNumDomainIneqs = domainPoly.getNumInequalities();
-    unsigned initNumDomainLocals = domainPoly.getNumLocalIds();
+    IntegerRelation::Counts domainPolyCounts = domainPoly.getCounts();
     domainSimplex.addInequality(paramSample);
     domainPoly.addInequality(paramSample);
 
     findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                          unboundedDomain);
 
-    domainPoly.removeInequalityRange(initNumDomainIneqs, domainPoly.getNumInequalities());
-    domainPoly.removeIdRange(IdKind::Local, initNumDomainLocals, domainPoly.getNumLocalIds());
+    domainPoly.restoreCounts(domainPolyCounts);
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
 

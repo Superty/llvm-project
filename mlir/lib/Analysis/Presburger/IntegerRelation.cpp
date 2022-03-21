@@ -201,6 +201,25 @@ PWMAFunction IntegerRelation::findSymbolicIntegerLexMin() const {
   return findSymbolicIntegerLexMin(unboundedDomain);
 }
 
+IntegerRelation::Counts IntegerRelation::getCounts() const {
+  return {PresburgerLocalSpace(*this), getNumInequalities(), getNumEqualities()};
+}
+
+void IntegerRelation::truncate(const Counts &counts) {
+  auto restoreIdKindCount = [&](IdKind kind) {
+    unsigned numInCounts = counts.space.getNumIdKind(kind);
+    unsigned curNum = getNumIdKind(kind);
+    assert(numInCounts <= curNum);
+    removeIdRange(kind, numInCounts, curNum);
+  };
+  restoreIdKindCount(IdKind::Domain);
+  restoreIdKindCount(IdKind::Range);
+  restoreIdKindCount(IdKind::Symbol);
+  restoreIdKindCount(IdKind::Local);
+  removeInequalityRange(counts.numIneqs, getNumInequalities());
+  removeInequalityRange(counts.numEqs, getNumEqualities());
+}
+
 unsigned IntegerRelation::insertId(IdKind kind, unsigned pos, unsigned num) {
   assert(pos <= getNumIdKind(kind));
 
