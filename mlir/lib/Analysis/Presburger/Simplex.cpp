@@ -332,6 +332,41 @@ LogicalResult LexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegra
   return moveRowUnknownToColumn(nRow - 1);
 }
 
+void LexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
+  llvm::errs() << "output with domain:";
+  domainPoly.dump();
+  Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
+  unsigned row = 0;
+  for (const Unknown &u : var) {
+    if (u.isSymbol)
+      continue;
+
+    if (u.orientation == Orientation::Column) {
+      // M + u has a sample value of zero so u has a sample value of -M, i.e,
+      // unbounded.
+      unboundedDomain.unionInPlace(domainPoly);
+      return;
+    }
+
+    int64_t denom = tableau(u.pos, 0);
+    if (tableau(u.pos, 2) < denom) {
+      // M + u has a sample value of fM + something, where f < 1, so
+      // u = (f - 1)M + something, which has a negative coefficient for M,
+      // and so is unbounded.
+      unboundedDomain.unionInPlace(domainPoly);
+      return;
+    }
+    assert(tableau(u.pos, 2) == denom);
+
+    auto coeffs = getRowParamSample(u.pos);
+    for (unsigned col = 0, e = coeffs.size(); col < e; ++col) {
+      assert(coeffs[col] % denom == 0 && "coefficient is fractional!");
+      output(row, col) = coeffs[col] / denom;
+    }
+    row++;
+  }
+  lexmin.addPiece(domainPoly, output);
+}
 
 void LexSimplex::findSymbolicIntegerLexMinRecursively(
     IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin,
@@ -418,7 +453,6 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    int64_t denom = tableau(row, 0);
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     unsigned initNumDomainIneqs = domainPoly.getNumInequalities();
@@ -434,40 +468,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     domainPoly.removeIdRange(IdKind::Local, initNumDomainLocals, domainPoly.getNumLocalIds());
     return;
   }
-
-  llvm::errs() << "output with domain:";
-  domainPoly.dump();
-  Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
-  unsigned row = 0;
-  for (const Unknown &u : var) {
-    if (u.isSymbol)
-      continue;
-
-    if (u.orientation == Orientation::Column) {
-      // M + u has a sample value of zero so u has a sample value of -M, i.e,
-      // unbounded.
-      unboundedDomain.unionInPlace(domainPoly);
-      return;
-    }
-
-    int64_t denom = tableau(u.pos, 0);
-    if (tableau(u.pos, 2) < denom) {
-      // M + u has a sample value of fM + something, where f < 1, so
-      // u = (f - 1)M + something, which has a negative coefficient for M,
-      // and so is unbounded.
-      unboundedDomain.unionInPlace(domainPoly);
-      return;
-    }
-    assert(tableau(u.pos, 2) == denom);
-
-    auto coeffs = getRowParamSample(u.pos);
-    for (unsigned col = 0, e = coeffs.size(); col < e; ++col) {
-      assert(coeffs[col] % denom == 0 && "coefficient is fractional!");
-      output(row, col) = coeffs[col] / denom;
-    }
-    row++;
-  }
-  lexmin.addPiece(domainPoly, output);
+  recordOutputForDomain(domainPoly, lexmin, unboundedDomain);
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {

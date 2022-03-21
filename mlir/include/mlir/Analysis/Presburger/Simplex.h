@@ -539,6 +539,8 @@ protected:
   /// failure. This only occurs when the constraints have no solution; the
   /// tableau will be marked empty in such a case.
   LogicalResult moveRowUnknownToColumn(unsigned row);
+
+  void recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness
