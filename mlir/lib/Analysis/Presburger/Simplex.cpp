@@ -444,11 +444,17 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       // This has to be after we extract the coeffs above!
       appendSymbol();
 
+      // SmallVector<int64_t, 8> eqCoeffs(var.size() + 1);
+      // for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
+      //   eqCoeffs[indexFromUnknown(unknownFromColumn(col))] = mod(tableau(row, col), demom);
+      // eqCoeffs[eqCoeffs.size() - 2] = -1;
+      // eqCoeffs.back() = mod(tableau(row, 1), denom);
+
       SmallVector<int64_t, 8> oldRow;
       oldRow.reserve(nCol);
       for (unsigned col = 0; col < nCol; ++col) {
         oldRow.push_back(tableau(row, col));
-        tableau(row, col) /= denom;
+        tableau(row, col) = floorDiv(tableau(row, col), denom);
       }
       tableau(row, nCol - 1) += 1;
 
@@ -465,7 +471,6 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
       rollback(snapshot);
       return;
     }
-
 
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
