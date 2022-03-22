@@ -124,9 +124,12 @@ int64_t maxAbsRange(ArrayRef<int64_t> range) {
 /// TODO: support extracting locals depending only on symbols.
 IntegerRelation IntegerRelation::getSymbolDomainOverapprox() const {
   IntegerRelation symbolDomain = *this;
-  int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(), symbolDomain.inequalities.getMaxAbsElem());
-  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim), symbolDomain.getNumDimIds());
-  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local), symbolDomain.getNumLocalIds());
+  int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(),
+                         symbolDomain.inequalities.getMaxAbsElem());
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim),
+                          symbolDomain.getNumDimIds());
+  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local),
+                          symbolDomain.getNumLocalIds());
   symbolDomain.turnAllIdsIntoDimIds();
 
   for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
@@ -160,13 +163,15 @@ void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
       poly.removeInequality(i - 1);
 }
 
-bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin, unsigned count) {
+bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin,
+                                   unsigned count) {
   return rangeIsZero(constraint.slice(0, begin)) &&
-         rangeIsZero(constraint.slice(begin + count, constraint.size() - 1 - (begin + count)));
+         rangeIsZero(constraint.slice(begin + count,
+                                      constraint.size() - 1 - (begin + count)));
 }
 
-void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly, unsigned begin,
-                                       unsigned count) {
+void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly,
+                                           unsigned begin, unsigned count) {
   // We iterate backwards so that whether we remove constraint i - 1 or not, the
   // next constraint to be tested is always i - 2.
   //
@@ -182,27 +187,29 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly, unsigned begin
 PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
     PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) const {
   IntegerRelation copy = *this;
-  removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
+  removeConstraintsInvolvingOnlyIdRange(
+      copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
-  PWMAFunction result =
-      SymbolicLexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
+  PWMAFunction result = SymbolicLexSimplex(copy).findSymbolicIntegerLexMin(
+      unboundedDomain, symbolDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
   return result;
 }
 
 PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
     PresburgerSet &unboundedDomain) const {
-  return findSymbolicIntegerLexMin(unboundedDomain, getSymbolDomainOverapprox());
+  return findSymbolicIntegerLexMin(unboundedDomain,
+                                   getSymbolDomainOverapprox());
 }
 
 PWMAFunction IntegerRelation::findSymbolicIntegerLexMin() const {
-  auto unboundedDomain =
-      PresburgerSet::getEmpty(/*numDims=*/getNumSymbolIds());
+  auto unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/getNumSymbolIds());
   return findSymbolicIntegerLexMin(unboundedDomain);
 }
 
 IntegerRelation::Counts IntegerRelation::getCounts() const {
-  return {PresburgerLocalSpace(*this), getNumInequalities(), getNumEqualities()};
+  return {PresburgerLocalSpace(*this), getNumInequalities(),
+          getNumEqualities()};
 }
 
 void IntegerRelation::truncate(const Counts &counts) {
@@ -235,7 +242,7 @@ unsigned IntegerRelation::appendId(IdKind kind, unsigned num) {
 }
 
 void IntegerRelation::addConstraint(Matrix &constraintMatrix,
-                                      ArrayRef<int64_t> constraint) {
+                                    ArrayRef<int64_t> constraint) {
   assert(constraint.size() == getNumCols());
   unsigned row = constraintMatrix.appendExtraRow();
   constraintMatrix.copy(constraint, row, 0);
@@ -248,19 +255,18 @@ void IntegerRelation::addEquality(ArrayRef<int64_t> eq) {
 }
 
 void IntegerRelation::addConstraint(Matrix &constraintMatrix,
-                                      ArrayRef<int64_t> coeffs,
-                                      int64_t constant) {
+                                    ArrayRef<int64_t> coeffs,
+                                    int64_t constant) {
   assert(coeffs.size() == getNumCols() - 1);
   unsigned row = constraintMatrix.appendExtraRow();
   constraintMatrix.copy(coeffs, row, 0);
   constraintMatrix(row, coeffs.size()) = constant;
 }
 void IntegerRelation::addInequality(ArrayRef<int64_t> coeffs,
-                                      int64_t constant) {
+                                    int64_t constant) {
   addConstraint(inequalities, coeffs, constant);
 }
-void IntegerRelation::addEquality(ArrayRef<int64_t> coeffs,
-                                    int64_t constant) {
+void IntegerRelation::addEquality(ArrayRef<int64_t> coeffs, int64_t constant) {
   addConstraint(equalities, coeffs, constant);
 }
 
@@ -1234,8 +1240,8 @@ void IntegerRelation::removeRedundantLocalVars() {
   }
 }
 
-void IntegerRelation::changeIdKind(IdKind srcKind, unsigned begin,
-                                          unsigned end, IdKind dstKind) {
+void IntegerRelation::changeIdKind(IdKind srcKind, unsigned begin, unsigned end,
+                                   IdKind dstKind) {
   assert(end <= getNumIdKind(srcKind) && "Invalid dim pos range");
 
   if (begin >= end)
@@ -1255,8 +1261,7 @@ void IntegerRelation::changeIdKind(IdKind srcKind, unsigned begin,
   removeIdRange(srcKind, begin, end);
 }
 
-void IntegerRelation::convertDimToLocal(unsigned dimStart,
-                                          unsigned dimLimit) {
+void IntegerRelation::convertDimToLocal(unsigned dimStart, unsigned dimLimit) {
   assert(dimLimit <= getNumDimIds() && "Invalid dim pos range");
 
   if (dimStart >= dimLimit)

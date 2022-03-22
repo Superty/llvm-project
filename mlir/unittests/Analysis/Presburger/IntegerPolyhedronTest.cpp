@@ -1152,7 +1152,9 @@ void expectSymbolicIntegerLexMin(
       poly.getNumSymbolIds(), unboundedDomain);
   auto unboundedDomainOutput = PresburgerSet::getEmpty(0, 0);
 
-  PWMAFunction output = poly.findSymbolicIntegerLexMin(unboundedDomainOutput);//, resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
+  PWMAFunction output = poly.findSymbolicIntegerLexMin(
+      unboundedDomainOutput); //,
+                              // resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
 
   EXPECT_TRUE(output.isEqual(resultF));
   if (!output.isEqual(resultF)) {
@@ -1319,7 +1321,8 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
       // multiple of 7.
       {"(a, r) : (a >= 0, r - a - 7*((r - a) floordiv 7) == 0)"});
 
-  expectSymbolicIntegerLexMin("(x, y)[a] : (9*x - 4*y - 2*a >= 0)", {}, {"(a) : ()"});
+  expectSymbolicIntegerLexMin("(x, y)[a] : (9*x - 4*y - 2*a >= 0)", {},
+                              {"(a) : ()"});
 
   // Test cases adapted from isl.
   expectSymbolicIntegerLexMin(
@@ -1327,38 +1330,53 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
       // So b is minimized when c = b.
       "(b, c)[a] : (a - 4*b + 2*c == 0, c - b >= 0)",
       {
-        {"(a) : (a - 2*(a floordiv 2) == 0)", {{0, 1, 0}, {0, 1, 0}}}, // (a floordiv 2, a floordiv 2)
+          {"(a) : (a - 2*(a floordiv 2) == 0)",
+           {{0, 1, 0}, {0, 1, 0}}}, // (a floordiv 2, a floordiv 2)
       });
 
   expectSymbolicIntegerLexMin(
-    // 0 <= b <= 255, 1 <= a - 512b <= 509,
-    // b + 8 >= 1 + 16*(b + 8 floordiv 16) // i.e. b % 16 != 8
-    "(b)[a] : (255 - b >= 0, b >= 0, a - 512*b - 1 >= 0, 512*b -a + 509 >= 0, b + 7 - 16*((8 + b) floordiv 16) >= 0)",
-    {
-      {"(a) : (255 - (a floordiv 512) >= 0, a >= 0, a - 512*(a floordiv 512) - 1 >= 0, 512*(a floordiv 512) - a + 509 >= 0, (a floordiv 512) + 7 - 16*((8 + (a floordiv 512)) floordiv 16) >= 0)", {{0, 1, 0, 0}}}, // (a floordiv 2, a floordiv 2)
-    });
-
-  expectSymbolicIntegerLexMin("(a, b)[K, N, x, y] : (N - K - 2 >= 0, K + 4 - N >= 0, x - 4 >= 0, x + 6 - 2*N >= 0, K+N - x - 1 >= 0, a - N + 1 >= 0, K+N-1-a >= 0,a + 6 - b - N >= 0, 2*N - 4 - a >= 0,"
-      "2*N - 3*K + a - b >= 0, 4*N - K + 1 - 3*b >= 0, b - N >= 0, a - x - 1 >= 0)",
+      // 0 <= b <= 255, 1 <= a - 512b <= 509,
+      // b + 8 >= 1 + 16*(b + 8 floordiv 16) // i.e. b % 16 != 8
+      "(b)[a] : (255 - b >= 0, b >= 0, a - 512*b - 1 >= 0, 512*b -a + 509 >= "
+      "0, b + 7 - 16*((8 + b) floordiv 16) >= 0)",
       {
-        {"(K, N, x, y) : (x + 6 - 2*N >= 0, 2*N - 5 - x >= 0, x + 1 -3*K + N >= 0, N + K - 2 - x >= 0, x - 4 >= 0)",
-        {{0, 0, 1, 0, 1}, {0, 1, 0, 0, 0}} // (1 + x, N)
-      }
-  });
+          {"(a) : (255 - (a floordiv 512) >= 0, a >= 0, a - 512*(a floordiv "
+           "512) - 1 >= 0, 512*(a floordiv 512) - a + 509 >= 0, (a floordiv "
+           "512) + 7 - 16*((8 + (a floordiv 512)) floordiv 16) >= 0)",
+           {{0, 1, 0, 0}}}, // (a floordiv 2, a floordiv 2)
+      });
 
   expectSymbolicIntegerLexMin(
-    "(a, b, c, d)[k, j] : (j - 248 >= 0, 254 - j >= 0, k - j >= 0, 8*(b floordiv 8) - b == 0, 255 - k >= 0, "
-    "255 - a >= 0, 255 - c >= 0, 255 - j - d >= 0, "
-    "7*d + j - 255 >= 0, 7 - 7*d >= 0, 239 + a - 240*d >= 0, "
-    "247 + k - j - 247*d >= 0, 247 + k - b - 247*d >= 0, "
-    "247 -247*d >= 0, 248*d + b - 248 >= 0, c - 248*d >= 0, "
-    "254*d + a - b >= 0, 254*d + a - b >= 0, "
-    "255*d - a + b >= 0, 1792*d + 63736 - 257*b >= 0)", {
-    {"(k, j) : (255 - k >= 0, j - 248 >= 0, 254 - j >= 0, k - j >= 0)", {
-        {0, 0, 1}, {0, 0, 0}, {0, 0, 248}, {0, 0, 1} // (-127762 + i + 502j, -62992 + 248j, 63240 - 248j, 255 - j)
-      },
-    }
-  });
+      "(a, b)[K, N, x, y] : (N - K - 2 >= 0, K + 4 - N >= 0, x - 4 >= 0, x + 6 "
+      "- 2*N >= 0, K+N - x - 1 >= 0, a - N + 1 >= 0, K+N-1-a >= 0,a + 6 - b - "
+      "N >= 0, 2*N - 4 - a >= 0,"
+      "2*N - 3*K + a - b >= 0, 4*N - K + 1 - 3*b >= 0, b - N >= 0, a - x - 1 "
+      ">= 0)",
+      {{
+          "(K, N, x, y) : (x + 6 - 2*N >= 0, 2*N - 5 - x >= 0, x + 1 -3*K + N "
+          ">= 0, N + K - 2 - x >= 0, x - 4 >= 0)",
+          {{0, 0, 1, 0, 1}, {0, 1, 0, 0, 0}} // (1 + x, N)
+      }});
+
+  expectSymbolicIntegerLexMin(
+      "(a, b, c, d)[k, j] : (j - 248 >= 0, 254 - j >= 0, k - j >= 0, 8*(b "
+      "floordiv 8) - b == 0, 255 - k >= 0, "
+      "255 - a >= 0, 255 - c >= 0, 255 - j - d >= 0, "
+      "7*d + j - 255 >= 0, 7 - 7*d >= 0, 239 + a - 240*d >= 0, "
+      "247 + k - j - 247*d >= 0, 247 + k - b - 247*d >= 0, "
+      "247 -247*d >= 0, 248*d + b - 248 >= 0, c - 248*d >= 0, "
+      "254*d + a - b >= 0, 254*d + a - b >= 0, "
+      "255*d - a + b >= 0, 1792*d + 63736 - 257*b >= 0)",
+      {{
+          "(k, j) : (255 - k >= 0, j - 248 >= 0, 254 - j >= 0, k - j >= 0)",
+          {
+              {0, 0, 1},
+              {0, 0, 0},
+              {0, 0, 248},
+              {0, 0,
+               1} // (-127762 + i + 502j, -62992 + 248j, 63240 - 248j, 255 - j)
+          },
+      }});
 }
 
 static void

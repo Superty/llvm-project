@@ -148,8 +148,8 @@ private:
 /// this class is undefined. The domains need not cover all possible points;
 /// this represents a partial function and so could be undefined at some points.
 ///
-/// As in PresburgerRelations, the input ids are partitioned into dimension ids and
-/// symbolic ids.
+/// As in PresburgerRelations, the input ids are partitioned into dimension ids
+/// and symbolic ids.
 ///
 /// Support is provided to compare equality of two such functions as well as
 /// finding the value of the function at a point. Note that local ids in the

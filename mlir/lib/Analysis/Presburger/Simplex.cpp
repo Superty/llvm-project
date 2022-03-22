@@ -20,8 +20,9 @@ const int nullIndex = std::numeric_limits<int>::max();
 
 SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
                          unsigned nSymbol)
-    : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0), nCol(numFixedCols + nVar),
-      nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
+    : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0),
+      nCol(numFixedCols + nVar), nRedundant(0), nSymbol(nSymbol),
+      tableau(0, nCol), empty(false) {
   colUnknown.insert(colUnknown.begin(), numFixedCols, nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
@@ -240,7 +241,8 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
   return OptimumKind::Empty;
 }
 
-PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) {
+PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(
+    PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) {
   // Our symbols are the non-symbolic domain variables of the result
   // PWMAFunction. Our non-symbols are the outputs of the result.
   PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
@@ -253,12 +255,14 @@ PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboun
   return lexmin;
 }
 
-PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) {
+PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(
+    const IntegerRelation &symbolDomain) {
   auto unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/nSymbol);
   return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
 }
 
-SmallVector<int64_t, 8> SymbolicLexSimplex::getRowParamSample(unsigned row) const {
+SmallVector<int64_t, 8>
+SymbolicLexSimplex::getRowParamSample(unsigned row) const {
   SmallVector<int64_t, 8> sample;
   sample.reserve(nSymbol + 1);
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
@@ -268,7 +272,7 @@ SmallVector<int64_t, 8> SymbolicLexSimplex::getRowParamSample(unsigned row) cons
 }
 
 bool LexSimplex::isSeparateInequality(ArrayRef<int64_t> coeffs) {
-  return runAndRollback(*this, [this, coeffs](){
+  return runAndRollback(*this, [this, coeffs]() {
     addInequality(coeffs);
     return findIntegerLexMin().isEmpty();
   });
@@ -279,18 +283,25 @@ bool LexSimplex::isRedundantInequality(ArrayRef<int64_t> coeffs) {
 }
 
 bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
-  return llvm::all_of(range, [divisor](int64_t x){ return x % divisor == 0; });
+  return llvm::all_of(range, [divisor](int64_t x) { return x % divisor == 0; });
 }
 
-bool SymbolicLexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const {
+bool SymbolicLexSimplex::isParamSampleIntegral(
+    unsigned row, bool &constIntegral, bool &paramCoeffsIntegral,
+    bool &otherCoeffsIntegral) const {
   int64_t denom = tableau(row, 0);
   constIntegral = tableau(row, 1) % denom == 0;
-  paramCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
-  otherCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(numFixedCols, nCol - numFixedCols), denom);
+  paramCoeffsIntegral =
+      isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
+  otherCoeffsIntegral = isRangeDivisibleBy(
+      tableau.getRow(row).slice(numFixedCols, nCol - numFixedCols), denom);
   return constIntegral && paramCoeffsIntegral;
 }
 
-LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex) {
+LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
+                                                   bool paramCoeffsIntegral,
+                                                   IntegerRelation &domainPoly,
+                                                   LexSimplex &domainSimplex) {
   int64_t denom = tableau(row, 0);
 
   int64_t divDenom = denom;
@@ -324,7 +335,9 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row, bool paramCoeff
   return moveRowUnknownToColumn(nRow - 1);
 }
 
-void SymbolicLexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
+void SymbolicLexSimplex::recordOutputForDomain(
+    IntegerRelation &domainPoly, PWMAFunction &lexmin,
+    PresburgerSet &unboundedDomain) const {
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
@@ -359,8 +372,8 @@ void SymbolicLexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMA
 }
 
 void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
-    IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin,
-    PresburgerSet &unboundedDomain) {
+    IntegerRelation &domainPoly, LexSimplex &domainSimplex,
+    PWMAFunction &lexmin, PresburgerSet &unboundedDomain) {
   if (empty || domainSimplex.findIntegerLexMin().isEmpty())
     return;
 
@@ -384,10 +397,12 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
       continue;
     assert(tableau(row, 2) == 0);
     auto paramSample = getRowParamSample(row);
-    // We only care about whether the inequality is separate, redundant, or neither.
+    // We only care about whether the inequality is separate, redundant, or
+    // neither.
     normalizeRange(paramSample);
 
-    bool sampleAlwaysNonNegative = domainSimplex.isRedundantInequality(paramSample);
+    bool sampleAlwaysNonNegative =
+        domainSimplex.isRedundantInequality(paramSample);
     if (sampleAlwaysNonNegative)
       continue;
 
@@ -400,12 +415,13 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
     }
 
     int index = rowUnknown[row];
-    // On return, the basis as a set is preserved but not the internal ordering within rows or columns.
-    // Thus, we take note of the index of the Unknown we are working on the moment, which may be in a
-    // different row when we come back from recursing.
-    // 
-    // Note that we have to capture the index above and not a reference to the Unknown itself, since
-    // the array it lives in might get reallocated.
+    // On return, the basis as a set is preserved but not the internal ordering
+    // within rows or columns. Thus, we take note of the index of the Unknown we
+    // are working on the moment, which may be in a different row when we come
+    // back from recursing.
+    //
+    // Note that we have to capture the index above and not a reference to the
+    // Unknown itself, since the array it lives in might get reallocated.
     unsigned snapshot = getSnapshot();
     unsigned domainSnapshot = domainSimplex.getSnapshot();
     IntegerRelation::Counts domainPolyCounts = domainPoly.getCounts();
@@ -438,7 +454,8 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
 
     unsigned row = u.pos;
     bool constIntegral, paramCoeffsIntegral, otherCoeffsIntegral;
-    if (isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral, otherCoeffsIntegral))
+    if (isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral,
+                              otherCoeffsIntegral))
       continue;
 
     if (paramCoeffsIntegral && otherCoeffsIntegral) {
@@ -446,7 +463,8 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    if (addParametricCut(row, paramCoeffsIntegral, domainPoly, domainSimplex).succeeded())
+    if (addParametricCut(row, paramCoeffsIntegral, domainPoly, domainSimplex)
+            .succeeded())
       findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                            unboundedDomain);
     return;
@@ -562,7 +580,7 @@ LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
 }
 
 unsigned LexSimplexBase::getLexMinPivotColumn(unsigned row, unsigned colA,
-                                          unsigned colB) const {
+                                              unsigned colB) const {
   // A pivot causes the following change. (in the diagram the matrix elements
   // are shown as rationals and there is no common denominator used)
   //
@@ -942,8 +960,8 @@ Optional<unsigned> SimplexBase::findAnyPivotRow(unsigned col) {
   return {};
 }
 
-// This doesn't find a pivot column only if the row has zero coefficients for every column
-// not marked as an equality.
+// This doesn't find a pivot column only if the row has zero coefficients for
+// every column not marked as an equality.
 Optional<unsigned> SimplexBase::findAnyPivotCol(unsigned row) {
   for (unsigned col = numFixedCols; col < nCol; ++col)
     if (tableau(row, col) != 0)
@@ -1033,7 +1051,8 @@ void SimplexBase::undo(UndoLogEntry entry) {
     nRedundant--;
   } else if (entry == UndoLogEntry::UnmarkLastEquality) {
     numFixedCols--;
-    assert(numFixedCols >= 2 + usingBigM + nSymbol && "The denominator, constant, big M and symbols are always fixed!");
+    assert(numFixedCols >= 2 + usingBigM + nSymbol &&
+           "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
 

@@ -339,4 +339,3 @@ SmallVector<int64_t, 8> presburger::getComplementIneq(ArrayRef<int64_t> ineq) {
   --coeffs.back();
   return coeffs;
 }
-

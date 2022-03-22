@@ -226,8 +226,10 @@ protected:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos, bool oIsSymbol = false)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted), isSymbol(oIsSymbol) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos,
+            bool oIsSymbol = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted),
+          isSymbol(oIsSymbol) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
@@ -458,10 +460,9 @@ protected:
   LexSimplexBase(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
       : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
   explicit LexSimplexBase(const IntegerRelation &constraints)
-      : LexSimplexBase(
-            constraints.getNumIds(),
-            constraints.getIdKindOffset(IdKind::Symbol),
-            constraints.getNumSymbolIds()) {
+      : LexSimplexBase(constraints.getNumIds(),
+                       constraints.getIdKindOffset(IdKind::Symbol),
+                       constraints.getNumSymbolIds()) {
     intersectIntegerRelation(constraints);
   }
 
@@ -494,8 +495,10 @@ class LexSimplex : public LexSimplexBase {
 public:
   explicit LexSimplex(unsigned nVar)
       : LexSimplexBase(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
-  explicit LexSimplex(const IntegerRelation &constraints) : LexSimplexBase(constraints) {
-    assert(constraints.getNumSymbolIds() == 0 && "LexSimplex does not support symbols!");
+  explicit LexSimplex(const IntegerRelation &constraints)
+      : LexSimplexBase(constraints) {
+    assert(constraints.getNumSymbolIds() == 0 &&
+           "LexSimplex does not support symbols!");
   }
 
   /// Return the lexicographically minimum rational solution to the constraints.
@@ -546,17 +549,28 @@ class SymbolicLexSimplex : public LexSimplexBase {
 public:
   SymbolicLexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
       : LexSimplexBase(nVar, symbolOffset, nSymbol) {}
-  explicit SymbolicLexSimplex(const IntegerRelation &constraints) : LexSimplexBase(constraints) {}
+  explicit SymbolicLexSimplex(const IntegerRelation &constraints)
+      : LexSimplexBase(constraints) {}
 
   /// Return the integer lexmin of the Simplex. This is intended
-  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain);
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain,
+                                         const IntegerRelation &symbolDomain);
   PWMAFunction findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain);
-  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
+  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly,
+                                            LexSimplex &domainSimplex,
+                                            PWMAFunction &lexmin,
+                                            PresburgerSet &unboundedDomain);
+
 private:
-  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex);
+  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral,
+                                 IntegerRelation &domainPoly,
+                                 LexSimplex &domainSimplex);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
-  bool isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const;
-  void recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
+  bool isParamSampleIntegral(unsigned row, bool &constIntegral,
+                             bool &paramCoeffsIntegral,
+                             bool &otherCoeffsIntegral) const;
+  void recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin,
+                             PresburgerSet &unboundedDomain) const;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness

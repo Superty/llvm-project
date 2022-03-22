@@ -14,11 +14,11 @@
 #define MLIR_UNITTESTS_ANALYSIS_PRESBURGER_UTILS_H
 
 #include "../../Dialect/Affine/Analysis/AffineStructuresParser.h"
-#include "mlir/Support/LLVM.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
-#include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/PWMAFunction.h"
+#include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/Support/LLVM.h"
 
 #include <gtest/gtest.h>
 
@@ -39,8 +39,8 @@ inline IntegerPolyhedron parsePoly(StringRef str) {
 /// PresburgerSet be using the union operation. It is expected that the strings
 /// are all valid IntegerSet representation and that all of them have the same
 /// number of dimensions as is specified by the numDims argument.
-inline PresburgerSet parsePresburgerSetFromPolyStrings(unsigned numDims,
-                                                       ArrayRef<StringRef> strs) {
+inline PresburgerSet
+parsePresburgerSetFromPolyStrings(unsigned numDims, ArrayRef<StringRef> strs) {
   PresburgerSet set = PresburgerSet::getEmpty(numDims);
   for (StringRef str : strs)
     set.unionInPlace(parsePoly(str));

@@ -27,8 +27,8 @@ static SmallVector<int64_t, 8> subtract(ArrayRef<int64_t> vecA,
 }
 
 PresburgerRelation PWMAFunction::getDomain() const {
-  PresburgerRelation domain =
-      PresburgerRelation::getEmpty(/*numRange=*/0, getNumDimIds(), getNumSymbolIds());
+  PresburgerRelation domain = PresburgerRelation::getEmpty(
+      /*numDomain=*/0, /*numRange=*/getNumDimIds(), getNumSymbolIds());
   for (const MultiAffineFunction &piece : pieces)
     domain.unionInPlace(piece.getDomain());
   return domain;
@@ -184,4 +184,3 @@ void PWMAFunction::print(raw_ostream &os) const {
 }
 
 void PWMAFunction::dump() const { print(llvm::errs()); }
-

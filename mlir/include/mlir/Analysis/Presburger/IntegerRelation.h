@@ -216,7 +216,9 @@ public:
   IntegerRelation getSymbolDomainOverapprox() const;
   PWMAFunction findSymbolicIntegerLexMin() const;
   PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain) const;
-  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) const;
+  PWMAFunction
+  findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain,
+                            const IntegerRelation &symbolDomain) const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);
@@ -412,7 +414,8 @@ public:
   /// Converts identifiers in the column range [idStart, idLimit) to local
   /// variables.
   void convertDimToLocal(unsigned dimStart, unsigned dimLimit);
-  void changeIdKind(IdKind srcKind, unsigned begin, unsigned end, IdKind dstKind);
+  void changeIdKind(IdKind srcKind, unsigned begin, unsigned end,
+                    IdKind dstKind);
 
   /// Adds additional local ids to the sets such that they both have the union
   /// of the local ids in each set, without changing the set of points that
@@ -433,10 +436,10 @@ protected:
   void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> constraint);
   void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> coeffs,
                      int64_t constant);
-  std::pair<const Matrix&, const Matrix&> getConstraintMatrices() const {
+  std::pair<const Matrix &, const Matrix &> getConstraintMatrices() const {
     return {inequalities, equalities};
   }
-  std::pair<Matrix&, Matrix&> getConstraintMatrices() {
+  std::pair<Matrix &, Matrix &> getConstraintMatrices() {
     return {inequalities, equalities};
   }
 

@@ -184,11 +184,11 @@ void Matrix::copyRow(unsigned sourceRow, unsigned targetRow) {
 }
 
 void Matrix::copy(ArrayRef<int64_t> range, unsigned row, unsigned column) {
-  assert(column + range.size() <= getNumColumns() && "Values to be copied would overflow the row!");
+  assert(column + range.size() <= getNumColumns() &&
+         "Values to be copied would overflow the row!");
   for (unsigned i = 0, e = range.size(); i < e; ++i)
     at(row, column + i) = range[i];
 }
-
 
 void Matrix::fillRow(unsigned row, int64_t value) {
   for (unsigned col = 0; col < nColumns; ++col)
