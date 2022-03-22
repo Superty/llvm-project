@@ -154,16 +154,6 @@ public:
   SimplexBase() = delete;
   virtual ~SimplexBase() = default;
 
-  /// Construct a SimplexBase with the specified number of variables and fixed
-  /// columns.
-  ///
-  /// For example, Simplex uses two fixed columns: the denominator and the
-  /// constant term, whereas LexSimplex has an extra fixed column for the
-  /// so-called big M parameter. For more information see the documentation for
-  /// LexSimplex.
-  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
-              unsigned nSymbol);
-
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
   bool isEmpty() const;
@@ -216,6 +206,16 @@ public:
   void dump() const;
 
 protected:
+  /// Construct a SimplexBase with the specified number of variables and fixed
+  /// columns.
+  ///
+  /// For example, Simplex uses two fixed columns: the denominator and the
+  /// constant term, whereas LexSimplex has an extra fixed column for the
+  /// so-called big M parameter. For more information see the documentation for
+  /// LexSimplex.
+  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol);
+
   enum class Orientation { Row, Column };
 
   /// An Unknown is either a variable or a constraint. It is always associated
@@ -435,22 +435,9 @@ protected:
 /// (A_k)*y is not zero then we have that A*y is lexicopositive and if not we
 /// ignore more columns; eventually if all these dot products become zero then
 /// A*y is zero and we are done.
-class LexSimplex : public SimplexBase {
+class LexSimplexBase : public SimplexBase {
 public:
-  LexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
-      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
-  explicit LexSimplex(unsigned nVar)
-      : LexSimplex(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
-
-  explicit LexSimplex(const IntegerRelation &constraints)
-      : LexSimplex(
-            constraints.getNumIds(),
-            constraints.getIdKindOffset(IdKind::Symbol),
-            constraints.getNumSymbolIds()) {
-    intersectIntegerRelation(constraints);
-  }
-
-  ~LexSimplex() override = default;
+  ~LexSimplexBase() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
@@ -464,11 +451,52 @@ public:
 
   void addEquality(ArrayRef<int64_t> coeffs);
 
-  bool isSeparateInequality(ArrayRef<int64_t> coeffs);
-  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
-
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
+
+protected:
+  LexSimplexBase(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
+  explicit LexSimplexBase(const IntegerRelation &constraints)
+      : LexSimplexBase(
+            constraints.getNumIds(),
+            constraints.getIdKindOffset(IdKind::Symbol),
+            constraints.getNumSymbolIds()) {
+    intersectIntegerRelation(constraints);
+  }
+
+  /// Given a row that has a non-integer sample value, add an inequality such
+  /// that this fractional sample value is cut away from the polytope. The added
+  /// inequality will be such that no integer points are removed.
+  ///
+  /// Returns whether the cut constraint could be enforced, i.e. failure if the
+  /// cut made the polytope empty, and success if it didn't. Failure status
+  /// indicates that the polytope didn't have any integer points.
+  LogicalResult addCut(unsigned row);
+
+  /// Undo the addition of the last constraint. This is only called while
+  /// rolling back.
+  void undoLastConstraint() final;
+
+  /// Given two potential pivot columns for a row, return the one that results
+  /// in the lexicographically smallest sample vector.
+  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
+                                unsigned colB) const;
+
+  /// Try to move the specified row to column orientation while preserving the
+  /// lexicopositivity of the basis transform. If this is not possible, return
+  /// failure. This only occurs when the constraints have no solution; the
+  /// tableau will be marked empty in such a case.
+  LogicalResult moveRowUnknownToColumn(unsigned row);
+};
+
+class LexSimplex : public LexSimplexBase {
+public:
+  explicit LexSimplex(unsigned nVar)
+      : LexSimplexBase(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
+  explicit LexSimplex(const IntegerRelation &constraints) : LexSimplexBase(constraints) {
+    assert(constraints.getNumSymbolIds() == 0 && "LexSimplex does not support symbols!");
+  }
 
   /// Return the lexicographically minimum rational solution to the constraints.
   /// This should not be called when symbols are involved.
@@ -482,12 +510,15 @@ public:
   /// any integer sample, use Simplex::findIntegerSample as that is more robust.
   MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
 
-  /// Return the integer lexmin of the Simplex. This is intended
-  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain);
-  PWMAFunction findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain);
-  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
+  /// Return whether the specified inequality is redundant for the polytope.
+  /// This check is integer-exact and somewhat expensive.
+  bool isSeparateInequality(ArrayRef<int64_t> coeffs);
 
-protected:
+  /// Return whether the specified inequality is separate for the polytope.
+  /// This check is integer-exact and somewhat expensive.
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
+
+private:
   /// Returns the current sample point, which may contain non-integer (rational)
   /// coordinates. Returns an empty optimum when the tableau is empty.
   ///
@@ -495,25 +526,6 @@ protected:
   /// variable has a non-zero big M coefficient, meaning its value is infinite
   /// or unbounded.
   MaybeOptimum<SmallVector<Fraction, 8>> getRationalSample() const;
-
-  SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
-  bool isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const;
-
-  /// Given a row that has a non-integer sample value, add an inequality such
-  /// that this fractional sample value is cut away from the polytope. The added
-  /// inequality will be such that no integer points are removed.
-  ///
-  /// Returns whether the cut constraint could be enforced, i.e. failure if the
-  /// cut made the polytope empty, and success if it didn't. Failure status
-  /// indicates that the polytope didn't have any integer points.
-  LogicalResult addCut(unsigned row);
-  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex);
-
-  bool isIntegerRedundantIneq(ArrayRef<int64_t> coeffs);
-
-  /// Undo the addition of the last constraint. This is only called while
-  /// rolling back.
-  void undoLastConstraint() final;
 
   /// Make the tableau configuration consistent.
   void restoreRationalConsistency();
@@ -528,18 +540,22 @@ protected:
   /// Get a row corresponding to a var that has a non-integral sample value, if
   /// one exists. Otherwise, return an empty optional.
   Optional<unsigned> maybeGetNonIntegralVarRow() const;
+};
 
-  /// Given two potential pivot columns for a row, return the one that results
-  /// in the lexicographically smallest sample vector.
-  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
-                                unsigned colB) const;
+class SymbolicLexSimplex : public LexSimplexBase {
+public:
+  SymbolicLexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : LexSimplexBase(nVar, symbolOffset, nSymbol) {}
+  explicit SymbolicLexSimplex(const IntegerRelation &constraints) : LexSimplexBase(constraints) {}
 
-  /// Try to move the specified row to column orientation while preserving the
-  /// lexicopositivity of the basis transform. If this is not possible, return
-  /// failure. This only occurs when the constraints have no solution; the
-  /// tableau will be marked empty in such a case.
-  LogicalResult moveRowUnknownToColumn(unsigned row);
-
+  /// Return the integer lexmin of the Simplex. This is intended
+  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain);
+  PWMAFunction findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain);
+  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin, PresburgerSet &unboundedDomain);
+private:
+  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex);
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
+  bool isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const;
   void recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
 };
 

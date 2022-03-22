@@ -185,7 +185,7 @@ PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
   removeConstraintsInvolvingOnlyIdRange(copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
   PWMAFunction result =
-      LexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
+      SymbolicLexSimplex(copy).findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
   result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
   return result;
 }

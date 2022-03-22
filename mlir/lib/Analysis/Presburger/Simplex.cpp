@@ -181,7 +181,7 @@ MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::findRationalLexMin() {
   return getRationalSample();
 }
 
-LogicalResult LexSimplex::addCut(unsigned row) {
+LogicalResult LexSimplexBase::addCut(unsigned row) {
   int64_t denom = tableau(row, 0);
   addZeroRow(/*makeRestricted=*/true);
   tableau(nRow - 1, 0) = denom;
@@ -240,7 +240,7 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
   return OptimumKind::Empty;
 }
 
-PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) {
+PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) {
   // Our symbols are the non-symbolic domain variables of the result
   // PWMAFunction. Our non-symbols are the outputs of the result.
   PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
@@ -253,12 +253,12 @@ PWMAFunction LexSimplex::findSymbolicIntegerLexMin(PresburgerSet &unboundedDomai
   return lexmin;
 }
 
-PWMAFunction LexSimplex::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) {
+PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) {
   auto unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/nSymbol);
   return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
 }
 
-SmallVector<int64_t, 8> LexSimplex::getRowParamSample(unsigned row) const {
+SmallVector<int64_t, 8> SymbolicLexSimplex::getRowParamSample(unsigned row) const {
   SmallVector<int64_t, 8> sample;
   sample.reserve(nSymbol + 1);
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
@@ -282,7 +282,7 @@ bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
   return llvm::all_of(range, [divisor](int64_t x){ return x % divisor == 0; });
 }
 
-bool LexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const {
+bool SymbolicLexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral) const {
   int64_t denom = tableau(row, 0);
   constIntegral = tableau(row, 1) % denom == 0;
   paramCoeffsIntegral = isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
@@ -290,7 +290,7 @@ bool LexSimplex::isParamSampleIntegral(unsigned row, bool &constIntegral, bool &
   return constIntegral && paramCoeffsIntegral;
 }
 
-LogicalResult LexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex) {
+LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegral, IntegerRelation &domainPoly, LexSimplex &domainSimplex) {
   int64_t denom = tableau(row, 0);
 
   int64_t divDenom = denom;
@@ -324,7 +324,7 @@ LogicalResult LexSimplex::addParametricCut(unsigned row, bool paramCoeffsIntegra
   return moveRowUnknownToColumn(nRow - 1);
 }
 
-void LexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
+void SymbolicLexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
@@ -358,7 +358,7 @@ void LexSimplex::recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction
   lexmin.addPiece(domainPoly, output);
 }
 
-void LexSimplex::findSymbolicIntegerLexMinRecursively(
+void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
     IntegerRelation &domainPoly, LexSimplex &domainSimplex, PWMAFunction &lexmin,
     PresburgerSet &unboundedDomain) {
   if (empty || domainSimplex.findIntegerLexMin().isEmpty())
@@ -415,7 +415,7 @@ void LexSimplex::findSymbolicIntegerLexMinRecursively(
     findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
                                          unboundedDomain);
 
-    domainPoly.restoreCounts(domainPolyCounts);
+    domainPoly.truncate(domainPolyCounts);
     domainSimplex.rollback(domainSnapshot);
     rollback(snapshot);
 
@@ -543,7 +543,7 @@ void LexSimplex::restoreRationalConsistency() {
 // which is in contradiction to the fact that B.col(j) / B(i,j) must be
 // lexicographically smaller than B.col(k) / B(i,k), since it lexicographically
 // minimizes the change in sample value.
-LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
+LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
   for (unsigned col = numFixedCols; col < nCol; ++col) {
     if (tableau(row, col) <= 0)
@@ -561,7 +561,7 @@ LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   return success();
 }
 
-unsigned LexSimplex::getLexMinPivotColumn(unsigned row, unsigned colA,
+unsigned LexSimplexBase::getLexMinPivotColumn(unsigned row, unsigned colA,
                                           unsigned colB) const {
   // A pivot causes the following change. (in the diagram the matrix elements
   // are shown as rationals and there is no common denominator used)
@@ -981,7 +981,7 @@ void Simplex::undoLastConstraint() {
 
 // It's not valid to remove the constraint by deleting the column since this
 // would result in an invalid basis.
-void LexSimplex::undoLastConstraint() {
+void LexSimplexBase::undoLastConstraint() {
   if (con.back().orientation == Orientation::Column) {
     // When removing the last constraint during a rollback, we just need to find
     // any pivot at all, i.e., any row with non-zero coefficient for the
@@ -1357,7 +1357,7 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
   return sample;
 }
 
-void LexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
+void LexSimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
   Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
   if (!pivotCol)
