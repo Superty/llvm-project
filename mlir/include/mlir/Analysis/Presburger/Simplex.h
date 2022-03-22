@@ -547,30 +547,21 @@ private:
 
 class SymbolicLexSimplex : public LexSimplexBase {
 public:
-  SymbolicLexSimplex(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
-      : LexSimplexBase(nVar, symbolOffset, nSymbol) {}
-  explicit SymbolicLexSimplex(const IntegerRelation &constraints)
-      : LexSimplexBase(constraints) {}
-
-  /// Return the integer lexmin of the Simplex. This is intended
-  PWMAFunction findSymbolicIntegerLexMin(PresburgerSet &unboundedDomain,
-                                         const IntegerRelation &symbolDomain);
-  PWMAFunction findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain);
-  void findSymbolicIntegerLexMinRecursively(IntegerRelation &domainPoly,
-                                            LexSimplex &domainSimplex,
-                                            PWMAFunction &lexmin,
-                                            PresburgerSet &unboundedDomain);
-
+  explicit SymbolicLexSimplex(const IntegerRelation &constraints, const IntegerRelation &symbolDomain, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) :
+    LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain), lexmin(lexmin), unboundedDomain(unboundedDomain) {}
+  void computeSymbolicIntegerLexMin();
 private:
-  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral,
-                                 IntegerRelation &domainPoly,
-                                 LexSimplex &domainSimplex);
+  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
   bool isParamSampleIntegral(unsigned row, bool &constIntegral,
                              bool &paramCoeffsIntegral,
                              bool &otherCoeffsIntegral) const;
-  void recordOutputForDomain(IntegerRelation &domainPoly, PWMAFunction &lexmin,
-                             PresburgerSet &unboundedDomain) const;
+  void recordOutput() const;
+
+  IntegerRelation domainPoly;
+  LexSimplex domainSimplex;
+  PWMAFunction &lexmin;
+  PresburgerSet &unboundedDomain;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness

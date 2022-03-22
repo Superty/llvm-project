@@ -216,7 +216,7 @@ void normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom) {
 
 MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
   assert(nSymbol == 0 &&
-         "Use findSymbolicIntegerLexMin when symbols are involved!");
+         "Use computeSymbolicIntegerLexMin when symbols are involved!");
   while (!empty) {
     restoreRationalConsistency();
     if (empty)
@@ -239,26 +239,6 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
 
   // Polytope is integer empty.
   return OptimumKind::Empty;
-}
-
-PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(
-    PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) {
-  // Our symbols are the non-symbolic domain variables of the result
-  // PWMAFunction. Our non-symbols are the outputs of the result.
-  PWMAFunction lexmin(/*numDims=*/nSymbol, /*numSymbols=*/0,
-                      /*numOutputs=*/var.size() - nSymbol);
-  IntegerRelation domainPoly = symbolDomain;
-  LexSimplex domainSimplex(domainPoly);
-  unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/nSymbol);
-  findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                       unboundedDomain);
-  return lexmin;
-}
-
-PWMAFunction SymbolicLexSimplex::findSymbolicIntegerLexMin(
-    const IntegerRelation &symbolDomain) {
-  auto unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/nSymbol);
-  return findSymbolicIntegerLexMin(unboundedDomain, symbolDomain);
 }
 
 SmallVector<int64_t, 8>
@@ -299,9 +279,7 @@ bool SymbolicLexSimplex::isParamSampleIntegral(
 }
 
 LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
-                                                   bool paramCoeffsIntegral,
-                                                   IntegerRelation &domainPoly,
-                                                   LexSimplex &domainSimplex) {
+                                                   bool paramCoeffsIntegral) {
   int64_t denom = tableau(row, 0);
 
   int64_t divDenom = denom;
@@ -335,9 +313,7 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
   return moveRowUnknownToColumn(nRow - 1);
 }
 
-void SymbolicLexSimplex::recordOutputForDomain(
-    IntegerRelation &domainPoly, PWMAFunction &lexmin,
-    PresburgerSet &unboundedDomain) const {
+void SymbolicLexSimplex::recordOutput() const {
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
@@ -371,9 +347,7 @@ void SymbolicLexSimplex::recordOutputForDomain(
   lexmin.addPiece(domainPoly, output);
 }
 
-void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
-    IntegerRelation &domainPoly, LexSimplex &domainSimplex,
-    PWMAFunction &lexmin, PresburgerSet &unboundedDomain) {
+void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
   if (empty || domainSimplex.findIntegerLexMin().isEmpty())
     return;
 
@@ -384,8 +358,7 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
       LogicalResult status = moveRowUnknownToColumn(row);
       if (failed(status))
         return;
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                           unboundedDomain);
+      computeSymbolicIntegerLexMin();
       return;
     }
   }
@@ -409,8 +382,7 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
     bool sampleAlwaysNegative = domainSimplex.isSeparateInequality(paramSample);
     if (sampleAlwaysNegative) {
       if (moveRowUnknownToColumn(row).succeeded())
-        findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                             unboundedDomain);
+        computeSymbolicIntegerLexMin();
       return;
     }
 
@@ -428,8 +400,7 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
     domainSimplex.addInequality(paramSample);
     domainPoly.addInequality(paramSample);
 
-    findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                         unboundedDomain);
+    computeSymbolicIntegerLexMin();
 
     domainPoly.truncate(domainPolyCounts);
     domainSimplex.rollback(domainSnapshot);
@@ -441,8 +412,7 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
       domainSimplex.addInequality(getComplementIneq(paramSample));
       domainPoly.addInequality(getComplementIneq(paramSample));
 
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                           unboundedDomain);
+      computeSymbolicIntegerLexMin();
     }
     return;
   }
@@ -463,13 +433,11 @@ void SymbolicLexSimplex::findSymbolicIntegerLexMinRecursively(
       return;
     }
 
-    if (addParametricCut(row, paramCoeffsIntegral, domainPoly, domainSimplex)
-            .succeeded())
-      findSymbolicIntegerLexMinRecursively(domainPoly, domainSimplex, lexmin,
-                                           unboundedDomain);
+    if (addParametricCut(row, paramCoeffsIntegral).succeeded())
+      computeSymbolicIntegerLexMin();
     return;
   }
-  recordOutputForDomain(domainPoly, lexmin, unboundedDomain);
+  recordOutput();
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {

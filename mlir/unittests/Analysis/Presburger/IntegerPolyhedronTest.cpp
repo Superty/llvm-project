@@ -1150,7 +1150,7 @@ void expectSymbolicIntegerLexMin(
 
   PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(
       poly.getNumSymbolIds(), unboundedDomain);
-  auto unboundedDomainOutput = PresburgerSet::getEmpty(0, 0);
+  auto unboundedDomainOutput = PresburgerSet::getEmpty(poly.getNumSymbolIds(), 0);
 
   PWMAFunction output = poly.findSymbolicIntegerLexMin(
       unboundedDomainOutput); //,

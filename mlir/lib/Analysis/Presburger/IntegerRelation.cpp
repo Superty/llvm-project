@@ -190,9 +190,9 @@ PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
   removeConstraintsInvolvingOnlyIdRange(
       copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
-  PWMAFunction result = SymbolicLexSimplex(copy).findSymbolicIntegerLexMin(
-      unboundedDomain, symbolDomain);
-  result.truncateOutput(result.getNumOutputs() - getNumLocalIds());
+  PWMAFunction result(copy.getNumSymbolIds(), 0, copy.getNumIds() - copy.getNumSymbolIds());
+  SymbolicLexSimplex(copy, symbolDomain, result, unboundedDomain).computeSymbolicIntegerLexMin();
+  result.truncateOutput(result.getNumOutputs() - copy.getNumLocalIds());
   return result;
 }
 
