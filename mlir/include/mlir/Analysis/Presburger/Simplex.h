@@ -556,7 +556,7 @@ private:
   Optional<unsigned> maybeGetAlwaysViolatedRow();
   Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);
   Optional<unsigned> maybeGetNonIntegralVarRow(bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral);
-  LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral);
+  LogicalResult addParametricCut(unsigned row);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
   bool isParamSampleIntegral(unsigned row, bool &constIntegral,
                              bool &paramCoeffsIntegral,

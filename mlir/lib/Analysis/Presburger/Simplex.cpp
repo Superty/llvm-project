@@ -278,8 +278,7 @@ bool SymbolicLexSimplex::isParamSampleIntegral(
   return constIntegral && paramCoeffsIntegral;
 }
 
-LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
-                                                   bool paramCoeffsIntegral) {
+LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
   int64_t denom = tableau(row, 0);
 
   int64_t divDenom = denom;
@@ -288,11 +287,9 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
     domainDivCoeffs.push_back(mod(-tableau(row, col), divDenom));
   domainDivCoeffs.push_back(mod(-tableau(row, 1), divDenom));
   normalizeDiv(domainDivCoeffs, divDenom);
-  if (!paramCoeffsIntegral) {
-    domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
-    domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
-    appendSymbol();
-  }
+  domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
+  domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
+  appendSymbol();
 
   addZeroRow(/*makeRestricted=*/true);
   tableau(nRow - 1, 0) = denom;
@@ -301,14 +298,9 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row,
   for (unsigned col = 3 + nSymbol; col < nCol; ++col)
     tableau(nRow - 1, col) = mod(tableau(row, col), denom);
 
-  if (paramCoeffsIntegral) {
-    for (unsigned col = 3; col < 3 + nSymbol; ++col)
-      tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
-  } else {
-    for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
-      tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
-    tableau(nRow - 1, 3 + nSymbol - 1) = denom;
-  }
+  for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
+    tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
+  tableau(nRow - 1, 3 + nSymbol - 1) = denom;
 
   return moveRowUnknownToColumn(nRow - 1);
 }
@@ -502,7 +494,7 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
           continue;
         }
 
-        if (addParametricCut(*row, paramCoeffsIntegral).failed()) {
+        if (addParametricCut(*row).failed()) {
           // Return.
           --level;
           continue;
