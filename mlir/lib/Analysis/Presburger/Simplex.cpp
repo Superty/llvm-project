@@ -266,16 +266,10 @@ bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
   return llvm::all_of(range, [divisor](int64_t x) { return x % divisor == 0; });
 }
 
-bool SymbolicLexSimplex::isParamSampleIntegral(
-    unsigned row, bool &constIntegral, bool &paramCoeffsIntegral,
-    bool &otherCoeffsIntegral) const {
+bool SymbolicLexSimplex::isParamSampleIntegral(unsigned row) const {
   int64_t denom = tableau(row, 0);
-  constIntegral = tableau(row, 1) % denom == 0;
-  paramCoeffsIntegral =
-      isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
-  otherCoeffsIntegral = isRangeDivisibleBy(
-      tableau.getRow(row).slice(numFixedCols, nCol - numFixedCols), denom);
-  return constIntegral && paramCoeffsIntegral;
+  return tableau(row, 1) % denom == 0 &&
+         isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
 }
 
 LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
@@ -383,16 +377,14 @@ Optional<unsigned> SymbolicLexSimplex::maybeGetSplitRow(SmallVector<int64_t, 8> 
   return {};
 }
 
-Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow(bool &constIntegral, bool &paramCoeffsIntegral,
-    bool &otherCoeffsIntegral) {
+Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow() {
   for (const Unknown &u : var) {
     if (u.orientation == Orientation::Column)
       continue;
     assert(!u.isSymbol && "Symbol should not be in row orientation!");
 
     unsigned row = u.pos;
-    if (!isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral,
-                              otherCoeffsIntegral))
+    if (!isParamSampleIntegral(row))
       return row;
   }
   return {};
@@ -485,15 +477,7 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
     }
 
     if (level > stack.size()) {
-      bool constIntegral, paramCoeffsIntegral, otherCoeffsIntegral;
-      if (Optional<unsigned> row = maybeGetNonIntegralVarRow(constIntegral, paramCoeffsIntegral, otherCoeffsIntegral)) {
-        if (paramCoeffsIntegral && otherCoeffsIntegral) {
-          assert(!constIntegral);
-          // Return.
-          --level;
-          continue;
-        }
-
+      if (Optional<unsigned> row = maybeGetNonIntegralVarRow()) {
         if (addParametricCut(*row).failed()) {
           // Return.
           --level;
