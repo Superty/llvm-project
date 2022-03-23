@@ -421,7 +421,6 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
     return;
 
   struct StackFrame {
-    StackFrame(int index, unsigned snapshot, unsigned domainSnapshot, IntegerRelation::Counts counts) : index(index), snapshot(snapshot), domainSnapshot(domainSnapshot), domainPolyCounts(counts) {};
     int index;
     unsigned snapshot, domainSnapshot;
     IntegerRelation::Counts domainPolyCounts;
@@ -457,7 +456,7 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
         unsigned snapshot = getSnapshot();
         unsigned domainSnapshot = domainSimplex.getSnapshot();
         IntegerRelation::Counts domainPolyCounts = domainPoly.getCounts();
-        stack.emplace_back(index, snapshot, domainSnapshot, domainPolyCounts);
+        stack.push_back({index, snapshot, domainSnapshot, domainPolyCounts});
         domainSimplex.addInequality(rowParamSample);
         domainPoly.addInequality(rowParamSample);
 
