@@ -551,7 +551,7 @@ public:
     LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain), lexmin(lexmin), unboundedDomain(unboundedDomain) {}
   void computeSymbolicIntegerLexMin();
 private:
-  LogicalResult performNonBranchingSteps();
+  LogicalResult doNonBranchingPivots();
   Optional<unsigned> maybeGetObviouslyViolatedRow();
   Optional<unsigned> maybeGetAlwaysViolatedRow();
   Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);

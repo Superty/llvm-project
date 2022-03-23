@@ -406,7 +406,7 @@ Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow(bool &constInte
   return {};
 }
 
-LogicalResult SymbolicLexSimplex::performNonBranchingSteps() {
+LogicalResult SymbolicLexSimplex::doNonBranchingPivots() {
   while (Optional<unsigned> row = maybeGetObviouslyViolatedRow())
     if (moveRowUnknownToColumn(*row).failed())
       return failure();
@@ -432,7 +432,13 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
   while (level > 0) {
     assert(level >= stack.size());
     if (level > stack.size()) {
-      if (performNonBranchingSteps().failed()) {
+      if (empty || domainSimplex.findIntegerLexMin().isEmpty()) {
+        // Return.
+        --level;
+        continue;
+      }
+
+      if (doNonBranchingPivots().failed()) {
         // Return;
         --level;
         continue;
