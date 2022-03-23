@@ -184,27 +184,18 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly,
       poly.removeInequality(i - 1);
 }
 
-PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
-    PresburgerSet &unboundedDomain, const IntegerRelation &symbolDomain) const {
+SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) const {
   IntegerRelation copy = *this;
   removeConstraintsInvolvingOnlyIdRange(
       copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
 
-  PWMAFunction result(copy.getNumSymbolIds(), 0, copy.getNumIds() - copy.getNumSymbolIds());
-  SymbolicLexSimplex(copy, symbolDomain, result, unboundedDomain).computeSymbolicIntegerLexMin();
-  result.truncateOutput(result.getNumOutputs() - copy.getNumLocalIds());
+  SymbolicLexMin result = SymbolicLexSimplex(copy, symbolDomain).computeSymbolicIntegerLexMin();
+  result.lexmin.truncateOutput(result.lexmin.getNumOutputs() - copy.getNumLocalIds());
   return result;
 }
 
-PWMAFunction IntegerRelation::findSymbolicIntegerLexMin(
-    PresburgerSet &unboundedDomain) const {
-  return findSymbolicIntegerLexMin(unboundedDomain,
-                                   getSymbolDomainOverapprox());
-}
-
-PWMAFunction IntegerRelation::findSymbolicIntegerLexMin() const {
-  auto unboundedDomain = PresburgerSet::getEmpty(/*numDims=*/getNumSymbolIds());
-  return findSymbolicIntegerLexMin(unboundedDomain);
+SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin() const {
+  return findSymbolicIntegerLexMin(getSymbolDomainOverapprox());
 }
 
 IntegerRelation::Counts IntegerRelation::getCounts() const {

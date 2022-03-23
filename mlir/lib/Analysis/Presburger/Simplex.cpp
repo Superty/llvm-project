@@ -297,7 +297,7 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
   return moveRowUnknownToColumn(nRow - 1);
 }
 
-void SymbolicLexSimplex::recordOutput() const {
+void SymbolicLexSimplex::recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
   Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
   unsigned row = 0;
   for (const Unknown &u : var) {
@@ -398,9 +398,9 @@ LogicalResult SymbolicLexSimplex::doNonBranchingPivots() {
   return success();
 }
 
-void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
-  if (empty || domainSimplex.findIntegerLexMin().isEmpty())
-    return;
+SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
+  PWMAFunction lexmin(nSymbol, 0, var.size() - nSymbol);
+  PresburgerSet unboundedDomain = PresburgerSet::getEmpty(nSymbol, 0);
 
   struct StackFrame {
     int index;
@@ -487,11 +487,12 @@ void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
       }
 
       // Record output and return.
-      recordOutput();
+      recordOutput(lexmin, unboundedDomain);
       --level;
       continue;
     }
   }
+  return {lexmin, unboundedDomain};
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {

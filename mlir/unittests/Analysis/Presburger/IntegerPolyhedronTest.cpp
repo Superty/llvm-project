@@ -1137,36 +1137,33 @@ TEST(IntegerPolyhedronTest, findIntegerLexMin) {
 void expectSymbolicIntegerLexMin(
     StringRef polyStr,
     ArrayRef<std::pair<StringRef, SmallVector<SmallVector<int64_t, 8>, 8>>>
-        result,
-    ArrayRef<StringRef> unboundedDomain) {
+        expectedLexminRepr,
+    ArrayRef<StringRef> expectedUnboundedDomainRepr) {
   IntegerPolyhedron poly = parsePoly(polyStr);
   // poly.getSymbolDomainOverapprox().dump();
 
   ASSERT_NE(poly.getNumDimIds(), 0u);
   ASSERT_NE(poly.getNumSymbolIds(), 0u);
 
-  PWMAFunction resultF = parsePWMAF(/*numInputs=*/poly.getNumSymbolIds(),
-                                    /*numOutputs=*/poly.getNumDimIds(), result);
+  PWMAFunction expectedLexmin = parsePWMAF(/*numInputs=*/poly.getNumSymbolIds(),
+                                    /*numOutputs=*/poly.getNumDimIds(), expectedLexminRepr);
 
-  PresburgerSet unboundedDomainSet = parsePresburgerSetFromPolyStrings(
-      poly.getNumSymbolIds(), unboundedDomain);
-  auto unboundedDomainOutput = PresburgerSet::getEmpty(poly.getNumSymbolIds(), 0);
+  PresburgerSet expectedUnboundedDomain = parsePresburgerSetFromPolyStrings(
+      poly.getNumSymbolIds(), expectedUnboundedDomainRepr);
 
-  PWMAFunction output = poly.findSymbolicIntegerLexMin(
-      unboundedDomainOutput); //,
-                              // resultF.getPiece(1).getDomain().intersect(poly.getSymbolDomainOverapprox()));
+  SymbolicLexMin result = poly.findSymbolicIntegerLexMin();
 
-  EXPECT_TRUE(output.isEqual(resultF));
-  if (!output.isEqual(resultF)) {
+  EXPECT_TRUE(result.lexmin.isEqual(expectedLexmin));
+  if (!result.lexmin.isEqual(expectedLexmin)) {
     std::cerr << "got:\n";
-    output.dump();
+    result.lexmin.dump();
     std::cerr << "expected:\n";
-    resultF.dump();
+    expectedLexmin.dump();
   }
 
-  EXPECT_TRUE(unboundedDomainOutput.isEqual(unboundedDomainSet));
-  if (!unboundedDomainOutput.isEqual(unboundedDomainSet))
-    unboundedDomainOutput.dump();
+  EXPECT_TRUE(result.unboundedDomain.isEqual(expectedUnboundedDomain));
+  if (!result.unboundedDomain.isEqual(expectedUnboundedDomain))
+    result.unboundedDomain.dump();
 }
 
 void expectSymbolicIntegerLexMin(

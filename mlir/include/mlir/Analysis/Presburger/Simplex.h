@@ -545,11 +545,16 @@ private:
   Optional<unsigned> maybeGetNonIntegralVarRow() const;
 };
 
+struct SymbolicLexMin {
+  PWMAFunction lexmin;
+  PresburgerSet unboundedDomain;
+};
+
 class SymbolicLexSimplex : public LexSimplexBase {
 public:
-  explicit SymbolicLexSimplex(const IntegerRelation &constraints, const IntegerRelation &symbolDomain, PWMAFunction &lexmin, PresburgerSet &unboundedDomain) :
-    LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain), lexmin(lexmin), unboundedDomain(unboundedDomain) {}
-  void computeSymbolicIntegerLexMin();
+  explicit SymbolicLexSimplex(const IntegerRelation &constraints, const IntegerRelation &symbolDomain) :
+    LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain) {}
+  SymbolicLexMin computeSymbolicIntegerLexMin();
 private:
   LogicalResult doNonBranchingPivots();
   Optional<unsigned> maybeGetObviouslyViolatedRow();
@@ -559,12 +564,10 @@ private:
   LogicalResult addParametricCut(unsigned row);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
   bool isParamSampleIntegral(unsigned row) const;
-  void recordOutput() const;
+  void recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
 
   IntegerRelation domainPoly;
   LexSimplex domainSimplex;
-  PWMAFunction &lexmin;
-  PresburgerSet &unboundedDomain;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness
