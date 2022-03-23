@@ -287,15 +287,13 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
 
   addZeroRow(/*makeRestricted=*/true);
   tableau(nRow - 1, 0) = denom;
-  tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
   tableau(nRow - 1, 2) = 0;
-  for (unsigned col = 3 + nSymbol; col < nCol; ++col)
-    tableau(nRow - 1, col) = mod(tableau(row, col), denom);
-
+  tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
   for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
     tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
   tableau(nRow - 1, 3 + nSymbol - 1) = denom;
-
+  for (unsigned col = 3 + nSymbol; col < nCol; ++col)
+    tableau(nRow - 1, col) = mod(tableau(row, col), denom);
   return moveRowUnknownToColumn(nRow - 1);
 }
 
