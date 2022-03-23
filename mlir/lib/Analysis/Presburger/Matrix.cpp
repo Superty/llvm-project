@@ -262,14 +262,6 @@ Matrix::postMultiplyWithColumn(ArrayRef<int64_t> colVec) const {
   return result;
 }
 
-int64_t Matrix::getMaxAbsElem() const {
-  int64_t max = 0;
-  for (unsigned row = 0; row < nRows; ++row)
-    for (unsigned column = 0; column < nColumns; ++column)
-      max = std::max(max, std::abs(at(row, column)));
-  return max;
-}
-
 void Matrix::print(raw_ostream &os) const {
   for (unsigned row = 0; row < nRows; ++row) {
     for (unsigned column = 0; column < nColumns; ++column)

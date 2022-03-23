@@ -114,41 +114,6 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
   return llvm::all_of(range, [](int64_t x) { return x == 0; });
 }
 
-int64_t maxAbsRange(ArrayRef<int64_t> range) {
-  int64_t max = 0;
-  for (int64_t elem : range)
-    max = std::max(max, std::abs(elem));
-  return max;
-}
-
-/// TODO: support extracting locals depending only on symbols.
-IntegerRelation IntegerRelation::getSymbolDomainOverapprox() const {
-  IntegerRelation symbolDomain = *this;
-  int64_t max = std::max(symbolDomain.equalities.getMaxAbsElem(),
-                         symbolDomain.inequalities.getMaxAbsElem());
-  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::SetDim),
-                          symbolDomain.getNumDimIds());
-  symbolDomain.projectOut(symbolDomain.getIdKindOffset(IdKind::Local),
-                          symbolDomain.getNumLocalIds());
-  symbolDomain.turnAllIdsIntoDimIds();
-
-  for (unsigned j = symbolDomain.getNumInequalities(); j > 0; --j) {
-    if (maxAbsRange(symbolDomain.getInequality(j - 1)) > max) {
-      symbolDomain.removeInequality(j - 1);
-      ++j;
-      continue;
-    }
-  }
-  for (unsigned j = symbolDomain.getNumEqualities(); j > 0; --j) {
-    if (maxAbsRange(symbolDomain.getEquality(j - 1)) > max) {
-      symbolDomain.removeEquality(j - 1);
-      ++j;
-      continue;
-    }
-  }
-  return symbolDomain;
-}
-
 void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
                                        unsigned count) {
   // We iterate backwards so that whether we remove constraint i - 1 or not, the
@@ -185,17 +150,13 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly,
 }
 
 SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) const {
-  IntegerRelation copy = *this;
-  removeConstraintsInvolvingOnlyIdRange(
-      copy, copy.getIdKindOffset(IdKind::Symbol), copy.getNumSymbolIds());
-
-  SymbolicLexMin result = SymbolicLexSimplex(copy, symbolDomain).computeSymbolicIntegerLexMin();
-  result.lexmin.truncateOutput(result.lexmin.getNumOutputs() - copy.getNumLocalIds());
+  SymbolicLexMin result = SymbolicLexSimplex(*this, symbolDomain).computeSymbolicIntegerLexMin();
+  result.lexmin.truncateOutput(result.lexmin.getNumOutputs() - getNumLocalIds());
   return result;
 }
 
 SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin() const {
-  return findSymbolicIntegerLexMin(getSymbolDomainOverapprox());
+  return findSymbolicIntegerLexMin(IntegerRelation(/*numDomain=*/0, /*numRange=*/getNumSymbolIds()));
 }
 
 IntegerRelation::Counts IntegerRelation::getCounts() const {
