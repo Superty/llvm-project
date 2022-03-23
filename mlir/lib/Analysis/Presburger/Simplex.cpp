@@ -347,97 +347,172 @@ void SymbolicLexSimplex::recordOutput() const {
   lexmin.addPiece(domainPoly, output);
 }
 
-void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
-  if (empty || domainSimplex.findIntegerLexMin().isEmpty())
-    return;
-
+Optional<unsigned> SymbolicLexSimplex::maybeGetObviouslyViolatedRow() {
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
-    if (tableau(row, 2) < 0) { // negative
-      LogicalResult status = moveRowUnknownToColumn(row);
-      if (failed(status))
-        return;
-      computeSymbolicIntegerLexMin();
-      return;
-    }
+    if (tableau(row, 2) < 0)
+      return row;
   }
+  return {};
+}
 
+Optional<unsigned> SymbolicLexSimplex::maybeGetAlwaysViolatedRow() {
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
-    if (tableau(row, 2) > 0) // nonNegative
+    if (tableau(row, 2) > 0)
+      continue;
+    if (tableau(row, 2) < 0)
+      return row;
+
+    SmallVector<int64_t, 8> rowParamSample = getRowParamSample(row);
+    normalizeRange(rowParamSample);
+    if (domainSimplex.isSeparateInequality(rowParamSample))
+      return row;
+  }
+  return {};
+}
+
+Optional<unsigned> SymbolicLexSimplex::maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample) {
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
       continue;
     assert(tableau(row, 2) == 0);
-    auto paramSample = getRowParamSample(row);
-    // We only care about whether the inequality is separate, redundant, or
-    // neither.
-    normalizeRange(paramSample);
+    rowParamSample = getRowParamSample(row);
 
-    bool sampleAlwaysNonNegative =
-        domainSimplex.isRedundantInequality(paramSample);
-    if (sampleAlwaysNonNegative)
+    assert(!domainSimplex.isSeparateInequality(rowParamSample));
+    if (domainSimplex.isRedundantInequality(rowParamSample))
       continue;
 
-    bool sampleAlwaysNegative = domainSimplex.isSeparateInequality(paramSample);
-    if (sampleAlwaysNegative) {
-      if (moveRowUnknownToColumn(row).succeeded())
-        computeSymbolicIntegerLexMin();
-      return;
-    }
-
-    int index = rowUnknown[row];
-    // On return, the basis as a set is preserved but not the internal ordering
-    // within rows or columns. Thus, we take note of the index of the Unknown we
-    // are working on the moment, which may be in a different row when we come
-    // back from recursing.
-    //
-    // Note that we have to capture the index above and not a reference to the
-    // Unknown itself, since the array it lives in might get reallocated.
-    unsigned snapshot = getSnapshot();
-    unsigned domainSnapshot = domainSimplex.getSnapshot();
-    IntegerRelation::Counts domainPolyCounts = domainPoly.getCounts();
-    domainSimplex.addInequality(paramSample);
-    domainPoly.addInequality(paramSample);
-
-    computeSymbolicIntegerLexMin();
-
-    domainPoly.truncate(domainPolyCounts);
-    domainSimplex.rollback(domainSnapshot);
-    rollback(snapshot);
-
-    const Unknown &u = unknownFromIndex(index);
-    assert(u.orientation == Orientation::Row);
-    if (succeeded(moveRowUnknownToColumn(u.pos))) {
-      domainSimplex.addInequality(getComplementIneq(paramSample));
-      domainPoly.addInequality(getComplementIneq(paramSample));
-
-      computeSymbolicIntegerLexMin();
-    }
-    return;
+    // It's neither redundant nor separate, so it takes both positive and negative values, so constitutes a split row.
+    return row;
   }
+  return {};
+}
 
+Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow(bool &constIntegral, bool &paramCoeffsIntegral,
+    bool &otherCoeffsIntegral) {
   for (const Unknown &u : var) {
     if (u.orientation == Orientation::Column)
       continue;
     assert(!u.isSymbol && "Symbol should not be in row orientation!");
 
     unsigned row = u.pos;
-    bool constIntegral, paramCoeffsIntegral, otherCoeffsIntegral;
-    if (isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral,
+    if (!isParamSampleIntegral(row, constIntegral, paramCoeffsIntegral,
                               otherCoeffsIntegral))
-      continue;
+      return row;
+  }
+  return {};
+}
 
-    if (paramCoeffsIntegral && otherCoeffsIntegral) {
-      assert(!constIntegral);
-      return;
+LogicalResult SymbolicLexSimplex::performNonBranchingSteps() {
+  while (Optional<unsigned> row = maybeGetObviouslyViolatedRow())
+    if (moveRowUnknownToColumn(*row).failed())
+      return failure();
+  while (Optional<unsigned> row = maybeGetAlwaysViolatedRow())
+    if (moveRowUnknownToColumn(*row).failed())
+      return failure();
+  return success();
+}
+
+void SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
+  if (empty || domainSimplex.findIntegerLexMin().isEmpty())
+    return;
+
+  struct StackFrame {
+    StackFrame(int index, unsigned snapshot, unsigned domainSnapshot, IntegerRelation::Counts counts) : index(index), snapshot(snapshot), domainSnapshot(domainSnapshot), domainPolyCounts(counts) {};
+    int index;
+    unsigned snapshot, domainSnapshot;
+    IntegerRelation::Counts domainPolyCounts;
+  };
+  SmallVector<StackFrame, 8> stack;
+
+  unsigned level = 1;
+  while (level > 0) {
+    assert(level >= stack.size());
+    if (level > stack.size()) {
+      if (performNonBranchingSteps().failed()) {
+        // Return;
+        --level;
+        continue;
+      }
+
+      SmallVector<int64_t, 8> rowParamSample;
+      if (Optional<unsigned> row = maybeGetSplitRow(rowParamSample)) {
+        // On return, the basis as a set is preserved but not the internal ordering
+        // within rows or columns. Thus, we take note of the index of the Unknown we
+        // are working on the moment, which may be in a different row when we come
+        // back from recursing.
+        //
+        // Note that we have to capture the index above and not a reference to the
+        // Unknown itself, since the array it lives in might get reallocated.
+        int index = rowUnknown[*row];
+        unsigned snapshot = getSnapshot();
+        unsigned domainSnapshot = domainSimplex.getSnapshot();
+        IntegerRelation::Counts domainPolyCounts = domainPoly.getCounts();
+        stack.emplace_back(index, snapshot, domainSnapshot, domainPolyCounts);
+        domainSimplex.addInequality(rowParamSample);
+        domainPoly.addInequality(rowParamSample);
+
+        // Recurse.
+        ++level;
+        continue;
+      }
     }
 
-    if (addParametricCut(row, paramCoeffsIntegral).succeeded())
-      computeSymbolicIntegerLexMin();
-    return;
+    if (level == stack.size()) {
+      const StackFrame &frame = stack.back();
+      domainPoly.truncate(frame.domainPolyCounts);
+      domainSimplex.rollback(frame.domainSnapshot);
+      rollback(frame.snapshot);
+
+      const Unknown &u = unknownFromIndex(frame.index);
+      // After this we will either tail-recurse or return. Either way, we need
+      // to pop this frame off the stack now.
+      stack.pop_back();
+
+      assert(u.orientation == Orientation::Row);
+      auto rowParamSample = getRowParamSample(u.pos);
+      if (moveRowUnknownToColumn(u.pos).failed()) {
+        // Return.
+        --level;
+        continue;
+      }
+
+      domainSimplex.addInequality(getComplementIneq(rowParamSample));
+      domainPoly.addInequality(getComplementIneq(rowParamSample));
+
+      // Tail recurse.
+      continue;
+    }
+
+    if (level > stack.size()) {
+      bool constIntegral, paramCoeffsIntegral, otherCoeffsIntegral;
+      if (Optional<unsigned> row = maybeGetNonIntegralVarRow(constIntegral, paramCoeffsIntegral, otherCoeffsIntegral)) {
+        if (paramCoeffsIntegral && otherCoeffsIntegral) {
+          assert(!constIntegral);
+          // Return.
+          --level;
+          continue;
+        }
+
+        if (addParametricCut(*row, paramCoeffsIntegral).failed()) {
+          // Return.
+          --level;
+          continue;
+        }
+
+        // Tail recurse.
+        continue;
+      }
+
+      // Record output and return.
+      recordOutput();
+      --level;
+      continue;
+    }
   }
-  recordOutput();
 }
 
 bool LexSimplex::rowIsViolated(unsigned row) const {

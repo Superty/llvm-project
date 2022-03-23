@@ -466,6 +466,12 @@ protected:
     intersectIntegerRelation(constraints);
   }
 
+  /// Try to move the specified row to column orientation while preserving the
+  /// lexicopositivity of the basis transform. If this is not possible, return
+  /// failure. This only occurs when the constraints have no solution; the
+  /// tableau will be marked empty in such a case.
+  LogicalResult moveRowUnknownToColumn(unsigned row);
+
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added
   /// inequality will be such that no integer points are removed.
@@ -483,12 +489,6 @@ protected:
   /// in the lexicographically smallest sample vector.
   unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
                                 unsigned colB) const;
-
-  /// Try to move the specified row to column orientation while preserving the
-  /// lexicopositivity of the basis transform. If this is not possible, return
-  /// failure. This only occurs when the constraints have no solution; the
-  /// tableau will be marked empty in such a case.
-  LogicalResult moveRowUnknownToColumn(unsigned row);
 };
 
 class LexSimplex : public LexSimplexBase {
@@ -551,6 +551,11 @@ public:
     LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain), lexmin(lexmin), unboundedDomain(unboundedDomain) {}
   void computeSymbolicIntegerLexMin();
 private:
+  LogicalResult performNonBranchingSteps();
+  Optional<unsigned> maybeGetObviouslyViolatedRow();
+  Optional<unsigned> maybeGetAlwaysViolatedRow();
+  Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);
+  Optional<unsigned> maybeGetNonIntegralVarRow(bool &constIntegral, bool &paramCoeffsIntegral, bool &otherCoeffsIntegral);
   LogicalResult addParametricCut(unsigned row, bool paramCoeffsIntegral);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
   bool isParamSampleIntegral(unsigned row, bool &constIntegral,
