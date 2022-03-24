@@ -130,6 +130,9 @@ void removeDuplicateDivs(
     SmallVectorImpl<unsigned> &denoms, unsigned localOffset,
     llvm::function_ref<bool(unsigned i, unsigned j)> merge);
 
+int64_t gcdRange(ArrayRef<int64_t> range);
+int64_t normalizeRange(MutableArrayRef<int64_t> range);
+
 /// Return `coeffs` with all the elements negated.
 SmallVector<int64_t, 8> getNegatedCoeffs(ArrayRef<int64_t> coeffs);
 

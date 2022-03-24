@@ -18,6 +18,7 @@
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -153,15 +154,6 @@ public:
   SimplexBase() = delete;
   virtual ~SimplexBase() = default;
 
-  /// Construct a SimplexBase with the specified number of variables and fixed
-  /// columns.
-  ///
-  /// For example, Simplex uses two fixed columns: the denominator and the
-  /// constant term, whereas LexSimplex has an extra fixed column for the
-  /// so-called big M parameter. For more information see the documentation for
-  /// LexSimplex.
-  SimplexBase(unsigned nVar, bool mustUseBigM);
-
   /// Returns true if the tableau is empty (has conflicting constraints),
   /// false otherwise.
   bool isEmpty() const;
@@ -184,6 +176,9 @@ public:
 
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
+
+  /// Add new symbolic variables to the end of the list of variables.
+  void appendSymbol();
 
   /// Append a new variable to the simplex and constrain it such that its only
   /// integer value is the floor div of `coeffs` and `denom`.
@@ -213,6 +208,16 @@ public:
   void dump() const;
 
 protected:
+  /// Construct a SimplexBase with the specified number of variables and fixed
+  /// columns.
+  ///
+  /// For example, Simplex uses two fixed columns: the denominator and the
+  /// constant term, whereas LexSimplex has an extra fixed column for the
+  /// so-called big M parameter. For more information see the documentation for
+  /// LexSimplex.
+  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol);
+
   enum class Orientation { Row, Column };
 
   /// An Unknown is either a variable or a constraint. It is always associated
@@ -223,12 +228,14 @@ protected:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos,
+            bool oIsSymbol = false)
         : pos(oPos), orientation(oOrientation), restricted(oRestricted),
-          isEquality(false) {}
+          isSymbol(oIsSymbol), isEquality(false) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool isSymbol : 1;
     bool isEquality : 1;
 
     void print(raw_ostream &os) const {
@@ -344,6 +351,10 @@ protected:
   /// nRedundant rows.
   unsigned nRedundant;
 
+  /// The number of parameters. This must be consistent with the number of
+  /// Unknowns in `var` below that have `isParam` set to true.
+  unsigned nSymbol;
+
   /// The matrix representing the tableau.
   Matrix tableau;
 
@@ -437,15 +448,9 @@ protected:
 /// (A_k)*y is not zero then we have that A*y is lexicopositive and if not we
 /// ignore more columns; eventually if all these dot products become zero then
 /// A*y is zero and we are done.
-class LexSimplex : public SimplexBase {
+class LexSimplexBase : public SimplexBase {
 public:
-  explicit LexSimplex(unsigned nVar)
-      : SimplexBase(nVar, /*mustUseBigM=*/true) {}
-  explicit LexSimplex(const IntegerRelation &constraints)
-      : LexSimplex(constraints.getNumIds()) {
-    intersectIntegerRelation(constraints);
-  }
-  ~LexSimplex() override = default;
+  ~LexSimplexBase() override = default;
 
   /// Add an inequality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding inequality is
@@ -458,23 +463,21 @@ public:
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
-  /// Return the lexicographically minimum rational solution to the constraints.
-  MaybeOptimum<SmallVector<Fraction, 8>> findRationalLexMin();
-
-  /// Return the lexicographically minimum integer solution to the constraints.
-  ///
-  /// Note: this should be used only when the lexmin is really needed. To obtain
-  /// any integer sample, use Simplex::findIntegerSample as that is more robust.
-  MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
-
 protected:
-  /// Returns the current sample point, which may contain non-integer (rational)
-  /// coordinates. Returns an empty optimum when the tableau is empty.
-  ///
-  /// Returns an unbounded optimum when the big M parameter is used and a
-  /// variable has a non-zero big M coefficient, meaning its value is infinite
-  /// or unbounded.
-  MaybeOptimum<SmallVector<Fraction, 8>> getRationalSample() const;
+  LexSimplexBase(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
+  explicit LexSimplexBase(const IntegerRelation &constraints)
+      : LexSimplexBase(constraints.getNumIds(),
+                       constraints.getIdKindOffset(IdKind::Symbol),
+                       constraints.getNumSymbolIds()) {
+    intersectIntegerRelation(constraints);
+  }
+
+  /// Try to move the specified row to column orientation while preserving the
+  /// lexicopositivity of the basis transform. If this is not possible, return
+  /// failure. This only occurs when the constraints have no solution; the
+  /// tableau will be marked empty in such a case.
+  LogicalResult moveRowUnknownToColumn(unsigned row);
 
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added
@@ -489,6 +492,51 @@ protected:
   /// rolling back.
   void undoLastConstraint() final;
 
+  /// Given two potential pivot columns for a row, return the one that results
+  /// in the lexicographically smallest sample vector.
+  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
+                                unsigned colB) const;
+};
+
+class LexSimplex : public LexSimplexBase {
+public:
+  explicit LexSimplex(unsigned nVar)
+      : LexSimplexBase(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
+  explicit LexSimplex(const IntegerRelation &constraints)
+      : LexSimplexBase(constraints) {
+    assert(constraints.getNumSymbolIds() == 0 &&
+           "LexSimplex does not support symbols!");
+  }
+
+  /// Return the lexicographically minimum rational solution to the constraints.
+  /// This should not be called when symbols are involved.
+  MaybeOptimum<SmallVector<Fraction, 8>> findRationalLexMin();
+
+  /// Return the lexicographically minimum integer solution to the constraints.
+  /// When symbols are involved, findSymbolicIntegerLexMin should be used
+  /// instead of this function.
+  ///
+  /// Note: this should be used only when the lexmin is really needed. To obtain
+  /// any integer sample, use Simplex::findIntegerSample as that is more robust.
+  MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin();
+
+  /// Return whether the specified inequality is redundant for the polytope.
+  /// This check is integer-exact and somewhat expensive.
+  bool isSeparateInequality(ArrayRef<int64_t> coeffs);
+
+  /// Return whether the specified inequality is separate for the polytope.
+  /// This check is integer-exact and somewhat expensive.
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs);
+
+private:
+  /// Returns the current sample point, which may contain non-integer (rational)
+  /// coordinates. Returns an empty optimum when the tableau is empty.
+  ///
+  /// Returns an unbounded optimum when the big M parameter is used and a
+  /// variable has a non-zero big M coefficient, meaning its value is infinite
+  /// or unbounded.
+  MaybeOptimum<SmallVector<Fraction, 8>> getRationalSample() const;
+
   /// Make the tableau configuration consistent.
   void restoreRationalConsistency();
 
@@ -502,17 +550,31 @@ protected:
   /// Get a row corresponding to a var that has a non-integral sample value, if
   /// one exists. Otherwise, return an empty optional.
   Optional<unsigned> maybeGetNonIntegralVarRow() const;
+};
 
-  /// Given two potential pivot columns for a row, return the one that results
-  /// in the lexicographically smallest sample vector.
-  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
-                                unsigned colB) const;
+struct SymbolicLexMin {
+  PWMAFunction lexmin;
+  PresburgerSet unboundedDomain;
+};
 
-  /// Try to move the specified row to column orientation while preserving the
-  /// lexicopositivity of the basis transform. If this is not possible, return
-  /// failure. This only occurs when the constraints have no solution; the
-  /// tableau will be marked empty in such a case.
-  LogicalResult moveRowUnknownToColumn(unsigned row);
+class SymbolicLexSimplex : public LexSimplexBase {
+public:
+  explicit SymbolicLexSimplex(const IntegerRelation &constraints, const IntegerRelation &symbolDomain) :
+    LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain) {}
+  SymbolicLexMin computeSymbolicIntegerLexMin();
+private:
+  LogicalResult doNonBranchingPivots();
+  Optional<unsigned> maybeGetObviouslyViolatedRow();
+  Optional<unsigned> maybeGetAlwaysViolatedRow();
+  Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);
+  Optional<unsigned> maybeGetNonIntegralVarRow();
+  LogicalResult addParametricCut(unsigned row);
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
+  bool isParamSampleIntegral(unsigned row) const;
+  void recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
+
+  IntegerRelation domainPoly;
+  LexSimplex domainSimplex;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness
@@ -534,7 +596,9 @@ public:
   enum class Direction { Up, Down };
 
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/false) {}
+  explicit Simplex(unsigned nVar)
+      : SimplexBase(nVar, /*mustUseBigM=*/false, /*symbolOffset=*/0,
+                    /*nSymbol=*/0) {}
   explicit Simplex(const IntegerRelation &constraints)
       : Simplex(constraints.getNumIds()) {
     intersectIntegerRelation(constraints);
@@ -687,7 +751,7 @@ private:
 /// which get rolled back on scope exit.
 class SimplexRollbackScopeExit {
 public:
-  SimplexRollbackScopeExit(Simplex &simplex) : simplex(simplex) {
+  SimplexRollbackScopeExit(SimplexBase &simplex) : simplex(simplex) {
     snapshot = simplex.getSnapshot();
   };
   ~SimplexRollbackScopeExit() { simplex.rollback(snapshot); }
