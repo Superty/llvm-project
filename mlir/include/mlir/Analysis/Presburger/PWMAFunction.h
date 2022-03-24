@@ -7,9 +7,9 @@
 //===----------------------------------------------------------------------===//
 //
 // Support for piece-wise multi-affine functions. These are functions that are
-// defined on a domain that is a union of IntegerPolyhedrons, and on each domain
+// defined on a domain that is a union of IntegerRelations, and on each domain
 // the value of the function is a tuple of integers, with each value in the
-// tuple being an affine expression in the ids of the IntegerPolyhedron.
+// tuple being an affine expression in the ids of the IntegerRelation.
 //
 //===----------------------------------------------------------------------===//
 
@@ -23,7 +23,7 @@ namespace mlir {
 namespace presburger {
 
 /// This class represents a multi-affine function whose domain is given by an
-/// IntegerPolyhedron. This can be thought of as an IntegerPolyhedron with a
+/// IntegerRelation. This can be thought of as an IntegerRelation with a
 /// tuple of integer values attached to every point in the polyhedron, with the
 /// value of each element of the tuple given by an affine expression in the ids
 /// of the polyhedron. For example we could have the domain
@@ -42,22 +42,22 @@ namespace presburger {
 ///
 /// Checking equality of two such functions is supported, as well as finding the
 /// value of the function at a specified point.
-class MultiAffineFunction : protected IntegerPolyhedron {
+class MultiAffineFunction : protected IntegerRelation {
 public:
   /// We use protected inheritance to avoid inheriting the whole public
-  /// interface of IntegerPolyhedron. These using declarations explicitly make
+  /// interface of IntegerRelation. These using declarations explicitly make
   /// only the relevant functions part of the public interface.
-  using IntegerPolyhedron::getNumDimAndSymbolIds;
-  using IntegerPolyhedron::getNumDimIds;
-  using IntegerPolyhedron::getNumIds;
-  using IntegerPolyhedron::getNumLocalIds;
-  using IntegerPolyhedron::getNumSymbolIds;
+  using IntegerRelation::getNumDimAndSymbolIds;
+  using IntegerRelation::getNumDimIds;
+  using IntegerRelation::getNumIds;
+  using IntegerRelation::getNumLocalIds;
+  using IntegerRelation::getNumSymbolIds;
 
-  MultiAffineFunction(const IntegerPolyhedron &domain, const Matrix &output)
-      : IntegerPolyhedron(domain), output(output) {}
+  MultiAffineFunction(const IntegerRelation &domain, const Matrix &output)
+      : IntegerRelation(domain), output(output) {}
   MultiAffineFunction(const Matrix &output, unsigned numDims,
                       unsigned numSymbols = 0, unsigned numLocals = 0)
-      : IntegerPolyhedron(numDims, numSymbols, numLocals), output(output) {}
+      : IntegerRelation(numDims, numSymbols, numLocals), output(output) {}
 
   ~MultiAffineFunction() override = default;
   Kind getKind() const override { return Kind::MultiAffineFunction; }
@@ -70,7 +70,7 @@ public:
   bool isConsistent() const {
     return output.getNumColumns() == getNumIds() + 1;
   }
-  const IntegerPolyhedron &getDomain() const { return *this; }
+  const IntegerRelation &getDomain() const { return *this; }
 
   /// Insert `num` identifiers of the specified kind at position `pos`.
   /// Positions are relative to the kind of identifier. The coefficient columns
@@ -115,6 +115,12 @@ public:
   /// outside the domain, an empty optional is returned.
   Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
 
+  /// TODO remove and use removeIdRange after that refactor.
+  void truncateOutput(unsigned count) {
+    assert(count <= output.getNumRows());
+    output.resizeVertically(count);
+  }
+
   void print(raw_ostream &os) const;
   void dump() const;
 
@@ -138,8 +144,8 @@ private:
 /// this class is undefined. The domains need not cover all possible points;
 /// this represents a partial function and so could be undefined at some points.
 ///
-/// As in PresburgerSets, the input ids are partitioned into dimension ids and
-/// symbolic ids.
+/// As in PresburgerRelations, the input ids are partitioned into dimension ids
+/// and symbolic ids.
 ///
 /// Support is provided to compare equality of two such functions as well as
 /// finding the value of the function at a point.
@@ -152,7 +158,7 @@ public:
   }
 
   void addPiece(const MultiAffineFunction &piece);
-  void addPiece(const IntegerPolyhedron &domain, const Matrix &output);
+  void addPiece(const IntegerRelation &domain, const Matrix &output);
 
   const MultiAffineFunction &getPiece(unsigned i) const { return pieces[i]; }
   unsigned getNumPieces() const { return pieces.size(); }
@@ -162,7 +168,7 @@ public:
 
   /// Return the domain of this piece-wise MultiAffineFunction. This is the
   /// union of the domains of all the pieces.
-  PresburgerSet getDomain() const;
+  PresburgerRelation getDomain() const;
 
   /// Return the value at the specified point and an empty optional if the
   /// point does not lie in the domain.
@@ -172,6 +178,14 @@ public:
   /// they have the same dimensions, the same domain and they take the same
   /// value at every point in the domain.
   bool isEqual(const PWMAFunction &other) const;
+
+  /// TODO remove and use removeIdRange after that refactor.
+  void truncateOutput(unsigned count) {
+    assert(count <= numOutputs);
+    for (auto &piece : pieces)
+      piece.truncateOutput(count);
+    numOutputs = count;
+  }
 
   void print(raw_ostream &os) const;
   void dump() const;

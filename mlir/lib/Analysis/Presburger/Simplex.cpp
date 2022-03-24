@@ -18,15 +18,35 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM)
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+                         unsigned nSymbol)
     : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0),
-      nCol(numFixedCols + nVar), nRedundant(0), tableau(0, nCol), empty(false) {
+      nCol(numFixedCols + nVar), nRedundant(0), nSymbol(nSymbol),
+      tableau(0, nCol), empty(false) {
   colUnknown.insert(colUnknown.begin(), numFixedCols, nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
                      /*pos=*/numFixedCols + i);
     colUnknown.push_back(i);
   }
+
+  assert(symbolOffset + nSymbol <= nVar);
+  for (unsigned i = 0; i < nSymbol; ++i) {
+    var[symbolOffset + i].isSymbol = true;
+    swapColumns(var[symbolOffset + i].pos, numFixedCols + i);
+  }
+  numFixedCols += nSymbol;
+}
+
+void SimplexBase::appendSymbol() {
+  appendVariable();
+  swapColumns(3 + nSymbol, nCol - 1);
+  if (numFixedCols > 3 + nSymbol)
+    swapColumns(numFixedCols, nCol - 1);
+  var.back().isSymbol = true;
+
+  nSymbol++;
+  numFixedCols++;
 }
 
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
@@ -96,9 +116,13 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
     // where M is the big M parameter. As such, when the user tries to add
     // a row ax + by + cz + d, we express it in terms of our internal variables
     // as -(a + b + c)M + a(M + x) + b(M + y) + c(M + z) + d.
+    //
+    // Symbols don't use the big M parameter since they do not get lex
+    // optimized.
     int64_t bigMCoeff = 0;
     for (unsigned i = 0; i < coeffs.size() - 1; ++i)
-      bigMCoeff -= coeffs[i];
+      if (!var[i].isSymbol)
+        bigMCoeff -= coeffs[i];
     // The coefficient to the big M parameter is stored in column 2.
     tableau(nRow - 1, 2) = bigMCoeff;
   }
@@ -138,19 +162,7 @@ unsigned SimplexBase::addRow(ArrayRef<int64_t> coeffs, bool makeRestricted) {
 /// Normalize the row by removing factors that are common between the
 /// denominator and all the numerator coefficients.
 void SimplexBase::normalizeRow(unsigned row) {
-  int64_t gcd = 0;
-  for (unsigned col = 0; col < nCol; ++col) {
-    gcd = llvm::greatestCommonDivisor(gcd, std::abs(tableau(row, col)));
-    // If the gcd becomes 1 then the row is already normalized.
-    if (gcd == 1)
-      return;
-  }
-
-  // Note that the gcd can never become zero since the first element of the row,
-  // the denominator, is non-zero.
-  assert(gcd != 0);
-  for (unsigned col = 0; col < nCol; ++col)
-    tableau(row, col) /= gcd;
+  normalizeRange(tableau.getRow(row));
 }
 
 namespace {
@@ -165,11 +177,12 @@ Direction flippedDirection(Direction direction) {
 } // namespace
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::findRationalLexMin() {
+  assert(nSymbol == 0 && "Symbols are not supported!");
   restoreRationalConsistency();
   return getRationalSample();
 }
 
-LogicalResult LexSimplex::addCut(unsigned row) {
+LogicalResult LexSimplexBase::addCut(unsigned row) {
   int64_t denom = tableau(row, 0);
   addZeroRow(/*makeRestricted=*/true);
   tableau(nRow - 1, 0) = denom;
@@ -194,7 +207,16 @@ Optional<unsigned> LexSimplex::maybeGetNonIntegralVarRow() const {
   return {};
 }
 
+void normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom) {
+  int64_t gcd = llvm::greatestCommonDivisor(gcdRange(num), denom);
+  for (int64_t &coeff : num)
+    coeff /= gcd;
+  denom /= gcd;
+}
+
 MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
+  assert(nSymbol == 0 &&
+         "Use computeSymbolicIntegerLexMin when symbols are involved!");
   while (!empty) {
     restoreRationalConsistency();
     if (empty)
@@ -219,7 +241,261 @@ MaybeOptimum<SmallVector<int64_t, 8>> LexSimplex::findIntegerLexMin() {
   return OptimumKind::Empty;
 }
 
+SmallVector<int64_t, 8>
+SymbolicLexSimplex::getRowParamSample(unsigned row) const {
+  SmallVector<int64_t, 8> sample;
+  sample.reserve(nSymbol + 1);
+  for (unsigned col = 3; col < 3 + nSymbol; ++col)
+    sample.push_back(tableau(row, col));
+  sample.push_back(tableau(row, 1));
+  return sample;
+}
+
+bool LexSimplex::isSeparateInequality(ArrayRef<int64_t> coeffs) {
+  SimplexRollbackScopeExit scopeExit(*this);
+  addInequality(coeffs);
+  return findIntegerLexMin().isEmpty();
+}
+
+bool LexSimplex::isRedundantInequality(ArrayRef<int64_t> coeffs) {
+  return isSeparateInequality(getComplementIneq(coeffs));
+}
+
+bool isRangeDivisibleBy(ArrayRef<int64_t> range, int64_t divisor) {
+  return llvm::all_of(range, [divisor](int64_t x) { return x % divisor == 0; });
+}
+
+bool SymbolicLexSimplex::isParamSampleIntegral(unsigned row) const {
+  int64_t denom = tableau(row, 0);
+  return tableau(row, 1) % denom == 0 &&
+         isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
+}
+
+LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
+  int64_t denom = tableau(row, 0);
+
+  int64_t divDenom = denom;
+  SmallVector<int64_t, 8> domainDivCoeffs;
+  for (unsigned col = 3; col < 3 + nSymbol; ++col)
+    domainDivCoeffs.push_back(mod(-tableau(row, col), divDenom));
+  domainDivCoeffs.push_back(mod(-tableau(row, 1), divDenom));
+  normalizeDiv(domainDivCoeffs, divDenom);
+  domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
+  domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
+  appendSymbol();
+
+  addZeroRow(/*makeRestricted=*/true);
+  tableau(nRow - 1, 0) = denom;
+  tableau(nRow - 1, 2) = 0;
+  tableau(nRow - 1, 1) = -mod(-tableau(row, 1), denom);
+  for (unsigned col = 3; col < 3 + nSymbol - 1; ++col)
+    tableau(nRow - 1, col) = -mod(-tableau(row, col), denom);
+  tableau(nRow - 1, 3 + nSymbol - 1) = denom;
+  for (unsigned col = 3 + nSymbol; col < nCol; ++col)
+    tableau(nRow - 1, col) = mod(tableau(row, col), denom);
+  return moveRowUnknownToColumn(nRow - 1);
+}
+
+void SymbolicLexSimplex::recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
+  Matrix output(lexmin.getNumOutputs(), domainPoly.getNumIds() + 1);
+  unsigned row = 0;
+  for (const Unknown &u : var) {
+    if (u.isSymbol)
+      continue;
+
+    if (u.orientation == Orientation::Column) {
+      // M + u has a sample value of zero so u has a sample value of -M, i.e,
+      // unbounded.
+      unboundedDomain.unionInPlace(domainPoly);
+      return;
+    }
+
+    int64_t denom = tableau(u.pos, 0);
+    if (tableau(u.pos, 2) < denom) {
+      // M + u has a sample value of fM + something, where f < 1, so
+      // u = (f - 1)M + something, which has a negative coefficient for M,
+      // and so is unbounded.
+      unboundedDomain.unionInPlace(domainPoly);
+      return;
+    }
+    assert(tableau(u.pos, 2) == denom);
+
+    auto coeffs = getRowParamSample(u.pos);
+    for (unsigned col = 0, e = coeffs.size(); col < e; ++col) {
+      assert(coeffs[col] % denom == 0 && "coefficient is fractional!");
+      output(row, col) = coeffs[col] / denom;
+    }
+    row++;
+  }
+  lexmin.addPiece(domainPoly, output);
+}
+
+Optional<unsigned> SymbolicLexSimplex::maybeGetObviouslyViolatedRow() {
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+    if (tableau(row, 2) < 0)
+      return row;
+  }
+  return {};
+}
+
+Optional<unsigned> SymbolicLexSimplex::maybeGetAlwaysViolatedRow() {
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+    if (tableau(row, 2) > 0)
+      continue;
+    if (tableau(row, 2) < 0)
+      return row;
+
+    SmallVector<int64_t, 8> rowParamSample = getRowParamSample(row);
+    normalizeRange(rowParamSample);
+    if (domainSimplex.isSeparateInequality(rowParamSample))
+      return row;
+  }
+  return {};
+}
+
+Optional<unsigned> SymbolicLexSimplex::maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample) {
+  for (unsigned row = 0; row < nRow; ++row) {
+    if (!unknownFromRow(row).restricted)
+      continue;
+    assert(tableau(row, 2) == 0);
+    rowParamSample = getRowParamSample(row);
+
+    assert(!domainSimplex.isSeparateInequality(rowParamSample));
+    if (domainSimplex.isRedundantInequality(rowParamSample))
+      continue;
+
+    // It's neither redundant nor separate, so it takes both positive and negative values, so constitutes a split row.
+    return row;
+  }
+  return {};
+}
+
+Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow() {
+  for (const Unknown &u : var) {
+    if (u.orientation == Orientation::Column)
+      continue;
+    assert(!u.isSymbol && "Symbol should not be in row orientation!");
+
+    unsigned row = u.pos;
+    if (!isParamSampleIntegral(row))
+      return row;
+  }
+  return {};
+}
+
+LogicalResult SymbolicLexSimplex::doNonBranchingPivots() {
+  while (Optional<unsigned> row = maybeGetObviouslyViolatedRow())
+    if (moveRowUnknownToColumn(*row).failed())
+      return failure();
+  while (Optional<unsigned> row = maybeGetAlwaysViolatedRow())
+    if (moveRowUnknownToColumn(*row).failed())
+      return failure();
+  return success();
+}
+
+SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
+  PWMAFunction lexmin(nSymbol, 0, var.size() - nSymbol);
+  PresburgerSet unboundedDomain = PresburgerSet::getEmpty(nSymbol, 0);
+
+  struct StackFrame {
+    int index;
+    unsigned snapshot, domainSnapshot;
+    IntegerRelation::CountsSnapshot domainPolyCounts;
+  };
+  SmallVector<StackFrame, 8> stack;
+
+  unsigned level = 1;
+  while (level > 0) {
+    assert(level >= stack.size());
+    if (level > stack.size()) {
+      if (empty || domainSimplex.findIntegerLexMin().isEmpty()) {
+        // Return.
+        --level;
+        continue;
+      }
+
+      if (doNonBranchingPivots().failed()) {
+        // Return;
+        --level;
+        continue;
+      }
+
+      SmallVector<int64_t, 8> rowParamSample;
+      if (Optional<unsigned> row = maybeGetSplitRow(rowParamSample)) {
+        // On return, the basis as a set is preserved but not the internal ordering
+        // within rows or columns. Thus, we take note of the index of the Unknown we
+        // are working on the moment, which may be in a different row when we come
+        // back from recursing.
+        //
+        // Note that we have to capture the index above and not a reference to the
+        // Unknown itself, since the array it lives in might get reallocated.
+        int index = rowUnknown[*row];
+        unsigned snapshot = getSnapshot();
+        unsigned domainSnapshot = domainSimplex.getSnapshot();
+        IntegerRelation::CountsSnapshot domainPolyCounts = domainPoly.getCounts();
+        stack.push_back({index, snapshot, domainSnapshot, domainPolyCounts});
+        domainSimplex.addInequality(rowParamSample);
+        domainPoly.addInequality(rowParamSample);
+
+        // Recurse.
+        ++level;
+        continue;
+      }
+    }
+
+    if (level == stack.size()) {
+      const StackFrame &frame = stack.back();
+      domainPoly.truncate(frame.domainPolyCounts);
+      domainSimplex.rollback(frame.domainSnapshot);
+      rollback(frame.snapshot);
+
+      const Unknown &u = unknownFromIndex(frame.index);
+      // After this we will either tail-recurse or return. Either way, we need
+      // to pop this frame off the stack now.
+      stack.pop_back();
+
+      assert(u.orientation == Orientation::Row);
+      auto rowParamSample = getRowParamSample(u.pos);
+      if (moveRowUnknownToColumn(u.pos).failed()) {
+        // Return.
+        --level;
+        continue;
+      }
+
+      domainSimplex.addInequality(getComplementIneq(rowParamSample));
+      domainPoly.addInequality(getComplementIneq(rowParamSample));
+
+      // Tail recurse.
+      continue;
+    }
+
+    if (level > stack.size()) {
+      if (Optional<unsigned> row = maybeGetNonIntegralVarRow()) {
+        if (addParametricCut(*row).failed()) {
+          // Return.
+          --level;
+          continue;
+        }
+
+        // Tail recurse.
+        continue;
+      }
+
+      // Record output and return.
+      recordOutput(lexmin, unboundedDomain);
+      --level;
+      continue;
+    }
+  }
+  return {lexmin, unboundedDomain};
+}
+
 bool LexSimplex::rowIsViolated(unsigned row) const {
+  assert(nSymbol == 0 && "Symbols not supported!");
   if (tableau(row, 2) < 0)
     return true;
   if (tableau(row, 2) == 0 && tableau(row, 1) < 0)
@@ -307,7 +583,7 @@ void LexSimplex::restoreRationalConsistency() {
 // which is in contradiction to the fact that B.col(j) / B(i,j) must be
 // lexicographically smaller than B.col(k) / B(i,k), since it lexicographically
 // minimizes the change in sample value.
-LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
+LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
   for (unsigned col = getNumFixedCols(); col < nCol; ++col) {
     if (tableau(row, col) <= 0)
@@ -325,8 +601,8 @@ LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   return success();
 }
 
-unsigned LexSimplex::getLexMinPivotColumn(unsigned row, unsigned colA,
-                                          unsigned colB) const {
+unsigned LexSimplexBase::getLexMinPivotColumn(unsigned row, unsigned colA,
+                                              unsigned colB) const {
   // A pivot causes the following change. (in the diagram the matrix elements
   // are shown as rationals and there is no common denominator used)
   //
@@ -479,7 +755,8 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+  assert(pivotCol >= numFixedCols && "Refusing to pivot invalid column");
+  assert(!unknownFromColumn(pivotCol).isSymbol);
 
   swapRowWithCol(pivotRow, pivotCol);
   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
@@ -744,7 +1021,7 @@ void Simplex::undoLastConstraint() {
 
 // It's not valid to remove the constraint by deleting the column since this
 // would result in an invalid basis.
-void LexSimplex::undoLastConstraint() {
+void LexSimplexBase::undoLastConstraint() {
   if (con.back().orientation == Orientation::Column) {
     // When removing the last constraint during a rollback, we just need to find
     // any pivot at all, i.e., any row with non-zero coefficient for the
@@ -778,6 +1055,11 @@ void SimplexBase::undo(UndoLogEntry entry) {
     assert(var.back().orientation == Orientation::Column &&
            "Variable to be removed must be in column orientation!");
 
+    if (var.back().isSymbol) {
+      nSymbol--;
+      numFixedCols--;
+    }
+
     // Move this variable to the last column and remove the column from the
     // tableau.
     swapColumns(var.back().pos, nCol - 1);
@@ -791,7 +1073,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
     nRedundant--;
   } else if (entry == UndoLogEntry::UnmarkLastEquality) {
     numFixedCols--;
-    assert(getNumFixedCols() >= 2 + usingBigM &&
+    assert(getNumFixedCols() >= 2 + usingBigM + nSymbol &&
            "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
@@ -803,7 +1085,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
       Unknown &u = unknownFromIndex(index);
       if (u.orientation == Orientation::Column)
         continue;
-      for (unsigned col = getNumFixedCols(); col < nCol; col++) {
+      for (unsigned col = numFixedCols; col < nCol; col++) {
         assert(colUnknown[col] != nullIndex &&
                "Column should not be a fixed column!");
         if (std::find(basis.begin(), basis.end(), colUnknown[col]) !=
@@ -1123,7 +1405,7 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
   return sample;
 }
 
-void LexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
+void LexSimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   addRow(coeffs, /*makeRestricted=*/true);
 }
 
@@ -1131,7 +1413,7 @@ void LexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
 /// it. The only time this is not possible is when the given equality's
 /// direction is already in the span of the existing fixed column equalities. In
 /// that case, we just leave it in row position.
-void LexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
+void LexSimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
   Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
   if (!pivotCol)

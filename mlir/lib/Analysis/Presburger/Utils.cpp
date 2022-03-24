@@ -304,6 +304,25 @@ void presburger::removeDuplicateDivs(
   }
 }
 
+int64_t presburger::gcdRange(ArrayRef<int64_t> range) {
+  int64_t gcd = 0;
+  for (int64_t elem : range) {
+    gcd = llvm::greatestCommonDivisor(gcd, std::abs(elem));
+    if (gcd == 1)
+      return gcd;
+  }
+  return gcd;
+}
+
+int64_t presburger::normalizeRange(MutableArrayRef<int64_t> range) {
+  int64_t gcd = gcdRange(range);
+  if (gcd == 0 || gcd == 1)
+    return gcd;
+  for (int64_t &elem : range)
+    elem /= gcd;
+  return gcd;
+}
+
 SmallVector<int64_t, 8> presburger::getNegatedCoeffs(ArrayRef<int64_t> coeffs) {
   SmallVector<int64_t, 8> negatedCoeffs;
   negatedCoeffs.reserve(coeffs.size());

@@ -72,7 +72,7 @@ inline PWMAFunction parsePWMAF(
 
   PWMAFunction result(numInputs - numSymbols, numSymbols, numOutputs);
   for (const auto &pair : data) {
-    IntegerPolyhedron domain = parsePoly(pair.first);
+    IntegerRelation domain = parsePoly(pair.first);
 
     result.addPiece(
         domain, makeMatrix(numOutputs, domain.getNumIds() + 1, pair.second));

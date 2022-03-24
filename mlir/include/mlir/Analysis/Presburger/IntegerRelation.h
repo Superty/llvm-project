@@ -24,6 +24,11 @@
 namespace mlir {
 namespace presburger {
 
+class PWMAFunction;
+class PresburgerSet;
+class IntegerPolyhedron;
+struct SymbolicLexMin;
+
 /// An IntegerRelation is a PresburgerLocalSpace subject to affine constraints.
 /// Affine constraints can be inequalities or equalities in the form:
 ///
@@ -185,10 +190,15 @@ public:
   /// identifiers are initialized to zero.
   unsigned appendId(IdKind kind, unsigned num = 1);
 
-  /// Adds an inequality (>= 0) from the coefficients specified in `inEq`.
-  void addInequality(ArrayRef<int64_t> inEq);
-  /// Adds an equality from the coefficients specified in `eq`.
+  /// Adds an inequality (>= 0).
+  /// In the first form, `ineq` contains the coefficients of the ids, followed
+  /// by the constant term. In the second form, `coeffs` constaints the
+  /// coefficients of the ids, and `constant` is the constant term.
+  void addInequality(ArrayRef<int64_t> ineq);
+  void addInequality(ArrayRef<int64_t> coeffs, int64_t constant);
+  /// Same as above, but add an equality (== 0).
   void addEquality(ArrayRef<int64_t> eq);
+  void addEquality(ArrayRef<int64_t> coeffs, int64_t constant);
 
   /// Eliminate the `posB^th` local identifier, replacing every instance of it
   /// with the `posA^th` local identifier. This should be used when the two
@@ -223,6 +233,10 @@ public:
   /// robust and should be preferred. Note that Domain is minimized first, then
   /// range.
   MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin() const;
+
+  IntegerRelation getSymbolDomainOverapprox() const;
+  SymbolicLexMin findSymbolicIntegerLexMin() const;
+  SymbolicLexMin findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);
@@ -440,6 +454,16 @@ public:
   void dump() const;
 
 protected:
+  void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> constraint);
+  void addConstraint(Matrix &constraintMatrix, ArrayRef<int64_t> coeffs,
+                     int64_t constant);
+  std::pair<const Matrix &, const Matrix &> getConstraintMatrices() const {
+    return {inequalities, equalities};
+  }
+  std::pair<Matrix &, Matrix &> getConstraintMatrices() {
+    return {inequalities, equalities};
+  }
+
   /// Checks all rows of equality/inequality constraints for trivial
   /// contradictions (for example: 1 == 0, 0 >= 1), which may have surfaced
   /// after elimination. Returns true if an invalid constraint is found;

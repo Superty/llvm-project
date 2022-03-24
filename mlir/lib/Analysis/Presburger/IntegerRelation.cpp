@@ -14,6 +14,7 @@
 
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
@@ -115,10 +116,10 @@ static bool rangeIsZero(ArrayRef<int64_t> range) {
 
 void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
                                        unsigned count) {
-  // We loop until i > 0 and index into i - 1 to avoid sign issues.
-  //
   // We iterate backwards so that whether we remove constraint i - 1 or not, the
   // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
   for (unsigned i = poly.getNumEqualities(); i > 0; i--)
     if (!rangeIsZero(poly.getEquality(i - 1).slice(begin, count)))
       poly.removeEquality(i - 1);
@@ -146,6 +147,37 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   removeInequalityRange(counts.getNumEqs(), getNumEqualities());
 }
 
+bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin,
+                                   unsigned count) {
+  return rangeIsZero(constraint.slice(0, begin)) &&
+         rangeIsZero(constraint.slice(begin + count,
+                                      constraint.size() - 1 - (begin + count)));
+}
+
+void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly,
+                                           unsigned begin, unsigned count) {
+  // We iterate backwards so that whether we remove constraint i - 1 or not, the
+  // next constraint to be tested is always i - 2.
+  //
+  // We use i > 0 and index into i - 1 to avoid sign issues.
+  for (unsigned i = poly.getNumEqualities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getEquality(i - 1), begin, count))
+      poly.removeEquality(i - 1);
+  for (unsigned i = poly.getNumInequalities(); i > 0; i--)
+    if (constraintOnlyInvolvesIdRange(poly.getInequality(i - 1), begin, count))
+      poly.removeInequality(i - 1);
+}
+
+SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin(const IntegerRelation &symbolDomain) const {
+  SymbolicLexMin result = SymbolicLexSimplex(*this, symbolDomain).computeSymbolicIntegerLexMin();
+  result.lexmin.truncateOutput(result.lexmin.getNumOutputs() - getNumLocalIds());
+  return result;
+}
+
+SymbolicLexMin IntegerRelation::findSymbolicIntegerLexMin() const {
+  return findSymbolicIntegerLexMin(IntegerRelation(/*numDomain=*/0, /*numRange=*/getNumSymbolIds()));
+}
+
 unsigned IntegerRelation::insertId(IdKind kind, unsigned pos, unsigned num) {
   assert(pos <= getNumIdKind(kind));
 
@@ -160,18 +192,33 @@ unsigned IntegerRelation::appendId(IdKind kind, unsigned num) {
   return insertId(kind, pos, num);
 }
 
+void IntegerRelation::addConstraint(Matrix &constraintMatrix,
+                                    ArrayRef<int64_t> constraint) {
+  assert(constraint.size() == getNumCols());
+  unsigned row = constraintMatrix.appendExtraRow();
+  constraintMatrix.copy(constraint, row, 0);
+}
+void IntegerRelation::addInequality(ArrayRef<int64_t> ineq) {
+  addConstraint(inequalities, ineq);
+}
 void IntegerRelation::addEquality(ArrayRef<int64_t> eq) {
-  assert(eq.size() == getNumCols());
-  unsigned row = equalities.appendExtraRow();
-  for (unsigned i = 0, e = eq.size(); i < e; ++i)
-    equalities(row, i) = eq[i];
+  addConstraint(equalities, eq);
 }
 
-void IntegerRelation::addInequality(ArrayRef<int64_t> inEq) {
-  assert(inEq.size() == getNumCols());
-  unsigned row = inequalities.appendExtraRow();
-  for (unsigned i = 0, e = inEq.size(); i < e; ++i)
-    inequalities(row, i) = inEq[i];
+void IntegerRelation::addConstraint(Matrix &constraintMatrix,
+                                    ArrayRef<int64_t> coeffs,
+                                    int64_t constant) {
+  assert(coeffs.size() == getNumCols() - 1);
+  unsigned row = constraintMatrix.appendExtraRow();
+  constraintMatrix.copy(coeffs, row, 0);
+  constraintMatrix(row, coeffs.size()) = constant;
+}
+void IntegerRelation::addInequality(ArrayRef<int64_t> coeffs,
+                                    int64_t constant) {
+  addConstraint(inequalities, coeffs, constant);
+}
+void IntegerRelation::addEquality(ArrayRef<int64_t> coeffs, int64_t constant) {
+  addConstraint(equalities, coeffs, constant);
 }
 
 void IntegerRelation::removeId(IdKind kind, unsigned pos) {
