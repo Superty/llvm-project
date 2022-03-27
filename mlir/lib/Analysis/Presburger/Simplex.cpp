@@ -18,15 +18,13 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
-                         unsigned nSymbol)
-    : usingBigM(mustUseBigM), numFixedCols(mustUseBigM ? 3 : 2), nRow(0),
-      nCol(numFixedCols + nVar), nRedundant(0), nSymbol(nSymbol),
-      tableau(0, nCol), empty(false) {
-  colUnknown.insert(colUnknown.begin(), numFixedCols, nullIndex);
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned nSymbol)
+    : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
+      nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
+  colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
   for (unsigned i = 0; i < nVar; ++i) {
     var.emplace_back(Orientation::Column, /*restricted=*/false,
-                     /*pos=*/numFixedCols + i);
+                     /*pos=*/getNumFixedCols() + i);
     colUnknown.push_back(i);
   }
 
@@ -575,7 +573,7 @@ void LexSimplex::restoreRationalConsistency() {
 // minimizes the change in sample value.
 LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
-  for (unsigned col = getNumFixedCols(); col < nCol; ++col) {
+  for (unsigned col = 3; col < nCol; ++col) {
     if (tableau(row, col) <= 0)
       continue;
     maybeColumn =
@@ -915,7 +913,7 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 ///
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
-void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
@@ -969,15 +967,6 @@ Optional<unsigned> SimplexBase::findAnyPivotRow(unsigned col) {
   for (unsigned row = nRedundant; row < nRow; ++row)
     if (tableau(row, col) != 0)
       return row;
-  return {};
-}
-
-// This doesn't find a pivot column only if the row has zero coefficients for
-// every column not marked as an equality.
-Optional<unsigned> SimplexBase::findAnyPivotCol(unsigned row) {
-  for (unsigned col = getNumFixedCols(); col < nCol; ++col)
-    if (tableau(row, col) != 0)
-      return col;
   return {};
 }
 
@@ -1061,10 +1050,6 @@ void SimplexBase::undo(UndoLogEntry entry) {
     empty = false;
   } else if (entry == UndoLogEntry::UnmarkLastRedundant) {
     nRedundant--;
-  } else if (entry == UndoLogEntry::UnmarkLastEquality) {
-    numFixedCols--;
-    assert(getNumFixedCols() >= 2 + usingBigM + nSymbol &&
-           "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
 
@@ -1397,22 +1382,6 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
 
 void LexSimplexBase::addInequality(ArrayRef<int64_t> coeffs) {
   addRow(coeffs, /*makeRestricted=*/true);
-}
-
-/// Try to make the equality a fixed column by finding any pivot and performing
-/// it. The only time this is not possible is when the given equality's
-/// direction is already in the span of the existing fixed column equalities. In
-/// that case, we just leave it in row position.
-void LexSimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
-  const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
-  Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
-  if (!pivotCol)
-    return;
-
-  pivot(u.pos, *pivotCol);
-  swapColumns(*pivotCol, getNumFixedCols());
-  numFixedCols++;
-  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
 }
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::getRationalSample() const {
