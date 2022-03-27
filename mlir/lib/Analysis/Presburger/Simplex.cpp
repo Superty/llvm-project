@@ -18,7 +18,8 @@ using Direction = Simplex::Direction;
 
 const int nullIndex = std::numeric_limits<int>::max();
 
-SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned nSymbol)
+SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol)
     : usingBigM(mustUseBigM), nRow(0), nCol(getNumFixedCols() + nVar),
       nRedundant(0), nSymbol(nSymbol), tableau(0, nCol), empty(false) {
   colUnknown.insert(colUnknown.begin(), getNumFixedCols(), nullIndex);
@@ -31,20 +32,15 @@ SimplexBase::SimplexBase(unsigned nVar, bool mustUseBigM, unsigned nSymbol)
   assert(symbolOffset + nSymbol <= nVar);
   for (unsigned i = 0; i < nSymbol; ++i) {
     var[symbolOffset + i].isSymbol = true;
-    swapColumns(var[symbolOffset + i].pos, numFixedCols + i);
+    swapColumns(var[symbolOffset + i].pos, getNumFixedCols() + i);
   }
-  numFixedCols += nSymbol;
 }
 
 void SimplexBase::appendSymbol() {
   appendVariable();
   swapColumns(3 + nSymbol, nCol - 1);
-  if (numFixedCols > 3 + nSymbol)
-    swapColumns(numFixedCols, nCol - 1);
   var.back().isSymbol = true;
-
   nSymbol++;
-  numFixedCols++;
 }
 
 const Simplex::Unknown &SimplexBase::unknownFromIndex(int index) const {
@@ -573,7 +569,7 @@ void LexSimplex::restoreRationalConsistency() {
 // minimizes the change in sample value.
 LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
   Optional<unsigned> maybeColumn;
-  for (unsigned col = 3; col < nCol; ++col) {
+  for (unsigned col = 3 + nSymbol; col < nCol; ++col) {
     if (tableau(row, col) <= 0)
       continue;
     maybeColumn =
@@ -743,7 +739,7 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
 void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= numFixedCols && "Refusing to pivot invalid column");
+  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
   assert(!unknownFromColumn(pivotCol).isSymbol);
 
   swapRowWithCol(pivotRow, pivotCol);
@@ -1036,7 +1032,6 @@ void SimplexBase::undo(UndoLogEntry entry) {
 
     if (var.back().isSymbol) {
       nSymbol--;
-      numFixedCols--;
     }
 
     // Move this variable to the last column and remove the column from the
@@ -1060,7 +1055,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
       Unknown &u = unknownFromIndex(index);
       if (u.orientation == Orientation::Column)
         continue;
-      for (unsigned col = numFixedCols; col < nCol; col++) {
+      for (unsigned col = getNumFixedCols(); col < nCol; col++) {
         assert(colUnknown[col] != nullIndex &&
                "Column should not be a fixed column!");
         if (std::find(basis.begin(), basis.end(), colUnknown[col]) !=

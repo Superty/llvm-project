@@ -441,9 +441,7 @@ public:
   ///
   /// This just adds the inequality to the tableau and does not try to create a
   /// consistent tableau configuration.
-  void addInequality(ArrayRef<int64_t> coeffs) final {
-    addRow(coeffs, /*makeRestricted=*/true);
-  }
+  void addInequality(ArrayRef<int64_t> coeffs) final;
 
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
