@@ -330,46 +330,22 @@ void SymbolicLexSimplex::recordOutput(PWMAFunction &lexmin, PresburgerSet &unbou
   lexmin.addPiece(domainPoly, output);
 }
 
-Optional<unsigned> SymbolicLexSimplex::maybeGetObviouslyViolatedRow() {
+Optional<unsigned> SymbolicLexSimplex::maybeGetAlwaysViolatedRow() {
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
     if (tableau(row, 2) < 0)
       return row;
   }
-  return {};
-}
-
-Optional<unsigned> SymbolicLexSimplex::maybeGetAlwaysViolatedRow() {
   for (unsigned row = 0; row < nRow; ++row) {
     if (!unknownFromRow(row).restricted)
       continue;
     if (tableau(row, 2) > 0)
       continue;
-    if (tableau(row, 2) < 0)
-      return row;
-
     SmallVector<int64_t, 8> rowParamSample = getRowParamSample(row);
     normalizeRange(rowParamSample);
     if (domainSimplex.isSeparateInequality(rowParamSample))
       return row;
-  }
-  return {};
-}
-
-Optional<unsigned> SymbolicLexSimplex::maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample) {
-  for (unsigned row = 0; row < nRow; ++row) {
-    if (!unknownFromRow(row).restricted)
-      continue;
-    assert(tableau(row, 2) == 0);
-    rowParamSample = getRowParamSample(row);
-
-    assert(!domainSimplex.isSeparateInequality(rowParamSample));
-    if (domainSimplex.isRedundantInequality(rowParamSample))
-      continue;
-
-    // It's neither redundant nor separate, so it takes both positive and negative values, so constitutes a split row.
-    return row;
   }
   return {};
 }
@@ -388,9 +364,6 @@ Optional<unsigned> SymbolicLexSimplex::maybeGetNonIntegralVarRow() {
 }
 
 LogicalResult SymbolicLexSimplex::doNonBranchingPivots() {
-  while (Optional<unsigned> row = maybeGetObviouslyViolatedRow())
-    if (moveRowUnknownToColumn(*row).failed())
-      return failure();
   while (Optional<unsigned> row = maybeGetAlwaysViolatedRow())
     if (moveRowUnknownToColumn(*row).failed())
       return failure();
@@ -424,8 +397,24 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
         continue;
       }
 
+      unsigned splitRow;
       SmallVector<int64_t, 8> rowParamSample;
-      if (Optional<unsigned> row = maybeGetSplitRow(rowParamSample)) {
+      for (splitRow = 0; splitRow < nRow; ++splitRow) {
+        if (!unknownFromRow(splitRow).restricted)
+          continue;
+        if (tableau(splitRow, 2) > 0)
+          continue;
+        assert(tableau(splitRow, 2) == 0 && "Non-branching pivots should have been handled already!");
+        rowParamSample = getRowParamSample(splitRow);
+        assert(!domainSimplex.isSeparateInequality(rowParamSample) && "Non-branching pivots should have been handled already!");
+        if (domainSimplex.isRedundantInequality(rowParamSample))
+          continue;
+
+        // It's neither redundant nor separate, so it takes both positive and negative values, so constitutes a split row.
+        break;
+      }
+
+      if (splitRow < nRow) {
         // On return, the basis as a set is preserved but not the internal ordering
         // within rows or columns. Thus, we take note of the index of the Unknown we
         // are working on the moment, which may be in a different row when we come
@@ -433,7 +422,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
         //
         // Note that we have to capture the index above and not a reference to the
         // Unknown itself, since the array it lives in might get reallocated.
-        int index = rowUnknown[*row];
+        int index = rowUnknown[splitRow];
         unsigned snapshot = getSnapshot();
         unsigned domainSnapshot = domainSimplex.getSnapshot();
         IntegerRelation::CountsSnapshot domainPolyCounts = domainPoly.getCounts();
@@ -448,6 +437,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
     }
 
     if (level == stack.size()) {
+      // We have "returned" from "recursing".
       const StackFrame &frame = stack.back();
       domainPoly.truncate(frame.domainPolyCounts);
       domainSimplex.rollback(frame.domainSnapshot);
@@ -639,7 +629,7 @@ unsigned LexSimplexBase::getLexMinPivotColumn(unsigned row, unsigned colA,
   // (-p/a)M + (-b/a), i.e. 0 to -(pM + b)/a. Thus the change in the sample
   // value is -s/a.
   //
-  // If the variable is the pivot row, it sampel value goes from s to 0, for a
+  // If the variable is the pivot row, its sample value goes from s to 0, for a
   // change of -s.
   //
   // If the variable is a non-pivot row, its sample value changes from
