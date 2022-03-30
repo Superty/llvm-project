@@ -180,7 +180,7 @@ public:
   /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
   /// is the current number of variables, then the corresponding equality is
   /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
-  virtual void addEquality(ArrayRef<int64_t> coeffs) = 0;
+  void addEquality(ArrayRef<int64_t> coeffs);
 
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
@@ -224,10 +224,12 @@ protected:
   /// violating other constraints, the tableau is empty.
   struct Unknown {
     Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted),
+          isEquality(false) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool isEquality : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -316,6 +318,12 @@ protected:
 
   /// Undo the operation represented by the log entry.
   void undo(UndoLogEntry entry);
+
+  /// Fix the unknown in the specified column to be in column orientation.
+  ///
+  /// This unknown will never be pivoted to row orientation after this unless a
+  /// rollback undos this fixing.
+  void fixColumn(unsigned column);
 
   unsigned getNumFixedCols() const { return numFixedCols; }
 
@@ -447,11 +455,6 @@ public:
   /// consistent tableau configuration.
   void addInequality(ArrayRef<int64_t> coeffs) final;
 
-  /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-  /// is the current number of variables, then the corresponding equality is
-  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
-  void addEquality(ArrayRef<int64_t> coeffs) final;
-
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
@@ -545,11 +548,6 @@ public:
   /// This also tries to restore the tableau configuration to a consistent
   /// state and marks the Simplex empty if this is not possible.
   void addInequality(ArrayRef<int64_t> coeffs) final;
-
-  /// Add an equality to the tableau. If coeffs is c_0, c_1, ... c_n, where n
-  /// is the current number of variables, then the corresponding equality is
-  /// c_n + c_0*x_0 + c_1*x_1 + ... + c_{n-1}*x_{n-1} == 0.
-  void addEquality(ArrayRef<int64_t> coeffs) final;
 
   /// Compute the maximum or minimum value of the given row, depending on
   /// direction. The specified row is never pivoted. On return, the row may

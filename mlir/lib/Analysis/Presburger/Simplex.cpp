@@ -245,6 +245,12 @@ void LexSimplex::restoreRationalConsistency() {
   }
 }
 
+void SimplexBase::fixColumn(unsigned column) {
+  swapColumns(column, getNumFixedCols());
+  numFixedCols++;
+  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
+}
+
 // Move the row unknown to column orientation while preserving lexicopositivity
 // of the basis transform.
 //
@@ -322,6 +328,13 @@ LogicalResult LexSimplex::moveRowUnknownToColumn(unsigned row) {
   }
 
   pivot(row, *maybeColumn);
+
+  // If the inequality we're moving to column orientation in fact always has
+  // to hold with equality, we may as well keep it fixed in column orientation
+  // and ignore this column when looking for pivots.
+  if (unknownFromColumn(*maybeColumn).isEquality)
+    fixColumn(*maybeColumn);
+
   return success();
 }
 
@@ -648,12 +661,14 @@ void Simplex::addInequality(ArrayRef<int64_t> coeffs) {
 ///
 /// We simply add two opposing inequalities, which force the expression to
 /// be zero.
-void Simplex::addEquality(ArrayRef<int64_t> coeffs) {
+void SimplexBase::addEquality(ArrayRef<int64_t> coeffs) {
   addInequality(coeffs);
+  con.back().isEquality = true;
   SmallVector<int64_t, 8> negatedCoeffs;
   for (int64_t coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   addInequality(negatedCoeffs);
+  con.back().isEquality = true;
 }
 
 unsigned SimplexBase::getNumVariables() const { return var.size(); }
@@ -1125,22 +1140,6 @@ Optional<SmallVector<Fraction, 8>> Simplex::getRationalSample() const {
 
 void LexSimplex::addInequality(ArrayRef<int64_t> coeffs) {
   addRow(coeffs, /*makeRestricted=*/true);
-}
-
-/// Try to make the equality a fixed column by finding any pivot and performing
-/// it. The only time this is not possible is when the given equality's
-/// direction is already in the span of the existing fixed column equalities. In
-/// that case, we just leave it in row position.
-void LexSimplex::addEquality(ArrayRef<int64_t> coeffs) {
-  const Unknown &u = con[addRow(coeffs, /*makeRestricted=*/true)];
-  Optional<unsigned> pivotCol = findAnyPivotCol(u.pos);
-  if (!pivotCol)
-    return;
-
-  pivot(u.pos, *pivotCol);
-  swapColumns(*pivotCol, getNumFixedCols());
-  numFixedCols++;
-  undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
 }
 
 MaybeOptimum<SmallVector<Fraction, 8>> LexSimplex::getRationalSample() const {

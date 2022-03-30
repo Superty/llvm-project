@@ -549,9 +549,48 @@ TEST(SimplexTest, addDivisionVariable) {
   EXPECT_EQ((*sample)[0] / 2, (*sample)[1]);
 }
 
-TEST(LexSimplexTest, addEquality) {
-  IntegerRelation rel(/*numDomain=*/0, /*numRange=*/1);
-  rel.addEquality({1, 0});
-  LexSimplex simplex(rel);
-  EXPECT_EQ(simplex.getNumConstraints(), 1u);
+using testing::ElementsAre;
+
+TEST(LexSimplexTest, addEqualityRegressionTestAnyPivot) {
+  // Failing test for the incorrect addEquality implementation that performed
+  // any pivot at all to bring the equality to column orientation. In fact, only
+  // pivots that maintain a lexicopositive basis transform (see LexSimplex)
+  // should be considered.
+  LexSimplex simplex(2);
+  // In this case, if doing any pivot, x + y = 1 gets pivoted with x, resulting
+  // in a sample point of x = M + 1, y = -M instead of x = -M, y = M + 1.
+  simplex.addEquality({1, 1, -1}); // x + y = 1.
+  // From there the lexmin is still unbounded even with the constraint x >= 0,
+  // instead of x >= 0 being pivoted with x to produce x = 0, y = 1.
+  simplex.addInequality({1, 0, 0}); // x >= 0.
+  MaybeOptimum<SmallVector<int64_t, 8>> lexmin = simplex.findIntegerLexMin();
+  ASSERT_TRUE(lexmin.isBounded());
+  EXPECT_THAT(*lexmin, ElementsAre(0, 1));
+}
+
+TEST(LexSimplexTest, addEqualityRegressionTestLexminPivotEqCoeffs) {
+  // Failing test for the incorrect addEquality implementation that uses
+  // moveRowUnknownToColumn to bring the equality to column orientation. This
+  // only considers columns with positive coefficients for the row.
+  //
+  // We need to simulate what happens when the equality
+  // is just added as two inequalities. If the equality has a negative sample
+  // value then this is correct; pivoting the equality with
+  // moveRowUnknownToColumn is equivalent to pivoting the violated inequality.
+  //
+  // But if it has a positive sample value, the negated inequality is the one
+  // that is violated and should be pivoted, so it is the columns that have
+  // positive coefficients for the negated inequality that should be considered
+  // for pivots. This corresponds to columns that have negative coefficients for
+  // the equality row, which are not considered when calling
+  // moveRowUnknownToColumn on the equality row.
+  LexSimplex simplex(2);
+  // It's the negation of -x - y + 1 = 0 that has an negative sample, so columns
+  // with negative coefficients should be considered. Since they are not, the
+  // result is incorrect.
+  simplex.addEquality({-1, -1, 1});
+  simplex.addInequality({1, 0, 0});
+  MaybeOptimum<SmallVector<int64_t, 8>> lexmin = simplex.findIntegerLexMin();
+  ASSERT_TRUE(lexmin.isBounded());
+  EXPECT_THAT(*lexmin, ElementsAre(0, 1));
 }
