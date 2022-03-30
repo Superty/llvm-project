@@ -279,7 +279,7 @@ void SymbolicLexSimplex::addParametricCut(unsigned row) {
   for (unsigned col = 3; col < 3 + nSymbol; ++col)
     domainDivCoeffs.push_back(mod(-tableau(row, col), divDenom));
   domainDivCoeffs.push_back(mod(-tableau(row, 1), divDenom));
-  normalizeDiv(domainDivCoeffs, divDenom);
+  // normalizeDiv(domainDivCoeffs, divDenom);
   domainSimplex.addDivisionVariable(domainDivCoeffs, divDenom);
   domainPoly.addLocalFloorDiv(domainDivCoeffs, divDenom);
   appendSymbol();
@@ -301,8 +301,11 @@ void SymbolicLexSimplex::addParametricCut(unsigned row) {
 
   // If a pivot is impossible, then the negative sample values are not allowable.
   auto paramSample = getRowParamSample(nRow - 1);
-  domainPoly.addInequality(paramSample);
-  domainSimplex.addInequality(paramSample);
+  domainPoly.addEquality(paramSample);
+  domainSimplex.addEquality(paramSample);
+  for (unsigned col = 3; col < 3 + nSymbol; ++col)
+    tableau(row, col) -= paramSample[col - 3];
+  tableau(row, 1) -= paramSample.back();
   return;
 }
 
@@ -386,7 +389,8 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
 
   struct StackFrame {
     int index;
-    unsigned snapshot, domainSnapshot;
+    SymbolicLexSimplex simplex;
+    unsigned domainSnapshot;
     IntegerRelation::CountsSnapshot domainPolyCounts;
   };
   SmallVector<StackFrame, 8> stack;
@@ -436,7 +440,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
         unsigned snapshot = getSnapshot();
         unsigned domainSnapshot = domainSimplex.getSnapshot();
         IntegerRelation::CountsSnapshot domainPolyCounts = domainPoly.getCounts();
-        stack.push_back({index, snapshot, domainSnapshot, domainPolyCounts});
+        stack.push_back({index, *this, domainSnapshot, domainPolyCounts});
         domainSimplex.addInequality(rowParamSample);
         domainPoly.addInequality(rowParamSample);
 
@@ -451,7 +455,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
       const StackFrame &frame = stack.back();
       domainPoly.truncate(frame.domainPolyCounts);
       domainSimplex.rollback(frame.domainSnapshot);
-      rollback(frame.snapshot);
+      *this = frame.simplex;
 
       const Unknown &u = unknownFromIndex(frame.index);
       // After this we will either tail-recurse or return. Either way, we need

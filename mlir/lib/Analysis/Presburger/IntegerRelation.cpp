@@ -144,7 +144,7 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   truncateIdKind(IdKind::Symbol, counts);
   truncateIdKind(IdKind::Local, counts);
   removeInequalityRange(counts.getNumIneqs(), getNumInequalities());
-  removeInequalityRange(counts.getNumEqs(), getNumEqualities());
+  removeEqualityRange(counts.getNumEqs(), getNumEqualities());
 }
 
 bool constraintOnlyInvolvesIdRange(ArrayRef<int64_t> constraint, unsigned begin,
@@ -1152,7 +1152,19 @@ void IntegerRelation::mergeLocalIds(IntegerRelation &other) {
 
   // Merge all divisions by removing duplicate divisions.
   unsigned localOffset = getIdKindOffset(IdKind::Local);
-  removeDuplicateDivs(divsA, denomsA, localOffset, merge);
+  ::removeDuplicateDivs(divsA, denomsA, localOffset, merge);
+}
+
+void IntegerRelation::removeDuplicateDivs() {
+  std::vector<SmallVector<int64_t, 8>> divs;
+  SmallVector<unsigned, 4> denoms;
+
+  getLocalReprs(divs, denoms);
+  auto merge = [this](unsigned i, unsigned j) -> bool {
+    eliminateRedundantLocalId(i, j);
+    return true;
+  };
+  ::removeDuplicateDivs(divs, denoms, getIdKindOffset(IdKind::Local), merge);
 }
 
 /// Removes local variables using equalities. Each equality is checked if it
