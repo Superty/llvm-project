@@ -477,7 +477,7 @@ protected:
   /// lexicopositivity of the basis transform. If this is not possible, return
   /// failure. This only occurs when the constraints have no solution; the
   /// tableau will be marked empty in such a case.
-  LogicalResult moveRowUnknownToColumn(unsigned row);
+  LogicalResult moveRowUnknownToColumn(unsigned row, bool mustMarkEmpty = true);
 
   /// Given a row that has a non-integer sample value, add an inequality such
   /// that this fractional sample value is cut away from the polytope. The added
@@ -568,7 +568,7 @@ private:
   Optional<unsigned> maybeGetAlwaysViolatedRow();
   Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);
   Optional<unsigned> maybeGetNonIntegralVarRow();
-  LogicalResult addParametricCut(unsigned row);
+  void addParametricCut(unsigned row);
   SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
   bool isParamSampleIntegral(unsigned row) const;
   void recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;

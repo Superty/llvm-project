@@ -271,7 +271,7 @@ bool SymbolicLexSimplex::isParamSampleIntegral(unsigned row) const {
          isRangeDivisibleBy(tableau.getRow(row).slice(3, nSymbol), denom);
 }
 
-LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
+void SymbolicLexSimplex::addParametricCut(unsigned row) {
   int64_t denom = tableau(row, 0);
 
   int64_t divDenom = denom;
@@ -293,7 +293,17 @@ LogicalResult SymbolicLexSimplex::addParametricCut(unsigned row) {
   tableau(nRow - 1, 3 + nSymbol - 1) = denom;
   for (unsigned col = 3 + nSymbol; col < nCol; ++col)
     tableau(nRow - 1, col) = mod(tableau(row, col), denom);
-  return moveRowUnknownToColumn(nRow - 1);
+
+  // The cut row's possible sample values are always non-negative.
+  LogicalResult status = moveRowUnknownToColumn(nRow - 1, /*mustMarkEmpty=*/false);
+  if (succeeded(status))
+    return;
+
+  // If a pivot is impossible, then the negative sample values are not allowable.
+  auto paramSample = getRowParamSample(nRow - 1);
+  domainPoly.addInequality(paramSample);
+  domainSimplex.addInequality(paramSample);
+  return;
 }
 
 void SymbolicLexSimplex::recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const {
@@ -465,12 +475,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
 
     if (level > stack.size()) {
       if (Optional<unsigned> row = maybeGetNonIntegralVarRow()) {
-        if (addParametricCut(*row).failed()) {
-          // Return.
-          --level;
-          continue;
-        }
-
+        addParametricCut(*row);
         // Tail recurse.
         continue;
       }
@@ -512,6 +517,7 @@ void LexSimplex::restoreRationalConsistency() {
 }
 
 void SimplexBase::fixColumn(unsigned column) {
+  assert(column >= numFixedCols);
   swapColumns(column, getNumFixedCols());
   numFixedCols++;
   undoLog.push_back(UndoLogEntry::UnmarkLastEquality);
@@ -579,7 +585,7 @@ void SimplexBase::fixColumn(unsigned column) {
 // which is in contradiction to the fact that B.col(j) / B(i,j) must be
 // lexicographically smaller than B.col(k) / B(i,k), since it lexicographically
 // minimizes the change in sample value.
-LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
+LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row, bool mustMarkEmpty) {
   Optional<unsigned> maybeColumn;
   for (unsigned col = getNumFixedCols(); col < nCol; ++col) {
     if (tableau(row, col) <= 0)
@@ -589,7 +595,8 @@ LogicalResult LexSimplexBase::moveRowUnknownToColumn(unsigned row) {
   }
 
   if (!maybeColumn) {
-    markEmpty();
+    if (mustMarkEmpty)
+      markEmpty();
     return failure();
   }
 
@@ -947,9 +954,9 @@ unsigned SimplexBase::getSnapshot() const { return undoLog.size(); }
 
 unsigned SimplexBase::getSnapshotBasis() {
   SmallVector<int, 8> basis;
-  for (int index : colUnknown) {
-    if (index != nullIndex)
-      basis.push_back(index);
+  for (unsigned i = numFixedCols; i < nCol; ++i) {
+    int index = colUnknown[i];
+    basis.push_back(index);
   }
   savedBases.push_back(std::move(basis));
 
@@ -1061,6 +1068,9 @@ void SimplexBase::undo(UndoLogEntry entry) {
            "Variable to be removed must be in column orientation!");
 
     if (var.back().isSymbol) {
+      assert(var.back().pos == 3 + nSymbol - 1);
+      if (numFixedCols > 3 + nSymbol)
+        swapColumns(var.back().pos, numFixedCols - 1);
       nSymbol--;
       numFixedCols--;
     }
@@ -1078,7 +1088,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
     nRedundant--;
   } else if (entry == UndoLogEntry::UnmarkLastEquality) {
     numFixedCols--;
-    assert(getNumFixedCols() >= 2 + usingBigM + nSymbol &&
+    assert(numFixedCols >= 2 + usingBigM + nSymbol &&
            "The denominator, constant, big M and symbols are always fixed!");
   } else if (entry == UndoLogEntry::RestoreBasis) {
     assert(!savedBases.empty() && "No bases saved!");
@@ -1086,6 +1096,7 @@ void SimplexBase::undo(UndoLogEntry entry) {
     SmallVector<int, 8> basis = std::move(savedBases.back());
     savedBases.pop_back();
 
+    assert(basis.size() == nCol - numFixedCols);
     for (int index : basis) {
       Unknown &u = unknownFromIndex(index);
       if (u.orientation == Orientation::Column)
@@ -1104,6 +1115,11 @@ void SimplexBase::undo(UndoLogEntry entry) {
 
       assert(u.orientation == Orientation::Column && "No pivot found!");
     }
+    for (unsigned col = 3 + nSymbol; col < numFixedCols; ++col) {
+      assert(unknownFromColumn(col).isEquality);
+    }
+    for (unsigned col = numFixedCols; col < nCol; ++col)
+      assert(!unknownFromColumn(col).isEquality);
   }
 }
 
