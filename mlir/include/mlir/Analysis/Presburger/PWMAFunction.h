@@ -107,6 +107,12 @@ public:
   /// outside the domain, an empty optional is returned.
   Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
 
+  /// TODO remove and use removeIdRange after that refactor.
+  void truncateOutput(unsigned count) {
+    assert(count <= output.getNumRows());
+    output.resizeVertically(count);
+  }
+
   void print(raw_ostream &os) const;
   void dump() const;
 
@@ -165,6 +171,14 @@ public:
   /// they have the same dimensions, the same domain and they take the same
   /// value at every point in the domain.
   bool isEqual(const PWMAFunction &other) const;
+
+  /// TODO remove and use removeIdRange after that refactor.
+  void truncateOutput(unsigned count) {
+    assert(count <= numOutputs);
+    for (auto &piece : pieces)
+      piece.truncateOutput(count);
+    numOutputs = count;
+  }
 
   void print(raw_ostream &os) const;
   void dump() const;
