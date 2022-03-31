@@ -14,6 +14,7 @@
 
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
@@ -165,6 +166,17 @@ void removeConstraintsInvolvingOnlyIdRange(IntegerRelation &poly,
     if (constraintOnlyInvolvesIdRange(poly.getInequality(i - 1), begin, count))
       poly.removeInequality(i - 1);
 }
+
+SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain) const {
+  SymbolicLexMin result = SymbolicLexSimplex(*this, symbolDomain).computeSymbolicIntegerLexMin();
+  result.lexmin.truncateOutput(result.lexmin.getNumOutputs() - getNumLocalIds());
+  return result;
+}
+
+SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin() const {
+  return findSymbolicIntegerLexMin(IntegerPolyhedron(/*numDims=*/getNumSymbolIds()));
+}
+
 unsigned IntegerRelation::insertId(IdKind kind, unsigned pos, unsigned num) {
   assert(pos <= getNumIdKind(kind));
 

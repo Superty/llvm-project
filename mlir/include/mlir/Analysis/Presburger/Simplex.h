@@ -18,6 +18,7 @@
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -176,6 +177,9 @@ public:
   /// Add new variables to the end of the list of variables.
   void appendVariable(unsigned count = 1);
 
+  /// Add new symbolic variables to the end of the list of variables.
+  void appendSymbol();
+
   /// Append a new variable to the simplex and constrain it such that its only
   /// integer value is the floor div of `coeffs` and `denom`.
   void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom);
@@ -211,7 +215,8 @@ protected:
   /// constant term, whereas LexSimplex has an extra fixed column for the
   /// so-called big M parameter. For more information see the documentation for
   /// LexSimplex.
-  SimplexBase(unsigned nVar, bool mustUseBigM);
+  SimplexBase(unsigned nVar, bool mustUseBigM, unsigned symbolOffset,
+              unsigned nSymbol);
 
   enum class Orientation { Row, Column };
 
@@ -223,11 +228,14 @@ protected:
   /// always be non-negative and if it cannot be made non-negative without
   /// violating other constraints, the tableau is empty.
   struct Unknown {
-    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos)
-        : pos(oPos), orientation(oOrientation), restricted(oRestricted) {}
+    Unknown(Orientation oOrientation, bool oRestricted, unsigned oPos,
+            bool oIsSymbol = false)
+        : pos(oPos), orientation(oOrientation), restricted(oRestricted),
+          isSymbol(oIsSymbol) {}
     unsigned pos;
     Orientation orientation;
     bool restricted : 1;
+    bool isSymbol : 1;
 
     void print(raw_ostream &os) const {
       os << (orientation == Orientation::Row ? "r" : "c");
@@ -325,6 +333,10 @@ protected:
   /// The number of redundant rows in the tableau. These are the first
   /// nRedundant rows.
   unsigned nRedundant;
+
+  /// The number of parameters. This must be consistent with the number of
+  /// Unknowns in `var` below that have `isParam` set to true.
+  unsigned nSymbol;
 
   /// The matrix representing the tableau.
   Matrix tableau;
@@ -435,10 +447,12 @@ public:
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
 protected:
-  LexSimplexBase(unsigned nVar)
-      : SimplexBase(nVar, /*mustUseBigM=*/true) {}
+  LexSimplexBase(unsigned nVar, unsigned symbolOffset, unsigned nSymbol)
+      : SimplexBase(nVar, /*mustUseBigM=*/true, symbolOffset, nSymbol) {}
   explicit LexSimplexBase(const IntegerRelation &constraints)
-      : LexSimplexBase(constraints.getNumIds()) {
+      : LexSimplexBase(constraints.getNumIds(),
+                       constraints.getIdKindOffset(IdKind::Symbol),
+                       constraints.getNumSymbolIds()) {
     intersectIntegerRelation(constraints);
   }
 
@@ -470,7 +484,7 @@ protected:
 class LexSimplex : public LexSimplexBase {
 public:
   explicit LexSimplex(unsigned nVar)
-      : LexSimplexBase(nVar) {}
+      : LexSimplexBase(nVar, /*symbolOffset=*/0, /*nSymbol=*/0) {}
   explicit LexSimplex(const IntegerRelation &constraints)
       : LexSimplexBase(constraints) {
     assert(constraints.getNumSymbolIds() == 0 &&
@@ -516,11 +530,31 @@ private:
   /// Get a row corresponding to a var that has a non-integral sample value, if
   /// one exists. Otherwise, return an empty optional.
   Optional<unsigned> maybeGetNonIntegralVarRow() const;
+};
 
-  /// Given two potential pivot columns for a row, return the one that results
-  /// in the lexicographically smallest sample vector.
-  unsigned getLexMinPivotColumn(unsigned row, unsigned colA,
-                                unsigned colB) const;
+struct SymbolicLexMin {
+  PWMAFunction lexmin;
+  PresburgerSet unboundedDomain;
+};
+
+class SymbolicLexSimplex : public LexSimplexBase {
+public:
+  explicit SymbolicLexSimplex(const IntegerPolyhedron &constraints, const IntegerPolyhedron &symbolDomain) :
+    LexSimplexBase(constraints), domainPoly(symbolDomain), domainSimplex(symbolDomain) {}
+  SymbolicLexMin computeSymbolicIntegerLexMin();
+private:
+  LogicalResult doNonBranchingPivots();
+  Optional<unsigned> maybeGetObviouslyViolatedRow();
+  Optional<unsigned> maybeGetAlwaysViolatedRow();
+  Optional<unsigned> maybeGetSplitRow(SmallVector<int64_t, 8> &rowParamSample);
+  Optional<unsigned> maybeGetNonIntegralVarRow();
+  LogicalResult addParametricCut(unsigned row);
+  SmallVector<int64_t, 8> getRowParamSample(unsigned row) const;
+  bool isParamSampleIntegral(unsigned row) const;
+  void recordOutput(PWMAFunction &lexmin, PresburgerSet &unboundedDomain) const;
+
+  IntegerPolyhedron domainPoly;
+  LexSimplex domainSimplex;
 };
 
 /// The Simplex class uses the Normal pivot rule and supports integer emptiness
@@ -542,7 +576,9 @@ public:
   enum class Direction { Up, Down };
 
   Simplex() = delete;
-  explicit Simplex(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/false) {}
+  explicit Simplex(unsigned nVar)
+      : SimplexBase(nVar, /*mustUseBigM=*/false, /*symbolOffset=*/0,
+                    /*nSymbol=*/0) {}
   explicit Simplex(const IntegerRelation &constraints)
       : Simplex(constraints.getNumIds()) {
     intersectIntegerRelation(constraints);

@@ -24,6 +24,9 @@
 namespace mlir {
 namespace presburger {
 
+class IntegerPolyhedron;
+struct SymbolicLexMin;
+
 /// An IntegerRelation is a PresburgerSpace subject to affine constraints.
 /// Affine constraints can be inequalities or equalities in the form:
 ///
@@ -602,6 +605,8 @@ public:
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
   IntegerRelation getSymbolDomainOverapprox() const;
+  SymbolicLexMin findSymbolicIntegerLexMin() const;
+  SymbolicLexMin findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain) const;
 };
 
 } // namespace presburger
