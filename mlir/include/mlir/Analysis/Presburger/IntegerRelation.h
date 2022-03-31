@@ -600,6 +600,8 @@ public:
   /// column position (i.e., not relative to the kind of identifier) of the
   /// first added identifier.
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
+
+  IntegerRelation getSymbolDomainOverapprox() const;
 };
 
 } // namespace presburger
