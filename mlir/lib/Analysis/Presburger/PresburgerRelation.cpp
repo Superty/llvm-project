@@ -287,6 +287,7 @@ static PresburgerRelation getSetDifference(IntegerRelation disjunct,
                                         disjunct.getNumRangeIds(),
                                         disjunct.getNumSymbolIds());
 
+  disjunct.removeDuplicateDivs();
   PresburgerRelation result = PresburgerRelation::getEmpty(
       disjunct.getNumDomainIds(), disjunct.getNumRangeIds(),
       disjunct.getNumSymbolIds());
