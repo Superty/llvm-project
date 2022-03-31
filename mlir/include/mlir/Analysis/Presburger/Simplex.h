@@ -695,7 +695,7 @@ private:
 /// which get rolled back on scope exit.
 class SimplexRollbackScopeExit {
 public:
-  SimplexRollbackScopeExit(Simplex &simplex) : simplex(simplex) {
+  SimplexRollbackScopeExit(SimplexBase &simplex) : simplex(simplex) {
     snapshot = simplex.getSnapshot();
   };
   ~SimplexRollbackScopeExit() { simplex.rollback(snapshot); }
