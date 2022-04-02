@@ -605,6 +605,24 @@ public:
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
   IntegerRelation getSymbolDomainOverapprox() const;
+
+  /// Compute the symbolic integer lexmin of the polyhedron.
+  /// This finds, for every assignment to the symbols, the lexicographically minimum
+  /// value attained by the dimensions. For example, the symbolic lexmin of the set
+  /// 
+  /// (x, y)[a, b, c] : (a <= x, b <= x, x <= c)
+  /// 
+  /// can be written as
+  /// 
+  /// x = a if b <= a, a <= c
+  /// x = b if a <  b, b <= c
+  /// 
+  /// For some values of the symbols, the lexmin may be unbounded.
+  /// SymbolicLexMin stores the parts of the domain in which this
+  /// is the case in a separate `PresburgerSet`.
+  ///
+  /// Some assignments to the symbols might make the set empty. If so, these cases
+  /// are not included in any case of the output function.
   SymbolicLexMin findSymbolicIntegerLexMin() const;
   SymbolicLexMin findSymbolicIntegerLexMin(const IntegerPolyhedron &symbolDomain) const;
 };

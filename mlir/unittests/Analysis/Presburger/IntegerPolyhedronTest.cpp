@@ -1318,6 +1318,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
       // multiple of 7.
       {"(a, r) : (a >= 0, r - a - 7*((r - a) floordiv 7) == 0)"});
 
+  // The lexmins are unbounded.
   expectSymbolicIntegerLexMin("(x, y)[a] : (9*x - 4*y - 2*a >= 0)", {},
                               {"(a) : ()"});
 
@@ -1354,6 +1355,12 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
           ">= 0, N + K - 2 - x >= 0, x - 4 >= 0)",
           {{0, 0, 1, 0, 1}, {0, 1, 0, 0, 0}} // (1 + x, N)
       }});
+
+  // Case where lexmin sometimes exists but is sometimes unbounded.
+  // (x, y)[p, q, r, s] : (x mod 2 = r, x mod 2 <= 1 - y)
+  expectSymbolicIntegerLexMin(
+    "(a, b)[p, q, r, s] : (a, )"
+  );
 }
 
 static void

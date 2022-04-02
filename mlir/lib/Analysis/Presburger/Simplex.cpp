@@ -474,6 +474,7 @@ SymbolicLexMin SymbolicLexSimplex::computeSymbolicIntegerLexMin() {
       continue;
     }
   }
+  assert(lexmin.getNumPieces() == 0 || unboundedDomain.getNumDisjuncts() == 0);
   return {lexmin, unboundedDomain};
 }
 
