@@ -227,18 +227,19 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // inequality, s_{i,j+1}. This function recurses into the next level i + 1
   // with the part b ^ s_i1 ^ s_i2 ^ ... ^ s_ij ^ ~s_{i,j+1}.
   auto recurseWithInequality = [&, i](ArrayRef<int64_t> ineq) {
-    SimplexRollbackScopeExit scopeExit(simplex);
     b.addInequality(ineq);
     simplex.addInequality(ineq);
     subtractRecursively(b, simplex, s, i + 1, result);
-    b.removeInequality(b.getNumInequalities() - 1);
   };
 
   // For each inequality ineq, we first recurse with the part where ineq
   // is not satisfied, and then add the ineq to b and simplex because
   // ineq must be satisfied by all later parts.
   auto processInequality = [&](ArrayRef<int64_t> ineq) {
+    unsigned snapshot = simplex.getSnapshot();
     recurseWithInequality(getComplementIneq(ineq));
+    simplex.rollback();
+    b.removeInequality(b.getNumInequalities() - 1);
     b.addInequality(ineq);
     simplex.addInequality(ineq);
   };
