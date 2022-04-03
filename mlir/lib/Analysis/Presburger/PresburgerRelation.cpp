@@ -143,14 +143,6 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
                                 const PresburgerRelation &s, unsigned i,
                                 PresburgerRelation &result) {
 
-  // struct StackFrame {
-  //   unsigned initialSnapshot;
-  //   IntegerRelation::CountsSnapshot bCounts;
-  //   IntegerRelation sI;
-  //   llvm::SmallBitVector canIgnoreIneq;
-  // };
-  // SmallVector<StackFrame, 2> frame;
-
   if (i == s.getNumDisjuncts()) {
     result.unionInPlace(b);
     return;
@@ -222,8 +214,12 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
       2 * sI.getNumEqualities() + sI.getNumInequalities();
   for (unsigned j = 0; j < totalNewSimplexInequalities; j++)
     canIgnoreIneq[j] = simplex.isMarkedRedundant(offset + j);
-
   simplex.rollback(snapshotBeforeIntersect);
+
+  SmallVector<unsigned, 8> pendingIneqs(totalNewSimplexInequalities);
+  for (unsigned i = 0; i < totalNewSimplexInequalities; ++i)
+    if (!canIgnoreIneq[i])
+      pendingIneqs.push_back(i);
 
   // Recurse with the part b ^ ~ineq. Note that b is modified throughout
   // subtractRecursively. At the time this function is called, the current b is
@@ -250,26 +246,17 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // Process all the inequalities, ignoring redundant inequalities and division
   // inequalities. The result is correct whether or not we ignore these, but
   // ignoring them makes the result simpler.
-  for (unsigned j = 0, e = sI.getNumInequalities(); j < e; j++) {
-    if (canIgnoreIneq[j])
-      continue;
-    if (canIgnoreIneq[j])
-      continue;
-    processInequality(sI.getInequality(j));
-  }
-
-  offset = sI.getNumInequalities();
-  for (unsigned j = 0, e = sI.getNumEqualities(); j < e; ++j) {
-    ArrayRef<int64_t> coeffs = sI.getEquality(j);
-    // For each equality, process the positive and negative inequalities that
-    // make up this equality. If Simplex found an inequality to be redundant, we
-    // skip it as above to make the result simpler. Divisions are always
-    // represented in terms of inequalities and not equalities, so we do not
-    // check for division inequalities here.
-    if (!canIgnoreIneq[offset + 2 * j])
-      processInequality(coeffs);
-    if (!canIgnoreIneq[offset + 2 * j + 1])
-      processInequality(getNegatedCoeffs(coeffs));
+  for (unsigned idx : pendingIneqs) {
+    if (idx < sI.getNumInequalities()) {
+      processInequality(sI.getInequality(idx));
+    } else {
+      idx -= sI.getNumInequalities();
+      ArrayRef<int64_t> eqCoeffs = sI.getEquality(idx/2);
+      if (idx % 2 == 0)
+        processInequality(eqCoeffs);
+      else
+        processInequality(getNegatedCoeffs(eqCoeffs));
+    }
   }
 
   b.truncate(bCounts);
