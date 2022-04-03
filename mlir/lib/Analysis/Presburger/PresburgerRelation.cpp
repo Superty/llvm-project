@@ -142,6 +142,15 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
 static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
                                 const PresburgerRelation &s, unsigned i,
                                 PresburgerRelation &result) {
+
+  // struct StackFrame {
+  //   unsigned initialSnapshot;
+  //   IntegerRelation::CountsSnapshot bCounts;
+  //   IntegerRelation sI;
+  //   llvm::SmallBitVector canIgnoreIneq;
+  // };
+  // SmallVector<StackFrame, 2> frame;
+
   if (i == s.getNumDisjuncts()) {
     result.unionInPlace(b);
     return;
@@ -156,17 +165,9 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // rollback b to its initial state before returning, which we will do by
   // removing all constraints beyond the original number of inequalities
   // and equalities, so we store these counts first.
-  const IntegerRelation::CountsSnapshot bCounts = b.getCounts();
+  IntegerRelation::CountsSnapshot bCounts = b.getCounts();
   // Similarly, we also want to rollback simplex to its original state.
-  const unsigned initialSnapshot = simplex.getSnapshot();
-
-  auto restoreState = [&]() {
-    b.truncate(bCounts);
-    simplex.rollback(initialSnapshot);
-  };
-
-  // Automatically restore the original state when we return.
-  auto stateRestorer = llvm::make_scope_exit(restoreState);
+  unsigned initialSnapshot = simplex.getSnapshot();
 
   // Find out which inequalities of sI correspond to division inequalities for
   // the local variables of sI.
@@ -179,7 +180,7 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
 
   // Mark which inequalities of sI are division inequalities and add all such
   // inequalities to b.
-  llvm::SmallBitVector isDivInequality(sI.getNumInequalities());
+  llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() + 2*sI.getNumEqualities());
   for (MaybeLocalRepr &maybeInequality : repr) {
     assert(maybeInequality.kind == ReprKind::Inequality &&
            "Subtraction is not supported when a representation of the local "
@@ -192,8 +193,8 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
 
     assert(lb != ub &&
            "Upper and lower bounds must be different inequalities!");
-    isDivInequality[lb] = true;
-    isDivInequality[ub] = true;
+    canIgnoreIneq[lb] = true;
+    canIgnoreIneq[ub] = true;
   }
 
   unsigned offset = simplex.getNumConstraints();
@@ -208,13 +209,9 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
     // b ^ s_i is empty, so b \ s_i = b. We move directly to i + 1.
     // We are ignoring level i completely, so we restore the state
     // *before* going to level i + 1.
-    restoreState();
+    b.truncate(bCounts);
+    simplex.rollback(initialSnapshot);
     subtractRecursively(b, simplex, s, i + 1, result);
-
-    // We already restored the state above and the recursive call should have
-    // restored to the same state before returning, so we don't need to restore
-    // the state again.
-    stateRestorer.release();
     return;
   }
 
@@ -223,9 +220,8 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // Equalities are added to simplex as a pair of inequalities.
   unsigned totalNewSimplexInequalities =
       2 * sI.getNumEqualities() + sI.getNumInequalities();
-  llvm::SmallBitVector isMarkedRedundant(totalNewSimplexInequalities);
   for (unsigned j = 0; j < totalNewSimplexInequalities; j++)
-    isMarkedRedundant[j] = simplex.isMarkedRedundant(offset + j);
+    canIgnoreIneq[j] = simplex.isMarkedRedundant(offset + j);
 
   simplex.rollback(snapshotBeforeIntersect);
 
@@ -255,9 +251,9 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // inequalities. The result is correct whether or not we ignore these, but
   // ignoring them makes the result simpler.
   for (unsigned j = 0, e = sI.getNumInequalities(); j < e; j++) {
-    if (isMarkedRedundant[j])
+    if (canIgnoreIneq[j])
       continue;
-    if (isDivInequality[j])
+    if (canIgnoreIneq[j])
       continue;
     processInequality(sI.getInequality(j));
   }
@@ -270,11 +266,14 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
     // skip it as above to make the result simpler. Divisions are always
     // represented in terms of inequalities and not equalities, so we do not
     // check for division inequalities here.
-    if (!isMarkedRedundant[offset + 2 * j])
+    if (!canIgnoreIneq[offset + 2 * j])
       processInequality(coeffs);
-    if (!isMarkedRedundant[offset + 2 * j + 1])
+    if (!canIgnoreIneq[offset + 2 * j + 1])
       processInequality(getNegatedCoeffs(coeffs));
   }
+
+  b.truncate(bCounts);
+  simplex.rollback(initialSnapshot);
 }
 
 /// Return the set difference disjunct \ set.
