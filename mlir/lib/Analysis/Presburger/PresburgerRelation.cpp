@@ -133,9 +133,6 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
 /// that some constraints are redundant. These redundant constraints are
 /// ignored.
 ///
-/// b and simplex are callee saved, i.e., their values on return are
-/// semantically equivalent to their values when the function is called.
-///
 /// b should not have duplicate divs because this might lead to existing
 /// divs disappearing in the call to mergeLocalIds below, which cannot be
 /// handled.
@@ -157,7 +154,7 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // rollback b to its initial state before returning, which we will do by
   // removing all constraints beyond the original number of inequalities
   // and equalities, so we store these counts first.
-  IntegerRelation::CountsSnapshot bCounts = b.getCounts();
+  IntegerRelation::CountsSnapshot initBCounts = b.getCounts();
   // Similarly, we also want to rollback simplex to its original state.
   unsigned initialSnapshot = simplex.getSnapshot();
 
@@ -191,7 +188,7 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
 
   unsigned offset = simplex.getNumConstraints();
   unsigned numLocalsAdded =
-      b.getNumLocalIds() - bCounts.getSpace().getNumLocalIds();
+      b.getNumLocalIds() - initBCounts.getSpace().getNumLocalIds();
   simplex.appendVariable(numLocalsAdded);
 
   unsigned snapshotBeforeIntersect = simplex.getSnapshot();
@@ -201,7 +198,7 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
     // b ^ s_i is empty, so b \ s_i = b. We move directly to i + 1.
     // We are ignoring level i completely, so we restore the state
     // *before* going to level i + 1.
-    b.truncate(bCounts);
+    b.truncate(initBCounts);
     simplex.rollback(initialSnapshot);
     subtractRecursively(b, simplex, s, i + 1, result);
     return;
@@ -237,9 +234,11 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
   // ineq must be satisfied by all later parts.
   auto processInequality = [&](ArrayRef<int64_t> ineq) {
     unsigned snapshot = simplex.getSnapshot();
+    IntegerRelation::CountsSnapshot bCounts = b.getCounts();
     recurseWithInequality(getComplementIneq(ineq));
-    simplex.rollback();
-    b.removeInequality(b.getNumInequalities() - 1);
+    simplex.rollback(snapshot);
+    b.truncate(bCounts);
+
     b.addInequality(ineq);
     simplex.addInequality(ineq);
   };
@@ -259,9 +258,6 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
         processInequality(getNegatedCoeffs(eqCoeffs));
     }
   }
-
-  b.truncate(bCounts);
-  simplex.rollback(initialSnapshot);
 }
 
 /// Return the set difference disjunct \ set.
