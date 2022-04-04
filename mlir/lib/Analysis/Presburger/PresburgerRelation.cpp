@@ -247,12 +247,13 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
         continue;
       }
 
+      IntegerRelation::CountsSnapshot bCounts = b.getCounts();
       unsigned idx = pendingIneqs.back();
       SmallVector<int64_t, 8> ineq = getComplementIneq(inequalityFromIdx(sI, idx));
       b.addInequality(ineq);
       simplex.addInequality(ineq);
 
-      frames.push_back(Frame{snapshotBeforeIntersect, b.getCounts(), sI, pendingIneqs});
+      frames.push_back(Frame{snapshotBeforeIntersect, bCounts, sI, pendingIneqs});
       ++level;
       continue;
     }
@@ -283,6 +284,9 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
         level = frames.size();
         continue;
       }
+
+      frame.bCounts = b.getCounts();
+      frame.snapshot = simplex.getSnapshot();
       unsigned idx = frame.pendingIneqs.back();
       ineq = getComplementIneq(inequalityFromIdx(frame.sI, idx));
       b.addInequality(ineq);
