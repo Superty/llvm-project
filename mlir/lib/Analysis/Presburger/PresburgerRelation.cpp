@@ -100,6 +100,18 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
   return result;
 }
 
+static SmallVector<int64_t, 8> inequalityFromIdx(const IntegerRelation &rel, unsigned idx) {
+  if (idx < rel.getNumInequalities())
+    return llvm::to_vector<8>(rel.getInequality(idx));
+
+  idx -= rel.getNumInequalities();
+  ArrayRef<int64_t> eqCoeffs = rel.getEquality(idx/2);
+
+  if (idx % 2 == 0)
+    return llvm::to_vector<8>(eqCoeffs);
+  return getNegatedCoeffs(eqCoeffs);
+}
+
 /// Return the set difference b \ s and accumulate the result into `result`.
 /// `simplex` must correspond to b.
 ///
@@ -139,123 +151,144 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
 static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
                                 const PresburgerRelation &s, unsigned i,
                                 PresburgerRelation &result) {
-
-  if (i == s.getNumDisjuncts()) {
-    result.unionInPlace(b);
-    return;
-  }
-
-  IntegerRelation sI = s.getDisjunct(i);
-  // Remove the duplicate divs up front to avoid them possibly disappearing
-  // in the call to mergeLocalIds below.
-  sI.removeDuplicateDivs();
-
-  // Below, we append some additional constraints and ids to b. We want to
-  // rollback b to its initial state before returning, which we will do by
-  // removing all constraints beyond the original number of inequalities
-  // and equalities, so we store these counts first.
-  IntegerRelation::CountsSnapshot initBCounts = b.getCounts();
-  // Similarly, we also want to rollback simplex to its original state.
-  unsigned initialSnapshot = simplex.getSnapshot();
-
-  // Find out which inequalities of sI correspond to division inequalities for
-  // the local variables of sI.
-  std::vector<MaybeLocalRepr> repr(sI.getNumLocalIds());
-  sI.getLocalReprs(repr);
-
-  // Add sI's locals to b, after b's locals. Also add b's locals to sI, before
-  // sI's locals.
-  b.mergeLocalIds(sI);
-
-  // Mark which inequalities of sI are division inequalities and add all such
-  // inequalities to b.
-  llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() + 2*sI.getNumEqualities());
-  for (MaybeLocalRepr &maybeInequality : repr) {
-    assert(maybeInequality.kind == ReprKind::Inequality &&
-           "Subtraction is not supported when a representation of the local "
-           "variables of the subtrahend cannot be found!");
-    auto lb = maybeInequality.repr.inequalityPair.lowerBoundIdx;
-    auto ub = maybeInequality.repr.inequalityPair.upperBoundIdx;
-
-    b.addInequality(sI.getInequality(lb));
-    b.addInequality(sI.getInequality(ub));
-
-    assert(lb != ub &&
-           "Upper and lower bounds must be different inequalities!");
-    canIgnoreIneq[lb] = true;
-    canIgnoreIneq[ub] = true;
-  }
-
-  unsigned offset = simplex.getNumConstraints();
-  unsigned numLocalsAdded =
-      b.getNumLocalIds() - initBCounts.getSpace().getNumLocalIds();
-  simplex.appendVariable(numLocalsAdded);
-
-  unsigned snapshotBeforeIntersect = simplex.getSnapshot();
-  simplex.intersectIntegerRelation(sI);
-
-  if (simplex.isEmpty()) {
-    // b ^ s_i is empty, so b \ s_i = b. We move directly to i + 1.
-    // We are ignoring level i completely, so we restore the state
-    // *before* going to level i + 1.
-    b.truncate(initBCounts);
-    simplex.rollback(initialSnapshot);
-    subtractRecursively(b, simplex, s, i + 1, result);
-    return;
-  }
-
-  simplex.detectRedundant();
-
-  // Equalities are added to simplex as a pair of inequalities.
-  unsigned totalNewSimplexInequalities =
-      2 * sI.getNumEqualities() + sI.getNumInequalities();
-  for (unsigned j = 0; j < totalNewSimplexInequalities; j++)
-    canIgnoreIneq[j] = simplex.isMarkedRedundant(offset + j);
-  simplex.rollback(snapshotBeforeIntersect);
-
-  SmallVector<unsigned, 8> pendingIneqs(totalNewSimplexInequalities);
-  for (unsigned i = 0; i < totalNewSimplexInequalities; ++i)
-    if (!canIgnoreIneq[i])
-      pendingIneqs.push_back(i);
-
-  // Recurse with the part b ^ ~ineq. Note that b is modified throughout
-  // subtractRecursively. At the time this function is called, the current b is
-  // actually equal to b ^ s_i1 ^ s_i2 ^ ... ^ s_ij, and ineq is the next
-  // inequality, s_{i,j+1}. This function recurses into the next level i + 1
-  // with the part b ^ s_i1 ^ s_i2 ^ ... ^ s_ij ^ ~s_{i,j+1}.
-  auto recurseWithInequality = [&, i](ArrayRef<int64_t> ineq) {
-    b.addInequality(ineq);
-    simplex.addInequality(ineq);
-    subtractRecursively(b, simplex, s, i + 1, result);
+  struct Frame {
+    unsigned snapshot;
+    IntegerRelation::CountsSnapshot bCounts;
+    IntegerRelation sI;
+    SmallVector<unsigned, 8> pendingIneqs;
   };
+  SmallVector<Frame, 2> frames;
 
-  // For each inequality ineq, we first recurse with the part where ineq
-  // is not satisfied, and then add the ineq to b and simplex because
-  // ineq must be satisfied by all later parts.
-  auto processInequality = [&](ArrayRef<int64_t> ineq) {
-    unsigned snapshot = simplex.getSnapshot();
-    IntegerRelation::CountsSnapshot bCounts = b.getCounts();
-    recurseWithInequality(getComplementIneq(ineq));
-    simplex.rollback(snapshot);
-    b.truncate(bCounts);
+  unsigned level = 1;
+  while (level > 0) {
+    if (level - 1 == s.getNumDisjuncts()) {
+      result.unionInPlace(b);
+      level = frames.size();
+      continue;
+    }
 
-    b.addInequality(ineq);
-    simplex.addInequality(ineq);
-  };
+    if (level > frames.size()) {
+      IntegerRelation sI = s.getDisjunct(level - 1);
+      // Remove the duplicate divs up front to avoid them possibly disappearing
+      // in the call to mergeLocalIds below.
+      sI.removeDuplicateDivs();
 
-  // Process all the inequalities, ignoring redundant inequalities and division
-  // inequalities. The result is correct whether or not we ignore these, but
-  // ignoring them makes the result simpler.
-  for (unsigned idx : pendingIneqs) {
-    if (idx < sI.getNumInequalities()) {
-      processInequality(sI.getInequality(idx));
-    } else {
-      idx -= sI.getNumInequalities();
-      ArrayRef<int64_t> eqCoeffs = sI.getEquality(idx/2);
-      if (idx % 2 == 0)
-        processInequality(eqCoeffs);
-      else
-        processInequality(getNegatedCoeffs(eqCoeffs));
+      // Below, we append some additional constraints and ids to b. We want to
+      // rollback b to its initial state before returning, which we will do by
+      // removing all constraints beyond the original number of inequalities
+      // and equalities, so we store these counts first.
+      IntegerRelation::CountsSnapshot initBCounts = b.getCounts();
+      // Similarly, we also want to rollback simplex to its original state.
+      unsigned initialSnapshot = simplex.getSnapshot();
+
+      // Find out which inequalities of sI correspond to division inequalities for
+      // the local variables of sI.
+      std::vector<MaybeLocalRepr> repr(sI.getNumLocalIds());
+      sI.getLocalReprs(repr);
+
+      // Add sI's locals to b, after b's locals. Also add b's locals to sI, before
+      // sI's locals.
+      b.mergeLocalIds(sI);
+
+      // Mark which inequalities of sI are division inequalities and add all such
+      // inequalities to b.
+      llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() + 2*sI.getNumEqualities());
+      for (MaybeLocalRepr &maybeInequality : repr) {
+        assert(maybeInequality.kind == ReprKind::Inequality &&
+               "Subtraction is not supported when a representation of the local "
+               "variables of the subtrahend cannot be found!");
+        auto lb = maybeInequality.repr.inequalityPair.lowerBoundIdx;
+        auto ub = maybeInequality.repr.inequalityPair.upperBoundIdx;
+
+        b.addInequality(sI.getInequality(lb));
+        b.addInequality(sI.getInequality(ub));
+
+        assert(lb != ub &&
+               "Upper and lower bounds must be different inequalities!");
+        canIgnoreIneq[lb] = true;
+        canIgnoreIneq[ub] = true;
+      }
+
+      unsigned offset = simplex.getNumConstraints();
+      unsigned numLocalsAdded =
+          b.getNumLocalIds() - initBCounts.getSpace().getNumLocalIds();
+      simplex.appendVariable(numLocalsAdded);
+
+      unsigned snapshotBeforeIntersect = simplex.getSnapshot();
+      simplex.intersectIntegerRelation(sI);
+
+      if (simplex.isEmpty()) {
+        // b ^ s_i is empty, so b \ s_i = b. We move directly to i + 1.
+        // We are ignoring level i completely, so we restore the state
+        // *before* going to level i + 1.
+        b.truncate(initBCounts);
+        simplex.rollback(initialSnapshot);
+        // subtractRecursively(b, simplex, s, i + 1, result);
+        ++level;
+        continue;
+      }
+
+      simplex.detectRedundant();
+
+      // Equalities are added to simplex as a pair of inequalities.
+      unsigned totalNewSimplexInequalities =
+          2 * sI.getNumEqualities() + sI.getNumInequalities();
+      for (unsigned j = 0; j < totalNewSimplexInequalities; j++)
+        canIgnoreIneq[j] = simplex.isMarkedRedundant(offset + j);
+      simplex.rollback(snapshotBeforeIntersect);
+
+      SmallVector<unsigned, 8> pendingIneqs(totalNewSimplexInequalities);
+      for (unsigned i = 0; i < totalNewSimplexInequalities; ++i)
+        if (!canIgnoreIneq[i])
+          pendingIneqs.push_back(i);
+
+      if (pendingIneqs.empty()) {
+        level = frames.size();
+        continue;
+      }
+
+      unsigned idx = pendingIneqs.back();
+      SmallVector<int64_t, 8> ineq = getComplementIneq(inequalityFromIdx(sI, idx));
+      b.addInequality(ineq);
+      simplex.addInequality(ineq);
+
+      frames.push_back(Frame{snapshotBeforeIntersect, b.getCounts(), sI, pendingIneqs});
+      ++level;
+      continue;
+    }
+
+    if (level == frames.size()) {
+      Frame &frame = frames.back();
+      simplex.rollback(frame.snapshot);
+      b.truncate(frame.bCounts);
+      unsigned prevIdx = frame.pendingIneqs.back();
+      SmallVector<int64_t, 8> ineq = inequalityFromIdx(frame.sI, prevIdx);
+      b.addInequality(ineq);
+      simplex.addInequality(ineq);
+      frame.pendingIneqs.pop_back();
+
+      // Recurse with the part b ^ ~ineq. Note that b is modified throughout
+      // subtractRecursively. At the time this function is called, the current b is
+      // actually equal to b ^ s_i1 ^ s_i2 ^ ... ^ s_ij, and ineq is the next
+      // inequality, s_{i,j+1}. This function recurses into the next level i + 1
+      // with the part b ^ s_i1 ^ s_i2 ^ ... ^ s_ij ^ ~s_{i,j+1}.
+      // For each inequality ineq, we first recurse with the part where ineq
+      // is not satisfied, and then add the ineq to b and simplex because
+      // ineq must be satisfied by all later parts.
+      // Process all the inequalities, ignoring redundant inequalities and division
+      // inequalities. The result is correct whether or not we ignore these, but
+      // ignoring them makes the result simpler.
+      if (frame.pendingIneqs.empty()) {
+        frames.pop_back();
+        level = frames.size();
+        continue;
+      }
+      unsigned idx = frame.pendingIneqs.back();
+      ineq = getComplementIneq(inequalityFromIdx(frame.sI, idx));
+      b.addInequality(ineq);
+      simplex.addInequality(ineq);
+      ++level;
+      continue;
     }
   }
 }
