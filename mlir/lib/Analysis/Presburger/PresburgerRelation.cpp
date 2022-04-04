@@ -112,6 +112,28 @@ static SmallVector<int64_t, 8> inequalityFromIdx(const IntegerRelation &rel, uns
   return getNegatedCoeffs(eqCoeffs);
 }
 
+/// Return the set difference disjunct \ set.
+///
+/// The disjunct here is modified in subtractRecursively, so it cannot be a
+/// const reference even though it is restored to its original state before
+/// returning from that function.
+static PresburgerRelation getSetDifference(IntegerRelation disjunct,
+                                           const PresburgerRelation &set) {
+  assert(disjunct.isSpaceCompatible(set) && "Spaces should match");
+  if (disjunct.isEmptyByGCDTest())
+    return PresburgerRelation::getEmpty(disjunct.getCompatibleSpace());
+
+  // Remove duplicate divs up front here as subtractRecursively does not support
+  // this set having duplicate divs.
+  disjunct.removeDuplicateDivs();
+
+  PresburgerRelation result =
+      PresburgerRelation::getEmpty(disjunct.getCompatibleSpace());
+  Simplex simplex(disjunct);
+  subtractRecursively(disjunct, simplex, set, 0, result);
+  return result;
+}
+
 /// Return the set difference b \ s and accumulate the result into `result`.
 /// `simplex` must correspond to b.
 ///
@@ -295,28 +317,6 @@ static void subtractRecursively(IntegerRelation &b, Simplex &simplex,
       continue;
     }
   }
-}
-
-/// Return the set difference disjunct \ set.
-///
-/// The disjunct here is modified in subtractRecursively, so it cannot be a
-/// const reference even though it is restored to its original state before
-/// returning from that function.
-static PresburgerRelation getSetDifference(IntegerRelation disjunct,
-                                           const PresburgerRelation &set) {
-  assert(disjunct.isSpaceCompatible(set) && "Spaces should match");
-  if (disjunct.isEmptyByGCDTest())
-    return PresburgerRelation::getEmpty(disjunct.getCompatibleSpace());
-
-  // Remove duplicate divs up front here as subtractRecursively does not support
-  // this set having duplicate divs.
-  disjunct.removeDuplicateDivs();
-
-  PresburgerRelation result =
-      PresburgerRelation::getEmpty(disjunct.getCompatibleSpace());
-  Simplex simplex(disjunct);
-  subtractRecursively(disjunct, simplex, set, 0, result);
-  return result;
 }
 
 /// Return the complement of this set.
