@@ -85,7 +85,7 @@ inline PWMAFunction parsePWMAF(
 
 /// lhs and rhs represent non-negative integers or positive infinity. The
 /// infinity case corresponds to when the Optional is empty.
-inline bool infinityOrUInt64LE(Optional<uint64_t> lhs, Optional<uint64_t> rhs) {
+inline bool infinityOrUInt64LE(Optional<TPInt> lhs, Optional<TPInt> rhs) {
   // No constraint.
   if (!rhs)
     return true;
@@ -99,9 +99,9 @@ inline bool infinityOrUInt64LE(Optional<uint64_t> lhs, Optional<uint64_t> rhs) {
 /// the true volume `trueVolume`, while also being at least as good an
 /// approximation as `resultBound`.
 inline void
-expectComputedVolumeIsValidOverapprox(Optional<uint64_t> computedVolume,
-                                      Optional<uint64_t> trueVolume,
-                                      Optional<uint64_t> resultBound) {
+expectComputedVolumeIsValidOverapprox(Optional<TPInt> computedVolume,
+                                      Optional<TPInt> trueVolume,
+                                      Optional<TPInt> resultBound) {
   assert(infinityOrUInt64LE(trueVolume, resultBound) &&
          "can't expect result to be less than the true volume");
   EXPECT_TRUE(infinityOrUInt64LE(trueVolume, computedVolume));

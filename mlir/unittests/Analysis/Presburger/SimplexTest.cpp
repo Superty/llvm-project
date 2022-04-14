@@ -443,7 +443,7 @@ TEST(SimplexTest, appendVariable) {
   EXPECT_EQ(simplex.getNumConstraints(), 2u);
   EXPECT_EQ(
       simplex.computeIntegerBounds({0, 1, 0}),
-      std::make_pair(MaybeOptimum<int64_t>(yMin), MaybeOptimum<int64_t>(yMax)));
+      std::make_pair(MaybeOptimum<TPInt>(TPInt(yMin)), MaybeOptimum<TPInt>(TPInt(yMax))));
 
   simplex.rollback(snapshot1);
   EXPECT_EQ(simplex.getNumVariables(), 1u);
@@ -544,7 +544,7 @@ TEST(SimplexTest, addDivisionVariable) {
   simplex.addDivisionVariable({1, 0}, 2);
   simplex.addInequality({1, 0, -3}); // x >= 3.
   simplex.addInequality({-1, 0, 9}); // x <= 9.
-  Optional<SmallVector<int64_t, 8>> sample = simplex.findIntegerSample();
+  Optional<SmallVector<TPInt, 8>> sample = simplex.findIntegerSample();
   ASSERT_TRUE(sample.hasValue());
   EXPECT_EQ((*sample)[0] / 2, (*sample)[1]);
 }
