@@ -108,6 +108,17 @@ expectComputedVolumeIsValidOverapprox(Optional<TPInt> computedVolume,
   EXPECT_TRUE(infinityOrUInt64LE(computedVolume, resultBound));
 }
 
+inline TPInt tpIntFromInt64(int64_t x) {
+  return TPInt(x);
+}
+
+inline void
+expectComputedVolumeIsValidOverapprox(Optional<TPInt> computedVolume,
+                                      Optional<int64_t> trueVolume,
+                                      Optional<int64_t> resultBound) {
+  expectComputedVolumeIsValidOverapprox(computedVolume, trueVolume.map(tpIntFromInt64), resultBound.map(tpIntFromInt64));
+}
+
 } // namespace presburger
 } // namespace mlir
 

@@ -184,6 +184,9 @@ public:
   /// Append a new variable to the simplex and constrain it such that its only
   /// integer value is the floor div of `coeffs` and `denom`.
   void addDivisionVariable(ArrayRef<TPInt> coeffs, const TPInt &denom);
+  void addDivisionVariable(ArrayRef<int64_t> coeffs, int64_t denom) {
+    addDivisionVariable(getTPIntVec(coeffs), TPInt(denom));
+  }
 
   /// Mark the tableau as being empty.
   void markEmpty();
@@ -500,6 +503,12 @@ public:
   /// These checks are integer-exact.
   bool isSeparateInequality(ArrayRef<TPInt> coeffs);
   bool isRedundantInequality(ArrayRef<TPInt> coeffs);
+  bool isSeparateInequality(ArrayRef<int64_t> coeffs) {
+    return isSeparateInequality(getTPIntVec(coeffs));
+  }
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs) {
+    return isRedundantInequality(getTPIntVec(coeffs));
+  }
 
 private:
   /// Returns the current sample point, which may contain non-integer (rational)
@@ -696,6 +705,10 @@ public:
   /// exists, i.e., if the expression is unbounded in this direction.
   MaybeOptimum<Fraction> computeOptimum(Direction direction,
                                         ArrayRef<TPInt> coeffs);
+  MaybeOptimum<Fraction> computeOptimum(Direction direction,
+                                        ArrayRef<int64_t> coeffs) {
+    return computeOptimum(direction, getTPIntVec(coeffs));
+  }
 
   /// Returns whether the perpendicular of the specified constraint is a
   /// is a direction along which the polytope is bounded.
@@ -718,6 +731,10 @@ public:
   /// of kind Empty.
   std::pair<MaybeOptimum<TPInt>, MaybeOptimum<TPInt>>
   computeIntegerBounds(ArrayRef<TPInt> coeffs);
+  std::pair<MaybeOptimum<TPInt>, MaybeOptimum<TPInt>>
+  computeIntegerBounds(ArrayRef<int64_t> coeffs) {
+    return computeIntegerBounds(getTPIntVec(coeffs));
+  }
 
   /// Returns true if the polytope is unbounded, i.e., extends to infinity in
   /// some direction. Otherwise, returns false.
@@ -740,12 +757,21 @@ public:
   /// Cut         The inequality is satisfied by some points, but not by others
   /// Separate    The inequality is not satisfied by any point
   IneqType findIneqType(ArrayRef<TPInt> coeffs);
+  IneqType findIneqType(ArrayRef<int64_t> coeffs) {
+    return findIneqType(getTPIntVec(coeffs));
+  }
 
   /// Check if the specified inequality already holds in the polytope.
   bool isRedundantInequality(ArrayRef<TPInt> coeffs);
+  bool isRedundantInequality(ArrayRef<int64_t> coeffs) {
+    return isRedundantInequality(getTPIntVec(coeffs));
+  }
 
   /// Check if the specified equality already holds in the polytope.
   bool isRedundantEquality(ArrayRef<TPInt> coeffs);
+  bool isRedundantEquality(ArrayRef<int64_t> coeffs) {
+    return isRedundantEquality(getTPIntVec(coeffs));
+  }
 
   /// Returns true if this Simplex's polytope is a rational subset of `rel`.
   /// Otherwise, returns false.

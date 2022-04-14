@@ -344,10 +344,17 @@ public:
   /// Returns true if the given point satisfies the constraints, or false
   /// otherwise. Takes the values of all ids including locals.
   bool containsPoint(ArrayRef<TPInt> point) const;
+  bool containsPoint(ArrayRef<int64_t> point) const {
+    return containsPoint(getTPIntVec(point));
+  }
   /// Given the values of non-local ids, return a satisfying assignment to the
   /// local if one exists, or an empty optional otherwise.
   Optional<SmallVector<TPInt, 8>>
   containsPointNoLocal(ArrayRef<TPInt> point) const;
+  Optional<SmallVector<TPInt, 8>>
+  containsPointNoLocal(ArrayRef<int64_t> point) const {
+    return containsPointNoLocal(getTPIntVec(point));
+  }
 
   /// Find equality and pairs of inequality contraints identified by their
   /// position indices, using which an explicit representation for each local

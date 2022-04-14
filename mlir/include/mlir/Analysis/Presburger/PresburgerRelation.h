@@ -76,6 +76,9 @@ public:
 
   /// Return true if the set contains the given point, and false otherwise.
   bool containsPoint(ArrayRef<TPInt> point) const;
+  bool containsPoint(ArrayRef<int64_t> point) const {
+    return containsPoint(getTPIntVec(point));
+  }
 
   /// Return the complement of this set. All local variables in the set must
   /// correspond to floor divisions.
