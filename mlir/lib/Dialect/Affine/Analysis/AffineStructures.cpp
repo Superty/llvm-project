@@ -748,14 +748,14 @@ static bool detectAsMod(const FlatAffineValueConstraints &cst, unsigned pos,
   // Check for the aforementioned conditions in each equality.
   for (unsigned curEquality = 0, numEqualities = cst.getNumEqualities();
        curEquality < numEqualities; curEquality++) {
-    int64_t coefficientAtPos = cst.atEq(curEquality, pos);
+    int64_t coefficientAtPos = cst.atEq64(curEquality, pos);
     // If current equality does not involve `id_r`, continue to the next
     // equality.
     if (coefficientAtPos == 0)
       continue;
 
     // Constant term should be 0 in this equality.
-    if (cst.atEq(curEquality, cst.getNumCols() - 1) != 0)
+    if (cst.atEq64(curEquality, cst.getNumCols() - 1) != 0)
       continue;
 
     // Traverse through the equality and construct the dividend expression
@@ -777,7 +777,7 @@ static bool detectAsMod(const FlatAffineValueConstraints &cst, unsigned pos,
       // Ignore id_r.
       if (curId == pos)
         continue;
-      int64_t coefficientOfCurId = cst.atEq(curEquality, curId);
+      int64_t coefficientOfCurId = cst.atEq64(curEquality, curId);
       // Ignore ids that do not contribute to the current equality.
       if (coefficientOfCurId == 0)
         continue;
@@ -818,7 +818,7 @@ static bool detectAsMod(const FlatAffineValueConstraints &cst, unsigned pos,
 
     // Express `id_r` as `id_n % divisor` and store the expression in `memo`.
     if (quotientCount >= 1) {
-      auto ub = cst.getConstantBound(FlatAffineValueConstraints::BoundType::UB,
+      auto ub = cst.getConstantBound64(FlatAffineValueConstraints::BoundType::UB,
                                      dimExpr.getPosition());
       // If `id_n` has an upperbound that is less than the divisor, mod can be
       // eliminated altogether.
@@ -903,7 +903,7 @@ FlatAffineValueConstraints::getLowerAndUpperBound(
   lbExprs.reserve(lbIndices.size() + eqIndices.size());
   // Lower bound expressions.
   for (auto idx : lbIndices) {
-    auto ineq = getInequality(idx);
+    auto ineq = getInequality64(idx);
     // Extract the lower bound (in terms of other coeff's + const), i.e., if
     // i - j + 1 >= 0 is the constraint, 'pos' is for i the lower bound is j
     // - 1.
@@ -921,7 +921,7 @@ FlatAffineValueConstraints::getLowerAndUpperBound(
   ubExprs.reserve(ubIndices.size() + eqIndices.size());
   // Upper bound expressions.
   for (auto idx : ubIndices) {
-    auto ineq = getInequality(idx);
+    auto ineq = getInequality64(idx);
     // Extract the upper bound (in terms of other coeff's + const).
     addCoeffs(ineq, ub);
     auto expr =
@@ -934,7 +934,7 @@ FlatAffineValueConstraints::getLowerAndUpperBound(
   // Equalities. It's both a lower and a upper bound.
   SmallVector<int64_t, 4> b;
   for (auto idx : eqIndices) {
-    auto eq = getEquality(idx);
+    auto eq = getEquality64(idx);
     addCoeffs(eq, b);
     if (eq[pos + offset] > 0)
       std::transform(b.begin(), b.end(), b.begin(), std::negate<int64_t>());
@@ -996,8 +996,8 @@ void FlatAffineValueConstraints::getSliceBounds(
       if (memo[pos])
         continue;
 
-      auto lbConst = getConstantBound(BoundType::LB, pos);
-      auto ubConst = getConstantBound(BoundType::UB, pos);
+      auto lbConst = getConstantBound64(BoundType::LB, pos);
+      auto ubConst = getConstantBound64(BoundType::UB, pos);
       if (lbConst.hasValue() && ubConst.hasValue()) {
         // Detect equality to a constant.
         if (lbConst.getValue() == ubConst.getValue()) {
@@ -1034,7 +1034,7 @@ void FlatAffineValueConstraints::getSliceBounds(
       for (j = 0, e = getNumIds(); j < e; ++j) {
         if (j == pos)
           continue;
-        int64_t c = atEq(idx, j);
+        int64_t c = atEq64(idx, j);
         if (c == 0)
           continue;
         // If any of the involved IDs hasn't been found yet, we can't proceed.
@@ -1048,8 +1048,8 @@ void FlatAffineValueConstraints::getSliceBounds(
         continue;
 
       // Add constant term to AffineExpr.
-      expr = expr + atEq(idx, getNumIds());
-      int64_t vPos = atEq(idx, pos);
+      expr = expr + atEq64(idx, getNumIds());
+      int64_t vPos = atEq64(idx, pos);
       assert(vPos != 0 && "expected non-zero here");
       if (vPos > 0)
         expr = (-expr).floorDiv(vPos);
@@ -1106,7 +1106,7 @@ void FlatAffineValueConstraints::getSliceBounds(
       if (!lbMap || lbMap.getNumResults() > 1) {
         LLVM_DEBUG(llvm::dbgs()
                    << "WARNING: Potentially over-approximating slice lb\n");
-        auto lbConst = getConstantBound(BoundType::LB, pos + offset);
+        auto lbConst = getConstantBound64(BoundType::LB, pos + offset);
         if (lbConst.hasValue()) {
           lbMap = AffineMap::get(
               numMapDims, numMapSymbols,
@@ -1116,7 +1116,7 @@ void FlatAffineValueConstraints::getSliceBounds(
       if (!ubMap || ubMap.getNumResults() > 1) {
         LLVM_DEBUG(llvm::dbgs()
                    << "WARNING: Potentially over-approximating slice ub\n");
-        auto ubConst = getConstantBound(BoundType::UB, pos + offset);
+        auto ubConst = getConstantBound64(BoundType::UB, pos + offset);
         if (ubConst.hasValue()) {
           (ubMap) = AffineMap::get(
               numMapDims, numMapSymbols,
@@ -1452,7 +1452,7 @@ void FlatAffineValueConstraints::getIneqAsAffineValueMap(
   auto localExprs = ArrayRef<AffineExpr>(memo).take_back(getNumLocalIds());
 
   // Compute the AffineExpr lower/upper bound for this inequality.
-  ArrayRef<int64_t> inequality = getInequality(ineqPos);
+  SmallVector<int64_t, 8> inequality = getInequality64(ineqPos);
   SmallVector<int64_t, 8> bound;
   bound.reserve(getNumCols() - 1);
   // Everything other than the coefficient at `pos`.
@@ -1526,10 +1526,10 @@ FlatAffineValueConstraints::getAsIntegerSet(MLIRContext *context) const {
   exprs.reserve(getNumConstraints());
 
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i)
-    exprs.push_back(getAffineExprFromFlatForm(getEquality(i), numDims, numSyms,
+    exprs.push_back(getAffineExprFromFlatForm(getEquality64(i), numDims, numSyms,
                                               localExprs, context));
   for (unsigned i = 0, e = getNumInequalities(); i < e; ++i)
-    exprs.push_back(getAffineExprFromFlatForm(getInequality(i), numDims,
+    exprs.push_back(getAffineExprFromFlatForm(getInequality64(i), numDims,
                                               numSyms, localExprs, context));
   return IntegerSet::get(numDims, numSyms, exprs, eqFlags);
 }
