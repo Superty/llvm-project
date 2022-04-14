@@ -123,13 +123,12 @@ TPInt greatestCommonDivisor(const TPInt &a, const TPInt &b) {
 TPInt lcm(const TPInt &a, const TPInt &b) {
   TPInt x = abs(a);
   TPInt y = abs(b);
-  TPInt lcm = (x * y) / greatestCommonDivisor(x, y);
-  assert((lcm >= a && lcm >= b) && "LCM overflow");
-  return lcm;
+  return (x * y) / greatestCommonDivisor(x, y);
 }
 } // namespace presburger
 } // namespace mlir
 
+/// This operation cannot overflow.
 TPInt TPInt::operator%(const TPInt &o) const {
   unsigned width = std::max(val.getBitWidth(), o.val.getBitWidth());
   return TPInt(APSInt(val.sextOrSelf(width).srem(o.val.sextOrSelf(width)),
@@ -138,6 +137,7 @@ TPInt TPInt::operator%(const TPInt &o) const {
 
 TPInt TPInt::operator-() const {
   if (val.isMinSignedValue()) {
+    /// Overflow only occurs when the values is the minimum possible value.
     APSInt ret = val.extend(2 * val.getBitWidth());
     return TPInt(-ret);
   }
