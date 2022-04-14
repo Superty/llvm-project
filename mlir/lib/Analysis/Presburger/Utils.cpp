@@ -254,6 +254,18 @@ MaybeLocalRepr presburger::computeSingleVarRepr(
   return repr;
 }
 
+MaybeLocalRepr presburger::computeSingleVarRepr(const IntegerRelation &cst,
+                                    ArrayRef<bool> foundRepr, unsigned pos,
+                                    SmallVector<int64_t, 8> &dividend,
+                                    unsigned &divisor) {
+  SmallVector<TPInt, 8> dividendTPInt;
+  TPInt divisorTPInt;
+  MaybeLocalRepr result = computeSingleVarRepr(cst, foundRepr, pos, dividendTPInt, divisorTPInt);
+  dividend = getInt64Vec(dividendTPInt);
+  divisor = unsigned(int64_t(divisorTPInt));
+  return result;
+}
+
 void presburger::removeDuplicateDivs(
     std::vector<SmallVector<TPInt, 8>> &divs,
     SmallVectorImpl<TPInt> &denoms, unsigned localOffset,

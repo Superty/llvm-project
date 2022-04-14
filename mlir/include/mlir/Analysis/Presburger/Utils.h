@@ -119,6 +119,10 @@ MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     SmallVector<TPInt, 8> &dividend,
                                     TPInt &divisor);
+MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
+                                    ArrayRef<bool> foundRepr, unsigned pos,
+                                    SmallVector<int64_t, 8> &dividend,
+                                    unsigned &divisor);
 
 /// Given dividends of divisions `divs` and denominators `denoms`, detects and
 /// removes duplicate divisions. `localOffset` is the offset in dividend of a

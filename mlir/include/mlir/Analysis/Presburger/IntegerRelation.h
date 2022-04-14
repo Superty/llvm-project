@@ -118,11 +118,15 @@ public:
 
   /// Returns the value at the specified equality row and column.
   inline TPInt atEq(unsigned i, unsigned j) const { return equalities(i, j); }
+  inline int64_t atEq64(unsigned i, unsigned j) const { return int64_t(equalities(i, j)); }
   inline TPInt &atEq(unsigned i, unsigned j) { return equalities(i, j); }
 
   /// Returns the value at the specified inequality row and column.
   inline TPInt atIneq(unsigned i, unsigned j) const {
     return inequalities(i, j);
+  }
+  inline int64_t atIneq64(unsigned i, unsigned j) const {
+    return int64_t(inequalities(i, j));
   }
   inline TPInt &atIneq(unsigned i, unsigned j) { return inequalities(i, j); }
 
@@ -163,6 +167,12 @@ public:
   }
   inline ArrayRef<TPInt> getInequality(unsigned idx) const {
     return inequalities.getRow(idx);
+  }
+  inline SmallVector<int64_t, 8> getEquality64(unsigned idx) const {
+    return getInt64Vec(equalities.getRow(idx));
+  }
+  inline SmallVector<int64_t, 8> getInequality64(unsigned idx) const {
+    return getInt64Vec(inequalities.getRow(idx));
   }
 
   /// Get the number of ids of the specified kind.
@@ -225,8 +235,14 @@ public:
 
   /// Adds an inequality (>= 0) from the coefficients specified in `inEq`.
   void addInequality(ArrayRef<TPInt> inEq);
+  void addInequality(ArrayRef<int64_t> inEq) {
+    addInequality(getTPIntVec(inEq));
+  }
   /// Adds an equality from the coefficients specified in `eq`.
   void addEquality(ArrayRef<TPInt> eq);
+  void addEquality(ArrayRef<int64_t> eq) {
+    addEquality(getTPIntVec(eq));
+  }
 
   /// Eliminate the `posB^th` local identifier, replacing every instance of it
   /// with the `posA^th` local identifier. This should be used when the two
@@ -271,6 +287,9 @@ public:
   /// Sets the `values.size()` identifiers starting at `po`s to the specified
   /// values and removes them.
   void setAndEliminate(unsigned pos, ArrayRef<TPInt> values);
+  void setAndEliminate(unsigned pos, ArrayRef<int64_t> values) {
+    setAndEliminate(pos, getTPIntVec(values));
+  }
 
   /// Replaces the contents of this IntegerRelation with `other`.
   virtual void clearAndCopyFrom(const IntegerRelation &other);
@@ -352,9 +371,15 @@ public:
 
   /// Adds a constant bound for the specified identifier.
   void addBound(BoundType type, unsigned pos, const TPInt &value);
+  void addBound(BoundType type, unsigned pos, int64_t value) {
+    addBound(type, pos, TPInt(value));
+  }
 
   /// Adds a constant bound for the specified expression.
   void addBound(BoundType type, ArrayRef<TPInt> expr, const TPInt &value);
+  void addBound(BoundType type, ArrayRef<int64_t> expr, int64_t value) {
+    addBound(type, getTPIntVec(expr), TPInt(value));
+  }
 
   /// Adds a new local identifier as the floordiv of an affine function of other
   /// identifiers, the coefficients of which are provided in `dividend` and with
@@ -362,6 +387,9 @@ public:
   /// system to capture equivalence with the floordiv:
   /// q = dividend floordiv c    <=>   c*q <= dividend <= c*q + c - 1.
   void addLocalFloorDiv(ArrayRef<TPInt> dividend, const TPInt &divisor);
+  void addLocalFloorDiv(ArrayRef<int64_t> dividend, int64_t divisor) {
+    addLocalFloorDiv(getTPIntVec(dividend), TPInt(divisor));
+  }
 
   /// Projects out (aka eliminates) `num` identifiers starting at position
   /// `pos`. The resulting constraint system is the shadow along the dimensions
@@ -421,10 +449,30 @@ public:
       TPInt *boundFloorDivisor = nullptr,
       SmallVectorImpl<TPInt> *ub = nullptr, unsigned *minLbPos = nullptr,
       unsigned *minUbPos = nullptr) const;
+  Optional<int64_t> getConstantBoundOnDimSize64(
+      unsigned pos, SmallVectorImpl<int64_t> *lb = nullptr,
+      int64_t *boundFloorDivisor = nullptr,
+      SmallVectorImpl<int64_t> *ub = nullptr, unsigned *minLbPos = nullptr,
+      unsigned *minUbPos = nullptr) const {
+        SmallVector<TPInt, 8> ubTPInt, lbTPInt;
+        TPInt boundFloorDivisorTPInt;
+        Optional<TPInt> result = getConstantBoundOnDimSize(pos, &lbTPInt, &boundFloorDivisorTPInt, &ubTPInt, minLbPos, minUbPos);
+        if (lb)
+          *lb = getInt64Vec(lbTPInt);
+        if (ub)
+          *ub = getInt64Vec(ubTPInt);
+        if (boundFloorDivisor)
+          *boundFloorDivisor = int64_t(boundFloorDivisorTPInt);
+        return result.map(int64FromTPInt);
+      }
+
 
   /// Returns the constant bound for the pos^th identifier if there is one;
   /// None otherwise.
   Optional<TPInt> getConstantBound(BoundType type, unsigned pos) const;
+  Optional<int64_t> getConstantBound64(BoundType type, unsigned pos) const {
+    return getConstantBound(type, pos).map(int64FromTPInt);
+  }
 
   /// Removes constraints that are independent of (i.e., do not have a
   /// coefficient) identifiers in the range [pos, pos + num).
@@ -498,6 +546,10 @@ protected:
   /// bound if isLower is false.
   template <bool isLower>
   Optional<TPInt> computeConstantLowerOrUpperBound(unsigned pos);
+  template <bool isLower>
+  Optional<int64_t> computeConstantLowerOrUpperBound64(unsigned pos) {
+    return computeConstantLowerOrUpperBound<isLower>(pos).map(int64FromTPInt);
+  }
 
   /// Eliminates a single identifier at `position` from equality and inequality
   /// constraints. Returns `success` if the identifier was eliminated, and

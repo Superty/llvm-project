@@ -110,12 +110,21 @@ public:
   void copyRow(unsigned sourceRow, unsigned targetRow);
 
   void fillRow(unsigned row, const TPInt &value);
+  void fillRow(unsigned row, int64_t value) {
+    fillRow(row, TPInt(value));
+  }
 
   /// Add `scale` multiples of the source row to the target row.
   void addToRow(unsigned sourceRow, unsigned targetRow, const TPInt &scale);
+  void addToRow(unsigned sourceRow, unsigned targetRow, int64_t scale) {
+    addToRow(sourceRow, targetRow, TPInt(scale));
+  }
 
   /// Add `scale` multiples of the source column to the target column.
   void addToColumn(unsigned sourceColumn, unsigned targetColumn, const TPInt &scale);
+  void addToColumn(unsigned sourceColumn, unsigned targetColumn, int64_t scale) {
+    addToColumn(sourceColumn, targetColumn, TPInt(scale));
+  }
 
   /// Negate the specified column.
   void negateColumn(unsigned column);
