@@ -36,6 +36,9 @@ struct Fraction {
       den = -den;
     }
   }
+  Fraction(TPInt num, int64_t den) : Fraction(num, TPInt(den)) {}
+  Fraction(int64_t num, TPInt den) : Fraction(TPInt(num), den) {}
+  Fraction(int64_t num, int64_t den) : Fraction(TPInt(num), TPInt(den)) {}
 
   // Return the value of the fraction as an integer. This should only be called
   // when the fraction's value is really an integer.

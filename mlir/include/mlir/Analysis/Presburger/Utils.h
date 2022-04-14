@@ -218,6 +218,10 @@ MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     MutableArrayRef<TPInt> dividend,
                                     TPInt &divisor);
+MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
+                                    ArrayRef<bool> foundRepr, unsigned pos,
+                                    SmallVector<int64_t, 8> &dividend,
+                                    unsigned &divisor);
 
 /// Given two relations, A and B, add additional local vars to the sets such
 /// that both have the union of the local vars in each set, without changing
