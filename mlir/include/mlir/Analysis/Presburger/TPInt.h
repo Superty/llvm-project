@@ -15,18 +15,18 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_TPINT_H
 #define MLIR_ANALYSIS_PRESBURGER_TPINT_H
 
-#include "llvm/ADT/APSInt.h"
 #include "mlir/Support/MathExtras.h"
+#include "llvm/ADT/APSInt.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
 namespace presburger {
 
 /// This class provides support for multi-precision arithmetic.
-/// 
+///
 /// Unlike APInt, this extends the precision as necessary to prevent overflows
 /// and supports operations between objects with differing internal precisions.
-/// 
+///
 /// Since it uses APInt internally, TPInt (TransPrecision Int) stores values in
 /// a 64-bit machine integer internally for small values and uses slower
 /// arbitrary-precision arithmetic only for larger values.
@@ -35,12 +35,8 @@ public:
   explicit TPInt(int64_t val) : val(APSInt::get(val)) {}
   TPInt() : TPInt(0) {}
   explicit TPInt(const APSInt &val) : val(val) {}
-  TPInt &operator=(int64_t val) {
-    return *this = TPInt(val);
-  }
-  explicit operator int64_t() const {
-    return val.getSExtValue();
-  }
+  TPInt &operator=(int64_t val) { return *this = TPInt(val); }
+  explicit operator int64_t() const { return val.getSExtValue(); }
   TPInt operator-() const;
   bool operator==(const TPInt &o) const;
   bool operator!=(const TPInt &o) const;
@@ -73,12 +69,10 @@ public:
   void dump() const;
 
 private:
-  unsigned getBitWidth() const {
-    return val.getBitWidth();
-  }
+  unsigned getBitWidth() const { return val.getBitWidth(); }
 
   // The held integer value.
-  // 
+  //
   // TODO: consider using APInt directly to avoid unnecessary repeated internal
   // signedness checks. This requires refactoring, exposing, or duplicating
   // APSInt::compareValues.
@@ -87,9 +81,7 @@ private:
 
 /// This just calls through to the operator int64_t, but it's useful when a
 /// function pointer is required.
-inline int64_t int64FromTPInt(const TPInt &x) {
-  return int64_t(x);
-}
+inline int64_t int64FromTPInt(const TPInt &x) { return int64_t(x); }
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const TPInt &x);
 
@@ -135,4 +127,3 @@ TPInt operator%(int64_t a, const TPInt &b);
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_TPINT_H
-

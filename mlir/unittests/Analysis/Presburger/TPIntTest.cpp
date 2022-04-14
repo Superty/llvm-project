@@ -16,8 +16,8 @@ using namespace presburger;
 TEST(TPIntTest, ops) {
   TPInt two(2), five(5), seven(7), ten(10);
   EXPECT_EQ(five + five, ten);
-  EXPECT_EQ(five * five, 2*ten + five);
-  EXPECT_EQ(five * five, 3*ten - five);
+  EXPECT_EQ(five * five, 2 * ten + five);
+  EXPECT_EQ(five * five, 3 * ten - five);
   EXPECT_EQ(five * two, ten);
   EXPECT_EQ(five / two, two);
   EXPECT_EQ(five % two, two / two);
@@ -32,7 +32,6 @@ TEST(TPIntTest, ops) {
   EXPECT_EQ(-ten / -seven, -10 / -7);
   EXPECT_EQ(ten / seven, 10 / 7);
 
-
   TPInt x = ten;
   x += five;
   EXPECT_EQ(x, 15);
@@ -40,11 +39,11 @@ TEST(TPIntTest, ops) {
   EXPECT_EQ(x, 30);
   x /= seven;
   EXPECT_EQ(x, 4);
-  x -= two*10;
+  x -= two * 10;
   EXPECT_EQ(x, -16);
-  x *= 2*two;
+  x *= 2 * two;
   EXPECT_EQ(x, -64);
-  x /= two/-2;
+  x /= two / -2;
   EXPECT_EQ(x, 64);
 
   EXPECT_LE(ten, ten);
@@ -61,8 +60,8 @@ TEST(TPIntTest, ops64Overloads) {
   TPInt two(2), five(5), seven(7), ten(10);
   EXPECT_EQ(five + 5, ten);
   EXPECT_EQ(five + 5, 5 + five);
-  EXPECT_EQ(five * 5, 2*ten + 5);
-  EXPECT_EQ(five * 5, 3*ten - 5);
+  EXPECT_EQ(five * 5, 2 * ten + 5);
+  EXPECT_EQ(five * 5, 3 * ten - 5);
   EXPECT_EQ(five * two, ten);
   EXPECT_EQ(5 / two, 2);
   EXPECT_EQ(five / 2, 2);
@@ -105,5 +104,5 @@ TEST(TPIntTest, ops64Overloads) {
 
 TEST(TPIntTest, overflows) {
   TPInt x(1ll << 60);
-  EXPECT_EQ((x*x - x*x*x*x)/(x*x*x), 1 - (1ll << 60));
+  EXPECT_EQ((x * x - x * x * x * x) / (x * x * x), 1 - (1ll << 60));
 }
