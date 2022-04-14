@@ -1413,19 +1413,23 @@ TEST(IntegerPolyhedronTest, computeVolume) {
       /*trueVolume=*/{}, /*resultBound=*/{});
 }
 
+bool containsPointNoLocal(const IntegerPolyhedron &poly, ArrayRef<int64_t> point) {
+  return poly.containsPointNoLocal(getTPIntVec(point)).hasValue();
+}
+
 TEST(IntegerPolyhedronTest, containsPointNoLocal) {
   IntegerPolyhedron poly1 = parsePoly("(x) : ((x floordiv 2) - x == 0)");
-  EXPECT_TRUE(poly1.containsPointNoLocal({0}));
-  EXPECT_FALSE(poly1.containsPointNoLocal({1}));
+  EXPECT_TRUE(containsPointNoLocal(poly1, {0}));
+  EXPECT_FALSE(containsPointNoLocal(poly1, {1}));
 
   IntegerPolyhedron poly2 = parsePoly(
       "(x) : (x - 2*(x floordiv 2) == 0, x - 4*(x floordiv 4) - 2 == 0)");
-  EXPECT_TRUE(poly2.containsPointNoLocal({6}));
-  EXPECT_FALSE(poly2.containsPointNoLocal({4}));
+  EXPECT_TRUE(containsPointNoLocal(poly2, {6}));
+  EXPECT_FALSE(containsPointNoLocal(poly2, {4}));
 
   IntegerPolyhedron poly3 = parsePoly("(x, y) : (2*x - y >= 0, y - 3*x >= 0)");
-  EXPECT_TRUE(poly3.containsPointNoLocal({0, 0}));
-  EXPECT_FALSE(poly3.containsPointNoLocal({1, 0}));
+  EXPECT_TRUE(containsPointNoLocal(poly3, {0, 0}));
+  EXPECT_FALSE(containsPointNoLocal(poly3, {1, 0}));
 }
 
 TEST(IntegerPolyhedronTest, truncateEqualityRegressionTest) {
