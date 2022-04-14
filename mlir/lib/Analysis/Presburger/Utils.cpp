@@ -21,14 +21,14 @@ using namespace presburger;
 /// Normalize a division's `dividend` and the `divisor` by their GCD. For
 /// example: if the dividend and divisor are [2,0,4] and 4 respectively,
 /// they get normalized to [1,0,2] and 2.
-static void normalizeDivisionByGCD(MutableArrayRef<int64_t> dividend,
+static void normalizeDivisionByGCD(MutableArrayRef<TPInt> dividend,
                                    unsigned &divisor) {
   if (divisor == 0 || dividend.empty())
     return;
   // We take the absolute value of dividend's coefficients to make sure that
   // `gcd` is positive.
-  int64_t gcd =
-      llvm::greatestCommonDivisor(std::abs(dividend.front()), int64_t(divisor));
+  TPInt gcd =
+      greatestCommonDivisor(abs(dividend.front()), divisor);
 
   // The reason for ignoring the constant term is as follows.
   // For a division:
@@ -38,14 +38,14 @@ static void normalizeDivisionByGCD(MutableArrayRef<int64_t> dividend,
   // Since `{a/m}/d` in the dividend satisfies 0 <= {a/m}/d < 1/d, it will not
   // influence the result of the floor division and thus, can be ignored.
   for (size_t i = 1, m = dividend.size() - 1; i < m; i++) {
-    gcd = llvm::greatestCommonDivisor(std::abs(dividend[i]), gcd);
+    gcd = greatestCommonDivisor(abs(dividend[i]), gcd);
     if (gcd == 1)
       return;
   }
 
   // Normalize the dividend and the denominator.
   std::transform(dividend.begin(), dividend.end(), dividend.begin(),
-                 [gcd](int64_t &n) { return floorDiv(n, gcd); });
+                 [gcd](TPInt &n) { return floorDiv(n, gcd); });
   divisor /= gcd;
 }
 
@@ -89,7 +89,7 @@ static void normalizeDivisionByGCD(MutableArrayRef<int64_t> dividend,
 /// normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned ubIneq, unsigned lbIneq,
-                                MutableArrayRef<int64_t> expr,
+                                MutableArrayRef<TPInt> expr,
                                 unsigned &divisor) {
 
   assert(pos <= cst.getNumVars() && "Invalid variable position");
@@ -115,9 +115,9 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // Then, check if the constant term is of the proper form.
   // Due to the form of the upper/lower bound inequalities, the sum of their
   // constants is `divisor - 1 - c`. From this, we can extract c:
-  int64_t constantSum = cst.atIneq(lbIneq, cst.getNumCols() - 1) +
+  TPInt constantSum = cst.atIneq(lbIneq, cst.getNumCols() - 1) +
                         cst.atIneq(ubIneq, cst.getNumCols() - 1);
-  int64_t c = divisor - 1 - constantSum;
+  TPInt c = divisor - 1 - constantSum;
 
   // Check if `c` satisfies the condition `0 <= c <= divisor - 1`. This also
   // implictly checks that `divisor` is positive.
@@ -152,7 +152,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
 /// set to the denominator of the division. The final division expression is
 /// normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
-                                unsigned eqInd, MutableArrayRef<int64_t> expr,
+                                unsigned eqInd, MutableArrayRef<TPInt> expr,
                                 unsigned &divisor) {
 
   assert(pos <= cst.getNumVars() && "Invalid variable position");
@@ -162,10 +162,10 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // Extract divisor, the divisor can be negative and hence its sign information
   // is stored in `signDiv` to reverse the sign of dividend's coefficients.
   // Equality must involve the pos-th variable and hence `tempDiv` != 0.
-  int64_t tempDiv = cst.atEq(eqInd, pos);
+  TPInt tempDiv = cst.atEq(eqInd, pos);
   if (tempDiv == 0)
     return failure();
-  int64_t signDiv = tempDiv < 0 ? -1 : 1;
+  int signDiv = tempDiv < 0 ? -1 : 1;
 
   // The divisor is always a positive integer.
   divisor = tempDiv * signDiv;
@@ -184,7 +184,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
 // explicit representation has not been found yet, otherwise returns `true`.
 static bool checkExplicitRepresentation(const IntegerRelation &cst,
                                         ArrayRef<bool> foundRepr,
-                                        ArrayRef<int64_t> dividend,
+                                        ArrayRef<TPInt> dividend,
                                         unsigned pos) {
   // Exit to avoid circular dependencies between divisions.
   for (unsigned c = 0, e = cst.getNumVars(); c < e; ++c) {
@@ -215,7 +215,7 @@ static bool checkExplicitRepresentation(const IntegerRelation &cst,
 /// `MaybeLocalRepr` is set to None.
 MaybeLocalRepr presburger::computeSingleVarRepr(
     const IntegerRelation &cst, ArrayRef<bool> foundRepr, unsigned pos,
-    MutableArrayRef<int64_t> dividend, unsigned &divisor) {
+    MutableArrayRef<TPInt> dividend, TPInt &divisor) {
   assert(pos < cst.getNumVars() && "invalid position");
   assert(foundRepr.size() == cst.getNumVars() &&
          "Size of foundRepr does not match total number of variables");
@@ -313,45 +313,45 @@ SmallVector<int64_t, 8> presburger::getDivLowerBound(ArrayRef<int64_t> dividend,
   return ineq;
 }
 
-int64_t presburger::gcdRange(ArrayRef<int64_t> range) {
-  int64_t gcd = 0;
-  for (int64_t elem : range) {
-    gcd = llvm::GreatestCommonDivisor64(gcd, std::abs(elem));
+TPInt presburger::gcdRange(ArrayRef<TPInt> range) {
+  TPInt gcd(0);
+  for (const TPInt &elem : range) {
+    gcd = greatestCommonDivisor(gcd, abs(elem));
     if (gcd == 1)
       return gcd;
   }
   return gcd;
 }
 
-int64_t presburger::normalizeRange(MutableArrayRef<int64_t> range) {
-  int64_t gcd = gcdRange(range);
-  if (gcd == 0 || gcd == 1)
+TPInt presburger::normalizeRange(MutableArrayRef<TPInt> range) {
+  TPInt gcd = gcdRange(range);
+  if ((gcd == 0) || (gcd == 1))
     return gcd;
-  for (int64_t &elem : range)
+  for (TPInt &elem : range)
     elem /= gcd;
   return gcd;
 }
 
-void presburger::normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom) {
+void presburger::normalizeDiv(MutableArrayRef<TPInt> num, TPInt &denom) {
   assert(denom > 0 && "denom must be positive!");
-  int64_t gcd = llvm::greatestCommonDivisor(gcdRange(num), denom);
-  for (int64_t &coeff : num)
+  TPInt gcd = greatestCommonDivisor(gcdRange(num), denom);
+  for (TPInt &coeff : num)
     coeff /= gcd;
   denom /= gcd;
 }
 
-SmallVector<int64_t, 8> presburger::getNegatedCoeffs(ArrayRef<int64_t> coeffs) {
-  SmallVector<int64_t, 8> negatedCoeffs;
+SmallVector<TPInt, 8> presburger::getNegatedCoeffs(ArrayRef<TPInt> coeffs) {
+  SmallVector<TPInt, 8> negatedCoeffs;
   negatedCoeffs.reserve(coeffs.size());
-  for (int64_t coeff : coeffs)
+  for (const TPInt &coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   return negatedCoeffs;
 }
 
-SmallVector<int64_t, 8> presburger::getComplementIneq(ArrayRef<int64_t> ineq) {
-  SmallVector<int64_t, 8> coeffs;
+SmallVector<TPInt, 8> presburger::getComplementIneq(ArrayRef<TPInt> ineq) {
+  SmallVector<TPInt, 8> coeffs;
   coeffs.reserve(ineq.size());
-  for (int64_t coeff : ineq)
+  for (const TPInt &coeff : ineq)
     coeffs.emplace_back(-coeff);
   --coeffs.back();
   return coeffs;

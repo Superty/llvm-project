@@ -13,6 +13,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_UTILS_H
 #define MLIR_ANALYSIS_PRESBURGER_UTILS_H
 
+#include "mlir/Analysis/Presburger/TPInt.h"
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
@@ -215,8 +216,8 @@ SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
 /// `MaybeLocalRepr` is set to None.
 MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
-                                    MutableArrayRef<int64_t> dividend,
-                                    unsigned &divisor);
+                                    MutableArrayRef<TPInt> dividend,
+                                    TPInt &divisor);
 
 /// Given two relations, A and B, add additional local vars to the sets such
 /// that both have the union of the local vars in each set, without changing
@@ -234,26 +235,25 @@ void mergeLocalVars(IntegerRelation &relA, IntegerRelation &relB,
                     llvm::function_ref<bool(unsigned i, unsigned j)> merge);
 
 /// Compute the gcd of the range.
-int64_t gcdRange(ArrayRef<int64_t> range);
+TPInt gcdRange(ArrayRef<TPInt> range);
 
 /// Divide the range by its gcd and return the gcd.
-int64_t normalizeRange(MutableArrayRef<int64_t> range);
+TPInt normalizeRange(MutableArrayRef<TPInt> range);
 
 /// Normalize the given (numerator, denominator) pair by dividing out the
 /// common factors between them. The numerator here is an affine expression
 /// with integer coefficients.
-void normalizeDiv(MutableArrayRef<int64_t> num, int64_t &denom);
+void normalizeDiv(MutableArrayRef<TPInt> num, TPInt &denom);
 
 /// Return `coeffs` with all the elements negated.
-SmallVector<int64_t, 8> getNegatedCoeffs(ArrayRef<int64_t> coeffs);
+SmallVector<TPInt, 8> getNegatedCoeffs(ArrayRef<TPInt> coeffs);
 
 /// Return the complement of the given inequality.
 ///
 /// The complement of a_1 x_1 + ... + a_n x_ + c >= 0 is
 /// a_1 x_1 + ... + a_n x_ + c < 0, i.e., -a_1 x_1 - ... - a_n x_ - c - 1 >= 0,
 /// since all the variables are constrained to be integers.
-SmallVector<int64_t, 8> getComplementIneq(ArrayRef<int64_t> ineq);
-
+SmallVector<TPInt, 8> getComplementIneq(ArrayRef<TPInt> ineq);
 } // namespace presburger
 } // namespace mlir
 
