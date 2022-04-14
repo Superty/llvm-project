@@ -14,6 +14,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 #define MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 
+#include "mlir/Analysis/Presburger/TPInt.h"
 #include "mlir/Support/MathExtras.h"
 
 namespace mlir {
@@ -29,7 +30,7 @@ struct Fraction {
   Fraction() = default;
 
   /// Construct a Fraction from a numerator and denominator.
-  Fraction(int64_t oNum, int64_t oDen) : num(oNum), den(oDen) {
+  Fraction(TPInt oNum, TPInt oDen) : num(oNum), den(oDen) {
     if (den < 0) {
       num = -num;
       den = -den;
@@ -38,21 +39,21 @@ struct Fraction {
 
   // Return the value of the fraction as an integer. This should only be called
   // when the fraction's value is really an integer.
-  int64_t getAsInteger() const {
+  TPInt getAsInteger() const {
     assert(num % den == 0 && "Get as integer called on non-integral fraction!");
     return num / den;
   }
 
   /// The numerator and denominator, respectively. The denominator is always
   /// positive.
-  int64_t num{0}, den{1};
+  TPInt num{0}, den{1};
 };
 
 /// Three-way comparison between two fractions.
 /// Returns +1, 0, and -1 if the first fraction is greater than, equal to, or
 /// less than the second fraction, respectively.
 inline int compare(Fraction x, Fraction y) {
-  int64_t diff = x.num * y.den - y.num * x.den;
+  TPInt diff = x.num * y.den - y.num * x.den;
   if (diff > 0)
     return +1;
   if (diff < 0)
@@ -60,9 +61,9 @@ inline int compare(Fraction x, Fraction y) {
   return 0;
 }
 
-inline int64_t floor(Fraction f) { return floorDiv(f.num, f.den); }
+inline TPInt floor(Fraction f) { return floorDiv(f.num, f.den); }
 
-inline int64_t ceil(Fraction f) { return ceilDiv(f.num, f.den); }
+inline TPInt ceil(Fraction f) { return ceilDiv(f.num, f.den); }
 
 inline Fraction operator-(Fraction x) { return Fraction(-x.num, x.den); }
 

@@ -103,7 +103,7 @@ public:
 
   /// Get the value of the function at the specified point. If the point lies
   /// outside the domain, an empty optional is returned.
-  Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
+  Optional<SmallVector<TPInt, 8>> valueAt(ArrayRef<TPInt> point) const;
 
   /// Truncate the output dimensions to the first `count` dimensions.
   ///
@@ -166,7 +166,7 @@ public:
 
   /// Return the value at the specified point and an empty optional if the
   /// point does not lie in the domain.
-  Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
+  Optional<SmallVector<TPInt, 8>> valueAt(ArrayRef<TPInt> point) const;
 
   /// Return whether `this` and `other` are equal as PWMAFunctions, i.e. whether
   /// they have the same dimensions, the same domain and they take the same

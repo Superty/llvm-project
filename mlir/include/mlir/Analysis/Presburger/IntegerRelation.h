@@ -117,14 +117,14 @@ public:
   bool isSubsetOf(const IntegerRelation &other) const;
 
   /// Returns the value at the specified equality row and column.
-  inline int64_t atEq(unsigned i, unsigned j) const { return equalities(i, j); }
-  inline int64_t &atEq(unsigned i, unsigned j) { return equalities(i, j); }
+  inline TPInt atEq(unsigned i, unsigned j) const { return equalities(i, j); }
+  inline TPInt &atEq(unsigned i, unsigned j) { return equalities(i, j); }
 
   /// Returns the value at the specified inequality row and column.
-  inline int64_t atIneq(unsigned i, unsigned j) const {
+  inline TPInt atIneq(unsigned i, unsigned j) const {
     return inequalities(i, j);
   }
-  inline int64_t &atIneq(unsigned i, unsigned j) { return inequalities(i, j); }
+  inline TPInt &atIneq(unsigned i, unsigned j) { return inequalities(i, j); }
 
   unsigned getNumConstraints() const {
     return getNumInequalities() + getNumEqualities();
@@ -158,11 +158,10 @@ public:
     return inequalities.getNumReservedRows();
   }
 
-  inline ArrayRef<int64_t> getEquality(unsigned idx) const {
+  inline ArrayRef<TPInt> getEquality(unsigned idx) const {
     return equalities.getRow(idx);
   }
-
-  inline ArrayRef<int64_t> getInequality(unsigned idx) const {
+  inline ArrayRef<TPInt> getInequality(unsigned idx) const {
     return inequalities.getRow(idx);
   }
 
@@ -225,9 +224,9 @@ public:
   unsigned appendId(IdKind kind, unsigned num = 1);
 
   /// Adds an inequality (>= 0) from the coefficients specified in `inEq`.
-  void addInequality(ArrayRef<int64_t> inEq);
+  void addInequality(ArrayRef<TPInt> inEq);
   /// Adds an equality from the coefficients specified in `eq`.
-  void addEquality(ArrayRef<int64_t> eq);
+  void addEquality(ArrayRef<TPInt> eq);
 
   /// Eliminate the `posB^th` local identifier, replacing every instance of it
   /// with the `posA^th` local identifier. This should be used when the two
@@ -261,7 +260,7 @@ public:
   /// For a generic integer sampling operation, findIntegerSample is more
   /// robust and should be preferred. Note that Domain is minimized first, then
   /// range.
-  MaybeOptimum<SmallVector<int64_t, 8>> findIntegerLexMin() const;
+  MaybeOptimum<SmallVector<TPInt, 8>> findIntegerLexMin() const;
 
   /// Swap the posA^th identifier with the posB^th identifier.
   virtual void swapId(unsigned posA, unsigned posB);
@@ -271,7 +270,7 @@ public:
 
   /// Sets the `values.size()` identifiers starting at `po`s to the specified
   /// values and removes them.
-  void setAndEliminate(unsigned pos, ArrayRef<int64_t> values);
+  void setAndEliminate(unsigned pos, ArrayRef<TPInt> values);
 
   /// Replaces the contents of this IntegerRelation with `other`.
   virtual void clearAndCopyFrom(const IntegerRelation &other);
@@ -316,20 +315,20 @@ public:
   ///
   /// Returns an integer sample point if one exists, or an empty Optional
   /// otherwise.
-  Optional<SmallVector<int64_t, 8>> findIntegerSample() const;
+  Optional<SmallVector<TPInt, 8>> findIntegerSample() const;
 
   /// Compute an overapproximation of the number of integer points in the
   /// relation. Symbol ids are currently not supported. If the computed
   /// overapproximation is infinite, an empty optional is returned.
-  Optional<uint64_t> computeVolume() const;
+  Optional<TPInt> computeVolume() const;
 
   /// Returns true if the given point satisfies the constraints, or false
   /// otherwise. Takes the values of all ids including locals.
-  bool containsPoint(ArrayRef<int64_t> point) const;
+  bool containsPoint(ArrayRef<TPInt> point) const;
   /// Given the values of non-local ids, return a satisfying assignment to the
   /// local if one exists, or an empty optional otherwise.
-  Optional<SmallVector<int64_t, 8>>
-  containsPointNoLocal(ArrayRef<int64_t> point) const;
+  Optional<SmallVector<TPInt, 8>>
+  containsPointNoLocal(ArrayRef<TPInt> point) const;
 
   /// Find equality and pairs of inequality contraints identified by their
   /// position indices, using which an explicit representation for each local
@@ -341,28 +340,28 @@ public:
   /// and the denominators in `denominators`. If no explicit representation
   /// could be found for the `i^th` local identifier, `denominators[i]` is set
   /// to 0.
-  void getLocalReprs(std::vector<SmallVector<int64_t, 8>> &dividends,
-                     SmallVector<unsigned, 4> &denominators,
+  void getLocalReprs(std::vector<SmallVector<TPInt, 8>> &dividends,
+                     SmallVector<TPInt, 4> &denominators,
                      std::vector<MaybeLocalRepr> &repr) const;
   void getLocalReprs(std::vector<MaybeLocalRepr> &repr) const;
-  void getLocalReprs(std::vector<SmallVector<int64_t, 8>> &dividends,
-                     SmallVector<unsigned, 4> &denominators) const;
+  void getLocalReprs(std::vector<SmallVector<TPInt, 8>> &dividends,
+                     SmallVector<TPInt, 4> &denominators) const;
 
   /// The type of bound: equal, lower bound or upper bound.
   enum BoundType { EQ, LB, UB };
 
   /// Adds a constant bound for the specified identifier.
-  void addBound(BoundType type, unsigned pos, int64_t value);
+  void addBound(BoundType type, unsigned pos, const TPInt &value);
 
   /// Adds a constant bound for the specified expression.
-  void addBound(BoundType type, ArrayRef<int64_t> expr, int64_t value);
+  void addBound(BoundType type, ArrayRef<TPInt> expr, const TPInt &value);
 
   /// Adds a new local identifier as the floordiv of an affine function of other
   /// identifiers, the coefficients of which are provided in `dividend` and with
   /// respect to a positive constant `divisor`. Two constraints are added to the
   /// system to capture equivalence with the floordiv:
   /// q = dividend floordiv c    <=>   c*q <= dividend <= c*q + c - 1.
-  void addLocalFloorDiv(ArrayRef<int64_t> dividend, int64_t divisor);
+  void addLocalFloorDiv(ArrayRef<TPInt> dividend, const TPInt &divisor);
 
   /// Projects out (aka eliminates) `num` identifiers starting at position
   /// `pos`. The resulting constraint system is the shadow along the dimensions
@@ -417,15 +416,15 @@ public:
   /// lower bound is [(s0 + s2 - 1) floordiv 32] for a system with three
   /// symbolic identifiers, *lb = [1, 0, 1], lbDivisor = 32. See comments at
   /// function definition for examples.
-  Optional<int64_t> getConstantBoundOnDimSize(
-      unsigned pos, SmallVectorImpl<int64_t> *lb = nullptr,
-      int64_t *boundFloorDivisor = nullptr,
-      SmallVectorImpl<int64_t> *ub = nullptr, unsigned *minLbPos = nullptr,
+  Optional<TPInt> getConstantBoundOnDimSize(
+      unsigned pos, SmallVectorImpl<TPInt> *lb = nullptr,
+      TPInt *boundFloorDivisor = nullptr,
+      SmallVectorImpl<TPInt> *ub = nullptr, unsigned *minLbPos = nullptr,
       unsigned *minUbPos = nullptr) const;
 
   /// Returns the constant bound for the pos^th identifier if there is one;
   /// None otherwise.
-  Optional<int64_t> getConstantBound(BoundType type, unsigned pos) const;
+  Optional<TPInt> getConstantBound(BoundType type, unsigned pos) const;
 
   /// Removes constraints that are independent of (i.e., do not have a
   /// coefficient) identifiers in the range [pos, pos + num).
@@ -498,7 +497,7 @@ protected:
   /// Returns the constant lower bound bound if isLower is true, and the upper
   /// bound if isLower is false.
   template <bool isLower>
-  Optional<int64_t> computeConstantLowerOrUpperBound(unsigned pos);
+  Optional<TPInt> computeConstantLowerOrUpperBound(unsigned pos);
 
   /// Eliminates a single identifier at `position` from equality and inequality
   /// constraints. Returns `success` if the identifier was eliminated, and
