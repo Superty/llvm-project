@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/TPInt.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include "llvm/Support/MathExtras.h"
 
 using namespace mlir;
@@ -30,4 +30,3 @@ llvm::raw_ostream &mlir::presburger::operator<<(llvm::raw_ostream &os,
   x.print(os);
   return os;
 }
-

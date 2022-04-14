@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_ANALYSIS_PRESBURGER_TPINT_H
-#define MLIR_ANALYSIS_PRESBURGER_TPINT_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_MPINT_H
+#define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
 #include "mlir/Support/MathExtras.h"
 #include "llvm/ADT/APSInt.h"
@@ -268,4 +268,4 @@ inline MPInt &MPInt::operator--() {
 } // namespace presburger
 } // namespace mlir
 
-#endif // MLIR_ANALYSIS_PRESBURGER_TPINT_H
+#endif // MLIR_ANALYSIS_PRESBURGER_MPINT_H

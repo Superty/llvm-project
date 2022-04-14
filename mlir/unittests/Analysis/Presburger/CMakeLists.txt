@@ -2,11 +2,11 @@ add_mlir_unittest(MLIRPresburgerTests
   IntegerPolyhedronTest.cpp
   LinearTransformTest.cpp
   MatrixTest.cpp
+  MPIntTest.cpp
   PresburgerSetTest.cpp
   PresburgerSpaceTest.cpp
   PWMAFunctionTest.cpp
   SimplexTest.cpp
-  TPIntTest.cpp
   ../../Dialect/Affine/Analysis/AffineStructuresParser.cpp
 )
 

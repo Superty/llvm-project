@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/TPInt.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
