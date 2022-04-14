@@ -1,4 +1,4 @@
-//===- TPIntTest.cpp - Tests for TPInt ------------------------------------===//
+//===- MPIntTest.cpp - Tests for MPInt ------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -13,8 +13,8 @@
 using namespace mlir;
 using namespace presburger;
 
-TEST(TPIntTest, ops) {
-  TPInt two(2), five(5), seven(7), ten(10);
+TEST(MPIntTest, ops) {
+  MPInt two(2), five(5), seven(7), ten(10);
   EXPECT_EQ(five + five, ten);
   EXPECT_EQ(five * five, 2 * ten + five);
   EXPECT_EQ(five * five, 3 * ten - five);
@@ -32,7 +32,7 @@ TEST(TPIntTest, ops) {
   EXPECT_EQ(-ten / -seven, -10 / -7);
   EXPECT_EQ(ten / seven, 10 / 7);
 
-  TPInt x = ten;
+  MPInt x = ten;
   x += five;
   EXPECT_EQ(x, 15);
   x *= two;
@@ -56,8 +56,8 @@ TEST(TPIntTest, ops) {
   EXPECT_GT(ten, five);
 }
 
-TEST(TPIntTest, ops64Overloads) {
-  TPInt two(2), five(5), seven(7), ten(10);
+TEST(MPIntTest, ops64Overloads) {
+  MPInt two(2), five(5), seven(7), ten(10);
   EXPECT_EQ(five + 5, ten);
   EXPECT_EQ(five + 5, 5 + five);
   EXPECT_EQ(five * 5, 2 * ten + 5);
@@ -69,7 +69,7 @@ TEST(TPIntTest, ops64Overloads) {
   EXPECT_EQ(2 - two, 0);
   EXPECT_EQ(2 % two, two % 2);
 
-  TPInt x = ten;
+  MPInt x = ten;
   x += 5;
   EXPECT_EQ(x, 15);
   x *= 2;
@@ -102,7 +102,7 @@ TEST(TPIntTest, ops64Overloads) {
   EXPECT_GT(10, five);
 }
 
-TEST(TPIntTest, overflows) {
-  TPInt x(1ll << 60);
+TEST(MPIntTest, overflows) {
+  MPInt x(1ll << 60);
   EXPECT_EQ((x * x - x * x * x * x) / (x * x * x), 1 - (1ll << 60));
 }
