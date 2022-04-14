@@ -100,6 +100,11 @@ struct MaybeLocalRepr {
   } repr;
 };
 
+/// Return the given array as an array of TPInts.
+SmallVector<TPInt, 8> getTPIntVec(ArrayRef<int64_t> range);
+/// Return the given array as an array of int64_t.
+SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
+
 /// Check if the pos^th identifier can be expressed as a floordiv of an affine
 /// function of other identifiers (where the divisor is a positive constant).
 /// `foundRepr` contains a boolean for each identifier indicating if the
