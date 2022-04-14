@@ -125,7 +125,7 @@ inline MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a) * b; }
 inline MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a) / b; }
 inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
 
-/// We define the operators here in the header to facilitate inlining.
+/// We define the operations here in the header to facilitate inlining.
 
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
@@ -153,40 +153,36 @@ inline bool MPInt::operator>=(const MPInt &o) const {
 /// Arithmetic operators.
 /// ---------------------------------------------------------------------------
 namespace detail {
-using APIntOvOp = APInt (APInt::*)(const APInt &b, bool &overflow) const;
-
 /// Bring a and b to have the same width and then call a.op(b, overflow).
 /// If the overflow bit becomes set, resize a and b to double the width and
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
-inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b, APIntOvOp op) {
+template <typename Function>
+inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b, const Function &op) {
   bool overflow;
   unsigned width = std::max(a.getBitWidth(), b.getBitWidth());
-  // This calls a.sextOrSelf(width).op(b.sextOrSelf(width), overflow).
-  // TODO: in C++17 we can use the simpler syntax with std::invoke.
-  APInt ret = ((a.sextOrSelf(width)).*(op))(b.sextOrSelf(width), overflow);
+  APInt ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
   if (!overflow)
     return APSInt(ret, /*isUnsigned=*/false);
 
   width *= 2;
-  // This calls a.sextOrSelf(width).op(b.sextOrSelf(width), overflow).
-  ret = ((a.sextOrSelf(width)).*(op))(b.sextOrSelf(width), overflow);
+  ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
   assert(!overflow && "double width should be sufficient to avoid overflow!");
   return APSInt(ret, /*isUnsigned=*/false);
 }
 } // namespace detail
 
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::sadd_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::sadd_ov)));
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::ssub_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::ssub_ov)));
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::smul_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::smul_ov)));
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::sdiv_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::sdiv_ov)));
 }
 inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
