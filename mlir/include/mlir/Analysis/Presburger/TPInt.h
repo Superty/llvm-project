@@ -159,7 +159,7 @@ using APIntOvOp = APInt (APInt::*)(const APInt &b, bool &overflow) const;
 /// If the overflow bit becomes set, resize a and b to double the width and
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
-inline APSInt doOpExpandIfOverflow(const APInt &a, const APInt &b, APIntOvOp op) {
+inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b, APIntOvOp op) {
   bool overflow;
   unsigned width = std::max(a.getBitWidth(), b.getBitWidth());
   // This calls a.sextOrSelf(width).op(b.sextOrSelf(width), overflow).
@@ -177,16 +177,16 @@ inline APSInt doOpExpandIfOverflow(const APInt &a, const APInt &b, APIntOvOp op)
 } // namespace detail
 
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  return MPInt(detail::doOpExpandIfOverflow(val, o.val, &APInt::sadd_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::sadd_ov));
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  return MPInt(detail::doOpExpandIfOverflow(val, o.val, &APInt::ssub_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::ssub_ov));
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  return MPInt(detail::doOpExpandIfOverflow(val, o.val, &APInt::smul_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::smul_ov));
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  return MPInt(detail::doOpExpandIfOverflow(val, o.val, &APInt::sdiv_ov));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt::sdiv_ov));
 }
 inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
@@ -229,7 +229,7 @@ inline MPInt MPInt::operator%(const MPInt &o) const {
 
 inline MPInt MPInt::operator-() const {
   if (val.isMinSignedValue()) {
-    /// Overflow only occurs when the values is the minimum possible value.
+    /// Overflow only occurs when the value is the minimum possible value.
     APSInt ret = val.extend(2 * val.getBitWidth());
     return MPInt(-ret);
   }
