@@ -158,7 +158,8 @@ namespace detail {
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
 template <typename Function>
-inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b, const Function &op) {
+inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
+                                        const Function &op) {
   bool overflow;
   unsigned width = std::max(a.getBitWidth(), b.getBitWidth());
   APInt ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
@@ -173,29 +174,35 @@ inline APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b, const Fu
 } // namespace detail
 
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::sadd_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
+                                                 std::mem_fn(&APInt::sadd_ov)));
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::ssub_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
+                                                 std::mem_fn(&APInt::ssub_ov)));
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::smul_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
+                                                 std::mem_fn(&APInt::smul_ov)));
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, std::mem_fn(&APInt::sdiv_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
+                                                 std::mem_fn(&APInt::sdiv_ov)));
 }
 inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(APSInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::UP),
-                      /*isUnsigned=*/false));
+  return MPInt(APSInt(
+      llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::UP),
+      /*isUnsigned=*/false));
 }
 inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(APSInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::DOWN),
-                      /*isUnsigned=*/false));
+  return MPInt(APSInt(
+      llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::DOWN),
+      /*isUnsigned=*/false));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
@@ -205,8 +212,9 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
 }
 
 inline MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b) {
-  return MPInt(APSInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()),
-                      /*isUnsigned=*/false));
+  return MPInt(
+      APSInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()),
+             /*isUnsigned=*/false));
 }
 
 /// Returns the least common multiple of 'a' and 'b'.
