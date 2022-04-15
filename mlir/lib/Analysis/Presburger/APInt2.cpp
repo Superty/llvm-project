@@ -281,8 +281,10 @@ int APInt2::compare(const APInt2& RHS) const {
 int APInt2::compareSigned(const APInt2& RHS) const {
   assert(BitWidth == RHS.BitWidth && "Bit widths must be same for comparison");
   if (isSingleWord()) {
-    int64_t lhsSext = SignExtend64(U.VAL, BitWidth);
-    int64_t rhsSext = SignExtend64(RHS.U.VAL, BitWidth);
+    // int64_t lhsSext = SignExtend64(U.VAL, BitWidth);
+    // int64_t rhsSext = SignExtend64(RHS.U.VAL, BitWidth);
+    int64_t lhsSext = U.VAL;
+    int64_t rhsSext = RHS.U.VAL;
     return lhsSext < rhsSext ? -1 : lhsSext > rhsSext;
   }
 
