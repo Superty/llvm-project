@@ -1965,7 +1965,12 @@ APInt2 APInt2::sdiv_ov(const APInt2 &RHS, bool &Overflow) const {
 }
 
 APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
-  APInt2 Res = *this * RHS;
+  APInt2 Res(BitWidth, 0, /*isSigned=*/true);
+  if (isSingleWord() && RHS.isSingleWord()) {
+    Overflow = __builtin_mul_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    return Res;
+  }
+  Res = *this * RHS;
 
   if (RHS != 0)
     Overflow = Res.sdiv(RHS) != *this ||
