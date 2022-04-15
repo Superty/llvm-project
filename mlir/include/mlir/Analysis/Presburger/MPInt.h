@@ -170,9 +170,11 @@ inline APInt2 runOpWithExpandOnOverflow(const APInt2 &a, const APInt2 &b,
   bool overflow;
   unsigned widthA = a.getBitWidth(), widthB = b.getBitWidth();
   APInt2 ret;
-  if (widthA == widthB)
+  if (widthA == widthB) {
     ret = op(a, b, overflow);
-  else if (widthA < widthB)
+    if (!overflow)
+      return ret;
+  } else if (widthA < widthB)
     ret = op(a.sext(widthB), b, overflow);
   else
     ret = op(a, b.sext(widthA), overflow);
