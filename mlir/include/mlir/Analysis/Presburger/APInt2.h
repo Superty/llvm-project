@@ -37,6 +37,10 @@ class APInt2;
 
 inline APInt2 operator-(APInt2);
 
+namespace APInt2Ops {
+APInt2 GreatestCommonDivisor(APInt2 A, APInt2 B);
+}
+
 //===----------------------------------------------------------------------===//
 //                              APInt2 Class
 //===----------------------------------------------------------------------===//
@@ -1832,6 +1836,14 @@ public:
     return tcSubtractPart(dst, 1, parts);
   }
 
+  /// Compute GCD of two unsigned APInt2 values.
+  ///
+  /// This function returns the greatest common divisor of the two APInt2 values
+  /// using Stein's algorithm.
+  ///
+  /// \returns the greatest common divisor of A and B.
+  friend APInt2 APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B);
+
   /// Used to insert APInt2 objects, or objects that contain APInt2 objects, into
   ///  FoldingSets.
   void Profile(FoldingSetNodeID &id) const;
@@ -2160,14 +2172,6 @@ inline const APInt2 &umin(const APInt2 &A, const APInt2 &B) {
 inline const APInt2 &umax(const APInt2 &A, const APInt2 &B) {
   return A.ugt(B) ? A : B;
 }
-
-/// Compute GCD of two unsigned APInt2 values.
-///
-/// This function returns the greatest common divisor of the two APInt2 values
-/// using Stein's algorithm.
-///
-/// \returns the greatest common divisor of A and B.
-APInt2 GreatestCommonDivisor(APInt2 A, APInt2 B);
 
 /// Converts the given APInt2 to a double value.
 ///

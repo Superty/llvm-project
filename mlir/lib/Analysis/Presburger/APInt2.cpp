@@ -757,6 +757,49 @@ APInt2 APInt2::reverseBits() const {
 }
 
 APInt2 llvm::APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B) {
+  if (A.isSingleWord() && B.isSingleWord()) {
+    uint64_t x = A.U.VAL, y = B.U.VAL;
+
+    // Fast-path a common case.
+    if (x == y) return APInt2(A.getBitWidth(), x, /*isSigned=*/false);
+
+    // Corner cases: if either operand is zero, the other is the gcd.
+    if (!x) return APInt2(A.getBitWidth(), y, /*isSigned=*/false);
+    if (!y) return APInt2(A.getBitWidth(), x, /*isSigned=*/false);
+
+    // Count common powers of 2 and remove all other powers of 2.
+    unsigned Pow2;
+    {
+      unsigned Pow2_x = __builtin_ctz(x);
+      unsigned Pow2_y = __builtin_ctz(y);
+      if (Pow2_x > Pow2_y) {
+        x >>= Pow2_x - Pow2_y;
+        Pow2 = Pow2_y;
+      } else if (Pow2_y > Pow2_x) {
+        y >>= Pow2_y - Pow2_x;
+        Pow2 = Pow2_x;
+      } else {
+        Pow2 = Pow2_x;
+      }
+    }
+
+    // Both operands are odd multiples of 2^Pow_2:
+    //
+    //   gcd(a, b) = gcd(|a - b| / 2^i, min(a, b))
+    //
+    // This is a modified version of Stein's algorithm, taking advantage of
+    // efficient countTrailingZeros().
+    while (x != y) {
+      if (x > y) {
+        x -= y;
+        x >>= __builtin_ctz(x) - Pow2;
+      } else {
+        y -= x;
+        y >>= __builtin_ctz(y) - Pow2;
+      }
+    }
+    return APInt2(A.getBitWidth(), x, /*isSigned=*/false);
+  }
   // Fast-path a common case.
   if (A == B) return A;
 
