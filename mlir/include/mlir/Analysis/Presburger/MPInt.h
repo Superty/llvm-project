@@ -133,8 +133,12 @@ __attribute__((__always_inline__)) inline MPInt operator%(int64_t a, const MPInt
 /// ---------------------------------------------------------------------------
 namespace detail {
 static int compareValues(const APInt2 &lhs, const APInt2 &rhs) {
-  unsigned width = std::max(lhs.getBitWidth(), rhs.getBitWidth());
-  return lhs.sextOrSelf(width).compareSigned(rhs.sextOrSelf(width));
+  unsigned widthLHS = lhs.getBitWidth(), widthRHS = rhs.getBitWidth();
+  if (widthLHS == widthRHS)
+    return lhs.compareSigned(rhs);
+  if (widthLHS < widthRHS)
+    return lhs.sext(widthRHS).compareSigned(rhs);
+  return lhs.compareSigned(rhs.sext(widthLHS));
 }
 } // namespace detail
 inline bool MPInt::operator==(const MPInt &o) const {
@@ -233,8 +237,13 @@ inline MPInt lcm(const MPInt &a, const MPInt &b) {
 
 /// This operation cannot overflow.
 inline MPInt MPInt::operator%(const MPInt &o) const {
-  unsigned width = std::max(val.getBitWidth(), o.val.getBitWidth());
-  return MPInt(val.sextOrSelf(width).srem(o.val.sextOrSelf(width)));
+  unsigned widthThis = val.getBitWidth();
+  unsigned widthOther = o.val.getBitWidth();
+  if (widthThis == widthOther)
+    return MPInt(val.srem(o.val));
+  if (widthThis < widthOther)
+    return MPInt(val.sext(widthOther).srem(o.val));
+  return MPInt(val.srem(o.val.sext(widthThis)));
 }
 
 inline MPInt MPInt::operator-() const {
