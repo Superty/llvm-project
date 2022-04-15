@@ -133,7 +133,7 @@ inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
 namespace detail {
 static int compareValues(const APInt &lhs, const APInt &rhs) {
   unsigned width = std::max(lhs.getBitWidth(), rhs.getBitWidth());
-  return lhs.sext(width).compareSigned(rhs.sext(width));
+  return lhs.sextOrSelf(width).compareSigned(rhs.sextOrSelf(width));
 }
 } // namespace detail
 inline bool MPInt::operator==(const MPInt &o) const {
@@ -167,13 +167,19 @@ template <typename Function>
 inline APInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
                                         const Function &op) {
   bool overflow;
-  unsigned width = std::max(a.getBitWidth(), b.getBitWidth());
-  APInt ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
+  unsigned widthA = a.getBitWidth(), widthB = b.getBitWidth();
+  APInt ret;
+  if (widthA == widthB)
+    ret = op(a, b, overflow);
+  else if (widthA < widthB)
+    ret = op(a.sext(widthB), b, overflow);
+  else
+    ret = op(a, b.sext(widthA), overflow);
   if (!overflow)
     return ret;
 
-  width *= 2;
-  ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
+  unsigned newWidth = 2*std::max(widthA, widthB);
+  ret = op(a.sext(newWidth), b.sext(newWidth), overflow);
   assert(!overflow && "double width should be sufficient to avoid overflow!");
   return ret;
 }
