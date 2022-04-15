@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // This is a simple class to represent arbitrary precision signed integers.
-// Unlike APInt, one does not have to specify a fixed maximum size, and the
+// Unlike APInt2, one does not have to specify a fixed maximum size, and the
 // integer can take on any aribtrary values.
 //
 //===----------------------------------------------------------------------===//
@@ -16,25 +16,26 @@
 #define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
 #include "mlir/Support/MathExtras.h"
-#include "llvm/ADT/APInt.h"
+#include "mlir/Analysis/Presburger/APInt2.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
 namespace presburger {
+using llvm::APInt2;
 
 /// This class provides support for multi-precision arithmetic.
 ///
-/// Unlike APInt, this extends the precision as necessary to prevent overflows
+/// Unlike APInt2, this extends the precision as necessary to prevent overflows
 /// and supports operations between objects with differing internal precisions.
 ///
-/// Since it uses APInt internally, MPInt (MultiPrecision Integer) stores values
+/// Since it uses APInt2 internally, MPInt (MultiPrecision Integer) stores values
 /// in a 64-bit machine integer for small values and uses slower
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
   explicit MPInt(int64_t val) : val(/*numBits=*/64, val, /*isSigned=*/true) {}
   MPInt() : MPInt(0) {}
-  explicit MPInt(const APInt &val) : val(val) {}
+  explicit MPInt(const APInt2 &val) : val(val) {}
   MPInt &operator=(int64_t val) { return *this = MPInt(val); }
   explicit operator int64_t() const { return val.getSExtValue(); }
   MPInt operator-() const;
@@ -73,10 +74,10 @@ private:
 
   // The held integer value.
   //
-  // TODO: consider using APInt directly to avoid unnecessary repeated internal
+  // TODO: consider using APInt2 directly to avoid unnecessary repeated internal
   // signedness checks. This requires refactoring, exposing, or duplicating
-  // APInt::compareValues.
-  APInt val;
+  // APInt2::compareValues.
+  APInt2 val;
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
@@ -131,7 +132,7 @@ inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
 namespace detail {
-static int compareValues(const APInt &lhs, const APInt &rhs) {
+static int compareValues(const APInt2 &lhs, const APInt2 &rhs) {
   unsigned width = std::max(lhs.getBitWidth(), rhs.getBitWidth());
   return lhs.sextOrSelf(width).compareSigned(rhs.sextOrSelf(width));
 }
@@ -164,11 +165,11 @@ namespace detail {
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
 template <typename Function>
-inline APInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
+inline APInt2 runOpWithExpandOnOverflow(const APInt2 &a, const APInt2 &b,
                                         const Function &op) {
   bool overflow;
   unsigned widthA = a.getBitWidth(), widthB = b.getBitWidth();
-  APInt ret;
+  APInt2 ret;
   if (widthA == widthB)
     ret = op(a, b, overflow);
   else if (widthA < widthB)
@@ -187,30 +188,30 @@ inline APInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
 
 inline MPInt MPInt::operator+(const MPInt &o) const {
   return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt::sadd_ov)));
+                                                 std::mem_fn(&APInt2::sadd_ov)));
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
   return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt::ssub_ov)));
+                                                 std::mem_fn(&APInt2::ssub_ov)));
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
   return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt::smul_ov)));
+                                                 std::mem_fn(&APInt2::smul_ov)));
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
   return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt::sdiv_ov)));
+                                                 std::mem_fn(&APInt2::sdiv_ov)));
 }
 inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::UP));
+  return MPInt(llvm::APInt2Ops::RoundingSDiv(lhs.val, rhs.val, APInt2::Rounding::UP));
 }
 inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::DOWN));
+  return MPInt(llvm::APInt2Ops::RoundingSDiv(lhs.val, rhs.val, APInt2::Rounding::DOWN));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
@@ -220,7 +221,7 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
 }
 
 inline MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b) {
-  return MPInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()));
+  return MPInt(llvm::APInt2Ops::GreatestCommonDivisor(a.val.abs(), b.val.abs()));
 }
 
 /// Returns the least common multiple of 'a' and 'b'.

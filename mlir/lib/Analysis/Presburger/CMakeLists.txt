@@ -6,6 +6,7 @@ add_mlir_library(MLIRPresburger
   PresburgerSpace.cpp
   PWMAFunction.cpp
   Simplex.cpp
+  APInt2.cpp
   MPInt.cpp
   Utils.cpp
 
