@@ -23,7 +23,7 @@ void testColumnEchelonForm(const Matrix &m, unsigned expectedRank) {
   // In column echelon form, each row's last non-zero value can be at most one
   // column to the right of the last non-zero column among the previous rows.
   for (unsigned row = 0, nRows = m.getNumRows(); row < nRows; ++row) {
-    SmallVector<TPInt, 8> rowVec =
+    SmallVector<MPInt, 8> rowVec =
         transform.preMultiplyWithRow(m.getRow(row));
     for (unsigned col = lastAllowedNonZeroCol + 1, nCols = m.getNumColumns();
          col < nCols; ++col) {

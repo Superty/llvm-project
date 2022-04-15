@@ -39,8 +39,8 @@ makeSetFromConstraints(unsigned ids, ArrayRef<SmallVector<int64_t, 4>> ineqs,
   return set;
 }
 
-static void dump(ArrayRef<TPInt> vec) {
-  for (const TPInt &x : vec)
+static void dump(ArrayRef<MPInt> vec) {
+  for (const MPInt &x : vec)
     llvm::errs() << x << ' ';
   llvm::errs() << '\n';
 }
@@ -58,8 +58,8 @@ static void dump(ArrayRef<TPInt> vec) {
 /// opposite of hasSample.
 static void checkSample(bool hasSample, const IntegerPolyhedron &poly,
                         TestFunction fn = TestFunction::Sample) {
-  Optional<SmallVector<TPInt, 8>> maybeSample;
-  MaybeOptimum<SmallVector<TPInt, 8>> maybeLexMin;
+  Optional<SmallVector<MPInt, 8>> maybeSample;
+  MaybeOptimum<SmallVector<MPInt, 8>> maybeLexMin;
   switch (fn) {
   case TestFunction::Sample:
     maybeSample = poly.findIntegerSample();
@@ -566,10 +566,10 @@ TEST(IntegerPolyhedronTest, removeRedundantConstraintsTest) {
   // y >= 128x >= 0.
   poly5.removeRedundantConstraints();
   EXPECT_EQ(poly5.getNumInequalities(), 3u);
-  SmallVector<TPInt, 8> redundantConstraint = getTPIntVec({0, 1, 0});
+  SmallVector<MPInt, 8> redundantConstraint = getMPIntVec({0, 1, 0});
   for (unsigned i = 0; i < 3; ++i) {
     // Ensure that the removed constraint was the redundant constraint [3].
-    EXPECT_NE(poly5.getInequality(i), ArrayRef<TPInt>(redundantConstraint));
+    EXPECT_NE(poly5.getInequality(i), ArrayRef<MPInt>(redundantConstraint));
   }
 }
 
@@ -607,12 +607,12 @@ TEST(IntegerPolyhedronTest, addConstantLowerBound) {
 /// `expectedDenominators` and `expectedDividends` respectively.
 static void checkDivisionRepresentation(
     IntegerPolyhedron &poly,
-    const std::vector<SmallVector<TPInt, 8>> &expectedDividends,
-    ArrayRef<TPInt> expectedDenominators) {
+    const std::vector<SmallVector<MPInt, 8>> &expectedDividends,
+    ArrayRef<MPInt> expectedDenominators) {
   DivisionRepr divs = poly.getLocalReprs();
 
   // Check that the `denominators` and `expectedDenominators` match.
-  EXPECT_TRUE(getTPIntVec(expectedDenominators) == divs.getDenoms());
+  EXPECT_TRUE(getMPIntVec(expectedDenominators) == divs.getDenoms());
 
   // Check that the `dividends` and `expectedDividends` match. If the
   // denominator for a division is zero, we ignore its dividend.
@@ -1133,9 +1133,9 @@ TEST(IntegerPolyhedronTest, findRationalLexMin) {
 }
 
 void expectIntegerLexMin(const IntegerPolyhedron &poly, ArrayRef<int64_t> min) {
-  MaybeOptimum<SmallVector<TPInt, 8>> lexMin = poly.findIntegerLexMin();
+  MaybeOptimum<SmallVector<MPInt, 8>> lexMin = poly.findIntegerLexMin();
   ASSERT_TRUE(lexMin.isBounded());
-  EXPECT_EQ(*lexMin, getTPIntVec(min));
+  EXPECT_EQ(*lexMin, getMPIntVec(min));
 }
 
 void expectNoIntegerLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
@@ -1437,7 +1437,7 @@ TEST(IntegerPolyhedronTest, computeVolume) {
 }
 
 bool containsPointNoLocal(const IntegerPolyhedron &poly, ArrayRef<int64_t> point) {
-  return poly.containsPointNoLocal(getTPIntVec(point)).hasValue();
+  return poly.containsPointNoLocal(getMPIntVec(point)).hasValue();
 }
 
 TEST(IntegerPolyhedronTest, containsPointNoLocal) {
