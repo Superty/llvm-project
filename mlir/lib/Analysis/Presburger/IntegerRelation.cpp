@@ -90,10 +90,10 @@ IntegerRelation::findRationalLexMin() const {
   return maybeLexMin;
 }
 
-MaybeOptimum<SmallVector<TPInt, 8>>
+MaybeOptimum<SmallVector<MPInt, 8>>
 IntegerRelation::findIntegerLexMin() const {
   assert(getNumSymbolIds() == 0 && "Symbols are not supported!");
-  MaybeOptimum<SmallVector<TPInt, 8>> maybeLexMin =
+  MaybeOptimum<SmallVector<MPInt, 8>> maybeLexMin =
       LexSimplex(*this).findIntegerLexMin();
 
   if (!maybeLexMin.isBounded())
@@ -110,8 +110,8 @@ IntegerRelation::findIntegerLexMin() const {
   return maybeLexMin;
 }
 
-static bool rangeIsZero(ArrayRef<TPInt> range) {
-  return llvm::all_of(range, [](const TPInt &x) { return x == 0; });
+static bool rangeIsZero(ArrayRef<MPInt> range) {
+  return llvm::all_of(range, [](const MPInt &x) { return x == 0; });
 }
 
 void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
@@ -181,14 +181,14 @@ unsigned IntegerRelation::appendId(IdKind kind, unsigned num) {
   return insertId(kind, pos, num);
 }
 
-void IntegerRelation::addEquality(ArrayRef<TPInt> eq) {
+void IntegerRelation::addEquality(ArrayRef<MPInt> eq) {
   assert(eq.size() == getNumCols());
   unsigned row = equalities.appendExtraRow();
   for (unsigned i = 0, e = eq.size(); i < e; ++i)
     equalities(row, i) = eq[i];
 }
 
-void IntegerRelation::addInequality(ArrayRef<TPInt> inEq) {
+void IntegerRelation::addInequality(ArrayRef<MPInt> inEq) {
   assert(inEq.size() == getNumCols());
   unsigned row = inequalities.appendExtraRow();
   for (unsigned i = 0, e = inEq.size(); i < e; ++i)
@@ -353,7 +353,7 @@ bool IntegerRelation::hasConsistentState() const {
   return true;
 }
 
-void IntegerRelation::setAndEliminate(unsigned pos, ArrayRef<TPInt> values) {
+void IntegerRelation::setAndEliminate(unsigned pos, ArrayRef<MPInt> values) {
   if (values.empty())
     return;
   assert(pos + values.size() <= getNumIds() &&
@@ -379,7 +379,7 @@ void IntegerRelation::clearAndCopyFrom(const IntegerRelation &other) {
 bool IntegerRelation::findConstraintWithNonZeroAt(unsigned colIdx, bool isEq,
                                                   unsigned *rowIdx) const {
   assert(colIdx < getNumCols() && "position out of bounds");
-  auto at = [&](unsigned rowIdx) -> TPInt {
+  auto at = [&](unsigned rowIdx) -> MPInt {
     return isEq ? atEq(rowIdx, colIdx) : atIneq(rowIdx, colIdx);
   };
   unsigned e = isEq ? getNumEqualities() : getNumInequalities();
@@ -406,7 +406,7 @@ bool IntegerRelation::hasInvalidConstraint() const {
     for (unsigned i = 0, e = numRows; i < e; ++i) {
       unsigned j;
       for (j = 0; j < numCols - 1; ++j) {
-        TPInt v = isEq ? atEq(i, j) : atIneq(i, j);
+        MPInt v = isEq ? atEq(i, j) : atIneq(i, j);
         // Skip rows with non-zero variable coefficients.
         if (v != 0)
           break;
@@ -416,7 +416,7 @@ bool IntegerRelation::hasInvalidConstraint() const {
       }
       // Check validity of constant term at 'numCols - 1' w.r.t 'isEq'.
       // Example invalid constraints include: '1 == 0' or '-1 >= 0'
-      TPInt v = isEq ? atEq(i, numCols - 1) : atIneq(i, numCols - 1);
+      MPInt v = isEq ? atEq(i, numCols - 1) : atIneq(i, numCols - 1);
       if ((isEq && v != 0) || (!isEq && v < 0)) {
         return true;
       }
@@ -438,25 +438,25 @@ static void eliminateFromConstraint(IntegerRelation *constraints,
   // Skip if equality 'rowIdx' if same as 'pivotRow'.
   if (isEq && rowIdx == pivotRow)
     return;
-  auto at = [&](unsigned i, unsigned j) -> TPInt {
+  auto at = [&](unsigned i, unsigned j) -> MPInt {
     return isEq ? constraints->atEq(i, j) : constraints->atIneq(i, j);
   };
-  TPInt leadCoeff = at(rowIdx, pivotCol);
+  MPInt leadCoeff = at(rowIdx, pivotCol);
   // Skip if leading coefficient at 'rowIdx' is already zero.
   if (leadCoeff == 0)
     return;
-  TPInt pivotCoeff = constraints->atEq(pivotRow, pivotCol);
+  MPInt pivotCoeff = constraints->atEq(pivotRow, pivotCol);
   int sign = (leadCoeff * pivotCoeff > 0) ? -1 : 1;
-  TPInt lcm = mlir::presburger::lcm(pivotCoeff, leadCoeff);
-  TPInt pivotMultiplier = sign * (lcm / abs(pivotCoeff));
-  TPInt rowMultiplier = lcm / abs(leadCoeff);
+  MPInt lcm = mlir::presburger::lcm(pivotCoeff, leadCoeff);
+  MPInt pivotMultiplier = sign * (lcm / abs(pivotCoeff));
+  MPInt rowMultiplier = lcm / abs(leadCoeff);
 
   unsigned numCols = constraints->getNumCols();
   for (unsigned j = 0; j < numCols; ++j) {
     // Skip updating column 'j' if it was just eliminated.
     if (j >= elimColStart && j < pivotCol)
       continue;
-    TPInt v = pivotMultiplier * constraints->atEq(pivotRow, j) +
+    MPInt v = pivotMultiplier * constraints->atEq(pivotRow, j) +
                 rowMultiplier * at(rowIdx, j);
     isEq ? constraints->atEq(rowIdx, j) = v
          : constraints->atIneq(rowIdx, j) = v;
@@ -566,11 +566,11 @@ bool IntegerRelation::isEmptyByGCDTest() const {
   assert(hasConsistentState());
   unsigned numCols = getNumCols();
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
-    TPInt gcd = abs(atEq(i, 0));
+    MPInt gcd = abs(atEq(i, 0));
     for (unsigned j = 1; j < numCols - 1; ++j) {
       gcd = greatestCommonDivisor(gcd, abs(atEq(i, j)));
     }
-    TPInt v = abs(atEq(i, numCols - 1));
+    MPInt v = abs(atEq(i, numCols - 1));
     if (gcd > 0 && (v % gcd != 0)) {
       return true;
     }
@@ -675,7 +675,7 @@ bool IntegerRelation::isIntegerEmpty() const {
 ///
 /// Concatenating the samples from B and C gives a sample v in S*T, so the
 /// returned sample T*v is a sample in S.
-Optional<SmallVector<TPInt, 8>> IntegerRelation::findIntegerSample() const {
+Optional<SmallVector<MPInt, 8>> IntegerRelation::findIntegerSample() const {
   // First, try the GCD test heuristic.
   if (isEmptyByGCDTest())
     return {};
@@ -714,7 +714,7 @@ Optional<SmallVector<TPInt, 8>> IntegerRelation::findIntegerSample() const {
   boundedSet.removeIdRange(numBoundedDims, boundedSet.getNumIds());
 
   // 3) Try to obtain a sample from the bounded set.
-  Optional<SmallVector<TPInt, 8>> boundedSample =
+  Optional<SmallVector<MPInt, 8>> boundedSample =
       Simplex(boundedSet).findIntegerSample();
   if (!boundedSample)
     return {};
@@ -753,7 +753,7 @@ Optional<SmallVector<TPInt, 8>> IntegerRelation::findIntegerSample() const {
   // amount for the shrunken cone.
   for (unsigned i = 0, e = cone.getNumInequalities(); i < e; ++i) {
     for (unsigned j = 0; j < cone.getNumIds(); ++j) {
-      TPInt coeff = cone.atIneq(i, j);
+      MPInt coeff = cone.atIneq(i, j);
       if (coeff < 0)
         cone.atIneq(i, cone.getNumIds()) += coeff;
     }
@@ -770,10 +770,10 @@ Optional<SmallVector<TPInt, 8>> IntegerRelation::findIntegerSample() const {
   SmallVector<Fraction, 8> shrunkenConeSample =
       *shrunkenConeSimplex.getRationalSample();
 
-  SmallVector<TPInt, 8> coneSample(llvm::map_range(shrunkenConeSample, ceil));
+  SmallVector<MPInt, 8> coneSample(llvm::map_range(shrunkenConeSample, ceil));
 
   // 6) Return transform * concat(boundedSample, coneSample).
-  SmallVector<TPInt, 8> &sample = boundedSample.getValue();
+  SmallVector<MPInt, 8> &sample = boundedSample.getValue();
   sample.append(coneSample.begin(), coneSample.end());
   return transform.postMultiplyWithColumn(sample);
 }
@@ -781,10 +781,10 @@ Optional<SmallVector<TPInt, 8>> IntegerRelation::findIntegerSample() const {
 /// Helper to evaluate an affine expression at a point.
 /// The expression is a list of coefficients for the dimensions followed by the
 /// constant term.
-static TPInt valueAt(ArrayRef<TPInt> expr, ArrayRef<TPInt> point) {
+static MPInt valueAt(ArrayRef<MPInt> expr, ArrayRef<MPInt> point) {
   assert(expr.size() == 1 + point.size() &&
          "Dimensionalities of point and expression don't match!");
-  TPInt value = expr.back();
+  MPInt value = expr.back();
   for (unsigned i = 0; i < point.size(); ++i)
     value += expr[i] * point[i];
   return value;
@@ -793,7 +793,7 @@ static TPInt valueAt(ArrayRef<TPInt> expr, ArrayRef<TPInt> point) {
 /// A point satisfies an equality iff the value of the equality at the
 /// expression is zero, and it satisfies an inequality iff the value of the
 /// inequality at that point is non-negative.
-bool IntegerRelation::containsPoint(ArrayRef<TPInt> point) const {
+bool IntegerRelation::containsPoint(ArrayRef<MPInt> point) const {
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
     if (valueAt(getEquality(i), point) != 0)
       return false;
@@ -813,8 +813,8 @@ bool IntegerRelation::containsPoint(ArrayRef<TPInt> point) const {
 /// compute the values of the locals that have division representations and
 /// only use the integer emptiness check for the locals that don't have this.
 /// Handling this correctly requires ordering the divs, though.
-Optional<SmallVector<TPInt, 8>>
-IntegerRelation::containsPointNoLocal(ArrayRef<TPInt> point) const {
+Optional<SmallVector<MPInt, 8>>
+IntegerRelation::containsPointNoLocal(ArrayRef<MPInt> point) const {
   assert(point.size() == getNumIds() - getNumLocalIds() &&
          "Point should contain all ids except locals!");
   assert(getIdKindOffset(IdKind::Local) == getNumIds() - getNumLocalIds() &&
@@ -825,21 +825,21 @@ IntegerRelation::containsPointNoLocal(ArrayRef<TPInt> point) const {
 }
 
 void IntegerRelation::getLocalReprs(std::vector<MaybeLocalRepr> &repr) const {
-  std::vector<SmallVector<TPInt, 8>> dividends(getNumLocalIds());
-  SmallVector<TPInt, 4> denominators(getNumLocalIds());
+  std::vector<SmallVector<MPInt, 8>> dividends(getNumLocalIds());
+  SmallVector<MPInt, 4> denominators(getNumLocalIds());
   getLocalReprs(dividends, denominators, repr);
 }
 
 void IntegerRelation::getLocalReprs(
-    std::vector<SmallVector<TPInt, 8>> &dividends,
-    SmallVector<TPInt, 4> &denominators) const {
+    std::vector<SmallVector<MPInt, 8>> &dividends,
+    SmallVector<MPInt, 4> &denominators) const {
   std::vector<MaybeLocalRepr> repr(getNumLocalIds());
   getLocalReprs(dividends, denominators, repr);
 }
 
 void IntegerRelation::getLocalReprs(
-    std::vector<SmallVector<TPInt, 8>> &dividends,
-    SmallVector<TPInt, 4> &denominators,
+    std::vector<SmallVector<MPInt, 8>> &dividends,
+    SmallVector<MPInt, 4> &denominators,
     std::vector<MaybeLocalRepr> &repr) const {
 
   repr.resize(getNumLocalIds());
@@ -888,7 +888,7 @@ void IntegerRelation::gcdTightenInequalities() {
   unsigned numCols = getNumCols();
   for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
     // Normalize the constraint and tighten the constant term by the GCD.
-    TPInt gcd = inequalities.normalizeRow(i, getNumCols() - 1);
+    MPInt gcd = inequalities.normalizeRow(i, getNumCols() - 1);
     if (gcd > 1)
       atIneq(i, numCols - 1) = floorDiv(atIneq(i, numCols - 1), gcd);
   }
@@ -1009,14 +1009,14 @@ void IntegerRelation::removeRedundantConstraints() {
   equalities.resizeVertically(pos);
 }
 
-Optional<TPInt> IntegerRelation::computeVolume() const {
+Optional<MPInt> IntegerRelation::computeVolume() const {
   assert(getNumSymbolIds() == 0 && "Symbols are not yet supported!");
 
   Simplex simplex(*this);
   // If the polytope is rationally empty, there are certainly no integer
   // points.
   if (simplex.isEmpty())
-    return TPInt(0);
+    return MPInt(0);
 
   // Just find the maximum and minimum integer value of each non-local id
   // separately, thus finding the number of integer values each such id can
@@ -1032,12 +1032,12 @@ Optional<TPInt> IntegerRelation::computeVolume() const {
   //
   // If there is no such empty dimension, if any dimension is unbounded we
   // just return the result as unbounded.
-  TPInt count(1);
-  SmallVector<TPInt, 8> dim(getNumIds() + 1);
+  MPInt count(1);
+  SmallVector<MPInt, 8> dim(getNumIds() + 1);
   bool hasUnboundedId = false;
   for (unsigned i = 0, e = getNumDimAndSymbolIds(); i < e; ++i) {
     dim[i] = 1;
-    MaybeOptimum<TPInt> min, max;
+    MaybeOptimum<MPInt> min, max;
     std::tie(min, max) = simplex.computeIntegerBounds(dim);
     dim[i] = 0;
 
@@ -1054,13 +1054,13 @@ Optional<TPInt> IntegerRelation::computeVolume() const {
     // In this case there are no valid integer points and the volume is
     // definitely zero.
     if (min.getBoundedOptimum() > max.getBoundedOptimum())
-      return TPInt(0);
+      return MPInt(0);
 
     count *= (*max - *min + 1);
   }
 
   if (count == 0)
-    return TPInt(0);
+    return MPInt(0);
   if (hasUnboundedId)
     return {};
   return count;
@@ -1103,8 +1103,8 @@ void IntegerRelation::mergeLocalIds(IntegerRelation &other) {
   relB.insertId(IdKind::Local, 0, initLocals);
 
   // Get division representations from each rel.
-  std::vector<SmallVector<TPInt, 8>> divsA, divsB;
-  SmallVector<TPInt, 4> denomsA, denomsB;
+  std::vector<SmallVector<MPInt, 8>> divsA, divsB;
+  SmallVector<MPInt, 4> denomsA, denomsB;
   relA.getLocalReprs(divsA, denomsA);
   relB.getLocalReprs(divsB, denomsB);
 
@@ -1131,8 +1131,8 @@ void IntegerRelation::mergeLocalIds(IntegerRelation &other) {
 }
 
 void IntegerRelation::removeDuplicateDivs() {
-  std::vector<SmallVector<TPInt, 8>> divs;
-  SmallVector<TPInt, 4> denoms;
+  std::vector<SmallVector<MPInt, 8>> divs;
+  SmallVector<MPInt, 4> denoms;
 
   getLocalReprs(divs, denoms);
   auto merge = [this](unsigned i, unsigned j) -> bool {
@@ -1218,7 +1218,7 @@ void IntegerRelation::convertIdKind(IdKind srcKind, unsigned idStart,
   removeIdRange(srcKind, idStart, idLimit);
 }
 
-void IntegerRelation::addBound(BoundType type, unsigned pos, const TPInt &value) {
+void IntegerRelation::addBound(BoundType type, unsigned pos, const MPInt &value) {
   assert(pos < getNumCols());
   if (type == BoundType::EQ) {
     unsigned row = equalities.appendExtraRow();
@@ -1232,8 +1232,8 @@ void IntegerRelation::addBound(BoundType type, unsigned pos, const TPInt &value)
   }
 }
 
-void IntegerRelation::addBound(BoundType type, ArrayRef<TPInt> expr,
-                               const TPInt &value) {
+void IntegerRelation::addBound(BoundType type, ArrayRef<MPInt> expr,
+                               const MPInt &value) {
   assert(type != BoundType::EQ && "EQ not implemented");
   assert(expr.size() == getNumCols());
   unsigned row = inequalities.appendExtraRow();
@@ -1248,15 +1248,15 @@ void IntegerRelation::addBound(BoundType type, ArrayRef<TPInt> expr,
 /// respect to a positive constant 'divisor'. Two constraints are added to the
 /// system to capture equivalence with the floordiv.
 ///      q = expr floordiv c    <=>   c*q <= expr <= c*q + c - 1.
-void IntegerRelation::addLocalFloorDiv(ArrayRef<TPInt> dividend,
-                                       const TPInt &divisor) {
+void IntegerRelation::addLocalFloorDiv(ArrayRef<MPInt> dividend,
+                                       const MPInt &divisor) {
   assert(dividend.size() == getNumCols() && "incorrect dividend size");
   assert(divisor > 0 && "positive divisor expected");
 
   appendId(IdKind::Local);
 
   // Add two constraints for this new identifier 'q'.
-  SmallVector<TPInt, 8> bound(dividend.size() + 1);
+  SmallVector<MPInt, 8> bound(dividend.size() + 1);
 
   // dividend - q * divisor >= 0
   std::copy(dividend.begin(), dividend.begin() + dividend.size() - 1,
@@ -1267,7 +1267,7 @@ void IntegerRelation::addLocalFloorDiv(ArrayRef<TPInt> dividend,
 
   // -dividend +qdivisor * q + divisor - 1 >= 0
   std::transform(bound.begin(), bound.end(), bound.begin(),
-                 std::negate<TPInt>());
+                 std::negate<MPInt>());
   bound[bound.size() - 1] += divisor - 1;
   addInequality(bound);
 }
@@ -1281,7 +1281,7 @@ static int findEqualityToConstant(const IntegerRelation &cst, unsigned pos,
                                   bool symbolic = false) {
   assert(pos < cst.getNumIds() && "invalid position");
   for (unsigned r = 0, e = cst.getNumEqualities(); r < e; r++) {
-    TPInt v = cst.atEq(r, pos);
+    MPInt v = cst.atEq(r, pos);
     if (v * v != 1)
       continue;
     unsigned c;
@@ -1310,7 +1310,7 @@ LogicalResult IntegerRelation::constantFoldId(unsigned pos) {
 
   // atEq(rowIdx, pos) is either -1 or 1.
   assert(atEq(rowIdx, pos) * atEq(rowIdx, pos) == 1);
-  TPInt constVal = -atEq(rowIdx, getNumCols() - 1) / atEq(rowIdx, pos);
+  MPInt constVal = -atEq(rowIdx, getNumCols() - 1) / atEq(rowIdx, pos);
   setAndEliminate(pos, constVal);
   return success();
 }
@@ -1336,9 +1336,9 @@ void IntegerRelation::constantFoldIdRange(unsigned pos, unsigned num) {
 //       s0 + s1 + 16 <= d0 <= s0 + s1 + 31, returns 16.
 //       s0 - 7 <= 8*j <= s0 returns 1 with lb = s0, lbDivisor = 8 (since lb =
 //       ceil(s0 - 7 / 8) = floor(s0 / 8)).
-Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
-    unsigned pos, SmallVectorImpl<TPInt> *lb, TPInt *boundFloorDivisor,
-    SmallVectorImpl<TPInt> *ub, unsigned *minLbPos,
+Optional<MPInt> IntegerRelation::getConstantBoundOnDimSize(
+    unsigned pos, SmallVectorImpl<MPInt> *lb, MPInt *boundFloorDivisor,
+    SmallVectorImpl<MPInt> *ub, unsigned *minLbPos,
     unsigned *minUbPos) const {
   assert(pos < getNumDimIds() && "Invalid identifier position");
 
@@ -1351,7 +1351,7 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
     // TODO: this can be handled in the future by using the explicit
     // representation of the local vars.
     if (!std::all_of(eq.begin() + getNumDimAndSymbolIds(), eq.end() - 1,
-                     [](const TPInt &coeff) { return coeff == 0; }))
+                     [](const MPInt &coeff) { return coeff == 0; }))
       return None;
 
     // This identifier can only take a single value.
@@ -1361,7 +1361,7 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
       if (ub)
         ub->resize(getNumSymbolIds() + 1);
       for (unsigned c = 0, f = getNumSymbolIds() + 1; c < f; c++) {
-        TPInt v = atEq(eqPos, pos);
+        MPInt v = atEq(eqPos, pos);
         // atEq(eqRow, pos) is either -1 or 1.
         assert(v * v == 1);
         (*lb)[c] = v < 0 ? atEq(eqPos, getNumDimIds() + c) / -v
@@ -1378,7 +1378,7 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
       *minLbPos = eqPos;
     if (minUbPos)
       *minUbPos = eqPos;
-    return TPInt(1);
+    return MPInt(1);
   }
 
   // Check if the identifier appears at all in any of the inequalities.
@@ -1402,7 +1402,7 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
                                /*eqIndices=*/nullptr, /*offset=*/0,
                                /*num=*/getNumDimIds());
 
-  Optional<TPInt> minDiff = None;
+  Optional<MPInt> minDiff = None;
   unsigned minLbPosition = 0, minUbPosition = 0;
   for (auto ubPos : ubIndices) {
     for (auto lbPos : lbIndices) {
@@ -1419,11 +1419,11 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
         }
       if (j < getNumCols() - 1)
         continue;
-      TPInt diff = ceilDiv(atIneq(ubPos, getNumCols() - 1) +
+      MPInt diff = ceilDiv(atIneq(ubPos, getNumCols() - 1) +
                                  atIneq(lbPos, getNumCols() - 1) + 1,
                              atIneq(lbPos, pos));
       // This bound is non-negative by definition.
-      diff = std::max<TPInt>(diff, TPInt(0));
+      diff = std::max<MPInt>(diff, MPInt(0));
       if (minDiff == None || diff < minDiff) {
         minDiff = diff;
         minLbPosition = lbPos;
@@ -1463,7 +1463,7 @@ Optional<TPInt> IntegerRelation::getConstantBoundOnDimSize(
 }
 
 template <bool isLower>
-Optional<TPInt>
+Optional<MPInt>
 IntegerRelation::computeConstantLowerOrUpperBound(unsigned pos) {
   assert(pos < getNumIds() && "invalid position");
   // Project to 'pos'.
@@ -1485,7 +1485,7 @@ IntegerRelation::computeConstantLowerOrUpperBound(unsigned pos) {
     // If it doesn't, there isn't a bound on it.
     return None;
 
-  Optional<TPInt> minOrMaxConst = None;
+  Optional<MPInt> minOrMaxConst = None;
 
   // Take the max across all const lower bounds (or min across all constant
   // upper bounds).
@@ -1506,7 +1506,7 @@ IntegerRelation::computeConstantLowerOrUpperBound(unsigned pos) {
       // Not a constant bound.
       continue;
 
-    TPInt boundConst =
+    MPInt boundConst =
         isLower ? ceilDiv(-atIneq(r, getNumCols() - 1), atIneq(r, 0))
                 : floorDiv(atIneq(r, getNumCols() - 1), -atIneq(r, 0));
     if (isLower) {
@@ -1520,7 +1520,7 @@ IntegerRelation::computeConstantLowerOrUpperBound(unsigned pos) {
   return minOrMaxConst;
 }
 
-Optional<TPInt> IntegerRelation::getConstantBound(BoundType type,
+Optional<MPInt> IntegerRelation::getConstantBound(BoundType type,
                                                     unsigned pos) const {
   if (type == BoundType::LB)
     return IntegerRelation(*this)
@@ -1530,13 +1530,13 @@ Optional<TPInt> IntegerRelation::getConstantBound(BoundType type,
         .computeConstantLowerOrUpperBound</*isLower=*/false>(pos);
 
   assert(type == BoundType::EQ && "expected EQ");
-  Optional<TPInt> lb =
+  Optional<MPInt> lb =
       IntegerRelation(*this).computeConstantLowerOrUpperBound</*isLower=*/true>(
           pos);
-  Optional<TPInt> ub =
+  Optional<MPInt> ub =
       IntegerRelation(*this)
           .computeConstantLowerOrUpperBound</*isLower=*/false>(pos);
-  return (lb && ub && *lb == *ub) ? Optional<TPInt>(*ub) : None;
+  return (lb && ub && *lb == *ub) ? Optional<MPInt>(*ub) : None;
 }
 
 // A simple (naive and conservative) check for hyper-rectangularity.
@@ -1577,10 +1577,10 @@ void IntegerRelation::removeTrivialRedundancy() {
   // A map used to detect redundancy stemming from constraints that only differ
   // in their constant term. The value stored is <row position, const term>
   // for a given row.
-  SmallDenseMap<ArrayRef<TPInt>, std::pair<unsigned, TPInt>>
+  SmallDenseMap<ArrayRef<MPInt>, std::pair<unsigned, MPInt>>
       rowsWithoutConstTerm;
   // To unique rows.
-  SmallDenseSet<ArrayRef<TPInt>, 8> rowSet;
+  SmallDenseSet<ArrayRef<MPInt>, 8> rowSet;
 
   // Check if constraint is of the form <non-negative-constant> >= 0.
   auto isTriviallyValid = [&](unsigned r) -> bool {
@@ -1594,8 +1594,8 @@ void IntegerRelation::removeTrivialRedundancy() {
   // Detect and mark redundant constraints.
   SmallVector<bool, 256> redunIneq(getNumInequalities(), false);
   for (unsigned r = 0, e = getNumInequalities(); r < e; r++) {
-    TPInt *rowStart = &inequalities(r, 0);
-    auto row = ArrayRef<TPInt>(rowStart, getNumCols());
+    MPInt *rowStart = &inequalities(r, 0);
+    auto row = ArrayRef<MPInt>(rowStart, getNumCols());
     if (isTriviallyValid(r) || !rowSet.insert(row).second) {
       redunIneq[r] = true;
       continue;
@@ -1605,8 +1605,8 @@ void IntegerRelation::removeTrivialRedundancy() {
     // everything other than the one with the smallest constant term redundant.
     // (eg: among i - 16j - 5 >= 0, i - 16j - 1 >=0, i - 16j - 7 >= 0, the
     // former two are redundant).
-    TPInt constTerm = atIneq(r, getNumCols() - 1);
-    auto rowWithoutConstTerm = ArrayRef<TPInt>(rowStart, getNumCols() - 1);
+    MPInt constTerm = atIneq(r, getNumCols() - 1);
+    auto rowWithoutConstTerm = ArrayRef<MPInt>(rowStart, getNumCols() - 1);
     const auto &ret =
         rowsWithoutConstTerm.insert({rowWithoutConstTerm, {r, constTerm}});
     if (!ret.second) {
@@ -1748,7 +1748,7 @@ void IntegerRelation::fourierMotzkinEliminate(unsigned pos, bool darkShadow,
                          getNumEqualities(), getNumCols() - 1, newSpace);
 
   // This will be used to check if the elimination was integer exact.
-  TPInt lcmProducts(1);
+  MPInt lcmProducts(1);
 
   // Let x be the variable we are eliminating.
   // For each lower bound, lb <= c_l*x, and each upper bound c_u*x <= ub, (note
@@ -1762,19 +1762,19 @@ void IntegerRelation::fourierMotzkinEliminate(unsigned pos, bool darkShadow,
   // integer exact.
   for (auto ubPos : ubIndices) {
     for (auto lbPos : lbIndices) {
-      SmallVector<TPInt, 4> ineq;
+      SmallVector<MPInt, 4> ineq;
       ineq.reserve(newRel.getNumCols());
-      TPInt lbCoeff = atIneq(lbPos, pos);
+      MPInt lbCoeff = atIneq(lbPos, pos);
       // Note that in the comments above, ubCoeff is the negation of the
       // coefficient in the canonical form as the view taken here is that of the
       // term being moved to the other size of '>='.
-      TPInt ubCoeff = -atIneq(ubPos, pos);
+      MPInt ubCoeff = -atIneq(ubPos, pos);
       // TODO: refactor this loop to avoid all branches inside.
       for (unsigned l = 0, e = getNumCols(); l < e; l++) {
         if (l == pos)
           continue;
         assert(lbCoeff >= 1 && ubCoeff >= 1 && "bounds wrongly identified");
-        TPInt lcm = mlir::presburger::lcm(lbCoeff, ubCoeff);
+        MPInt lcm = mlir::presburger::lcm(lbCoeff, ubCoeff);
         ineq.push_back(atIneq(ubPos, l) * (lcm / ubCoeff) +
                        atIneq(lbPos, l) * (lcm / lbCoeff));
         lcmProducts *= lcm;
@@ -1797,7 +1797,7 @@ void IntegerRelation::fourierMotzkinEliminate(unsigned pos, bool darkShadow,
 
   // Copy over the constraints not involving this variable.
   for (auto nbPos : nbIndices) {
-    SmallVector<TPInt, 4> ineq;
+    SmallVector<MPInt, 4> ineq;
     ineq.reserve(getNumCols() - 1);
     for (unsigned l = 0, e = getNumCols(); l < e; l++) {
       if (l == pos)
@@ -1812,7 +1812,7 @@ void IntegerRelation::fourierMotzkinEliminate(unsigned pos, bool darkShadow,
 
   // Copy over the equalities.
   for (unsigned r = 0, e = getNumEqualities(); r < e; r++) {
-    SmallVector<TPInt, 4> eq;
+    SmallVector<MPInt, 4> eq;
     eq.reserve(newRel.getNumCols());
     for (unsigned l = 0, e = getNumCols(); l < e; l++) {
       if (l == pos)
@@ -1876,7 +1876,7 @@ enum BoundCmpResult { Greater, Less, Equal, Unknown };
 
 /// Compares two affine bounds whose coefficients are provided in 'first' and
 /// 'second'. The last coefficient is the constant term.
-static BoundCmpResult compareBounds(ArrayRef<TPInt> a, ArrayRef<TPInt> b) {
+static BoundCmpResult compareBounds(ArrayRef<MPInt> a, ArrayRef<MPInt> b) {
   assert(a.size() == b.size());
 
   // For the bounds to be comparable, their corresponding identifier
@@ -1928,20 +1928,20 @@ IntegerRelation::unionBoundingBox(const IntegerRelation &otherCst) {
   IntegerRelation commonCst(PresburgerSpace::getRelationSpace());
   getCommonConstraints(*this, otherCst, commonCst);
 
-  std::vector<SmallVector<TPInt, 8>> boundingLbs;
-  std::vector<SmallVector<TPInt, 8>> boundingUbs;
+  std::vector<SmallVector<MPInt, 8>> boundingLbs;
+  std::vector<SmallVector<MPInt, 8>> boundingUbs;
   boundingLbs.reserve(2 * getNumDimIds());
   boundingUbs.reserve(2 * getNumDimIds());
 
   // To hold lower and upper bounds for each dimension.
-  SmallVector<TPInt, 4> lb, otherLb, ub, otherUb;
+  SmallVector<MPInt, 4> lb, otherLb, ub, otherUb;
   // To compute min of lower bounds and max of upper bounds for each dimension.
-  SmallVector<TPInt, 4> minLb(getNumSymbolIds() + 1);
-  SmallVector<TPInt, 4> maxUb(getNumSymbolIds() + 1);
+  SmallVector<MPInt, 4> minLb(getNumSymbolIds() + 1);
+  SmallVector<MPInt, 4> maxUb(getNumSymbolIds() + 1);
   // To compute final new lower and upper bounds for the union.
-  SmallVector<TPInt, 8> newLb(getNumCols()), newUb(getNumCols());
+  SmallVector<MPInt, 8> newLb(getNumCols()), newUb(getNumCols());
 
-  TPInt lbFloorDivisor, otherLbFloorDivisor;
+  MPInt lbFloorDivisor, otherLbFloorDivisor;
   for (unsigned d = 0, e = getNumDimIds(); d < e; ++d) {
     auto extent = getConstantBoundOnDimSize(d, &lb, &lbFloorDivisor, &ub);
     if (!extent.hasValue())
@@ -2004,7 +2004,7 @@ IntegerRelation::unionBoundingBox(const IntegerRelation &otherCst) {
     // Copy over the symbolic part + constant term.
     std::copy(minLb.begin(), minLb.end(), newLb.begin() + getNumDimIds());
     std::transform(newLb.begin() + getNumDimIds(), newLb.end(),
-                   newLb.begin() + getNumDimIds(), std::negate<TPInt>());
+                   newLb.begin() + getNumDimIds(), std::negate<MPInt>());
     std::copy(maxUb.begin(), maxUb.end(), newUb.begin() + getNumDimIds());
 
     boundingLbs.push_back(newLb);

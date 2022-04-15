@@ -21,14 +21,14 @@ using namespace presburger;
 /// Normalize a division's `dividend` and the `divisor` by their GCD. For
 /// example: if the dividend and divisor are [2,0,4] and 4 respectively,
 /// they get normalized to [1,0,2] and 2.
-static void normalizeDivisionByGCD(SmallVectorImpl<TPInt> &dividend,
-                                   TPInt &divisor) {
+static void normalizeDivisionByGCD(SmallVectorImpl<MPInt> &dividend,
+                                   MPInt &divisor) {
   assert(divisor >= 0 && "divisor should not be negative!");
   if (divisor == 0 || dividend.empty())
     return;
   // We take the absolute value of dividend's coefficients to make sure that
   // `gcd` is positive.
-  TPInt gcd =
+  MPInt gcd =
       greatestCommonDivisor(abs(dividend.front()), divisor);
 
   // The reason for ignoring the constant term is as follows.
@@ -46,7 +46,7 @@ static void normalizeDivisionByGCD(SmallVectorImpl<TPInt> &dividend,
 
   // Normalize the dividend and the denominator.
   std::transform(dividend.begin(), dividend.end(), dividend.begin(),
-                 [gcd](TPInt &n) { return floorDiv(n, gcd); });
+                 [gcd](MPInt &n) { return floorDiv(n, gcd); });
   divisor /= gcd;
 }
 
@@ -90,8 +90,8 @@ static void normalizeDivisionByGCD(SmallVectorImpl<TPInt> &dividend,
 /// normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned ubIneq, unsigned lbIneq,
-                                SmallVector<TPInt, 8> &expr,
-                                TPInt &divisor) {
+                                SmallVector<MPInt, 8> &expr,
+                                MPInt &divisor) {
 
   assert(pos <= cst.getNumIds() && "Invalid identifier position");
   assert(ubIneq <= cst.getNumInequalities() &&
@@ -115,9 +115,9 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // Then, check if the constant term is of the proper form.
   // Due to the form of the upper/lower bound inequalities, the sum of their
   // constants is `divisor - 1 - c`. From this, we can extract c:
-  TPInt constantSum = cst.atIneq(lbIneq, cst.getNumCols() - 1) +
+  MPInt constantSum = cst.atIneq(lbIneq, cst.getNumCols() - 1) +
                         cst.atIneq(ubIneq, cst.getNumCols() - 1);
-  TPInt c = divisor - 1 - constantSum;
+  MPInt c = divisor - 1 - constantSum;
 
   // Check if `c` satisfies the condition `0 <= c <= divisor - 1`. This also
   // implictly checks that `divisor` is positive.
@@ -127,7 +127,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // The inequality pair can be used to extract the division.
   // Set `expr` to the dividend of the division except the constant term, which
   // is set below.
-  expr.resize(cst.getNumCols(), TPInt(0));
+  expr.resize(cst.getNumCols(), MPInt(0));
   for (i = 0, e = cst.getNumIds(); i < e; ++i)
     if (i != pos)
       expr[i] = cst.atIneq(ubIneq, i);
@@ -153,8 +153,8 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
 /// set to the denominator of the division. The final division expression is
 /// normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
-                                unsigned eqInd, SmallVector<TPInt, 8> &expr,
-                                TPInt &divisor) {
+                                unsigned eqInd, SmallVector<MPInt, 8> &expr,
+                                MPInt &divisor) {
 
   assert(pos <= cst.getNumIds() && "Invalid identifier position");
   assert(eqInd <= cst.getNumEqualities() && "Invalid equality position");
@@ -162,7 +162,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // Extract divisor, the divisor can be negative and hence its sign information
   // is stored in `signDiv` to reverse the sign of dividend's coefficients.
   // Equality must involve the pos-th variable and hence `tempDiv` != 0.
-  TPInt tempDiv = cst.atEq(eqInd, pos);
+  MPInt tempDiv = cst.atEq(eqInd, pos);
   if (tempDiv == 0)
     return failure();
   int signDiv = tempDiv < 0 ? -1 : 1;
@@ -170,7 +170,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   // The divisor is always a positive integer.
   divisor = tempDiv * signDiv;
 
-  expr.resize(cst.getNumCols(), TPInt(0));
+  expr.resize(cst.getNumCols(), MPInt(0));
   for (unsigned i = 0, e = cst.getNumIds(); i < e; ++i)
     if (i != pos)
       expr[i] = signDiv * cst.atEq(eqInd, i);
@@ -185,7 +185,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
 // explicit representation has not been found yet, otherwise returns `true`.
 static bool checkExplicitRepresentation(const IntegerRelation &cst,
                                         ArrayRef<bool> foundRepr,
-                                        ArrayRef<TPInt> dividend,
+                                        ArrayRef<MPInt> dividend,
                                         unsigned pos) {
   // Exit to avoid circular dependencies between divisions.
   for (unsigned c = 0, e = cst.getNumIds(); c < e; ++c) {
@@ -216,7 +216,7 @@ static bool checkExplicitRepresentation(const IntegerRelation &cst,
 /// `MaybeLocalRepr` is set to None.
 MaybeLocalRepr presburger::computeSingleVarRepr(
     const IntegerRelation &cst, ArrayRef<bool> foundRepr, unsigned pos,
-    SmallVector<TPInt, 8> &dividend, TPInt &divisor) {
+    SmallVector<MPInt, 8> &dividend, MPInt &divisor) {
   assert(pos < cst.getNumIds() && "invalid position");
   assert(foundRepr.size() == cst.getNumIds() &&
          "Size of foundRepr does not match total number of variables");
@@ -258,17 +258,17 @@ MaybeLocalRepr presburger::computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     SmallVector<int64_t, 8> &dividend,
                                     unsigned &divisor) {
-  SmallVector<TPInt, 8> dividendTPInt;
-  TPInt divisorTPInt;
-  MaybeLocalRepr result = computeSingleVarRepr(cst, foundRepr, pos, dividendTPInt, divisorTPInt);
-  dividend = getInt64Vec(dividendTPInt);
-  divisor = unsigned(int64_t(divisorTPInt));
+  SmallVector<MPInt, 8> dividendMPInt;
+  MPInt divisorMPInt;
+  MaybeLocalRepr result = computeSingleVarRepr(cst, foundRepr, pos, dividendMPInt, divisorMPInt);
+  dividend = getInt64Vec(dividendMPInt);
+  divisor = unsigned(int64_t(divisorMPInt));
   return result;
 }
 
 void presburger::removeDuplicateDivs(
-    std::vector<SmallVector<TPInt, 8>> &divs,
-    SmallVectorImpl<TPInt> &denoms, unsigned localOffset,
+    std::vector<SmallVector<MPInt, 8>> &divs,
+    SmallVectorImpl<MPInt> &denoms, unsigned localOffset,
     llvm::function_ref<bool(unsigned i, unsigned j)> merge) {
 
   // Find and merge duplicate divisions.
@@ -302,7 +302,7 @@ void presburger::removeDuplicateDivs(
 
       // Update division information to reflect merging.
       for (unsigned k = 0, g = divs.size(); k < g; ++k) {
-        SmallVector<TPInt, 8> &div = divs[k];
+        SmallVector<MPInt, 8> &div = divs[k];
         if (denoms[k] != 0) {
           div[localOffset + i] += div[localOffset + j];
           div.erase(div.begin() + localOffset + j);
@@ -317,9 +317,9 @@ void presburger::removeDuplicateDivs(
   }
 }
 
-TPInt presburger::gcdRange(ArrayRef<TPInt> range) {
-  TPInt gcd(0);
-  for (const TPInt &elem : range) {
+MPInt presburger::gcdRange(ArrayRef<MPInt> range) {
+  MPInt gcd(0);
+  for (const MPInt &elem : range) {
     gcd = greatestCommonDivisor(gcd, abs(elem));
     if (gcd == 1)
       return gcd;
@@ -327,52 +327,52 @@ TPInt presburger::gcdRange(ArrayRef<TPInt> range) {
   return gcd;
 }
 
-TPInt presburger::normalizeRange(MutableArrayRef<TPInt> range) {
-  TPInt gcd = gcdRange(range);
+MPInt presburger::normalizeRange(MutableArrayRef<MPInt> range) {
+  MPInt gcd = gcdRange(range);
   if ((gcd == 0) || (gcd == 1))
     return gcd;
-  for (TPInt &elem : range)
+  for (MPInt &elem : range)
     elem /= gcd;
   return gcd;
 }
 
-void presburger::normalizeDiv(MutableArrayRef<TPInt> num, TPInt &denom) {
+void presburger::normalizeDiv(MutableArrayRef<MPInt> num, MPInt &denom) {
   assert(denom > 0 && "denom must be positive!");
-  TPInt gcd = greatestCommonDivisor(gcdRange(num), denom);
-  for (TPInt &coeff : num)
+  MPInt gcd = greatestCommonDivisor(gcdRange(num), denom);
+  for (MPInt &coeff : num)
     coeff /= gcd;
   denom /= gcd;
 }
 
-SmallVector<TPInt, 8> presburger::getNegatedCoeffs(ArrayRef<TPInt> coeffs) {
-  SmallVector<TPInt, 8> negatedCoeffs;
+SmallVector<MPInt, 8> presburger::getNegatedCoeffs(ArrayRef<MPInt> coeffs) {
+  SmallVector<MPInt, 8> negatedCoeffs;
   negatedCoeffs.reserve(coeffs.size());
-  for (const TPInt &coeff : coeffs)
+  for (const MPInt &coeff : coeffs)
     negatedCoeffs.emplace_back(-coeff);
   return negatedCoeffs;
 }
 
-SmallVector<TPInt, 8> presburger::getComplementIneq(ArrayRef<TPInt> ineq) {
-  SmallVector<TPInt, 8> coeffs;
+SmallVector<MPInt, 8> presburger::getComplementIneq(ArrayRef<MPInt> ineq) {
+  SmallVector<MPInt, 8> coeffs;
   coeffs.reserve(ineq.size());
-  for (const TPInt &coeff : ineq)
+  for (const MPInt &coeff : ineq)
     coeffs.emplace_back(-coeff);
   --coeffs.back();
   return coeffs;
 }
 
-SmallVector<TPInt, 8> presburger::getTPIntVec(ArrayRef<int64_t> range) {
-  SmallVector<TPInt, 8> coeffs;
+SmallVector<MPInt, 8> presburger::getMPIntVec(ArrayRef<int64_t> range) {
+  SmallVector<MPInt, 8> coeffs;
   coeffs.reserve(range.size());
   for (int64_t elem : range)
     coeffs.emplace_back(elem);
   return coeffs;
 }
 
-SmallVector<int64_t, 8> presburger::getInt64Vec(ArrayRef<TPInt> range) {
+SmallVector<int64_t, 8> presburger::getInt64Vec(ArrayRef<MPInt> range) {
   SmallVector<int64_t, 8> coeffs;
   coeffs.reserve(range.size());
-  for (const TPInt &elem : range)
+  for (const MPInt &elem : range)
     coeffs.emplace_back(elem);
   return coeffs;
 }

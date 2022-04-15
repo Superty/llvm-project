@@ -28,23 +28,23 @@ Matrix Matrix::identity(unsigned dimension) {
   return matrix;
 }
 
-TPInt &Matrix::at(unsigned row, unsigned column) {
+MPInt &Matrix::at(unsigned row, unsigned column) {
   assert(row < nRows && "Row outside of range");
   assert(column < nColumns && "Column outside of range");
   return data[row * nReservedColumns + column];
 }
 
-TPInt Matrix::at(unsigned row, unsigned column) const {
+MPInt Matrix::at(unsigned row, unsigned column) const {
   assert(row < nRows && "Row outside of range");
   assert(column < nColumns && "Column outside of range");
   return data[row * nReservedColumns + column];
 }
 
-TPInt &Matrix::operator()(unsigned row, unsigned column) {
+MPInt &Matrix::operator()(unsigned row, unsigned column) {
   return at(row, column);
 }
 
-TPInt Matrix::operator()(unsigned row, unsigned column) const {
+MPInt Matrix::operator()(unsigned row, unsigned column) const {
   return at(row, column);
 }
 
@@ -67,7 +67,7 @@ unsigned Matrix::appendExtraRow() {
   return nRows - 1;
 }
 
-unsigned Matrix::appendExtraRow(ArrayRef<TPInt> elems) {
+unsigned Matrix::appendExtraRow(ArrayRef<MPInt> elems) {
   assert(elems.size() == nColumns && "elems must match row length!");
   unsigned row = appendExtraRow();
   for (unsigned col = 0; col < nColumns; ++col)
@@ -110,11 +110,11 @@ void Matrix::swapColumns(unsigned column, unsigned otherColumn) {
     std::swap(at(row, column), at(row, otherColumn));
 }
 
-MutableArrayRef<TPInt> Matrix::getRow(unsigned row) {
+MutableArrayRef<MPInt> Matrix::getRow(unsigned row) {
   return {&data[row * nReservedColumns], nColumns};
 }
 
-ArrayRef<TPInt> Matrix::getRow(unsigned row) const {
+ArrayRef<MPInt> Matrix::getRow(unsigned row) const {
   return {&data[row * nReservedColumns], nColumns};
 }
 
@@ -134,7 +134,7 @@ void Matrix::insertColumns(unsigned pos, unsigned count) {
     for (int ci = nReservedColumns - 1; ci >= 0; --ci) {
       unsigned r = ri;
       unsigned c = ci;
-      TPInt &dest = data[r * nReservedColumns + c];
+      MPInt &dest = data[r * nReservedColumns + c];
       if (c >= nColumns) { // NOLINT
         // Out of bounds columns are zero-initialized. NOLINT because clang-tidy
         // complains about this branch being the same as the c >= pos one.
@@ -205,12 +205,12 @@ void Matrix::copyRow(unsigned sourceRow, unsigned targetRow) {
     at(targetRow, c) = at(sourceRow, c);
 }
 
-void Matrix::fillRow(unsigned row, const TPInt &value) {
+void Matrix::fillRow(unsigned row, const MPInt &value) {
   for (unsigned col = 0; col < nColumns; ++col)
     at(row, col) = value;
 }
 
-void Matrix::addToRow(unsigned sourceRow, unsigned targetRow, const TPInt &scale) {
+void Matrix::addToRow(unsigned sourceRow, unsigned targetRow, const MPInt &scale) {
   if (scale == 0)
     return;
   for (unsigned col = 0; col < nColumns; ++col)
@@ -218,7 +218,7 @@ void Matrix::addToRow(unsigned sourceRow, unsigned targetRow, const TPInt &scale
 }
 
 void Matrix::addToColumn(unsigned sourceColumn, unsigned targetColumn,
-                         const TPInt &scale) {
+                         const MPInt &scale) {
   if (scale == 0)
     return;
   for (unsigned row = 0, e = getNumRows(); row < e; ++row)
@@ -235,31 +235,31 @@ void Matrix::negateRow(unsigned row) {
     at(row, column) = -at(row, column);
 }
 
-TPInt Matrix::normalizeRow(unsigned row, unsigned cols) {
+MPInt Matrix::normalizeRow(unsigned row, unsigned cols) {
   return normalizeRange(getRow(row).slice(0, cols));
 }
 
-TPInt Matrix::normalizeRow(unsigned row) {
+MPInt Matrix::normalizeRow(unsigned row) {
   return normalizeRow(row, getNumColumns());
 }
 
-SmallVector<TPInt, 8>
-Matrix::preMultiplyWithRow(ArrayRef<TPInt> rowVec) const {
+SmallVector<MPInt, 8>
+Matrix::preMultiplyWithRow(ArrayRef<MPInt> rowVec) const {
   assert(rowVec.size() == getNumRows() && "Invalid row vector dimension!");
 
-  SmallVector<TPInt, 8> result(getNumColumns(), TPInt(0));
+  SmallVector<MPInt, 8> result(getNumColumns(), MPInt(0));
   for (unsigned col = 0, e = getNumColumns(); col < e; ++col)
     for (unsigned i = 0, e = getNumRows(); i < e; ++i)
       result[col] += rowVec[i] * at(i, col);
   return result;
 }
 
-SmallVector<TPInt, 8>
-Matrix::postMultiplyWithColumn(ArrayRef<TPInt> colVec) const {
+SmallVector<MPInt, 8>
+Matrix::postMultiplyWithColumn(ArrayRef<MPInt> colVec) const {
   assert(getNumColumns() == colVec.size() &&
          "Invalid column vector dimension!");
 
-  SmallVector<TPInt, 8> result(getNumRows(), TPInt(0));
+  SmallVector<MPInt, 8> result(getNumRows(), MPInt(0));
   for (unsigned row = 0, e = getNumRows(); row < e; row++)
     for (unsigned i = 0, e = getNumColumns(); i < e; i++)
       result[row] += at(row, i) * colVec[i];

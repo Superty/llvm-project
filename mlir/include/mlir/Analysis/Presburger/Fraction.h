@@ -14,7 +14,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 #define MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 
-#include "mlir/Analysis/Presburger/TPInt.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include "mlir/Support/MathExtras.h"
 
 namespace mlir {
@@ -30,33 +30,33 @@ struct Fraction {
   Fraction() = default;
 
   /// Construct a Fraction from a numerator and denominator.
-  Fraction(TPInt oNum, TPInt oDen) : num(oNum), den(oDen) {
+  Fraction(MPInt oNum, MPInt oDen) : num(oNum), den(oDen) {
     if (den < 0) {
       num = -num;
       den = -den;
     }
   }
-  Fraction(TPInt num, int64_t den) : Fraction(num, TPInt(den)) {}
-  Fraction(int64_t num, TPInt den) : Fraction(TPInt(num), den) {}
-  Fraction(int64_t num, int64_t den) : Fraction(TPInt(num), TPInt(den)) {}
+  Fraction(MPInt num, int64_t den) : Fraction(num, MPInt(den)) {}
+  Fraction(int64_t num, MPInt den) : Fraction(MPInt(num), den) {}
+  Fraction(int64_t num, int64_t den) : Fraction(MPInt(num), MPInt(den)) {}
 
   // Return the value of the fraction as an integer. This should only be called
   // when the fraction's value is really an integer.
-  TPInt getAsInteger() const {
+  MPInt getAsInteger() const {
     assert(num % den == 0 && "Get as integer called on non-integral fraction!");
     return num / den;
   }
 
   /// The numerator and denominator, respectively. The denominator is always
   /// positive.
-  TPInt num{0}, den{1};
+  MPInt num{0}, den{1};
 };
 
 /// Three-way comparison between two fractions.
 /// Returns +1, 0, and -1 if the first fraction is greater than, equal to, or
 /// less than the second fraction, respectively.
 inline int compare(Fraction x, Fraction y) {
-  TPInt diff = x.num * y.den - y.num * x.den;
+  MPInt diff = x.num * y.den - y.num * x.den;
   if (diff > 0)
     return +1;
   if (diff < 0)
@@ -64,9 +64,9 @@ inline int compare(Fraction x, Fraction y) {
   return 0;
 }
 
-inline TPInt floor(Fraction f) { return floorDiv(f.num, f.den); }
+inline MPInt floor(Fraction f) { return floorDiv(f.num, f.den); }
 
-inline TPInt ceil(Fraction f) { return ceilDiv(f.num, f.den); }
+inline MPInt ceil(Fraction f) { return ceilDiv(f.num, f.den); }
 
 inline Fraction operator-(Fraction x) { return Fraction(-x.num, x.den); }
 

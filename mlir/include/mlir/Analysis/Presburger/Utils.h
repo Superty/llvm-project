@@ -13,7 +13,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_UTILS_H
 #define MLIR_ANALYSIS_PRESBURGER_UTILS_H
 
-#include "mlir/Analysis/Presburger/TPInt.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/STLExtras.h"
 
@@ -101,10 +101,10 @@ struct MaybeLocalRepr {
   } repr;
 };
 
-/// Return the given array as an array of TPInts.
-SmallVector<TPInt, 8> getTPIntVec(ArrayRef<int64_t> range);
+/// Return the given array as an array of MPInts.
+SmallVector<MPInt, 8> getMPIntVec(ArrayRef<int64_t> range);
 /// Return the given array as an array of int64_t.
-SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
+SmallVector<int64_t, 8> getInt64Vec(ArrayRef<MPInt> range);
 
 /// Check if the pos^th identifier can be expressed as a floordiv of an affine
 /// function of other identifiers (where the divisor is a positive constant).
@@ -117,8 +117,8 @@ SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
 /// `MaybeLocalRepr` is set to None.
 MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
-                                    SmallVector<TPInt, 8> &dividend,
-                                    TPInt &divisor);
+                                    SmallVector<MPInt, 8> &dividend,
+                                    MPInt &divisor);
 MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     SmallVector<int64_t, 8> &dividend,
@@ -136,30 +136,30 @@ MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
 /// the divisions are not merged. `merge` can also do side effects, For example
 /// it can merge the local identifiers in IntegerRelation.
 void removeDuplicateDivs(
-    std::vector<SmallVector<TPInt, 8>> &divs,
-    SmallVectorImpl<TPInt> &denoms, unsigned localOffset,
+    std::vector<SmallVector<MPInt, 8>> &divs,
+    SmallVectorImpl<MPInt> &denoms, unsigned localOffset,
     llvm::function_ref<bool(unsigned i, unsigned j)> merge);
 
 /// Compute the gcd of the range.
-TPInt gcdRange(ArrayRef<TPInt> range);
+MPInt gcdRange(ArrayRef<MPInt> range);
 
 /// Divide the range by its gcd and return the gcd.
-TPInt normalizeRange(MutableArrayRef<TPInt> range);
+MPInt normalizeRange(MutableArrayRef<MPInt> range);
 
 /// Normalize the given (numerator, denominator) pair by dividing out the
 /// common factors between them. The numerator here is an affine expression
 /// with integer coefficients.
-void normalizeDiv(MutableArrayRef<TPInt> num, TPInt &denom);
+void normalizeDiv(MutableArrayRef<MPInt> num, MPInt &denom);
 
 /// Return `coeffs` with all the elements negated.
-SmallVector<TPInt, 8> getNegatedCoeffs(ArrayRef<TPInt> coeffs);
+SmallVector<MPInt, 8> getNegatedCoeffs(ArrayRef<MPInt> coeffs);
 
 /// Return the complement of the given inequality.
 ///
 /// The complement of a_1 x_1 + ... + a_n x_ + c >= 0 is
 /// a_1 x_1 + ... + a_n x_ + c < 0, i.e., -a_1 x_1 - ... - a_n x_ - c - 1 >= 0,
 /// since all the variables are constrained to be integers.
-SmallVector<TPInt, 8> getComplementIneq(ArrayRef<TPInt> ineq);
+SmallVector<MPInt, 8> getComplementIneq(ArrayRef<MPInt> ineq);
 } // namespace presburger
 } // namespace mlir
 

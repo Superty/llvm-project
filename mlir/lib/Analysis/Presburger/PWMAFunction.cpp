@@ -15,11 +15,11 @@ using namespace presburger;
 // Return the result of subtracting the two given vectors pointwise.
 // The vectors must be of the same size.
 // e.g., [3, 4, 6] - [2, 5, 1] = [1, -1, 5].
-static SmallVector<TPInt, 8> subtract(ArrayRef<TPInt> vecA,
-                                        ArrayRef<TPInt> vecB) {
+static SmallVector<MPInt, 8> subtract(ArrayRef<MPInt> vecA,
+                                        ArrayRef<MPInt> vecB) {
   assert(vecA.size() == vecB.size() &&
          "Cannot subtract vectors of differing lengths!");
-  SmallVector<TPInt, 8> result;
+  SmallVector<MPInt, 8> result;
   result.reserve(vecA.size());
   for (unsigned i = 0, e = vecA.size(); i < e; ++i)
     result.push_back(vecA[i] - vecB[i]);
@@ -33,18 +33,18 @@ PresburgerSet PWMAFunction::getDomain() const {
   return domain;
 }
 
-Optional<SmallVector<TPInt, 8>>
-MultiAffineFunction::valueAt(ArrayRef<TPInt> point) const {
+Optional<SmallVector<MPInt, 8>>
+MultiAffineFunction::valueAt(ArrayRef<MPInt> point) const {
   assert(point.size() == getNumDimAndSymbolIds() &&
          "Point has incorrect dimensionality!");
 
-  Optional<SmallVector<TPInt, 8>> maybeLocalValues =
+  Optional<SmallVector<MPInt, 8>> maybeLocalValues =
       getDomain().containsPointNoLocal(point);
   if (!maybeLocalValues)
     return {};
 
   // The point lies in the domain, so we need to compute the output value.
-  SmallVector<TPInt, 8> pointHomogenous{llvm::to_vector(point)};
+  SmallVector<MPInt, 8> pointHomogenous{llvm::to_vector(point)};
   // The given point didn't include the values of locals which the output is a
   // function of; we have computed one possible set of values and use them
   // here. The function is not allowed to have local ids that take more than
@@ -56,18 +56,18 @@ MultiAffineFunction::valueAt(ArrayRef<TPInt> point) const {
   // a 1 appended at the end. We can see that output * v gives the desired
   // output vector.
   pointHomogenous.emplace_back(1);
-  SmallVector<TPInt, 8> result =
+  SmallVector<MPInt, 8> result =
       output.postMultiplyWithColumn(pointHomogenous);
   assert(result.size() == getNumOutputs());
   return result;
 }
 
-Optional<SmallVector<TPInt, 8>>
-PWMAFunction::valueAt(ArrayRef<TPInt> point) const {
+Optional<SmallVector<MPInt, 8>>
+PWMAFunction::valueAt(ArrayRef<MPInt> point) const {
   assert(point.size() == getNumInputs() &&
          "Point has incorrect dimensionality!");
   for (const MultiAffineFunction &piece : pieces)
-    if (Optional<SmallVector<TPInt, 8>> output = piece.valueAt(point))
+    if (Optional<SmallVector<MPInt, 8>> output = piece.valueAt(point))
       return output;
   return {};
 }

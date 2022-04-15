@@ -85,7 +85,7 @@ inline PWMAFunction parsePWMAF(
 
 /// lhs and rhs represent non-negative integers or positive infinity. The
 /// infinity case corresponds to when the Optional is empty.
-inline bool infinityOrUInt64LE(Optional<TPInt> lhs, Optional<TPInt> rhs) {
+inline bool infinityOrUInt64LE(Optional<MPInt> lhs, Optional<MPInt> rhs) {
   // No constraint.
   if (!rhs)
     return true;
@@ -99,21 +99,21 @@ inline bool infinityOrUInt64LE(Optional<TPInt> lhs, Optional<TPInt> rhs) {
 /// the true volume `trueVolume`, while also being at least as good an
 /// approximation as `resultBound`.
 inline void
-expectComputedVolumeIsValidOverapprox(Optional<TPInt> computedVolume,
-                                      Optional<TPInt> trueVolume,
-                                      Optional<TPInt> resultBound) {
+expectComputedVolumeIsValidOverapprox(Optional<MPInt> computedVolume,
+                                      Optional<MPInt> trueVolume,
+                                      Optional<MPInt> resultBound) {
   assert(infinityOrUInt64LE(trueVolume, resultBound) &&
          "can't expect result to be less than the true volume");
   EXPECT_TRUE(infinityOrUInt64LE(trueVolume, computedVolume));
   EXPECT_TRUE(infinityOrUInt64LE(computedVolume, resultBound));
 }
 
-inline TPInt tpIntFromInt64(int64_t x) {
-  return TPInt(x);
+inline MPInt tpIntFromInt64(int64_t x) {
+  return MPInt(x);
 }
 
 inline void
-expectComputedVolumeIsValidOverapprox(Optional<TPInt> computedVolume,
+expectComputedVolumeIsValidOverapprox(Optional<MPInt> computedVolume,
                                       Optional<int64_t> trueVolume,
                                       Optional<int64_t> resultBound) {
   expectComputedVolumeIsValidOverapprox(computedVolume, trueVolume.map(tpIntFromInt64), resultBound.map(tpIntFromInt64));

@@ -14,7 +14,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_MATRIX_H
 #define MLIR_ANALYSIS_PRESBURGER_MATRIX_H
 
-#include "mlir/Analysis/Presburger/TPInt.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
@@ -49,10 +49,10 @@ public:
   static Matrix identity(unsigned dimension);
 
   /// Access the element at the specified row and column.
-  TPInt &at(unsigned row, unsigned column);
-  TPInt at(unsigned row, unsigned column) const;
-  TPInt &operator()(unsigned row, unsigned column);
-  TPInt operator()(unsigned row, unsigned column) const;
+  MPInt &at(unsigned row, unsigned column);
+  MPInt at(unsigned row, unsigned column) const;
+  MPInt &operator()(unsigned row, unsigned column);
+  MPInt operator()(unsigned row, unsigned column) const;
 
   /// Swap the given columns.
   void swapColumns(unsigned column, unsigned otherColumn);
@@ -74,8 +74,8 @@ public:
   void reserveRows(unsigned rows);
 
   /// Get a [Mutable]ArrayRef corresponding to the specified row.
-  MutableArrayRef<TPInt> getRow(unsigned row);
-  ArrayRef<TPInt> getRow(unsigned row) const;
+  MutableArrayRef<MPInt> getRow(unsigned row);
+  ArrayRef<MPInt> getRow(unsigned row) const;
 
   /// Insert columns having positions pos, pos + 1, ... pos + count - 1.
   /// Columns that were at positions 0 to pos - 1 will stay where they are;
@@ -109,21 +109,21 @@ public:
 
   void copyRow(unsigned sourceRow, unsigned targetRow);
 
-  void fillRow(unsigned row, const TPInt &value);
+  void fillRow(unsigned row, const MPInt &value);
   void fillRow(unsigned row, int64_t value) {
-    fillRow(row, TPInt(value));
+    fillRow(row, MPInt(value));
   }
 
   /// Add `scale` multiples of the source row to the target row.
-  void addToRow(unsigned sourceRow, unsigned targetRow, const TPInt &scale);
+  void addToRow(unsigned sourceRow, unsigned targetRow, const MPInt &scale);
   void addToRow(unsigned sourceRow, unsigned targetRow, int64_t scale) {
-    addToRow(sourceRow, targetRow, TPInt(scale));
+    addToRow(sourceRow, targetRow, MPInt(scale));
   }
 
   /// Add `scale` multiples of the source column to the target column.
-  void addToColumn(unsigned sourceColumn, unsigned targetColumn, const TPInt &scale);
+  void addToColumn(unsigned sourceColumn, unsigned targetColumn, const MPInt &scale);
   void addToColumn(unsigned sourceColumn, unsigned targetColumn, int64_t scale) {
-    addToColumn(sourceColumn, targetColumn, TPInt(scale));
+    addToColumn(sourceColumn, targetColumn, MPInt(scale));
   }
 
   /// Negate the specified column.
@@ -134,19 +134,19 @@ public:
 
   /// Divide the first `nCols` of the specified row by their GCD.
   /// Returns the GCD of the first `nCols` of the specified row.
-  TPInt normalizeRow(unsigned row, unsigned nCols);
+  MPInt normalizeRow(unsigned row, unsigned nCols);
   /// Divide the columns of the specified row by their GCD.
   /// Returns the GCD of the columns of the specified row.
-  TPInt normalizeRow(unsigned row);
+  MPInt normalizeRow(unsigned row);
 
   /// The given vector is interpreted as a row vector v. Post-multiply v with
   /// this matrix, say M, and return vM.
-  SmallVector<TPInt, 8> preMultiplyWithRow(ArrayRef<TPInt> rowVec) const;
+  SmallVector<MPInt, 8> preMultiplyWithRow(ArrayRef<MPInt> rowVec) const;
 
   /// The given vector is interpreted as a column vector v. Pre-multiply v with
   /// this matrix, say M, and return Mv.
-  SmallVector<TPInt, 8>
-  postMultiplyWithColumn(ArrayRef<TPInt> colVec) const;
+  SmallVector<MPInt, 8>
+  postMultiplyWithColumn(ArrayRef<MPInt> colVec) const;
 
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are initialized
@@ -163,7 +163,7 @@ public:
   unsigned appendExtraRow();
   /// Same as above, but copy the given elements into the row. The length of
   /// `elems` must be equal to the number of columns.
-  unsigned appendExtraRow(ArrayRef<TPInt> elems);
+  unsigned appendExtraRow(ArrayRef<MPInt> elems);
 
   /// Print the matrix.
   void print(raw_ostream &os) const;
@@ -182,7 +182,7 @@ private:
 
   /// Stores the data. data.size() is equal to nRows * nReservedColumns.
   /// data.capacity() / nReservedColumns is the number of reserved rows.
-  SmallVector<TPInt, 64> data;
+  SmallVector<MPInt, 64> data;
 };
 
 } // namespace presburger
