@@ -758,7 +758,7 @@ APInt2 APInt2::reverseBits() const {
 
 APInt2 llvm::APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B) {
   if (A.isSingleWord() && B.isSingleWord()) {
-    uint64_t x = A.U.VAL, y = B.U.VAL;
+    uint64_t x = SignExtend64(A.U.VAL, A.getBitWidth()), y = SignExtend64(B.U.VAL, B.getBitWidth());
 
     // Fast-path a common case.
     if (x == y) return APInt2(A.getBitWidth(), x, /*isSigned=*/false);
