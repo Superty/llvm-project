@@ -1964,22 +1964,7 @@ APInt2 APInt2::sdiv_ov(const APInt2 &RHS, bool &Overflow) const {
   return sdiv(RHS);
 }
 
-APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
-  APInt2 Res(BitWidth, 0, /*isSigned=*/true);
-  if (isSingleWord() && RHS.isSingleWord()) {
-    Overflow = __builtin_mul_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
-    return Res;
-  }
-  Res = *this * RHS;
-
-  if (RHS != 0)
-    Overflow = Res.sdiv(RHS) != *this ||
-               (isMinSignedValue() && RHS.isAllOnes());
-  else
-    Overflow = false;
-  return Res;
-}
-
+__attribute__((always_inline))
 APInt2 APInt2::umul_ov(const APInt2 &RHS, bool &Overflow) const {
   if (countLeadingZeros() + RHS.countLeadingZeros() + 2 <= BitWidth) {
     Overflow = true;

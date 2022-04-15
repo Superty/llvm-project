@@ -166,6 +166,7 @@ namespace detail {
 /// widths should not also overflow.
 
 using APInt2OvOp = APInt2 (APInt2::*)(const APInt2 &b, bool &overflow) const;
+__attribute__((always_inline))
 inline APInt2 runOpWithExpandOnOverflow(const APInt2 &a, const APInt2 &b,
                                         APInt2OvOp op) {
   bool overflow;
