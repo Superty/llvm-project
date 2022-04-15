@@ -164,45 +164,42 @@ namespace detail {
 /// If the overflow bit becomes set, resize a and b to double the width and
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
-template <typename Function>
+
+using APInt2OvOp = APInt2 (APInt2::*)(const APInt2 &b, bool &overflow) const;
 inline APInt2 runOpWithExpandOnOverflow(const APInt2 &a, const APInt2 &b,
-                                        const Function &op) {
+                                        APInt2OvOp op) {
   bool overflow;
   unsigned widthA = a.getBitWidth(), widthB = b.getBitWidth();
   APInt2 ret;
   if (widthA == widthB) {
-    ret = op(a, b, overflow);
+    ret = (a.*op)(b, overflow);
     if (!overflow)
       return ret;
   } else if (widthA < widthB)
-    ret = op(a.sext(widthB), b, overflow);
+    ret = (a.sext(widthB).*op)(b, overflow);
   else
-    ret = op(a, b.sext(widthA), overflow);
+    ret = (a.*op)(b.sext(widthA), overflow);
   if (!overflow)
     return ret;
 
   unsigned newWidth = 2*std::max(widthA, widthB);
-  ret = op(a.sext(newWidth), b.sext(newWidth), overflow);
+  ret = (a.sext(newWidth).*op)(b.sext(newWidth), overflow);
   assert(!overflow && "double width should be sufficient to avoid overflow!");
   return ret;
 }
 } // namespace detail
 
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt2::sadd_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::sadd_ov));
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt2::ssub_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::ssub_ov));
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt2::smul_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::smul_ov));
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val,
-                                                 std::mem_fn(&APInt2::sdiv_ov)));
+  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::sdiv_ov));
 }
 inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
