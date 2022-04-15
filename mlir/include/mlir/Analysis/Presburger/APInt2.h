@@ -2302,7 +2302,6 @@ template <> struct DenseMapInfo<APInt2, void> {
   }
 };
 
-__attribute__((always_inline))
 inline APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
@@ -2319,7 +2318,6 @@ inline APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
   return Res;
 }
 
-__attribute__((always_inline))
 inline APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
@@ -2332,7 +2330,6 @@ inline APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
   return Res;
 }
 
-__attribute__((always_inline))
 inline APInt2 APInt2::ssub_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
@@ -2345,7 +2342,6 @@ inline APInt2 APInt2::ssub_ov(const APInt2 &RHS, bool &Overflow) const {
   return Res;
 }
 
-__attribute__((always_inline))
 inline APInt2 APInt2::sdiv_ov(const APInt2 &RHS, bool &Overflow) const {
   // MININT/-1  -->  overflow.
   Overflow = isMinSignedValue() && RHS.isAllOnes();
