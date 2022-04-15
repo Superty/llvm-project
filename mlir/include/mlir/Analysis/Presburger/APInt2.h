@@ -2315,6 +2315,39 @@ inline APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
   return Res;
 }
 
+__attribute__((always_inline))
+inline APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
+  APInt2 Res(BitWidth, 0, /*isSigned=*/true);
+  if (isSingleWord() && RHS.isSingleWord()) {
+    Overflow = __builtin_add_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    return Res;
+  }
+  Res = *this+RHS;
+  Overflow = isNonNegative() == RHS.isNonNegative() &&
+             Res.isNonNegative() != isNonNegative();
+  return Res;
+}
+
+__attribute__((always_inline))
+inline APInt2 APInt2::ssub_ov(const APInt2 &RHS, bool &Overflow) const {
+  APInt2 Res(BitWidth, 0, /*isSigned=*/true);
+  if (isSingleWord() && RHS.isSingleWord()) {
+    Overflow = __builtin_sub_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    return Res;
+  }
+  Res = *this - RHS;
+  Overflow = isNonNegative() != RHS.isNonNegative() &&
+             Res.isNonNegative() != isNonNegative();
+  return Res;
+}
+
+__attribute__((always_inline))
+inline APInt2 APInt2::sdiv_ov(const APInt2 &RHS, bool &Overflow) const {
+  // MININT/-1  -->  overflow.
+  Overflow = isMinSignedValue() && RHS.isAllOnes();
+  return sdiv(RHS);
+}
+
 } // namespace llvm
 
 #endif

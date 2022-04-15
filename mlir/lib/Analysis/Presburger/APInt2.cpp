@@ -1932,23 +1932,9 @@ void APInt2::sdivrem(const APInt2 &LHS, int64_t RHS,
   Remainder = R;
 }
 
-APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
-  APInt2 Res = *this+RHS;
-  Overflow = isNonNegative() == RHS.isNonNegative() &&
-             Res.isNonNegative() != isNonNegative();
-  return Res;
-}
-
 APInt2 APInt2::uadd_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res = *this+RHS;
   Overflow = Res.ult(RHS);
-  return Res;
-}
-
-APInt2 APInt2::ssub_ov(const APInt2 &RHS, bool &Overflow) const {
-  APInt2 Res = *this - RHS;
-  Overflow = isNonNegative() != RHS.isNonNegative() &&
-             Res.isNonNegative() != isNonNegative();
   return Res;
 }
 
@@ -1958,13 +1944,6 @@ APInt2 APInt2::usub_ov(const APInt2 &RHS, bool &Overflow) const {
   return Res;
 }
 
-APInt2 APInt2::sdiv_ov(const APInt2 &RHS, bool &Overflow) const {
-  // MININT/-1  -->  overflow.
-  Overflow = isMinSignedValue() && RHS.isAllOnes();
-  return sdiv(RHS);
-}
-
-__attribute__((always_inline))
 APInt2 APInt2::umul_ov(const APInt2 &RHS, bool &Overflow) const {
   if (countLeadingZeros() + RHS.countLeadingZeros() + 2 <= BitWidth) {
     Overflow = true;
