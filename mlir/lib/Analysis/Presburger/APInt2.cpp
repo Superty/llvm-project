@@ -758,7 +758,7 @@ APInt2 APInt2::reverseBits() const {
   return Reversed;
 }
 
-APInt2 llvm::APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B) {
+APInt2 llvm::APInt2Ops::GreatestCommonDivisor(const APInt2 &A, const APInt2 &B) {
   if (A.isSingleWord() && B.isSingleWord()) {
     uint64_t x = SignExtend64(A.U.VAL, A.getBitWidth()), y = SignExtend64(B.U.VAL, B.getBitWidth());
 
@@ -810,15 +810,16 @@ APInt2 llvm::APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B) {
   if (!B) return A;
 
   // Count common powers of 2 and remove all other powers of 2.
+  APInt2 Acopy = A, Bcopy = B;
   unsigned Pow2;
   {
-    unsigned Pow2_A = A.countTrailingZeros();
-    unsigned Pow2_B = B.countTrailingZeros();
+    unsigned Pow2_A = Acopy.countTrailingZeros();
+    unsigned Pow2_B = Bcopy.countTrailingZeros();
     if (Pow2_A > Pow2_B) {
-      A.lshrInPlace(Pow2_A - Pow2_B);
+      Acopy.lshrInPlace(Pow2_A - Pow2_B);
       Pow2 = Pow2_B;
     } else if (Pow2_B > Pow2_A) {
-      B.lshrInPlace(Pow2_B - Pow2_A);
+      Bcopy.lshrInPlace(Pow2_B - Pow2_A);
       Pow2 = Pow2_A;
     } else {
       Pow2 = Pow2_A;
@@ -831,17 +832,17 @@ APInt2 llvm::APInt2Ops::GreatestCommonDivisor(APInt2 A, APInt2 B) {
   //
   // This is a modified version of Stein's algorithm, taking advantage of
   // efficient countTrailingZeros().
-  while (A != B) {
-    if (A.ugt(B)) {
-      A -= B;
-      A.lshrInPlace(A.countTrailingZeros() - Pow2);
+  while (Acopy != Bcopy) {
+    if (Acopy.ugt(Bcopy)) {
+      Acopy -= Bcopy;
+      Acopy.lshrInPlace(Acopy.countTrailingZeros() - Pow2);
     } else {
-      B -= A;
-      B.lshrInPlace(B.countTrailingZeros() - Pow2);
+      Bcopy -= Acopy;
+      Bcopy.lshrInPlace(Bcopy.countTrailingZeros() - Pow2);
     }
   }
 
-  return A;
+  return Acopy;
 }
 
 APInt2 llvm::APInt2Ops::RoundDoubleToAPInt2(double Double, unsigned width) {
