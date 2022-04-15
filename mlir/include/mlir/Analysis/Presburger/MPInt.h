@@ -36,28 +36,28 @@ public:
   explicit MPInt(int64_t val) : val(/*numBits=*/64, val, /*isSigned=*/true) {}
   MPInt() : MPInt(0) {}
   explicit MPInt(const APInt2 &val) : val(val) {}
-  MPInt &operator=(int64_t val) { return *this = MPInt(val); }
-  explicit operator int64_t() const { return val.getSExtValue(); }
-  MPInt operator-() const;
-  bool operator==(const MPInt &o) const;
-  bool operator!=(const MPInt &o) const;
-  bool operator>(const MPInt &o) const;
-  bool operator<(const MPInt &o) const;
-  bool operator<=(const MPInt &o) const;
-  bool operator>=(const MPInt &o) const;
-  MPInt operator+(const MPInt &o) const;
-  MPInt operator-(const MPInt &o) const;
-  MPInt operator*(const MPInt &o) const;
-  MPInt operator/(const MPInt &o) const;
-  MPInt operator%(const MPInt &o) const;
-  MPInt &operator+=(const MPInt &o);
-  MPInt &operator-=(const MPInt &o);
-  MPInt &operator*=(const MPInt &o);
-  MPInt &operator/=(const MPInt &o);
-  MPInt &operator%=(const MPInt &o);
+  __attribute__((__always_inline__)) MPInt &operator=(int64_t val) { return *this = MPInt(val); }
+  __attribute__((__always_inline__)) explicit operator int64_t() const { return val.getSExtValue(); }
+  __attribute__((__always_inline__)) MPInt operator-() const;
+  __attribute__((__always_inline__)) bool operator==(const MPInt &o) const;
+  __attribute__((__always_inline__)) bool operator!=(const MPInt &o) const;
+  __attribute__((__always_inline__)) bool operator>(const MPInt &o) const;
+  __attribute__((__always_inline__)) bool operator<(const MPInt &o) const;
+  __attribute__((__always_inline__)) bool operator<=(const MPInt &o) const;
+  __attribute__((__always_inline__)) bool operator>=(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt operator+(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt operator-(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt operator*(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt operator/(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt operator%(const MPInt &o) const;
+  __attribute__((__always_inline__)) MPInt &operator+=(const MPInt &o);
+  __attribute__((__always_inline__)) MPInt &operator-=(const MPInt &o);
+  __attribute__((__always_inline__)) MPInt &operator*=(const MPInt &o);
+  __attribute__((__always_inline__)) MPInt &operator/=(const MPInt &o);
+  __attribute__((__always_inline__)) MPInt &operator%=(const MPInt &o);
 
-  MPInt &operator++();
-  MPInt &operator--();
+  __attribute__((__always_inline__)) MPInt &operator++();
+  __attribute__((__always_inline__)) MPInt &operator--();
 
   friend MPInt abs(const MPInt &x);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
@@ -96,35 +96,35 @@ MPInt lcm(const MPInt &a, const MPInt &b);
 /// ---------------------------------------------------------------------------
 /// Convenience operator overloads for int64_t.
 /// ---------------------------------------------------------------------------
-inline MPInt &operator+=(MPInt &a, int64_t b) { return a += MPInt(b); }
-inline MPInt &operator-=(MPInt &a, int64_t b) { return a -= MPInt(b); }
-inline MPInt &operator*=(MPInt &a, int64_t b) { return a *= MPInt(b); }
-inline MPInt &operator/=(MPInt &a, int64_t b) { return a /= MPInt(b); }
-inline MPInt &operator%=(MPInt &a, int64_t b) { return a %= MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt &operator+=(MPInt &a, int64_t b) { return a += MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt &operator-=(MPInt &a, int64_t b) { return a -= MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt &operator*=(MPInt &a, int64_t b) { return a *= MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt &operator/=(MPInt &a, int64_t b) { return a /= MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt &operator%=(MPInt &a, int64_t b) { return a %= MPInt(b); }
 
-inline bool operator==(const MPInt &a, int64_t b) { return a == MPInt(b); }
-inline bool operator!=(const MPInt &a, int64_t b) { return a != MPInt(b); }
-inline bool operator>(const MPInt &a, int64_t b) { return a > MPInt(b); }
-inline bool operator<(const MPInt &a, int64_t b) { return a < MPInt(b); }
-inline bool operator<=(const MPInt &a, int64_t b) { return a <= MPInt(b); }
-inline bool operator>=(const MPInt &a, int64_t b) { return a >= MPInt(b); }
-inline MPInt operator+(const MPInt &a, int64_t b) { return a + MPInt(b); }
-inline MPInt operator-(const MPInt &a, int64_t b) { return a - MPInt(b); }
-inline MPInt operator*(const MPInt &a, int64_t b) { return a * MPInt(b); }
-inline MPInt operator/(const MPInt &a, int64_t b) { return a / MPInt(b); }
-inline MPInt operator%(const MPInt &a, int64_t b) { return a % MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator==(const MPInt &a, int64_t b) { return a == MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator!=(const MPInt &a, int64_t b) { return a != MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator>(const MPInt &a, int64_t b) { return a > MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator<(const MPInt &a, int64_t b) { return a < MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator<=(const MPInt &a, int64_t b) { return a <= MPInt(b); }
+__attribute__((__always_inline__)) inline bool operator>=(const MPInt &a, int64_t b) { return a >= MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt operator+(const MPInt &a, int64_t b) { return a + MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt operator-(const MPInt &a, int64_t b) { return a - MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt operator*(const MPInt &a, int64_t b) { return a * MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt operator/(const MPInt &a, int64_t b) { return a / MPInt(b); }
+__attribute__((__always_inline__)) inline MPInt operator%(const MPInt &a, int64_t b) { return a % MPInt(b); }
 
-inline bool operator==(int64_t a, const MPInt &b) { return MPInt(a) == b; }
-inline bool operator!=(int64_t a, const MPInt &b) { return MPInt(a) != b; }
-inline bool operator>(int64_t a, const MPInt &b) { return MPInt(a) > b; }
-inline bool operator<(int64_t a, const MPInt &b) { return MPInt(a) < b; }
-inline bool operator<=(int64_t a, const MPInt &b) { return MPInt(a) <= b; }
-inline bool operator>=(int64_t a, const MPInt &b) { return MPInt(a) >= b; }
-inline MPInt operator+(int64_t a, const MPInt &b) { return MPInt(a) + b; }
-inline MPInt operator-(int64_t a, const MPInt &b) { return MPInt(a) - b; }
-inline MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a) * b; }
-inline MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a) / b; }
-inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
+__attribute__((__always_inline__)) inline bool operator==(int64_t a, const MPInt &b) { return MPInt(a) == b; }
+__attribute__((__always_inline__)) inline bool operator!=(int64_t a, const MPInt &b) { return MPInt(a) != b; }
+__attribute__((__always_inline__)) inline bool operator>(int64_t a, const MPInt &b) { return MPInt(a) > b; }
+__attribute__((__always_inline__)) inline bool operator<(int64_t a, const MPInt &b) { return MPInt(a) < b; }
+__attribute__((__always_inline__)) inline bool operator<=(int64_t a, const MPInt &b) { return MPInt(a) <= b; }
+__attribute__((__always_inline__)) inline bool operator>=(int64_t a, const MPInt &b) { return MPInt(a) >= b; }
+__attribute__((__always_inline__)) inline MPInt operator+(int64_t a, const MPInt &b) { return MPInt(a) + b; }
+__attribute__((__always_inline__)) inline MPInt operator-(int64_t a, const MPInt &b) { return MPInt(a) - b; }
+__attribute__((__always_inline__)) inline MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a) * b; }
+__attribute__((__always_inline__)) inline MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a) / b; }
+__attribute__((__always_inline__)) inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
 
 /// We define the operations here in the header to facilitate inlining.
 
