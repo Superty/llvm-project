@@ -1020,6 +1020,14 @@ public:
     return (isSingleWord() || getActiveBits() <= 64) && getZExtValue() == Val;
   }
 
+  /// Unsigned comparison. Returns -1, 0, or 1 if this APInt is less than, equal
+  /// to, or greater than RHS.
+  int compare(const APInt &RHS) const LLVM_READONLY;
+
+  /// Signed comparison. Returns -1, 0, or 1 if this APInt is less than, equal
+  /// to, or greater than RHS.
+  int compareSigned(const APInt &RHS) const LLVM_READONLY;
+
   /// Equality comparison.
   ///
   /// Compares this APInt with RHS for the validity of the equality
@@ -1993,14 +2001,6 @@ private:
 
   /// out-of-line slow case for operator^=.
   void xorAssignSlowCase(const APInt &RHS);
-
-  /// Unsigned comparison. Returns -1, 0, or 1 if this APInt is less than, equal
-  /// to, or greater than RHS.
-  int compare(const APInt &RHS) const LLVM_READONLY;
-
-  /// Signed comparison. Returns -1, 0, or 1 if this APInt is less than, equal
-  /// to, or greater than RHS.
-  int compareSigned(const APInt &RHS) const LLVM_READONLY;
 
   /// @}
 };
