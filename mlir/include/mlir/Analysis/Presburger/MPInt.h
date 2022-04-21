@@ -106,8 +106,10 @@ public:
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
 private:
-  int64_t val;
-  int64_t padding;
+  union {
+    int64_t val64;
+    APInt valAP;
+  };
   bool isLarge;
 };
 
