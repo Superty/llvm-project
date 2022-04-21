@@ -107,6 +107,7 @@ public:
 
 private:
   int64_t val;
+  bool isLarge;
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
