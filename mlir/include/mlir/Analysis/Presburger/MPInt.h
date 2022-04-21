@@ -107,6 +107,7 @@ public:
 
 private:
   int64_t val;
+  int64_t padding;
   bool isLarge;
 };
 
