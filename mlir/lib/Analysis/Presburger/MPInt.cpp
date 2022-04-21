@@ -13,7 +13,7 @@ using namespace mlir;
 using namespace presburger;
 
 llvm::hash_code mlir::presburger::hash_value(const MPInt &x) {
-  return hash_value(x.val);
+  return llvm::hash_value(x.val);
 }
 
 /// ---------------------------------------------------------------------------
@@ -30,3 +30,4 @@ llvm::raw_ostream &mlir::presburger::operator<<(llvm::raw_ostream &os,
   x.print(os);
   return os;
 }
+

@@ -21,7 +21,6 @@
 
 namespace mlir {
 namespace presburger {
-using llvm::APInt2;
 
 /// This class provides support for multi-precision arithmetic.
 ///
@@ -33,51 +32,81 @@ using llvm::APInt2;
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  explicit MPInt(int64_t val) : val(/*numBits=*/64, val, /*isSigned=*/true) {}
+  explicit MPInt(int64_t val) : val(val) {}
   MPInt() : MPInt(0) {}
-  explicit MPInt(const APInt2 &val) : val(val) {}
-   MPInt &operator=(int64_t val) { return *this = MPInt(val); }
-   explicit operator int64_t() const { return val.getSExtValue(); }
-   MPInt operator-() const;
-   bool operator==(const MPInt &o) const;
-   bool operator!=(const MPInt &o) const;
-   bool operator>(const MPInt &o) const;
-   bool operator<(const MPInt &o) const;
-   bool operator<=(const MPInt &o) const;
-   bool operator>=(const MPInt &o) const;
-   MPInt operator+(const MPInt &o) const;
-   MPInt operator-(const MPInt &o) const;
-   MPInt operator*(const MPInt &o) const;
-   MPInt operator/(const MPInt &o) const;
-   MPInt operator%(const MPInt &o) const;
-   MPInt &operator+=(const MPInt &o);
-   MPInt &operator-=(const MPInt &o);
-   MPInt &operator*=(const MPInt &o);
-   MPInt &operator/=(const MPInt &o);
-   MPInt &operator%=(const MPInt &o);
+  MPInt operator-() const;
+  MPInt &operator=(int x) {
+    val = x;
+    return *this;
+  }
+  bool operator==(const MPInt &o) const;
+  bool operator!=(const MPInt &o) const;
+  bool operator>(const MPInt &o) const;
+  bool operator<(const MPInt &o) const;
+  bool operator<=(const MPInt &o) const;
+  bool operator>=(const MPInt &o) const;
+  MPInt operator+(const MPInt &o) const;
+  MPInt operator-(const MPInt &o) const;
+  MPInt operator*(const MPInt &o) const;
+  MPInt operator/(const MPInt &o) const;
+  MPInt operator%(const MPInt &o) const;
+  MPInt &operator+=(const MPInt &o);
+  MPInt &operator-=(const MPInt &o);
+  MPInt &operator*=(const MPInt &o);
+  MPInt &operator/=(const MPInt &o);
+  MPInt &operator%=(const MPInt &o);
 
-   MPInt &operator++();
-   MPInt &operator--();
+  MPInt &operator++();
+  MPInt &operator--();
 
+  explicit operator int64_t() const { return val; }
   friend MPInt abs(const MPInt &x);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b);
-  /// Overload to compute a hash_code for a MPInt value.
-  friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
+  friend MPInt mod(const MPInt &lhs, const MPInt &rhs);
 
   llvm::raw_ostream &print(llvm::raw_ostream &os) const;
   void dump() const;
 
-private:
-  unsigned getBitWidth() const { return val.getBitWidth(); }
+  /// ---------------------------------------------------------------------------
+  /// Convenience operator overloads for int64_t.
+  /// ---------------------------------------------------------------------------
+  friend MPInt &operator+=(MPInt &a, int64_t b) { a.val += b; return a; }
+  friend MPInt &operator-=(MPInt &a, int64_t b) { a.val -= b; return a; }
+  friend MPInt &operator*=(MPInt &a, int64_t b) { a.val *= b; return a; }
+  friend MPInt &operator/=(MPInt &a, int64_t b) { a.val /= b; return a; }
+  friend MPInt &operator%=(MPInt &a, int64_t b) { a.val %= b; return a; }
 
-  // The held integer value.
-  //
-  // TODO: consider using APInt2 directly to avoid unnecessary repeated internal
-  // signedness checks. This requires refactoring, exposing, or duplicating
-  // APInt2::compareValues.
-  APInt2 val;
+  friend bool operator==(const MPInt &a, int64_t b) { return a.val == b; }
+  friend bool operator!=(const MPInt &a, int64_t b) { return a.val != b; }
+  friend bool operator>(const MPInt &a, int64_t b) { return a.val > b; }
+  friend bool operator<(const MPInt &a, int64_t b) { return a.val < b; }
+  friend bool operator<=(const MPInt &a, int64_t b) { return a.val <= b; }
+  friend bool operator>=(const MPInt &a, int64_t b) { return a.val >= b; }
+  friend MPInt operator+(const MPInt &a, int64_t b) { return MPInt(a.val + b); }
+  friend MPInt operator-(const MPInt &a, int64_t b) { return MPInt(a.val - b); }
+  friend MPInt operator*(const MPInt &a, int64_t b) { return MPInt(a.val * b); }
+  friend MPInt operator/(const MPInt &a, int64_t b) { return MPInt(a.val / b); }
+  friend MPInt operator%(const MPInt &a, int64_t b) { return MPInt(a.val % b); }
+
+  friend bool operator==(int64_t a, const MPInt &b) { return a == b.val; }
+  friend bool operator!=(int64_t a, const MPInt &b) { return a != b.val; }
+  friend bool operator>(int64_t a, const MPInt &b) { return a > b.val; }
+  friend bool operator<(int64_t a, const MPInt &b) { return a < b.val; }
+  friend bool operator<=(int64_t a, const MPInt &b) { return a <= b.val; }
+  friend bool operator>=(int64_t a, const MPInt &b) { return a >= b.val; }
+  friend MPInt operator+(int64_t a, const MPInt &b) { return MPInt(a + b.val); }
+  friend MPInt operator-(int64_t a, const MPInt &b) { return MPInt(a - b.val); }
+  friend MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a * b.val); }
+  friend MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a / b.val); }
+  friend MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a % b.val); }
+
+  friend llvm::hash_code hash_value(const MPInt &x);
+
+
+private:
+  int64_t val;
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
@@ -93,138 +122,82 @@ MPInt mod(const MPInt &lhs, const MPInt &rhs);
 /// Returns the least common multiple of 'a' and 'b'.
 MPInt lcm(const MPInt &a, const MPInt &b);
 
-/// ---------------------------------------------------------------------------
-/// Convenience operator overloads for int64_t.
-/// ---------------------------------------------------------------------------
- inline MPInt &operator+=(MPInt &a, int64_t b) { return a += MPInt(b); }
- inline MPInt &operator-=(MPInt &a, int64_t b) { return a -= MPInt(b); }
- inline MPInt &operator*=(MPInt &a, int64_t b) { return a *= MPInt(b); }
- inline MPInt &operator/=(MPInt &a, int64_t b) { return a /= MPInt(b); }
- inline MPInt &operator%=(MPInt &a, int64_t b) { return a %= MPInt(b); }
-
- inline bool operator==(const MPInt &a, int64_t b) { return a == MPInt(b); }
- inline bool operator!=(const MPInt &a, int64_t b) { return a != MPInt(b); }
- inline bool operator>(const MPInt &a, int64_t b) { return a > MPInt(b); }
- inline bool operator<(const MPInt &a, int64_t b) { return a < MPInt(b); }
- inline bool operator<=(const MPInt &a, int64_t b) { return a <= MPInt(b); }
- inline bool operator>=(const MPInt &a, int64_t b) { return a >= MPInt(b); }
- inline MPInt operator+(const MPInt &a, int64_t b) { return a + MPInt(b); }
- inline MPInt operator-(const MPInt &a, int64_t b) { return a - MPInt(b); }
- inline MPInt operator*(const MPInt &a, int64_t b) { return a * MPInt(b); }
- inline MPInt operator/(const MPInt &a, int64_t b) { return a / MPInt(b); }
- inline MPInt operator%(const MPInt &a, int64_t b) { return a % MPInt(b); }
-
- inline bool operator==(int64_t a, const MPInt &b) { return MPInt(a) == b; }
- inline bool operator!=(int64_t a, const MPInt &b) { return MPInt(a) != b; }
- inline bool operator>(int64_t a, const MPInt &b) { return MPInt(a) > b; }
- inline bool operator<(int64_t a, const MPInt &b) { return MPInt(a) < b; }
- inline bool operator<=(int64_t a, const MPInt &b) { return MPInt(a) <= b; }
- inline bool operator>=(int64_t a, const MPInt &b) { return MPInt(a) >= b; }
- inline MPInt operator+(int64_t a, const MPInt &b) { return MPInt(a) + b; }
- inline MPInt operator-(int64_t a, const MPInt &b) { return MPInt(a) - b; }
- inline MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a) * b; }
- inline MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a) / b; }
- inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
-
 /// We define the operations here in the header to facilitate inlining.
 
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
-namespace detail {
-static int compareValues(const APInt2 &lhs, const APInt2 &rhs) {
-  unsigned widthLHS = lhs.getBitWidth(), widthRHS = rhs.getBitWidth();
-  if (widthLHS == widthRHS)
-    return lhs.compareSigned(rhs);
-  if (widthLHS < widthRHS)
-    return lhs.sext(widthRHS).compareSigned(rhs);
-  return lhs.compareSigned(rhs.sext(widthLHS));
-}
-} // namespace detail
 inline bool MPInt::operator==(const MPInt &o) const {
-  return detail::compareValues(val, o.val) == 0;
+  return val == o.val;
 }
 inline bool MPInt::operator!=(const MPInt &o) const {
-  return detail::compareValues(val, o.val) != 0;
+  return val != o.val;
 }
 inline bool MPInt::operator>(const MPInt &o) const {
-  return detail::compareValues(val, o.val) > 0;
+  return val > o.val;
 }
 inline bool MPInt::operator<(const MPInt &o) const {
-  return detail::compareValues(val, o.val) < 0;
+  return val < o.val;
 }
 inline bool MPInt::operator<=(const MPInt &o) const {
-  return detail::compareValues(val, o.val) <= 0;
+  return val <= o.val;
 }
 inline bool MPInt::operator>=(const MPInt &o) const {
-  return detail::compareValues(val, o.val) >= 0;
+  return val >= o.val;
 }
 
 /// ---------------------------------------------------------------------------
 /// Arithmetic operators.
 /// ---------------------------------------------------------------------------
-namespace detail {
-/// Bring a and b to have the same width and then call a.op(b, overflow).
-/// If the overflow bit becomes set, resize a and b to double the width and
-/// call a.op(b, overflow), returning its result. The operation with double
-/// widths should not also overflow.
-
-using APInt2OvOp = APInt2 (APInt2::*)(const APInt2 &b, bool &overflow) const;
-inline APInt2 runOpWithExpandOnOverflow(const APInt2 &a, const APInt2 &b,
-                                        APInt2OvOp op) {
-  bool overflow;
-  unsigned widthA = a.getBitWidth(), widthB = b.getBitWidth();
-  APInt2 ret;
-  if (widthA == widthB) {
-    ret = (a.*op)(b, overflow);
-    if (!overflow)
-      return ret;
-  } else if (widthA < widthB)
-    ret = (a.sext(widthB).*op)(b, overflow);
-  else
-    ret = (a.*op)(b.sext(widthA), overflow);
-  if (!overflow)
-    return ret;
-
-  unsigned newWidth = 2*std::max(widthA, widthB);
-  ret = (a.sext(newWidth).*op)(b.sext(newWidth), overflow);
-  assert(!overflow && "double width should be sufficient to avoid overflow!");
-  return ret;
-}
-} // namespace detail
-
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::sadd_ov));
+  MPInt result;
+  bool overflow = __builtin_add_overflow(val, o.val, &result.val);
+  if (overflow)
+    std::abort();
+  return result;
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::ssub_ov));
+  MPInt result;
+  bool overflow = __builtin_sub_overflow(val, o.val, &result.val);
+  if (overflow)
+    std::abort();
+  return result;
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::smul_ov));
+  MPInt result;
+  bool overflow = __builtin_mul_overflow(val, o.val, &result.val);
+  if (overflow)
+    std::abort();
+  return result;
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  return MPInt(detail::runOpWithExpandOnOverflow(val, o.val, &APInt2::sdiv_ov));
+  if (o.val == -1)
+    return -*this;
+  return MPInt(val / o.val);
 }
-inline MPInt abs(const MPInt &x) { return x >= 0 ? x : -x; }
+inline MPInt abs(const MPInt &x) { return MPInt(x >= 0 ? x : -x); }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(llvm::APInt2Ops::RoundingSDiv(lhs.val, rhs.val, APInt2::Rounding::UP));
+  int64_t x = (rhs.val > 0) ? -1 : 1;
+  return MPInt(((lhs.val != 0) && (lhs.val > 0) == (rhs.val > 0)) ? ((lhs.val + x) / rhs.val) + 1
+                                                : -(-lhs.val / rhs.val));
 }
 inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPInt(llvm::APInt2Ops::RoundingSDiv(lhs.val, rhs.val, APInt2::Rounding::DOWN));
+  int64_t x = (rhs.val < 0) ? 1 : -1;
+  return MPInt(((lhs.val != 0) && ((lhs.val < 0) != (rhs.val < 0))) ? -((-lhs.val + x) / rhs.val) - 1
+                                                  : lhs.val / rhs.val);
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
 inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
-  assert(rhs >= 1);
-  return lhs % rhs < 0 ? lhs % rhs + rhs : lhs % rhs;
+  return MPInt(lhs.val % rhs.val < 0 ? lhs.val % rhs.val + rhs.val : lhs.val % rhs.val);
 }
 
 inline MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b) {
-  return MPInt(llvm::APInt2Ops::GreatestCommonDivisor(a.val.abs(), b.val.abs()));
+  return MPInt(llvm::GreatestCommonDivisor64(a.val, b.val));
 }
 
 /// Returns the least common multiple of 'a' and 'b'.
@@ -236,19 +209,19 @@ inline MPInt lcm(const MPInt &a, const MPInt &b) {
 
 /// This operation cannot overflow.
 inline MPInt MPInt::operator%(const MPInt &o) const {
-  unsigned widthThis = val.getBitWidth();
-  unsigned widthOther = o.val.getBitWidth();
-  if (widthThis == widthOther)
-    return MPInt(val.srem(o.val));
-  if (widthThis < widthOther)
-    return MPInt(val.sext(widthOther).srem(o.val));
-  return MPInt(val.srem(o.val.sext(widthThis)));
+  return MPInt(val % o.val);
+  // unsigned widthThis = val.getBitWidth();
+  // unsigned widthOther = o.val.getBitWidth();
+  // if (widthThis == widthOther)
+  //   return MPInt(val.srem(o.val));
+  // if (widthThis < widthOther)
+  //   return MPInt(val.sext(widthOther).srem(o.val));
+  // return MPInt(val.srem(o.val.sext(widthThis)));
 }
 
 inline MPInt MPInt::operator-() const {
-  if (val.isMinSignedValue()) {
-    /// Overflow only occurs when the value is the minimum possible value.
-    return MPInt(-val.sext(2 * val.getBitWidth()));
+  if (val == std::numeric_limits<int64_t>::min()) {
+    abort();
   }
   return MPInt(-val);
 }
