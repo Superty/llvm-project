@@ -36,6 +36,10 @@ namespace presburger {
 class MPInt {
 public:
   __attribute__((always_inline))
+  explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
+  __attribute__((always_inline))
+  MPInt() : MPInt(0) {}
+  __attribute__((always_inline))
   ~MPInt() {
     if (isLarge()) [[unlikely]]
       valAP.~APInt();
@@ -54,11 +58,6 @@ public:
     initAP(o.valAP);
     return *this;
   }
-
-  __attribute__((always_inline))
-  explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
-  __attribute__((always_inline))
-  MPInt() : MPInt(0) {}
   __attribute__((always_inline))
   MPInt &operator=(int x) {
     init64(x);
