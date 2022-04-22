@@ -13,18 +13,18 @@ using namespace mlir;
 using namespace presburger;
 
 llvm::hash_code mlir::presburger::hash_value(const MPInt &x) {
-  return std::visit([](auto &&x) {
-    return llvm::hash_value(x);
-  }, x.val);
+  if (x.isSmall())
+    return llvm::hash_value(x.val64);
+  return llvm::hash_value(x.valAP);
 }
 
 /// ---------------------------------------------------------------------------
 /// Printing.
 /// ---------------------------------------------------------------------------
 llvm::raw_ostream &MPInt::print(llvm::raw_ostream &os) const {
-  return std::visit([&](auto &&x) -> llvm::raw_ostream& {
-    return os << x;
-  }, val);
+  if (isSmall())
+    return os << val64;
+  return os << valAP;
 }
 
 void MPInt::dump() const { print(llvm::errs()); }

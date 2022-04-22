@@ -35,11 +35,27 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  explicit MPInt(int64_t val) : val(val) {}
+  ~MPInt() {
+    if (isLarge())
+      valAP.~APInt();
+  }
+  MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
+    if (o.isLarge())
+      initAP(o.valAP);
+  }
+  MPInt &operator=(const MPInt &o) {
+    if (o.isLarge())
+      initAP(o.valAP);
+    else
+      init64(o.val64);
+    return *this;
+  }
+
+ explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
   MPInt() : MPInt(0) {}
   MPInt operator-() const;
   MPInt &operator=(int x) {
-    val = x;
+    init64(x);
     return *this;
   }
   bool operator==(const MPInt &o) const;
@@ -109,19 +125,31 @@ public:
 
 private:
   __attribute__((always_inline))
-  bool isLarge() const { return val.index() != 0; }
+  bool isSmall() const { return !holdsAP; }
   __attribute__((always_inline))
-  bool isSmall() const { return val.index() == 0; }
+  bool isLarge() const { return holdsAP; }
   __attribute__((always_inline))
-  int64_t get64() const { return std::get<int64_t>(val); }
+  int64_t get64() const { assert(isSmall()); return val64; }
   __attribute__((always_inline))
-  int64_t &get64() { return std::get<int64_t>(val); }
+  int64_t &get64() { assert(isSmall()); return val64; }
   __attribute__((always_inline))
-  const APInt &getAP() const { return std::get<APInt>(val); }
+  const APInt &getAP() const { assert(isLarge()); return valAP; }
   __attribute__((always_inline))
-  APInt getAP() { return std::get<APInt>(val); }
+  APInt getAP() { assert(isLarge()); return valAP; }
 
-  std::variant<int64_t, APInt> val;
+  union {
+    int64_t val64;
+    APInt valAP;
+  };
+  void init64(int64_t o) {
+    val64 = o;
+    holdsAP = false;
+  }
+  void initAP(const APInt &o) {
+    valAP = o;
+    holdsAP = true;
+  }
+  bool holdsAP;
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
