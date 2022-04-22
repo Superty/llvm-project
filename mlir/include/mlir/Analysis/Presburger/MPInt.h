@@ -53,11 +53,11 @@ public:
 
  explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
   MPInt() : MPInt(0) {}
-  MPInt operator-() const;
   MPInt &operator=(int x) {
     init64(x);
     return *this;
   }
+
   bool operator==(const MPInt &o) const;
   bool operator!=(const MPInt &o) const;
   bool operator>(const MPInt &o) const;
@@ -75,6 +75,7 @@ public:
   MPInt &operator/=(const MPInt &o);
   MPInt &operator%=(const MPInt &o);
 
+  MPInt operator-() const;
   MPInt &operator++();
   MPInt &operator--();
 
