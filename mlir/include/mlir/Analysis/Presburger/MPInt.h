@@ -60,12 +60,11 @@ public:
   __attribute__((always_inline))
   MPInt() : MPInt(0) {}
   __attribute__((always_inline))
-  MPInt operator-() const;
-  __attribute__((always_inline))
   MPInt &operator=(int x) {
     init64(x);
     return *this;
   }
+
   bool operator==(const MPInt &o) const;
   bool operator!=(const MPInt &o) const;
   bool operator>(const MPInt &o) const;
@@ -83,6 +82,7 @@ public:
   MPInt &operator/=(const MPInt &o);
   MPInt &operator%=(const MPInt &o);
 
+  MPInt operator-() const;
   MPInt &operator++();
   MPInt &operator--();
 
