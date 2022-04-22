@@ -35,6 +35,8 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
+  explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
+  MPInt() : MPInt(0) {}
   ~MPInt() {
     if (isLarge())
       valAP.~APInt();
@@ -50,9 +52,6 @@ public:
       init64(o.val64);
     return *this;
   }
-
- explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
-  MPInt() : MPInt(0) {}
   MPInt &operator=(int x) {
     init64(x);
     return *this;
