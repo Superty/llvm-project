@@ -82,6 +82,39 @@ MPAPInt floorDiv(const MPAPInt &lhs, const MPAPInt &rhs);
 MPAPInt greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b);
 /// Overload to compute a hash_code for a MPAPInt value.
 llvm::hash_code hash_value(const MPAPInt &x); // NOLINT
+
+/// ---------------------------------------------------------------------------
+/// Convenience operator overloads for int64_t.
+/// ---------------------------------------------------------------------------
+inline MPAPInt &operator+=(MPAPInt &a, int64_t b) { return a += MPAPInt(b); }
+inline MPAPInt &operator-=(MPAPInt &a, int64_t b) { return a -= MPAPInt(b); }
+inline MPAPInt &operator*=(MPAPInt &a, int64_t b) { return a *= MPAPInt(b); }
+inline MPAPInt &operator/=(MPAPInt &a, int64_t b) { return a /= MPAPInt(b); }
+inline MPAPInt &operator%=(MPAPInt &a, int64_t b) { return a %= MPAPInt(b); }
+
+inline bool operator==(const MPAPInt &a, int64_t b) { return a == MPAPInt(b); }
+inline bool operator!=(const MPAPInt &a, int64_t b) { return a != MPAPInt(b); }
+inline bool operator>(const MPAPInt &a, int64_t b) { return a > MPAPInt(b); }
+inline bool operator<(const MPAPInt &a, int64_t b) { return a < MPAPInt(b); }
+inline bool operator<=(const MPAPInt &a, int64_t b) { return a <= MPAPInt(b); }
+inline bool operator>=(const MPAPInt &a, int64_t b) { return a >= MPAPInt(b); }
+inline MPAPInt operator+(const MPAPInt &a, int64_t b) { return a + MPAPInt(b); }
+inline MPAPInt operator-(const MPAPInt &a, int64_t b) { return a - MPAPInt(b); }
+inline MPAPInt operator*(const MPAPInt &a, int64_t b) { return a * MPAPInt(b); }
+inline MPAPInt operator/(const MPAPInt &a, int64_t b) { return a / MPAPInt(b); }
+inline MPAPInt operator%(const MPAPInt &a, int64_t b) { return a % MPAPInt(b); }
+
+inline bool operator==(int64_t a, const MPAPInt &b) { return MPAPInt(a) == b; }
+inline bool operator!=(int64_t a, const MPAPInt &b) { return MPAPInt(a) != b; }
+inline bool operator>(int64_t a, const MPAPInt &b) { return MPAPInt(a) > b; }
+inline bool operator<(int64_t a, const MPAPInt &b) { return MPAPInt(a) < b; }
+inline bool operator<=(int64_t a, const MPAPInt &b) { return MPAPInt(a) <= b; }
+inline bool operator>=(int64_t a, const MPAPInt &b) { return MPAPInt(a) >= b; }
+inline MPAPInt operator+(int64_t a, const MPAPInt &b) { return MPAPInt(a) + b; }
+inline MPAPInt operator-(int64_t a, const MPAPInt &b) { return MPAPInt(a) - b; }
+inline MPAPInt operator*(int64_t a, const MPAPInt &b) { return MPAPInt(a) * b; }
+inline MPAPInt operator/(int64_t a, const MPAPInt &b) { return MPAPInt(a) / b; }
+inline MPAPInt operator%(int64_t a, const MPAPInt &b) { return MPAPInt(a) % b; }
 } // namespace detail
 } // namespace presburger
 } // namespace mlir
