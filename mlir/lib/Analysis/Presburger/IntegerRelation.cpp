@@ -566,12 +566,12 @@ bool IntegerRelation::isEmptyByGCDTest() const {
   assert(hasConsistentState());
   unsigned numCols = getNumCols();
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
-    MPInt gcd = abs(atEq(i, 0));
+    MPInt curGCD = abs(atEq(i, 0));
     for (unsigned j = 1; j < numCols - 1; ++j) {
-      gcd = greatestCommonDivisor(gcd, abs(atEq(i, j)));
+      curGCD = gcd(curGCD, abs(atEq(i, j)));
     }
     MPInt v = abs(atEq(i, numCols - 1));
-    if (gcd > 0 && (v % gcd != 0)) {
+    if (curGCD > 0 && (v % curGCD != 0)) {
       return true;
     }
   }

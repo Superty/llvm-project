@@ -89,7 +89,7 @@ public:
   friend MPInt abs(const MPInt &x);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
-  friend MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b);
+  friend MPInt gcd(const MPInt &a, const MPInt &b);
   friend MPInt mod(const MPInt &lhs, const MPInt &rhs);
 
   llvm::raw_ostream &print(llvm::raw_ostream &os) const;
@@ -282,7 +282,7 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
   abort();
 }
 
-inline MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b) {
+inline MPInt gcd(const MPInt &a, const MPInt &b) {
   if (a.isSmall() && b.isSmall())
     return MPInt(llvm::GreatestCommonDivisor64(a.get64(), b.get64()));
   abort();
@@ -292,7 +292,7 @@ inline MPInt greatestCommonDivisor(const MPInt &a, const MPInt &b) {
 inline MPInt lcm(const MPInt &a, const MPInt &b) {
   MPInt x = abs(a);
   MPInt y = abs(b);
-  return (x * y) / greatestCommonDivisor(x, y);
+  return (x * y) / gcd(x, y);
 }
 
 /// This operation cannot overflow.
