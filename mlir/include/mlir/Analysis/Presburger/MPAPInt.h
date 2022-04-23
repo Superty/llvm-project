@@ -55,7 +55,7 @@ public:
   friend MPAPInt abs(const MPAPInt &x);
   friend MPAPInt ceilDiv(const MPAPInt &lhs, const MPAPInt &rhs);
   friend MPAPInt floorDiv(const MPAPInt &lhs, const MPAPInt &rhs);
-  friend MPAPInt greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b);
+  friend MPAPInt gcd(const MPAPInt &a, const MPAPInt &b);
   /// Overload to compute a hash_code for a MPAPInt value.
   friend llvm::hash_code hash_value(const MPAPInt &x); // NOLINT
 
