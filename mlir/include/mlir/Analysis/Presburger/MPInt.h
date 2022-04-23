@@ -15,7 +15,6 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_MPINT_H
 #define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
-#include "mlir/Analysis/Presburger/APInt2.h"
 #include "mlir/Analysis/Presburger/MPAPInt.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
