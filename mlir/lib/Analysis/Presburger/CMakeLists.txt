@@ -7,6 +7,7 @@ add_mlir_library(MLIRPresburger
   PWMAFunction.cpp
   Simplex.cpp
   APInt2.cpp
+  MPAPInt.cpp
   MPInt.cpp
   Utils.cpp
 
