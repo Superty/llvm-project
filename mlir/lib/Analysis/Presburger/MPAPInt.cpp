@@ -150,7 +150,7 @@ MPAPInt detail::mod(const MPAPInt &lhs, const MPAPInt &rhs) {
   return lhs % rhs < 0 ? lhs % rhs + rhs : lhs % rhs;
 }
 
-MPAPInt detail::greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b) {
+MPAPInt detail::gcd(const MPAPInt &a, const MPAPInt &b) {
   return MPAPInt(
       APSInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()),
              /*isUnsigned=*/false));
