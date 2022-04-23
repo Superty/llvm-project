@@ -244,9 +244,9 @@ inline MPInt MPInt::operator+(const MPInt &o) const {
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    abort();
+    return MPInt(getAsAP() + o.getAsAP());
   }
-  abort();
+  return MPInt(getAsAP() + o.getAsAP());
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator-(const MPInt &o) const {
@@ -255,9 +255,9 @@ inline MPInt MPInt::operator-(const MPInt &o) const {
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    abort();
+    return MPInt(getAsAP() - o.getAsAP());
   }
-  abort();
+  return MPInt(getAsAP() - o.getAsAP());
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
@@ -266,9 +266,9 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    abort();
+    return MPInt(getAsAP() * o.getAsAP());
   }
-  abort();
+  return MPInt(getAsAP() * o.getAsAP());
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator/(const MPInt &o) const {
@@ -277,7 +277,7 @@ inline MPInt MPInt::operator/(const MPInt &o) const {
       return -*this;
     return MPInt(get64() / o.get64());
   }
-  abort();
+  return MPInt(getAsAP() / o.getAsAP());
 }
 inline MPInt abs(const MPInt &x) { return MPInt(x >= 0 ? x : -x); }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
