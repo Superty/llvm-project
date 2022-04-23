@@ -147,7 +147,7 @@ private:
     assert(isLarge());
     return valAP;
   }
-  __attribute__((always_inline)) detail::MPAPInt getAP() {
+  __attribute__((always_inline)) detail::MPAPInt &getAP() {
     assert(isLarge());
     return valAP;
   }
