@@ -210,7 +210,8 @@ void Matrix::fillRow(unsigned row, const MPInt &value) {
     at(row, col) = value;
 }
 
-void Matrix::addToRow(unsigned sourceRow, unsigned targetRow, const MPInt &scale) {
+void Matrix::addToRow(unsigned sourceRow, unsigned targetRow,
+                      const MPInt &scale) {
   if (scale == 0)
     return;
   for (unsigned col = 0; col < nColumns; ++col)
@@ -243,8 +244,7 @@ MPInt Matrix::normalizeRow(unsigned row) {
   return normalizeRow(row, getNumColumns());
 }
 
-SmallVector<MPInt, 8>
-Matrix::preMultiplyWithRow(ArrayRef<MPInt> rowVec) const {
+SmallVector<MPInt, 8> Matrix::preMultiplyWithRow(ArrayRef<MPInt> rowVec) const {
   assert(rowVec.size() == getNumRows() && "Invalid row vector dimension!");
 
   SmallVector<MPInt, 8> result(getNumColumns(), MPInt(0));

@@ -818,8 +818,8 @@ static bool detectAsMod(const FlatAffineValueConstraints &cst, unsigned pos,
 
     // Express `id_r` as `id_n % divisor` and store the expression in `memo`.
     if (quotientCount >= 1) {
-      auto ub = cst.getConstantBound64(FlatAffineValueConstraints::BoundType::UB,
-                                     dimExpr.getPosition());
+      auto ub = cst.getConstantBound64(
+          FlatAffineValueConstraints::BoundType::UB, dimExpr.getPosition());
       // If `id_n` has an upperbound that is less than the divisor, mod can be
       // eliminated altogether.
       if (ub.hasValue() && ub.getValue() < divisor)
@@ -1526,8 +1526,8 @@ FlatAffineValueConstraints::getAsIntegerSet(MLIRContext *context) const {
   exprs.reserve(getNumConstraints());
 
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i)
-    exprs.push_back(getAffineExprFromFlatForm(getEquality64(i), numDims, numSyms,
-                                              localExprs, context));
+    exprs.push_back(getAffineExprFromFlatForm(getEquality64(i), numDims,
+                                              numSyms, localExprs, context));
   for (unsigned i = 0, e = getNumInequalities(); i < e; ++i)
     exprs.push_back(getAffineExprFromFlatForm(getInequality64(i), numDims,
                                               numSyms, localExprs, context));

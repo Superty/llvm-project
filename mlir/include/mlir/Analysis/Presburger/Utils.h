@@ -136,8 +136,8 @@ MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
 /// the divisions are not merged. `merge` can also do side effects, For example
 /// it can merge the local identifiers in IntegerRelation.
 void removeDuplicateDivs(
-    std::vector<SmallVector<MPInt, 8>> &divs,
-    SmallVectorImpl<MPInt> &denoms, unsigned localOffset,
+    std::vector<SmallVector<MPInt, 8>> &divs, SmallVectorImpl<MPInt> &denoms,
+    unsigned localOffset,
     llvm::function_ref<bool(unsigned i, unsigned j)> merge);
 
 /// Compute the gcd of the range.

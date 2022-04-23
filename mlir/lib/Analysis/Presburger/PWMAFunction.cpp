@@ -16,7 +16,7 @@ using namespace presburger;
 // The vectors must be of the same size.
 // e.g., [3, 4, 6] - [2, 5, 1] = [1, -1, 5].
 static SmallVector<MPInt, 8> subtract(ArrayRef<MPInt> vecA,
-                                        ArrayRef<MPInt> vecB) {
+                                      ArrayRef<MPInt> vecB) {
   assert(vecA.size() == vecB.size() &&
          "Cannot subtract vectors of differing lengths!");
   SmallVector<MPInt, 8> result;
@@ -56,8 +56,7 @@ MultiAffineFunction::valueAt(ArrayRef<MPInt> point) const {
   // a 1 appended at the end. We can see that output * v gives the desired
   // output vector.
   pointHomogenous.emplace_back(1);
-  SmallVector<MPInt, 8> result =
-      output.postMultiplyWithColumn(pointHomogenous);
+  SmallVector<MPInt, 8> result = output.postMultiplyWithColumn(pointHomogenous);
   assert(result.size() == getNumOutputs());
   return result;
 }

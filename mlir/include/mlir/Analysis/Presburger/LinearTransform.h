@@ -46,8 +46,7 @@ public:
 
   // The given vector is interpreted as a column vector v. Pre-multiply v with
   // this transform, say T, and return Tv.
-  SmallVector<MPInt, 8>
-  postMultiplyWithColumn(ArrayRef<MPInt> colVec) const {
+  SmallVector<MPInt, 8> postMultiplyWithColumn(ArrayRef<MPInt> colVec) const {
     return matrix.postMultiplyWithColumn(colVec);
   }
 

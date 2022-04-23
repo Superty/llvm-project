@@ -379,7 +379,7 @@ TEST(SimplexTest, isMarkedRedundant) {
 
 TEST(SimplexTest, isMarkedRedundantTiledLoopNestConstraints) {
   Simplex simplex(3);                     // Variables are x, y, N.
-  addInequality(simplex, {1, 0, 0, 0});    // [0]: x >= 0.
+  addInequality(simplex, {1, 0, 0, 0});   // [0]: x >= 0.
   addInequality(simplex, {-32, 0, 1, -1}); // [1]: 32x <= N - 1.
   addInequality(simplex, {0, 1, 0, 0});    // [2]: y >= 0.
   addInequality(simplex, {-32, 1, 0, 0});  // [3]: y >= 32x.
@@ -448,9 +448,9 @@ TEST(SimplexTest, appendVariable) {
 
   EXPECT_EQ(simplex.getNumVariables(), 2u);
   EXPECT_EQ(simplex.getNumConstraints(), 2u);
-  EXPECT_EQ(
-      simplex.computeIntegerBounds({0, 1, 0}),
-      std::make_pair(MaybeOptimum<MPInt>(MPInt(yMin)), MaybeOptimum<MPInt>(MPInt(yMax))));
+  EXPECT_EQ(simplex.computeIntegerBounds({0, 1, 0}),
+            std::make_pair(MaybeOptimum<MPInt>(MPInt(yMin)),
+                           MaybeOptimum<MPInt>(MPInt(yMax))));
 
   simplex.rollback(snapshot1);
   EXPECT_EQ(simplex.getNumVariables(), 1u);

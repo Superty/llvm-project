@@ -348,7 +348,8 @@ void LexSimplexBase::appendSymbol() {
 
 static bool isRangeDivisibleBy(ArrayRef<MPInt> range, const MPInt &divisor) {
   assert(divisor > 0 && "divisor must be positive!");
-  return llvm::all_of(range, [divisor](const MPInt &x) { return x % divisor == 0; });
+  return llvm::all_of(range,
+                      [divisor](const MPInt &x) { return x % divisor == 0; });
 }
 
 bool SymbolicLexSimplex::isSymbolicSampleIntegral(unsigned row) const {
@@ -1266,7 +1267,8 @@ void SimplexBase::rollback(unsigned snapshot) {
 ///
 /// This constrains the remainder `coeffs - denom*q` to be in the
 /// range `[0, denom - 1]`, which fixes the integer value of the quotient `q`.
-void SimplexBase::addDivisionVariable(ArrayRef<MPInt> coeffs, const MPInt &denom) {
+void SimplexBase::addDivisionVariable(ArrayRef<MPInt> coeffs,
+                                      const MPInt &denom) {
   assert(denom != 0 && "Cannot divide by zero!\n");
   appendVariable();
 
@@ -2053,7 +2055,7 @@ Optional<SmallVector<MPInt, 8>> Simplex::findIntegerSample() {
 
     // Try the next value in the range and "recurse" into the next level.
     SmallVector<MPInt, 8> basisCoeffs(basis.getRow(level).begin(),
-                                        basis.getRow(level).end());
+                                      basis.getRow(level).end());
     basisCoeffs.push_back(-nextValue);
     addEquality(basisCoeffs);
     level++;

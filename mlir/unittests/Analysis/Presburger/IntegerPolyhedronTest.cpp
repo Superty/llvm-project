@@ -1413,7 +1413,8 @@ TEST(IntegerPolyhedronTest, computeVolume) {
       /*trueVolume=*/{}, /*resultBound=*/{});
 }
 
-bool containsPointNoLocal(const IntegerPolyhedron &poly, ArrayRef<int64_t> point) {
+bool containsPointNoLocal(const IntegerPolyhedron &poly,
+                          ArrayRef<int64_t> point) {
   return poly.containsPointNoLocal(getMPIntVec(point)).hasValue();
 }
 
