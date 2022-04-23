@@ -455,10 +455,9 @@ inline MPInt MPInt::operator%(const MPInt &o) const {
 
 inline MPInt MPInt::operator-() const {
   if (isSmall()) {
-    if (get64() == std::numeric_limits<int64_t>::min()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(-get64());
+    if (get64() != std::numeric_limits<int64_t>::min())
+      return MPInt(-get64());
+    llvm_unreachable("Overflow!");
   }
   llvm_unreachable("Overflow!");
 }
