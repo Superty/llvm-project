@@ -131,6 +131,7 @@ public:
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
 private:
+  explicit MPInt(detail::MPAPInt val) : valAP(val), holdsAP(true) {}
   __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
   __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
   __attribute__((always_inline)) int64_t get64() const {
@@ -148,6 +149,14 @@ private:
   __attribute__((always_inline)) detail::MPAPInt getAP() {
     assert(isLarge());
     return valAP;
+  }
+  explicit operator detail::MPAPInt() const {
+    if (isSmall())
+      return detail::MPAPInt(get64());
+    return getAP();
+  }
+  detail::MPAPInt getAsAP() const {
+    return detail::MPAPInt(*this);
   }
 
   union {
