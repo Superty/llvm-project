@@ -312,16 +312,16 @@ inline MPInt lcm(const MPInt &a, const MPInt &b) {
 inline MPInt MPInt::operator%(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return MPInt(get64() % o.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(getAsAP() % o.getAsAP());
 }
 
 inline MPInt MPInt::operator-() const {
   if (isSmall()) {
     if (get64() != std::numeric_limits<int64_t>::min())
       return MPInt(-get64());
-    llvm_unreachable("Overflow!");
+    return MPInt(-getAsAP());
   }
-  llvm_unreachable("Overflow!");
+  return MPInt(-getAsAP());
 }
 
 /// ---------------------------------------------------------------------------
