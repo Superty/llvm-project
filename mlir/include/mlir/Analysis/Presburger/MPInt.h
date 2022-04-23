@@ -286,7 +286,7 @@ inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
                      ? ((lhs.get64() + x) / rhs.get64()) + 1
                      : -(-lhs.get64() / rhs.get64()));
   }
-  abort();
+  return MPInt(ceilDiv(lhs.getAsAP(), rhs.getAsAP()));
 }
 inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
   if (lhs.isSmall() && rhs.isSmall()) {
@@ -298,7 +298,7 @@ inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
             ? -((-lhs.get64() + x) / rhs.get64()) - 1
             : lhs.get64() / rhs.get64());
   }
-  abort();
+  return MPInt(floorDiv(lhs.getAsAP(), rhs.getAsAP()));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
@@ -307,13 +307,13 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
     return MPInt(lhs.get64() % rhs.get64() < 0
                      ? lhs.get64() % rhs.get64() + rhs.get64()
                      : lhs.get64() % rhs.get64());
-  abort();
+  return MPInt(mod(lhs.getAsAP(), rhs.getAsAP()));
 }
 
 inline MPInt gcd(const MPInt &a, const MPInt &b) {
   if (a.isSmall() && b.isSmall())
     return MPInt(llvm::GreatestCommonDivisor64(a.get64(), b.get64()));
-  abort();
+  return MPInt(gcd(a.getAsAP(), b.getAsAP()));
 }
 
 /// Returns the least common multiple of 'a' and 'b'.
