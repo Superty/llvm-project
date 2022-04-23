@@ -118,7 +118,9 @@ public:
 
   /// Returns the value at the specified equality row and column.
   inline MPInt atEq(unsigned i, unsigned j) const { return equalities(i, j); }
-  inline int64_t atEq64(unsigned i, unsigned j) const { return int64_t(equalities(i, j)); }
+  inline int64_t atEq64(unsigned i, unsigned j) const {
+    return int64_t(equalities(i, j));
+  }
   inline MPInt &atEq(unsigned i, unsigned j) { return equalities(i, j); }
 
   /// Returns the value at the specified inequality row and column.
@@ -240,9 +242,7 @@ public:
   }
   /// Adds an equality from the coefficients specified in `eq`.
   void addEquality(ArrayRef<MPInt> eq);
-  void addEquality(ArrayRef<int64_t> eq) {
-    addEquality(getMPIntVec(eq));
-  }
+  void addEquality(ArrayRef<int64_t> eq) { addEquality(getMPIntVec(eq)); }
 
   /// Eliminate the `posB^th` local identifier, replacing every instance of it
   /// with the `posA^th` local identifier. This should be used when the two
@@ -453,26 +453,25 @@ public:
   /// function definition for examples.
   Optional<MPInt> getConstantBoundOnDimSize(
       unsigned pos, SmallVectorImpl<MPInt> *lb = nullptr,
-      MPInt *boundFloorDivisor = nullptr,
-      SmallVectorImpl<MPInt> *ub = nullptr, unsigned *minLbPos = nullptr,
-      unsigned *minUbPos = nullptr) const;
+      MPInt *boundFloorDivisor = nullptr, SmallVectorImpl<MPInt> *ub = nullptr,
+      unsigned *minLbPos = nullptr, unsigned *minUbPos = nullptr) const;
   Optional<int64_t> getConstantBoundOnDimSize64(
       unsigned pos, SmallVectorImpl<int64_t> *lb = nullptr,
       int64_t *boundFloorDivisor = nullptr,
       SmallVectorImpl<int64_t> *ub = nullptr, unsigned *minLbPos = nullptr,
       unsigned *minUbPos = nullptr) const {
-        SmallVector<MPInt, 8> ubMPInt, lbMPInt;
-        MPInt boundFloorDivisorMPInt;
-        Optional<MPInt> result = getConstantBoundOnDimSize(pos, &lbMPInt, &boundFloorDivisorMPInt, &ubMPInt, minLbPos, minUbPos);
-        if (lb)
-          *lb = getInt64Vec(lbMPInt);
-        if (ub)
-          *ub = getInt64Vec(ubMPInt);
-        if (boundFloorDivisor)
-          *boundFloorDivisor = int64_t(boundFloorDivisorMPInt);
-        return result.map(int64FromMPInt);
-      }
-
+    SmallVector<MPInt, 8> ubMPInt, lbMPInt;
+    MPInt boundFloorDivisorMPInt;
+    Optional<MPInt> result = getConstantBoundOnDimSize(
+        pos, &lbMPInt, &boundFloorDivisorMPInt, &ubMPInt, minLbPos, minUbPos);
+    if (lb)
+      *lb = getInt64Vec(lbMPInt);
+    if (ub)
+      *ub = getInt64Vec(ubMPInt);
+    if (boundFloorDivisor)
+      *boundFloorDivisor = int64_t(boundFloorDivisorMPInt);
+    return result.map(int64FromMPInt);
+  }
 
   /// Returns the constant bound for the pos^th identifier if there is one;
   /// None otherwise.

@@ -34,4 +34,3 @@ llvm::raw_ostream &mlir::presburger::operator<<(llvm::raw_ostream &os,
   x.print(os);
   return os;
 }
-

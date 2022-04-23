@@ -90,8 +90,7 @@ IntegerRelation::findRationalLexMin() const {
   return maybeLexMin;
 }
 
-MaybeOptimum<SmallVector<MPInt, 8>>
-IntegerRelation::findIntegerLexMin() const {
+MaybeOptimum<SmallVector<MPInt, 8>> IntegerRelation::findIntegerLexMin() const {
   assert(getNumSymbolIds() == 0 && "Symbols are not supported!");
   MaybeOptimum<SmallVector<MPInt, 8>> maybeLexMin =
       LexSimplex(*this).findIntegerLexMin();
@@ -457,7 +456,7 @@ static void eliminateFromConstraint(IntegerRelation *constraints,
     if (j >= elimColStart && j < pivotCol)
       continue;
     MPInt v = pivotMultiplier * constraints->atEq(pivotRow, j) +
-                rowMultiplier * at(rowIdx, j);
+              rowMultiplier * at(rowIdx, j);
     isEq ? constraints->atEq(rowIdx, j) = v
          : constraints->atIneq(rowIdx, j) = v;
   }
@@ -1218,7 +1217,8 @@ void IntegerRelation::convertIdKind(IdKind srcKind, unsigned idStart,
   removeIdRange(srcKind, idStart, idLimit);
 }
 
-void IntegerRelation::addBound(BoundType type, unsigned pos, const MPInt &value) {
+void IntegerRelation::addBound(BoundType type, unsigned pos,
+                               const MPInt &value) {
   assert(pos < getNumCols());
   if (type == BoundType::EQ) {
     unsigned row = equalities.appendExtraRow();
@@ -1338,8 +1338,7 @@ void IntegerRelation::constantFoldIdRange(unsigned pos, unsigned num) {
 //       ceil(s0 - 7 / 8) = floor(s0 / 8)).
 Optional<MPInt> IntegerRelation::getConstantBoundOnDimSize(
     unsigned pos, SmallVectorImpl<MPInt> *lb, MPInt *boundFloorDivisor,
-    SmallVectorImpl<MPInt> *ub, unsigned *minLbPos,
-    unsigned *minUbPos) const {
+    SmallVectorImpl<MPInt> *ub, unsigned *minLbPos, unsigned *minUbPos) const {
   assert(pos < getNumDimIds() && "Invalid identifier position");
 
   // Find an equality for 'pos'^th identifier that equates it to some function
@@ -1420,8 +1419,8 @@ Optional<MPInt> IntegerRelation::getConstantBoundOnDimSize(
       if (j < getNumCols() - 1)
         continue;
       MPInt diff = ceilDiv(atIneq(ubPos, getNumCols() - 1) +
-                                 atIneq(lbPos, getNumCols() - 1) + 1,
-                             atIneq(lbPos, pos));
+                               atIneq(lbPos, getNumCols() - 1) + 1,
+                           atIneq(lbPos, pos));
       // This bound is non-negative by definition.
       diff = std::max<MPInt>(diff, MPInt(0));
       if (minDiff == None || diff < minDiff) {
@@ -1521,7 +1520,7 @@ IntegerRelation::computeConstantLowerOrUpperBound(unsigned pos) {
 }
 
 Optional<MPInt> IntegerRelation::getConstantBound(BoundType type,
-                                                    unsigned pos) const {
+                                                  unsigned pos) const {
   if (type == BoundType::LB)
     return IntegerRelation(*this)
         .computeConstantLowerOrUpperBound</*isLower=*/true>(pos);

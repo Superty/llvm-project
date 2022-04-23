@@ -115,7 +115,7 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
 /// For every eq `coeffs == 0` there are two possible ineqs to index into.
 /// The first is coeffs >= 0 and the second is coeffs <= 0.
 static SmallVector<MPInt, 8> getIneqCoeffsFromIdx(const IntegerRelation &rel,
-                                                    unsigned idx) {
+                                                  unsigned idx) {
   assert(idx < rel.getNumInequalities() + 2 * rel.getNumEqualities() &&
          "idx out of bounds!");
   if (idx < rel.getNumInequalities())

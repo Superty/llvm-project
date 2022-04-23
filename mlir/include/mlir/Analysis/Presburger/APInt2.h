@@ -1,4 +1,5 @@
-//===-- llvm/ADT/APInt2.h - For Arbitrary Precision Integer -----*- C++ -*--===//
+//===-- llvm/ADT/APInt2.h - For Arbitrary Precision Integer -----*- C++
+//-*--===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -47,13 +48,13 @@ APInt2 GreatestCommonDivisor(const APInt2 &A, const APInt2 &B);
 
 /// Class for arbitrary precision integers.
 ///
-/// APInt2 is a functional replacement for common case unsigned integer type like
-/// "unsigned", "unsigned long" or "uint64_t", but also allows non-byte-width
-/// integer sizes and large integer value types such as 3-bits, 15-bits, or more
-/// than 64-bits of precision. APInt2 provides a variety of arithmetic operators
-/// and methods to manipulate integer values of any bit-width. It supports both
-/// the typical integer arithmetic and comparison operations as well as bitwise
-/// manipulation.
+/// APInt2 is a functional replacement for common case unsigned integer type
+/// like "unsigned", "unsigned long" or "uint64_t", but also allows
+/// non-byte-width integer sizes and large integer value types such as 3-bits,
+/// 15-bits, or more than 64-bits of precision. APInt2 provides a variety of
+/// arithmetic operators and methods to manipulate integer values of any
+/// bit-width. It supports both the typical integer arithmetic and comparison
+/// operations as well as bitwise manipulation.
 ///
 /// The class has several invariants worth noting:
 ///   * All bit, byte, and word positions are zero-based.
@@ -220,7 +221,9 @@ public:
   }
 
   /// NOTE: This is soft-deprecated.  Please use `getAllOnes()` instead.
-  static APInt2 getAllOnesValue(unsigned numBits) { return getAllOnes(numBits); }
+  static APInt2 getAllOnesValue(unsigned numBits) {
+    return getAllOnes(numBits);
+  }
 
   /// Return an APInt2 with exactly one bit set in the result.
   static APInt2 getOneBitSet(unsigned numBits, unsigned BitNo) {
@@ -255,7 +258,7 @@ public:
   /// If \p hiBit is equal to \p loBit, you would get a result with all bits
   /// set.
   static APInt2 getBitsSetWithWrap(unsigned numBits, unsigned loBit,
-                                  unsigned hiBit) {
+                                   unsigned hiBit) {
     APInt2 Res(numBits, 0);
     Res.setBitsWithWrap(loBit, hiBit);
     return Res;
@@ -490,8 +493,8 @@ public:
     return (Ones > 0) && ((Ones + countLeadingZerosSlowCase()) == BitWidth);
   }
 
-  /// Return true if this APInt2 value contains a non-empty sequence of ones with
-  /// the remainder zero.
+  /// Return true if this APInt2 value contains a non-empty sequence of ones
+  /// with the remainder zero.
   bool isShiftedMask() const {
     if (isSingleWord())
       return isShiftedMask_64(U.VAL);
@@ -500,8 +503,8 @@ public:
     return (Ones + LeadZ + countTrailingZeros()) == BitWidth;
   }
 
-  /// Return true if this APInt2 value contains a non-empty sequence of ones with
-  /// the remainder zero. If true, \p MaskIdx will specify the index of the
+  /// Return true if this APInt2 value contains a non-empty sequence of ones
+  /// with the remainder zero. If true, \p MaskIdx will specify the index of the
   /// lowest set bit and \p MaskLen is updated to specify the length of the
   /// mask, else neither are updated.
   bool isShiftedMask(unsigned &MaskIdx, unsigned &MaskLen) const {
@@ -519,16 +522,16 @@ public:
 
   /// Compute an APInt2 containing numBits highbits from this APInt2.
   ///
-  /// Get an APInt2 with the same BitWidth as this APInt2, just zero mask the low
-  /// bits and right shift to the least significant bit.
+  /// Get an APInt2 with the same BitWidth as this APInt2, just zero mask the
+  /// low bits and right shift to the least significant bit.
   ///
   /// \returns the high "numBits" bits of this APInt2.
   APInt2 getHiBits(unsigned numBits) const;
 
   /// Compute an APInt2 containing numBits lowbits from this APInt2.
   ///
-  /// Get an APInt2 with the same BitWidth as this APInt2, just zero mask the high
-  /// bits.
+  /// Get an APInt2 with the same BitWidth as this APInt2, just zero mask the
+  /// high bits.
   ///
   /// \returns the low "numBits" bits of this APInt2.
   APInt2 getLoBits(unsigned numBits) const;
@@ -589,8 +592,8 @@ public:
   /// \returns *this decremented by one.
   APInt2 &operator--();
 
-  /// Logical negation operation on this APInt2 returns true if zero, like normal
-  /// integers.
+  /// Logical negation operation on this APInt2 returns true if zero, like
+  /// normal integers.
   bool operator!() const { return isZero(); }
 
   /// @}
@@ -922,8 +925,8 @@ public:
   /// Perform an unsigned divide operation on this APInt2 by RHS. Both this and
   /// RHS are treated as unsigned quantities for purposes of this division.
   ///
-  /// \returns a new APInt2 value containing the division result, rounded towards
-  /// zero.
+  /// \returns a new APInt2 value containing the division result, rounded
+  /// towards zero.
   APInt2 udiv(const APInt2 &RHS) const;
   APInt2 udiv(uint64_t RHS) const;
 
@@ -1024,8 +1027,8 @@ public:
     return (isSingleWord() || getActiveBits() <= 64) && getZExtValue() == Val;
   }
 
-  /// Unsigned comparison. Returns -1, 0, or 1 if this APInt2 is less than, equal
-  /// to, or greater than RHS.
+  /// Unsigned comparison. Returns -1, 0, or 1 if this APInt2 is less than,
+  /// equal to, or greater than RHS.
   int compare(const APInt2 &RHS) const LLVM_READONLY;
 
   /// Signed comparison. Returns -1, 0, or 1 if this APInt2 is less than, equal
@@ -1215,7 +1218,8 @@ public:
     return intersectsSlowCase(RHS);
   }
 
-  /// This operation checks that all bits set in this APInt2 are also set in RHS.
+  /// This operation checks that all bits set in this APInt2 are also set in
+  /// RHS.
   bool isSubsetOf(const APInt2 &RHS) const {
     assert(BitWidth == RHS.BitWidth && "Bit widths must be the same");
     if (isSingleWord())
@@ -1229,8 +1233,8 @@ public:
 
   /// Truncate to new width.
   ///
-  /// Truncate the APInt2 to a specified width. It is an error to specify a width
-  /// that is greater than or equal to the current width.
+  /// Truncate the APInt2 to a specified width. It is an error to specify a
+  /// width that is greater than or equal to the current width.
   APInt2 trunc(unsigned width) const;
 
   /// Truncate to new width with unsigned saturation.
@@ -1429,7 +1433,8 @@ public:
   void insertBits(const APInt2 &SubBits, unsigned bitPosition);
   void insertBits(uint64_t SubBits, unsigned bitPosition, unsigned numBits);
 
-  /// Return an APInt2 with the extracted bits [bitPosition,bitPosition+numBits).
+  /// Return an APInt2 with the extracted bits
+  /// [bitPosition,bitPosition+numBits).
   APInt2 extractBits(unsigned numBits, unsigned bitPosition) const;
   uint64_t extractBitsAsZExtValue(unsigned numBits, unsigned bitPosition) const;
 
@@ -1475,8 +1480,8 @@ public:
 
   /// Get the minimum bit size for this signed APInt2
   ///
-  /// Computes the minimum bit width for this APInt2 while considering it to be a
-  /// signed (and probably negative) value. If the value is not negative, this
+  /// Computes the minimum bit width for this APInt2 while considering it to be
+  /// a signed (and probably negative) value. If the value is not negative, this
   /// function returns the same value as getActiveBits()+1. Otherwise, it
   /// returns the smallest bit width that will retain the negative value. For
   /// example, -1 can be written as 0b1 or 0xFFFFFFFFFF. 0b1 is shorter and so
@@ -1842,9 +1847,11 @@ public:
   /// using Stein's algorithm.
   ///
   /// \returns the greatest common divisor of A and B.
-  friend APInt2 APInt2Ops::GreatestCommonDivisor(const APInt2 &A, const APInt2 &B);
+  friend APInt2 APInt2Ops::GreatestCommonDivisor(const APInt2 &A,
+                                                 const APInt2 &B);
 
-  /// Used to insert APInt2 objects, or objects that contain APInt2 objects, into
+  /// Used to insert APInt2 objects, or objects that contain APInt2 objects,
+  /// into
   ///  FoldingSets.
   void Profile(FoldingSetNodeID &id) const;
 
@@ -2251,7 +2258,7 @@ APInt2 RoundingSDiv(const APInt2 &A, const APInt2 &B, APInt2::Rounding RM);
 /// The returned value may have a different bit width from the input
 /// coefficients.
 Optional<APInt2> SolveQuadraticEquationWrap(APInt2 A, APInt2 B, APInt2 C,
-                                           unsigned RangeWidth);
+                                            unsigned RangeWidth);
 
 /// Compare two values, and if they are different, return the position of the
 /// most significant bit that is different in the values.
@@ -2305,14 +2312,15 @@ template <> struct DenseMapInfo<APInt2, void> {
 inline APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
-    Overflow = __builtin_mul_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    Overflow = __builtin_mul_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL),
+                                      (int64_t *)&Res.U.VAL);
     return Res;
   }
   Res = *this * RHS;
 
   if (RHS != 0)
-    Overflow = Res.sdiv(RHS) != *this ||
-               (isMinSignedValue() && RHS.isAllOnes());
+    Overflow =
+        Res.sdiv(RHS) != *this || (isMinSignedValue() && RHS.isAllOnes());
   else
     Overflow = false;
   return Res;
@@ -2321,10 +2329,11 @@ inline APInt2 APInt2::smul_ov(const APInt2 &RHS, bool &Overflow) const {
 inline APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
-    Overflow = __builtin_add_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    Overflow = __builtin_add_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL),
+                                      (int64_t *)&Res.U.VAL);
     return Res;
   }
-  Res = *this+RHS;
+  Res = *this + RHS;
   Overflow = isNonNegative() == RHS.isNonNegative() &&
              Res.isNonNegative() != isNonNegative();
   return Res;
@@ -2333,7 +2342,8 @@ inline APInt2 APInt2::sadd_ov(const APInt2 &RHS, bool &Overflow) const {
 inline APInt2 APInt2::ssub_ov(const APInt2 &RHS, bool &Overflow) const {
   APInt2 Res(BitWidth, 0, /*isSigned=*/true);
   if (isSingleWord() && RHS.isSingleWord()) {
-    Overflow = __builtin_sub_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL), (int64_t *)&Res.U.VAL);
+    Overflow = __builtin_sub_overflow(int64_t(U.VAL), int64_t(RHS.U.VAL),
+                                      (int64_t *)&Res.U.VAL);
     return Res;
   }
   Res = *this - RHS;

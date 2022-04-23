@@ -118,7 +118,7 @@ IntegerRelation LinearTransform::applyTo(const IntegerRelation &rel) const {
   for (unsigned i = 0, e = rel.getNumEqualities(); i < e; ++i) {
     ArrayRef<MPInt> eq = rel.getEquality(i);
 
-    MPInt c = eq.back();
+    const MPInt &c = eq.back();
 
     SmallVector<MPInt, 8> newEq = preMultiplyWithRow(eq.drop_back());
     newEq.push_back(c);
@@ -128,7 +128,7 @@ IntegerRelation LinearTransform::applyTo(const IntegerRelation &rel) const {
   for (unsigned i = 0, e = rel.getNumInequalities(); i < e; ++i) {
     ArrayRef<MPInt> ineq = rel.getInequality(i);
 
-    MPInt c = ineq.back();
+    const MPInt &c = ineq.back();
 
     SmallVector<MPInt, 8> newIneq = preMultiplyWithRow(ineq.drop_back());
     newIneq.push_back(c);

@@ -30,14 +30,14 @@ struct Fraction {
   Fraction() = default;
 
   /// Construct a Fraction from a numerator and denominator.
-  Fraction(MPInt oNum, MPInt oDen) : num(oNum), den(oDen) {
+  Fraction(const MPInt &oNum, const MPInt &oDen) : num(oNum), den(oDen) {
     if (den < 0) {
       num = -num;
       den = -den;
     }
   }
-  Fraction(MPInt num, int64_t den) : Fraction(num, MPInt(den)) {}
-  Fraction(int64_t num, MPInt den) : Fraction(MPInt(num), den) {}
+  Fraction(const MPInt &num, int64_t den) : Fraction(num, MPInt(den)) {}
+  Fraction(int64_t num, const MPInt &den) : Fraction(MPInt(num), den) {}
   Fraction(int64_t num, int64_t den) : Fraction(MPInt(num), MPInt(den)) {}
 
   // Return the value of the fraction as an integer. This should only be called
@@ -55,7 +55,7 @@ struct Fraction {
 /// Three-way comparison between two fractions.
 /// Returns +1, 0, and -1 if the first fraction is greater than, equal to, or
 /// less than the second fraction, respectively.
-inline int compare(Fraction x, Fraction y) {
+inline int compare(const Fraction &x, const Fraction &y) {
   MPInt diff = x.num * y.den - y.num * x.den;
   if (diff > 0)
     return +1;
@@ -64,25 +64,25 @@ inline int compare(Fraction x, Fraction y) {
   return 0;
 }
 
-inline MPInt floor(Fraction f) { return floorDiv(f.num, f.den); }
+inline MPInt floor(const Fraction &f) { return floorDiv(f.num, f.den); }
 
-inline MPInt ceil(Fraction f) { return ceilDiv(f.num, f.den); }
+inline MPInt ceil(const Fraction &f) { return ceilDiv(f.num, f.den); }
 
-inline Fraction operator-(Fraction x) { return Fraction(-x.num, x.den); }
+inline Fraction operator-(const Fraction &x) { return Fraction(-x.num, x.den); }
 
-inline bool operator<(Fraction x, Fraction y) { return compare(x, y) < 0; }
+inline bool operator<(const Fraction &x, const Fraction &y) { return compare(x, y) < 0; }
 
-inline bool operator<=(Fraction x, Fraction y) { return compare(x, y) <= 0; }
+inline bool operator<=(const Fraction &x, const Fraction &y) { return compare(x, y) <= 0; }
 
-inline bool operator==(Fraction x, Fraction y) { return compare(x, y) == 0; }
+inline bool operator==(const Fraction &x, const Fraction &y) { return compare(x, y) == 0; }
 
-inline bool operator!=(Fraction x, Fraction y) { return compare(x, y) != 0; }
+inline bool operator!=(const Fraction &x, const Fraction &y) { return compare(x, y) != 0; }
 
-inline bool operator>(Fraction x, Fraction y) { return compare(x, y) > 0; }
+inline bool operator>(const Fraction &x, const Fraction &y) { return compare(x, y) > 0; }
 
-inline bool operator>=(Fraction x, Fraction y) { return compare(x, y) >= 0; }
+inline bool operator>=(const Fraction &x, const Fraction &y) { return compare(x, y) >= 0; }
 
-inline Fraction operator*(Fraction x, Fraction y) {
+inline Fraction operator*(const Fraction &x, const Fraction &y) {
   return Fraction(x.num * y.num, x.den * y.den);
 }
 

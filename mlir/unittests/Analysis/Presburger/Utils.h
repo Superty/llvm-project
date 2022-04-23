@@ -99,24 +99,24 @@ inline bool infinityOrUInt64LE(Optional<MPInt> lhs, Optional<MPInt> rhs) {
 /// the true volume `trueVolume`, while also being at least as good an
 /// approximation as `resultBound`.
 inline void
-expectComputedVolumeIsValidOverapprox(Optional<MPInt> computedVolume,
-                                      Optional<MPInt> trueVolume,
-                                      Optional<MPInt> resultBound) {
+expectComputedVolumeIsValidOverapprox(const Optional<MPInt> &computedVolume,
+                                      const Optional<MPInt> &trueVolume,
+                                      const Optional<MPInt> &resultBound) {
   assert(infinityOrUInt64LE(trueVolume, resultBound) &&
          "can't expect result to be less than the true volume");
   EXPECT_TRUE(infinityOrUInt64LE(trueVolume, computedVolume));
   EXPECT_TRUE(infinityOrUInt64LE(computedVolume, resultBound));
 }
 
-inline MPInt tpIntFromInt64(int64_t x) {
-  return MPInt(x);
-}
+inline MPInt tpIntFromInt64(int64_t x) { return MPInt(x); }
 
 inline void
-expectComputedVolumeIsValidOverapprox(Optional<MPInt> computedVolume,
+expectComputedVolumeIsValidOverapprox(const Optional<MPInt> &computedVolume,
                                       Optional<int64_t> trueVolume,
                                       Optional<int64_t> resultBound) {
-  expectComputedVolumeIsValidOverapprox(computedVolume, trueVolume.map(tpIntFromInt64), resultBound.map(tpIntFromInt64));
+  expectComputedVolumeIsValidOverapprox(computedVolume,
+                                        trueVolume.map(tpIntFromInt64),
+                                        resultBound.map(tpIntFromInt64));
 }
 
 } // namespace presburger

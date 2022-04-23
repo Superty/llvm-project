@@ -110,9 +110,7 @@ public:
   void copyRow(unsigned sourceRow, unsigned targetRow);
 
   void fillRow(unsigned row, const MPInt &value);
-  void fillRow(unsigned row, int64_t value) {
-    fillRow(row, MPInt(value));
-  }
+  void fillRow(unsigned row, int64_t value) { fillRow(row, MPInt(value)); }
 
   /// Add `scale` multiples of the source row to the target row.
   void addToRow(unsigned sourceRow, unsigned targetRow, const MPInt &scale);
@@ -121,8 +119,10 @@ public:
   }
 
   /// Add `scale` multiples of the source column to the target column.
-  void addToColumn(unsigned sourceColumn, unsigned targetColumn, const MPInt &scale);
-  void addToColumn(unsigned sourceColumn, unsigned targetColumn, int64_t scale) {
+  void addToColumn(unsigned sourceColumn, unsigned targetColumn,
+                   const MPInt &scale);
+  void addToColumn(unsigned sourceColumn, unsigned targetColumn,
+                   int64_t scale) {
     addToColumn(sourceColumn, targetColumn, MPInt(scale));
   }
 
@@ -145,8 +145,7 @@ public:
 
   /// The given vector is interpreted as a column vector v. Pre-multiply v with
   /// this matrix, say M, and return Mv.
-  SmallVector<MPInt, 8>
-  postMultiplyWithColumn(ArrayRef<MPInt> colVec) const;
+  SmallVector<MPInt, 8> postMultiplyWithColumn(ArrayRef<MPInt> colVec) const;
 
   /// Resize the matrix to the specified dimensions. If a dimension is smaller,
   /// the values are truncated; if it is bigger, the new values are initialized
