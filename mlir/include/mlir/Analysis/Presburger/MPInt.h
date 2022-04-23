@@ -99,173 +99,151 @@ public:
   /// Convenience operator overloads for int64_t.
   /// ---------------------------------------------------------------------------
   friend MPInt &operator+=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
+    if (a.isSmall()) {
+      a.get64() += b;
+      return a;
     }
-    a.get64() += b;
-    return a;
+    abort();
   }
   friend MPInt &operator-=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
+    if (a.isSmall()) {
+      a.get64() -= b;
+      return a;
     }
-    a.get64() -= b;
-    return a;
+    abort();
   }
   friend MPInt &operator*=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
+    if (a.isSmall()) {
+      a.get64() *= b;
+      return a;
     }
-    a.get64() *= b;
-    return a;
+    abort();
   }
   friend MPInt &operator/=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
+    if (a.isSmall()) {
+      a.get64() /= b;
+      return a;
     }
-    a.get64() /= b;
-    return a;
+    abort();
   }
   friend MPInt &operator%=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
+    if (a.isSmall()) {
+      a.get64() %= b;
+      return a;
     }
-    a.get64() %= b;
-    return a;
+    abort();
   }
 
   friend bool operator==(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() == b;
+    if (a.isSmall())
+      return a.get64() == b;
+    abort();
   }
   friend bool operator!=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() != b;
+    if (a.isSmall())
+      return a.get64() != b;
+    abort();
   }
   friend bool operator>(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() > b;
+    if (a.isSmall())
+      return a.get64() > b;
+    abort();
   }
   friend bool operator<(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() < b;
+    if (a.isSmall())
+      return a.get64() < b;
+    abort();
   }
   friend bool operator<=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() <= b;
+    if (a.isSmall())
+      return a.get64() <= b;
+    abort();
   }
   friend bool operator>=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return a.get64() >= b;
+    if (a.isSmall())
+      return a.get64() >= b;
+    abort();
   }
   friend MPInt operator+(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return MPInt(a.get64() + b);
+    if (a.isSmall())
+      return MPInt(a.get64() + b);
+    abort();
   }
   friend MPInt operator-(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return MPInt(a.get64() - b);
+    if (a.isSmall())
+      return MPInt(a.get64() - b);
+    abort();
   }
   friend MPInt operator*(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return MPInt(a.get64() * b);
+    if (a.isSmall())
+      return MPInt(a.get64() * b);
+    abort();
   }
   friend MPInt operator/(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return MPInt(a.get64() / b);
+    if (a.isSmall())
+      return MPInt(a.get64() / b);
+    abort();
   }
   friend MPInt operator%(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      abort();
-    }
-    return MPInt(a.get64() % b);
+    if (a.isSmall())
+      return MPInt(a.get64() % b);
+    abort();
   }
 
   friend bool operator==(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a == b.get64();
+    if (b.isSmall())
+      return a == b.get64();
+    abort();
   }
   friend bool operator!=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a != b.get64();
+    if (b.isSmall())
+      return a != b.get64();
+    abort();
   }
   friend bool operator>(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a > b.get64();
+    if (b.isSmall())
+      return a > b.get64();
+    abort();
   }
   friend bool operator<(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a < b.get64();
+    if (b.isSmall())
+      return a < b.get64();
+    abort();
   }
   friend bool operator<=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a <= b.get64();
+    if (b.isSmall())
+      return a <= b.get64();
+    abort();
   }
   friend bool operator>=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return a >= b.get64();
+    if (b.isSmall())
+      return a >= b.get64();
+    abort();
   }
   friend MPInt operator+(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return MPInt(a + b.get64());
+    if (b.isSmall())
+      return MPInt(a + b.get64());
+    abort();
   }
   friend MPInt operator-(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return MPInt(a - b.get64());
+    if (b.isSmall())
+      return MPInt(a - b.get64());
+    abort();
   }
   friend MPInt operator*(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return MPInt(a * b.get64());
+    if (b.isSmall())
+      return MPInt(a * b.get64());
+    abort();
   }
   friend MPInt operator/(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return MPInt(a / b.get64());
+    if (b.isSmall())
+      return MPInt(a / b.get64());
+    abort();
   }
   friend MPInt operator%(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      abort();
-    }
-    return MPInt(a % b.get64());
+    if (b.isSmall())
+      return MPInt(a % b.get64());
+    abort();
   }
 
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
