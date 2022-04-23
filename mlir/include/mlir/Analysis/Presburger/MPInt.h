@@ -62,7 +62,7 @@ public:
   explicit operator int64_t() const {
     if (isSmall())
       return get64();
-    abort();
+    return static_cast<int64_t>(getAP());
   }
 
   bool operator==(const MPInt &o) const;
