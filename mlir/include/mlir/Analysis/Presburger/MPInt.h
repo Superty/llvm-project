@@ -59,7 +59,7 @@ public:
   explicit operator int64_t() const {
     if (isSmall())
       return get64();
-    llvm_unreachable("Overflow!");
+    return static_cast<int64_t>(getAP());
   }
 
   bool operator==(const MPInt &o) const;
