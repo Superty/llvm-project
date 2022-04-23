@@ -59,6 +59,11 @@ public:
     init64(x);
     return *this;
   }
+  explicit operator int64_t() const {
+    if (isSmall())
+      return get64();
+    abort();
+  }
 
   bool operator==(const MPInt &o) const;
   bool operator!=(const MPInt &o) const;
@@ -81,11 +86,6 @@ public:
   MPInt &operator++();
   MPInt &operator--();
 
-  explicit operator int64_t() const {
-    if (isSmall())
-      return get64();
-    abort();
-  }
   friend MPInt abs(const MPInt &x);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
