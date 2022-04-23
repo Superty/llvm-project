@@ -96,173 +96,151 @@ public:
   /// Convenience operator overloads for int64_t.
   /// ---------------------------------------------------------------------------
   friend MPInt &operator+=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
+    if (a.isSmall()) {
+      a.get64() += b;
+      return a;
     }
-    a.get64() += b;
-    return a;
+    llvm_unreachable("Overflow!");
   }
   friend MPInt &operator-=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
+    if (a.isSmall()) {
+      a.get64() -= b;
+      return a;
     }
-    a.get64() -= b;
-    return a;
+    llvm_unreachable("Overflow!");
   }
   friend MPInt &operator*=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
+    if (a.isSmall()) {
+      a.get64() *= b;
+      return a;
     }
-    a.get64() *= b;
-    return a;
+    llvm_unreachable("Overflow!");
   }
   friend MPInt &operator/=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
+    if (a.isSmall()) {
+      a.get64() /= b;
+      return a;
     }
-    a.get64() /= b;
-    return a;
+    llvm_unreachable("Overflow!");
   }
   friend MPInt &operator%=(MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
+    if (a.isSmall()) {
+      a.get64() %= b;
+      return a;
     }
-    a.get64() %= b;
-    return a;
+    llvm_unreachable("Overflow!");
   }
 
   friend bool operator==(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() == b;
+    if (a.isSmall())
+      return a.get64() == b;
+    llvm_unreachable("Overflow!");
   }
   friend bool operator!=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() != b;
+    if (a.isSmall())
+      return a.get64() != b;
+    llvm_unreachable("Overflow!");
   }
   friend bool operator>(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() > b;
+    if (a.isSmall())
+      return a.get64() > b;
+    llvm_unreachable("Overflow!");
   }
   friend bool operator<(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() < b;
+    if (a.isSmall())
+      return a.get64() < b;
+    llvm_unreachable("Overflow!");
   }
   friend bool operator<=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() <= b;
+    if (a.isSmall())
+      return a.get64() <= b;
+    llvm_unreachable("Overflow!");
   }
   friend bool operator>=(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a.get64() >= b;
+    if (a.isSmall())
+      return a.get64() >= b;
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator+(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a.get64() + b);
+    if (a.isSmall())
+      return MPInt(a.get64() + b);
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator-(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a.get64() - b);
+    if (a.isSmall())
+      return MPInt(a.get64() - b);
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator*(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a.get64() * b);
+    if (a.isSmall())
+      return MPInt(a.get64() * b);
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator/(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a.get64() / b);
+    if (a.isSmall())
+      return MPInt(a.get64() / b);
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator%(const MPInt &a, int64_t b) {
-    if (a.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a.get64() % b);
+    if (a.isSmall())
+      return MPInt(a.get64() % b);
+    llvm_unreachable("Overflow!");
   }
 
   friend bool operator==(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a == b.get64();
+    if (b.isSmall())
+      return a == b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend bool operator!=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a != b.get64();
+    if (b.isSmall())
+      return a != b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend bool operator>(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a > b.get64();
+    if (b.isSmall())
+      return a > b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend bool operator<(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a < b.get64();
+    if (b.isSmall())
+      return a < b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend bool operator<=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a <= b.get64();
+    if (b.isSmall())
+      return a <= b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend bool operator>=(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return a >= b.get64();
+    if (b.isSmall())
+      return a >= b.get64();
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator+(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a + b.get64());
+    if (b.isSmall())
+      return MPInt(a + b.get64());
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator-(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a - b.get64());
+    if (b.isSmall())
+      return MPInt(a - b.get64());
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator*(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a * b.get64());
+    if (b.isSmall())
+      return MPInt(a * b.get64());
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator/(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a / b.get64());
+    if (b.isSmall())
+      return MPInt(a / b.get64());
+    llvm_unreachable("Overflow!");
   }
   friend MPInt operator%(int64_t a, const MPInt &b) {
-    if (b.isLarge()) {
-      llvm_unreachable("Overflow!");
-    }
-    return MPInt(a % b.get64());
+    if (b.isSmall())
+      return MPInt(a % b.get64());
+    llvm_unreachable("Overflow!");
   }
 
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
