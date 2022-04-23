@@ -33,41 +33,6 @@ llvm::raw_ostream &mlir::presburger::detail::operator<<(llvm::raw_ostream &os,
 }
 
 /// ---------------------------------------------------------------------------
-/// Convenience operator overloads for int64_t.
-/// ---------------------------------------------------------------------------
-MPAPInt &operator+=(MPAPInt &a, int64_t b) { return a += MPAPInt(b); }
-MPAPInt &operator-=(MPAPInt &a, int64_t b) { return a -= MPAPInt(b); }
-MPAPInt &operator*=(MPAPInt &a, int64_t b) { return a *= MPAPInt(b); }
-MPAPInt &operator/=(MPAPInt &a, int64_t b) { return a /= MPAPInt(b); }
-MPAPInt &operator%=(MPAPInt &a, int64_t b) { return a %= MPAPInt(b); }
-
-bool operator==(const MPAPInt &a, int64_t b) { return a == MPAPInt(b); }
-bool operator!=(const MPAPInt &a, int64_t b) { return a != MPAPInt(b); }
-bool operator>(const MPAPInt &a, int64_t b) { return a > MPAPInt(b); }
-bool operator<(const MPAPInt &a, int64_t b) { return a < MPAPInt(b); }
-bool operator<=(const MPAPInt &a, int64_t b) { return a <= MPAPInt(b); }
-bool operator>=(const MPAPInt &a, int64_t b) { return a >= MPAPInt(b); }
-MPAPInt operator+(const MPAPInt &a, int64_t b) { return a + MPAPInt(b); }
-MPAPInt operator-(const MPAPInt &a, int64_t b) { return a - MPAPInt(b); }
-MPAPInt operator*(const MPAPInt &a, int64_t b) { return a * MPAPInt(b); }
-MPAPInt operator/(const MPAPInt &a, int64_t b) { return a / MPAPInt(b); }
-MPAPInt operator%(const MPAPInt &a, int64_t b) { return a % MPAPInt(b); }
-
-bool operator==(int64_t a, const MPAPInt &b) { return MPAPInt(a) == b; }
-bool operator!=(int64_t a, const MPAPInt &b) { return MPAPInt(a) != b; }
-bool operator>(int64_t a, const MPAPInt &b) { return MPAPInt(a) > b; }
-bool operator<(int64_t a, const MPAPInt &b) { return MPAPInt(a) < b; }
-bool operator<=(int64_t a, const MPAPInt &b) { return MPAPInt(a) <= b; }
-bool operator>=(int64_t a, const MPAPInt &b) { return MPAPInt(a) >= b; }
-MPAPInt operator+(int64_t a, const MPAPInt &b) { return MPAPInt(a) + b; }
-MPAPInt operator-(int64_t a, const MPAPInt &b) { return MPAPInt(a) - b; }
-MPAPInt operator*(int64_t a, const MPAPInt &b) { return MPAPInt(a) * b; }
-MPAPInt operator/(int64_t a, const MPAPInt &b) { return MPAPInt(a) / b; }
-MPAPInt operator%(int64_t a, const MPAPInt &b) { return MPAPInt(a) % b; }
-
-/// We define the operations here in the header to facilitate inlining.
-
-/// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
 bool MPAPInt::operator==(const MPAPInt &o) const {
