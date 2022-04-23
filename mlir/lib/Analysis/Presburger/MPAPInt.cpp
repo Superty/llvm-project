@@ -13,6 +13,13 @@ using namespace mlir;
 using namespace presburger;
 using detail::MPAPInt;
 
+MPAPInt::MPAPInt(int64_t val) : val(llvm::APSInt::get(val)) {}
+MPAPInt::MPAPInt() : MPAPInt(0) {}
+MPAPInt::MPAPInt(const llvm::APSInt &val) : val(val) {}
+MPAPInt &MPAPInt::operator=(int64_t val) { return *this = MPAPInt(val); }
+MPAPInt::operator int64_t() const { return val.getSExtValue(); }
+
+
 llvm::hash_code mlir::presburger::detail::hash_value(const MPAPInt &x) {
   return hash_value(x.val);
 }

@@ -26,11 +26,11 @@ namespace presburger {
 namespace detail {
 class MPAPInt {
 public:
-  explicit MPAPInt(int64_t val) : val(llvm::APSInt::get(val)) {}
-  MPAPInt() : MPAPInt(0) {}
-  explicit MPAPInt(const llvm::APSInt &val) : val(val) {}
-  MPAPInt &operator=(int64_t val) { return *this = MPAPInt(val); }
-  explicit operator int64_t() const { return val.getSExtValue(); }
+  explicit MPAPInt(int64_t val);
+  MPAPInt();
+  explicit MPAPInt(const llvm::APSInt &val);
+  MPAPInt &operator=(int64_t val);
+  explicit operator int64_t() const;
   MPAPInt operator-() const;
   bool operator==(const MPAPInt &o) const;
   bool operator!=(const MPAPInt &o) const;
