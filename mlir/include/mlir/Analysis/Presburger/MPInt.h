@@ -16,6 +16,7 @@
 #define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
 #include "mlir/Analysis/Presburger/APInt2.h"
+#include "mlir/Analysis/Presburger/MPAPInt.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -35,12 +36,11 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  __attribute__((always_inline)) explicit MPInt(int64_t val)
-      : val64(val), holdsAP(false) {}
+  __attribute__((always_inline)) explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
     if (isLarge()) [[unlikely]]
-      valAP.~APInt();
+      valAP.detail::MPAPInt::~MPAPInt();
   }
   __attribute__((always_inline)) MPInt(const MPInt &o)
       : val64(o.val64), holdsAP(false) {
@@ -142,18 +142,18 @@ private:
     assert(isSmall());
     return val64;
   }
-  __attribute__((always_inline)) const APInt &getAP() const {
+  __attribute__((always_inline)) const detail::MPAPInt &getAP() const {
     assert(isLarge());
     return valAP;
   }
-  __attribute__((always_inline)) APInt getAP() {
+  __attribute__((always_inline)) detail::MPAPInt getAP() {
     assert(isLarge());
     return valAP;
   }
 
   union {
     int64_t val64;
-    APInt valAP;
+    detail::MPAPInt valAP;
   };
   bool holdsAP;
 
@@ -161,7 +161,7 @@ private:
     val64 = o;
     holdsAP = false;
   }
-  __attribute__((always_inline)) void initAP(const APInt &o) {
+  __attribute__((always_inline)) void initAP(const detail::MPAPInt &o) {
     valAP = o;
     holdsAP = true;
   }
