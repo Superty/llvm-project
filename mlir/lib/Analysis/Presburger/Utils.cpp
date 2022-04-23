@@ -28,8 +28,8 @@ static void normalizeDivisionByGCD(SmallVectorImpl<MPInt> &dividend,
     return;
   // We take the absolute value of dividend's coefficients to make sure that
   // `gcd` is positive.
-  MPInt gcd =
-      greatestCommonDivisor(abs(dividend.front()), divisor);
+  MPInt curGCD =
+      gcd(abs(dividend.front()), divisor);
 
   // The reason for ignoring the constant term is as follows.
   // For a division:
@@ -39,15 +39,15 @@ static void normalizeDivisionByGCD(SmallVectorImpl<MPInt> &dividend,
   // Since `{a/m}/d` in the dividend satisfies 0 <= {a/m}/d < 1/d, it will not
   // influence the result of the floor division and thus, can be ignored.
   for (size_t i = 1, m = dividend.size() - 1; i < m; i++) {
-    gcd = greatestCommonDivisor(abs(dividend[i]), gcd);
-    if (gcd == 1)
+    curGCD = gcd(abs(dividend[i]), curGCD);
+    if (curGCD == 1)
       return;
   }
 
   // Normalize the dividend and the denominator.
   std::transform(dividend.begin(), dividend.end(), dividend.begin(),
-                 [gcd](MPInt &n) { return floorDiv(n, gcd); });
-  divisor /= gcd;
+                 [curGCD](MPInt &n) { return floorDiv(n, curGCD); });
+  divisor /= curGCD;
 }
 
 /// Check if the pos^th identifier can be represented as a division using upper
@@ -318,30 +318,30 @@ void presburger::removeDuplicateDivs(
 }
 
 MPInt presburger::gcdRange(ArrayRef<MPInt> range) {
-  MPInt gcd(0);
+  MPInt curGCD(0);
   for (const MPInt &elem : range) {
-    gcd = greatestCommonDivisor(gcd, abs(elem));
-    if (gcd == 1)
-      return gcd;
+    curGCD = gcd(curGCD, abs(elem));
+    if (curGCD == 1)
+      return curGCD;
   }
-  return gcd;
+  return curGCD;
 }
 
 MPInt presburger::normalizeRange(MutableArrayRef<MPInt> range) {
-  MPInt gcd = gcdRange(range);
-  if ((gcd == 0) || (gcd == 1))
-    return gcd;
+  MPInt curGCD = gcdRange(range);
+  if ((curGCD == 0) || (curGCD == 1))
+    return curGCD;
   for (MPInt &elem : range)
-    elem /= gcd;
-  return gcd;
+    elem /= curGCD;
+  return curGCD;
 }
 
 void presburger::normalizeDiv(MutableArrayRef<MPInt> num, MPInt &denom) {
   assert(denom > 0 && "denom must be positive!");
-  MPInt gcd = greatestCommonDivisor(gcdRange(num), denom);
+  MPInt curGCD = gcd(gcdRange(num), denom);
   for (MPInt &coeff : num)
-    coeff /= gcd;
-  denom /= gcd;
+    coeff /= curGCD;
+  denom /= curGCD;
 }
 
 SmallVector<MPInt, 8> presburger::getNegatedCoeffs(ArrayRef<MPInt> coeffs) {
