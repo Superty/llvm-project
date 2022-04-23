@@ -229,9 +229,9 @@ inline MPInt MPInt::operator+(const MPInt &o) const {
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    llvm_unreachable("Overflow!");
+    return MPInt(getAsAP() + o.getAsAP());
   }
-  llvm_unreachable("Overflow!");
+  return MPInt(getAsAP() + o.getAsAP());
 }
 inline MPInt MPInt::operator-(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
@@ -239,9 +239,9 @@ inline MPInt MPInt::operator-(const MPInt &o) const {
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    llvm_unreachable("Overflow!");
+    return MPInt(getAsAP() - o.getAsAP());
   }
-  llvm_unreachable("Overflow!");
+  return MPInt(getAsAP() - o.getAsAP());
 }
 inline MPInt MPInt::operator*(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
@@ -249,9 +249,9 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    llvm_unreachable("Overflow!");
+    return MPInt(getAsAP() * o.getAsAP());
   }
-  llvm_unreachable("Overflow!");
+  return MPInt(getAsAP() * o.getAsAP());
 }
 inline MPInt MPInt::operator/(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
@@ -259,7 +259,7 @@ inline MPInt MPInt::operator/(const MPInt &o) const {
       return -*this;
     return MPInt(get64() / o.get64());
   }
-  llvm_unreachable("Overflow!");
+  return MPInt(getAsAP() / o.getAsAP());
 }
 inline MPInt abs(const MPInt &x) { return MPInt(x >= 0 ? x : -x); }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
