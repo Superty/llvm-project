@@ -1,0 +1,89 @@
+//===- MPInt.h - MLIR MPInt Class -------------------------------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This is a simple class to represent arbitrary precision signed integers.
+// Unlike APInt, one does not have to specify a fixed maximum size, and the
+// integer can take on any aribtrary values.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef MLIR_ANALYSIS_PRESBURGER_MPAPINT_H
+#define MLIR_ANALYSIS_PRESBURGER_MPAPINT_H
+
+#include "mlir/Support/MathExtras.h"
+#include "llvm/ADT/APSInt.h"
+#include "llvm/ADT/Hashing.h"
+#include "llvm/Support/raw_ostream.h"
+
+namespace mlir {
+namespace presburger {
+
+namespace detail {
+class MPAPInt {
+public:
+  explicit MPAPInt(int64_t val) : val(llvm::APSInt::get(val)) {}
+  MPAPInt() : MPAPInt(0) {}
+  explicit MPAPInt(const llvm::APSInt &val) : val(val) {}
+  MPAPInt &operator=(int64_t val) { return *this = MPAPInt(val); }
+  explicit operator int64_t() const { return val.getSExtValue(); }
+  MPAPInt operator-() const;
+  bool operator==(const MPAPInt &o) const;
+  bool operator!=(const MPAPInt &o) const;
+  bool operator>(const MPAPInt &o) const;
+  bool operator<(const MPAPInt &o) const;
+  bool operator<=(const MPAPInt &o) const;
+  bool operator>=(const MPAPInt &o) const;
+  MPAPInt operator+(const MPAPInt &o) const;
+  MPAPInt operator-(const MPAPInt &o) const;
+  MPAPInt operator*(const MPAPInt &o) const;
+  MPAPInt operator/(const MPAPInt &o) const;
+  MPAPInt operator%(const MPAPInt &o) const;
+  MPAPInt &operator+=(const MPAPInt &o);
+  MPAPInt &operator-=(const MPAPInt &o);
+  MPAPInt &operator*=(const MPAPInt &o);
+  MPAPInt &operator/=(const MPAPInt &o);
+  MPAPInt &operator%=(const MPAPInt &o);
+
+  MPAPInt &operator++();
+  MPAPInt &operator--();
+
+  friend MPAPInt abs(const MPAPInt &x);
+  friend MPAPInt ceilDiv(const MPAPInt &lhs, const MPAPInt &rhs);
+  friend MPAPInt floorDiv(const MPAPInt &lhs, const MPAPInt &rhs);
+  friend MPAPInt greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b);
+  /// Overload to compute a hash_code for a MPAPInt value.
+  friend llvm::hash_code hash_value(const MPAPInt &x); // NOLINT
+
+  llvm::raw_ostream &print(llvm::raw_ostream &os) const;
+  void dump() const;
+
+private:
+  unsigned getBitWidth() const { return val.getBitWidth(); }
+  llvm::APSInt val;
+};
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MPAPInt &x);
+// The RHS is always expected to be positive, and the result
+/// is always non-negative.
+MPAPInt mod(const MPAPInt &lhs, const MPAPInt &rhs);
+/// Returns the least common multiple of 'a' and 'b'.
+MPAPInt lcm(const MPAPInt &a, const MPAPInt &b);
+
+/// Redeclarations of friend declarations above to
+/// make it discoverable by lookups.
+MPAPInt abs(const MPAPInt &x);
+MPAPInt ceilDiv(const MPAPInt &lhs, const MPAPInt &rhs);
+MPAPInt floorDiv(const MPAPInt &lhs, const MPAPInt &rhs);
+MPAPInt greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b);
+/// Overload to compute a hash_code for a MPAPInt value.
+llvm::hash_code hash_value(const MPAPInt &x); // NOLINT
+} // namespace detail
+} // namespace presburger
+} // namespace mlir
+
+#endif // MLIR_ANALYSIS_PRESBURGER_MPAPINT_H
