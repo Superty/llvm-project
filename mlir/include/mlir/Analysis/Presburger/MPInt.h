@@ -16,6 +16,7 @@
 #define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
 #include "mlir/Analysis/Presburger/APInt2.h"
+#include "mlir/Analysis/Presburger/MPAPInt.h"
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -39,7 +40,7 @@ public:
   MPInt() : MPInt(0) {}
   ~MPInt() {
     if (isLarge())
-      valAP.~APInt();
+      valAP.detail::MPAPInt::~MPAPInt();
   }
   MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
     if (o.isLarge())
@@ -138,24 +139,24 @@ private:
     assert(isSmall());
     return val64;
   }
-  __attribute__((always_inline)) const APInt &getAP() const {
+  __attribute__((always_inline)) const detail::MPAPInt &getAP() const {
     assert(isLarge());
     return valAP;
   }
-  __attribute__((always_inline)) APInt getAP() {
+  __attribute__((always_inline)) detail::MPAPInt getAP() {
     assert(isLarge());
     return valAP;
   }
 
   union {
     int64_t val64;
-    APInt valAP;
+    detail::MPAPInt valAP;
   };
   void init64(int64_t o) {
     val64 = o;
     holdsAP = false;
   }
-  void initAP(const APInt &o) {
+  void initAP(const detail::MPAPInt &o) {
     valAP = o;
     holdsAP = true;
   }
