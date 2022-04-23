@@ -365,147 +365,152 @@ inline MPInt &operator+=(MPInt &a, int64_t b) {
     a.get64() += b;
     return a;
   }
-  llvm_unreachable("Overflow!");
+  a.getAP() += b;
+  return a;
 }
 inline MPInt &operator-=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() -= b;
     return a;
   }
-  llvm_unreachable("Overflow!");
+  a.getAP() -= b;
+  return a;
 }
 inline MPInt &operator*=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() *= b;
     return a;
   }
-  llvm_unreachable("Overflow!");
+  a.getAP() *= b;
+  return a;
 }
 inline MPInt &operator/=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() /= b;
     return a;
   }
-  llvm_unreachable("Overflow!");
+  a.getAP() /= b;
+  return a;
 }
 inline MPInt &operator%=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() %= b;
     return a;
   }
-  llvm_unreachable("Overflow!");
+  a.getAP() %= b;
+  return a;
 }
 
 inline bool operator==(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() == b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() == b;
 }
 inline bool operator!=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() != b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() != b;
 }
 inline bool operator>(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() > b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() > b;
 }
 inline bool operator<(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() < b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() < b;
 }
 inline bool operator<=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() <= b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() <= b;
 }
 inline bool operator>=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() >= b;
-  llvm_unreachable("Overflow!");
+  return a.getAP() >= b;
 }
 inline MPInt operator+(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() + b);
-  llvm_unreachable("Overflow!");
+  return MPInt(a.getAP() + b);
 }
 inline MPInt operator-(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() - b);
-  llvm_unreachable("Overflow!");
+  return MPInt(a.getAP() - b);
 }
 inline MPInt operator*(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() * b);
-  llvm_unreachable("Overflow!");
+  return MPInt(a.getAP() * b);
 }
 inline MPInt operator/(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() / b);
-  llvm_unreachable("Overflow!");
+  return MPInt(a.getAP() / b);
 }
 inline MPInt operator%(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() % b);
-  llvm_unreachable("Overflow!");
+  return MPInt(a.getAP() % b);
 }
 
 inline bool operator==(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a == b.get64();
-  llvm_unreachable("Overflow!");
+  return a == b.getAP();
 }
 inline bool operator!=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a != b.get64();
-  llvm_unreachable("Overflow!");
+  return a != b.getAP();
 }
 inline bool operator>(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a > b.get64();
-  llvm_unreachable("Overflow!");
+  return a > b.getAP();
 }
 inline bool operator<(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a < b.get64();
-  llvm_unreachable("Overflow!");
+  return a < b.getAP();
 }
 inline bool operator<=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a <= b.get64();
-  llvm_unreachable("Overflow!");
+  return a <= b.getAP();
 }
 inline bool operator>=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a >= b.get64();
-  llvm_unreachable("Overflow!");
+  return a >= b.getAP();
 }
 inline MPInt operator+(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a + b.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(a + b.getAP());
 }
 inline MPInt operator-(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a - b.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(a - b.getAP());
 }
 inline MPInt operator*(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a * b.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(a * b.getAP());
 }
 inline MPInt operator/(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a / b.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(a / b.getAP());
 }
 inline MPInt operator%(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a % b.get64());
-  llvm_unreachable("Overflow!");
+  return MPInt(a % b.getAP());
 }
 
 } // namespace presburger
