@@ -28,8 +28,10 @@ static void mul_i64(benchmark::State &State) {
   }
 
   for (auto _ : State)
- 	for (int i = 0; i < N; i+=16)
+ 	for (int i = 0; i < N; i+=16) {
+	    __sync_synchronize();
 	    C[i] = A[i] * B[i];
+	}
 
   benchmark::DoNotOptimize(C[42]);
 }
@@ -45,8 +47,10 @@ static void mul_mpint(benchmark::State &State) {
   }
 
   for (auto _ : State)
- 	for (int i = 0; i < N; i+=16)
+ 	for (int i = 0; i < N; i+=16) {
+	    __sync_synchronize();
 	    C[i] = A[i] * B[i];
+	}
 
   benchmark::DoNotOptimize(C[42]);
 }
