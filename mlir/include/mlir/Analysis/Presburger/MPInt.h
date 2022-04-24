@@ -189,31 +189,37 @@ MPInt lcm(const MPInt &a, const MPInt &b);
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
+ __attribute__((always_inline))
 inline bool MPInt::operator==(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() == o.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool MPInt::operator!=(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() != o.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool MPInt::operator>(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() > o.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool MPInt::operator<(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() < o.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool MPInt::operator<=(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() <= o.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool MPInt::operator>=(const MPInt &o) const {
   if (isSmall() && o.isSmall())
     return get64() >= o.get64();
@@ -223,6 +229,7 @@ inline bool MPInt::operator>=(const MPInt &o) const {
 /// ---------------------------------------------------------------------------
 /// Arithmetic operators.
 /// ---------------------------------------------------------------------------
+__attribute__((always_inline))
 inline MPInt MPInt::operator+(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
     MPInt result;
@@ -233,6 +240,7 @@ inline MPInt MPInt::operator+(const MPInt &o) const {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt MPInt::operator-(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
     MPInt result;
@@ -243,6 +251,7 @@ inline MPInt MPInt::operator-(const MPInt &o) const {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
     MPInt result;
@@ -253,6 +262,7 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt MPInt::operator/(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
     if (o.get64() == -1)
@@ -327,31 +337,37 @@ inline MPInt MPInt::operator-() const {
 /// ---------------------------------------------------------------------------
 /// Assignment operators, preincrement, predecrement.
 /// ---------------------------------------------------------------------------
+__attribute__((always_inline))
 inline MPInt &MPInt::operator+=(const MPInt &o) {
   *this = *this + o;
   return *this;
 }
+__attribute__((always_inline))
 inline MPInt &MPInt::operator-=(const MPInt &o) {
   *this = *this - o;
   return *this;
 }
+__attribute__((always_inline))
 inline MPInt &MPInt::operator*=(const MPInt &o) {
   *this = *this * o;
   return *this;
 }
+__attribute__((always_inline))
 inline MPInt &MPInt::operator/=(const MPInt &o) {
   *this = *this / o;
   return *this;
 }
+__attribute__((always_inline))
 inline MPInt &MPInt::operator%=(const MPInt &o) {
   *this = *this % o;
   return *this;
 }
+__attribute__((always_inline))
 inline MPInt &MPInt::operator++() {
   *this += 1;
   return *this;
 }
-
+__attribute__((always_inline))
 inline MPInt &MPInt::operator--() {
   *this -= 1;
   return *this;
@@ -367,6 +383,7 @@ inline MPInt &operator+=(MPInt &a, int64_t b) {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt &operator-=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() -= b;
@@ -374,6 +391,7 @@ inline MPInt &operator-=(MPInt &a, int64_t b) {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt &operator*=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() *= b;
@@ -381,6 +399,7 @@ inline MPInt &operator*=(MPInt &a, int64_t b) {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt &operator/=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() /= b;
@@ -388,6 +407,7 @@ inline MPInt &operator/=(MPInt &a, int64_t b) {
   }
   abort();
 }
+__attribute__((always_inline))
 inline MPInt &operator%=(MPInt &a, int64_t b) {
   if (a.isSmall()) {
     a.get64() %= b;
@@ -396,112 +416,134 @@ inline MPInt &operator%=(MPInt &a, int64_t b) {
   abort();
 }
 
+__attribute__((always_inline))
 inline bool operator==(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() == b;
   abort();
 }
+__attribute__((always_inline))
 inline bool operator!=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() != b;
   abort();
 }
+__attribute__((always_inline))
 inline bool operator>(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() > b;
   abort();
 }
+__attribute__((always_inline))
 inline bool operator<(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() < b;
   abort();
 }
+__attribute__((always_inline))
 inline bool operator<=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() <= b;
   abort();
 }
+__attribute__((always_inline))
 inline bool operator>=(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return a.get64() >= b;
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator+(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() + b);
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator-(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() - b);
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator*(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() * b);
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator/(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() / b);
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator%(const MPInt &a, int64_t b) {
   if (a.isSmall())
     return MPInt(a.get64() % b);
   abort();
 }
 
+__attribute__((always_inline))
 inline bool operator==(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a == b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool operator!=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a != b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool operator>(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a > b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool operator<(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a < b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool operator<=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a <= b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline bool operator>=(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return a >= b.get64();
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator+(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a + b.get64());
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator-(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a - b.get64());
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator*(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a * b.get64());
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator/(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a / b.get64());
   abort();
 }
+__attribute__((always_inline))
 inline MPInt operator%(int64_t a, const MPInt &b) {
   if (b.isSmall())
     return MPInt(a % b.get64());
