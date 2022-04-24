@@ -56,18 +56,8 @@ public:
     init64(x);
     return *this;
   }
-  explicit operator int64_t() const {
-    if (isSmall())
-      return get64();
-    return static_cast<int64_t>(getAP());
-  }
 
   MPInt operator*(const MPInt &o) const;
-
-  llvm::raw_ostream &print(llvm::raw_ostream &os) const;
-  void dump() const;
-
-  friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
 private:
   explicit MPInt(detail::MPAPInt val) : valAP(val), holdsAP(true) {}
@@ -112,8 +102,6 @@ private:
   }
   bool holdsAP;
 };
-
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MPInt &x);
 
 
 inline MPInt MPInt::operator*(const MPInt &o) const {
