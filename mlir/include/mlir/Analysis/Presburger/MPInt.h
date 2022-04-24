@@ -103,17 +103,15 @@ private:
   bool holdsAP;
 };
 
-
+__attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
     MPInt result;
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
     if (!overflow)
       return result;
-    abort();
     return MPInt(getAsAP() * o.getAsAP());
   }
-  abort();
   return MPInt(getAsAP() * o.getAsAP());
 }
 

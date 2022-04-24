@@ -48,7 +48,6 @@ static void mul_mpint(benchmark::State &State) {
 
   for (auto _ : State)
  	for (int i = 0; i < N; i+=16) {
-//	    __sync_synchronize();
 	    C[i] = A[i] * B[i];
 	}
 
