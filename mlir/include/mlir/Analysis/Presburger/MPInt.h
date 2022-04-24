@@ -62,68 +62,10 @@ public:
     return static_cast<int64_t>(getAP());
   }
 
-  bool operator==(const MPInt &o) const;
-  bool operator!=(const MPInt &o) const;
-  bool operator>(const MPInt &o) const;
-  bool operator<(const MPInt &o) const;
-  bool operator<=(const MPInt &o) const;
-  bool operator>=(const MPInt &o) const;
-  MPInt operator+(const MPInt &o) const;
-  MPInt operator-(const MPInt &o) const;
   MPInt operator*(const MPInt &o) const;
-  MPInt operator/(const MPInt &o) const;
-  MPInt operator%(const MPInt &o) const;
-  MPInt &operator+=(const MPInt &o);
-  MPInt &operator-=(const MPInt &o);
-  MPInt &operator*=(const MPInt &o);
-  MPInt &operator/=(const MPInt &o);
-  MPInt &operator%=(const MPInt &o);
-
-  MPInt operator-() const;
-  MPInt &operator++();
-  MPInt &operator--();
-
-  friend MPInt abs(const MPInt &x);
-  friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
-  friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
-  friend MPInt gcd(const MPInt &a, const MPInt &b);
-  friend MPInt mod(const MPInt &lhs, const MPInt &rhs);
 
   llvm::raw_ostream &print(llvm::raw_ostream &os) const;
   void dump() const;
-
-  /// ---------------------------------------------------------------------------
-  /// Convenience operator overloads for int64_t.
-  /// ---------------------------------------------------------------------------
-  friend MPInt &operator+=(MPInt &a, int64_t b);
-  friend MPInt &operator-=(MPInt &a, int64_t b);
-  friend MPInt &operator*=(MPInt &a, int64_t b);
-  friend MPInt &operator/=(MPInt &a, int64_t b);
-  friend MPInt &operator%=(MPInt &a, int64_t b);
-
-  friend bool operator==(const MPInt &a, int64_t b);
-  friend bool operator!=(const MPInt &a, int64_t b);
-  friend bool operator>(const MPInt &a, int64_t b);
-  friend bool operator<(const MPInt &a, int64_t b);
-  friend bool operator<=(const MPInt &a, int64_t b);
-  friend bool operator>=(const MPInt &a, int64_t b);
-  friend MPInt operator+(const MPInt &a, int64_t b);
-  friend MPInt operator-(const MPInt &a, int64_t b);
-  friend MPInt operator*(const MPInt &a, int64_t b);
-  friend MPInt operator/(const MPInt &a, int64_t b);
-  friend MPInt operator%(const MPInt &a, int64_t b);
-
-  friend bool operator==(int64_t a, const MPInt &b);
-  friend bool operator!=(int64_t a, const MPInt &b);
-  friend bool operator>(int64_t a, const MPInt &b);
-  friend bool operator<(int64_t a, const MPInt &b);
-  friend bool operator<=(int64_t a, const MPInt &b);
-  friend bool operator>=(int64_t a, const MPInt &b);
-  friend MPInt operator+(int64_t a, const MPInt &b);
-  friend MPInt operator-(int64_t a, const MPInt &b);
-  friend MPInt operator*(int64_t a, const MPInt &b);
-  friend MPInt operator/(int64_t a, const MPInt &b);
-  friend MPInt operator%(int64_t a, const MPInt &b);
 
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
@@ -171,54 +113,8 @@ private:
   bool holdsAP;
 };
 
-/// This just calls through to the operator int64_t, but it's useful when a
-/// function pointer is required.
-inline int64_t int64FromMPInt(const MPInt &x) { return int64_t(x); }
-
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MPInt &x);
 
-// The RHS is always expected to be positive, and the result
-/// is always non-negative.
-MPInt mod(const MPInt &lhs, const MPInt &rhs);
-
-/// Returns the least common multiple of 'a' and 'b'.
-MPInt lcm(const MPInt &a, const MPInt &b);
-
-/// We define the operations here in the header to facilitate inlining.
-
-/// ---------------------------------------------------------------------------
-/// Comparison operators.
-/// ---------------------------------------------------------------------------
-inline bool MPInt::operator==(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() == o.get64();
-  return getAsAP() == o.getAsAP();
-}
-inline bool MPInt::operator!=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() != o.get64();
-  return getAsAP() != o.getAsAP();
-}
-inline bool MPInt::operator>(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() > o.get64();
-  return getAsAP() > o.getAsAP();
-}
-inline bool MPInt::operator<(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() < o.get64();
-  return getAsAP() < o.getAsAP();
-}
-inline bool MPInt::operator<=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() <= o.get64();
-  return getAsAP() <= o.getAsAP();
-}
-inline bool MPInt::operator>=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
-    return get64() >= o.get64();
-  return getAsAP() >= o.getAsAP();
-}
 
 inline MPInt MPInt::operator*(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
