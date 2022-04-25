@@ -47,6 +47,7 @@ static void mul_mpint(benchmark::State &State) {
   }
 
   for (auto _ : State)
+	#pragma clang loop unroll(full) 
  	for (int i = 0; i < N; i+=16) {
 	    C[i] = A[i] * B[i];
 	}

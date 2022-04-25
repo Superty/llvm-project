@@ -41,10 +41,12 @@ public:
     if (isLarge())
       valAP.detail::MPAPInt::~MPAPInt();
   }
+  __attribute__((noinline))
   MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
     if (o.isLarge())
       initAP(o.valAP);
   }
+  __attribute__((noinline))
   MPInt &operator=(const MPInt &o) {
     if (o.isLarge())
       initAP(o.valAP);
@@ -88,6 +90,7 @@ private:
     return detail::MPAPInt(*this);
   }
 
+  MPInt __AP_mul(const MPInt &o) const;
   union {
     int64_t val64;
     detail::MPAPInt valAP;
@@ -103,16 +106,21 @@ private:
   bool holdsAP;
 };
 
+__attribute__((noinline))
+inline MPInt MPInt::__AP_mul(const MPInt &o) const {
+  return MPInt(getAsAP() * o.getAsAP());
+}
 __attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) {
+  if (isSmall() && o.isSmall()) [[likely]] {
     MPInt result;
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
-    if (!overflow)
+    if (!overflow) [[likely]] {
       return result;
-    return MPInt(getAsAP() * o.getAsAP());
+    }
   }
-  return MPInt(getAsAP() * o.getAsAP());
+  abort();
+  return __AP_mul(o);
 }
 
 } // namespace presburger
