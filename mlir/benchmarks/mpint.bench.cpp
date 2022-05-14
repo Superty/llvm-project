@@ -6,11 +6,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Analysis/Presburger/MPInt.h"
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include "mlir/Analysis/Presburger/MPInt.h"
 
 #include "benchmark/benchmark.h"
 
@@ -18,43 +18,43 @@
 
 using namespace mlir::presburger;
 
-static void mul_i64(benchmark::State &State) {
-  long A[N];
-  long B[N];
-  long C[N];
+static void mulI64(benchmark::State &state) {
+  long a[N];
+  long b[N];
+  long c[N];
   for (int i = 0; i < N; i++) {
-	A[i] = i;
-	B[i] = i;
+	a[i] = i;
+	b[i] = i;
   }
 
-  for (auto _ : State)
+  for (auto _ : state)
  	for (int i = 0; i < N; i+=16) {
 //	    __sync_synchronize();
-	    C[i] = A[i] * B[i];
+	    c[i] = a[i] * b[i];
 	}
 
-  benchmark::DoNotOptimize(C[42]);
+  benchmark::DoNotOptimize(c[42]);
 }
-BENCHMARK(mul_i64);
+BENCHMARK(mulI64);
 
-static void mul_mpint(benchmark::State &State) {
-  MPInt A[N];
-  MPInt B[N];
-  MPInt C[N];
+static void mulMpint(benchmark::State &state) {
+  MPInt a[N];
+  MPInt b[N];
+  MPInt c[N];
   for (int i = 0; i < N; i++) {
-	A[i] = i;
-	B[i] = i;
+	a[i] = i;
+	b[i] = i;
   }
 
-  for (auto _ : State)
+  for (auto _ : state)
 	#pragma clang loop unroll(full) 
  	for (int i = 0; i < N; i+=16) {
-	    C[i] = A[i] * B[i];
+	    c[i] = a[i] * b[i];
 	}
 
-  benchmark::DoNotOptimize(C[42]);
+  benchmark::DoNotOptimize(c[42]);
 }
-BENCHMARK(mul_mpint);
+BENCHMARK(mulMpint);
 
 int main(int argc, char** argv) {
   benchmark::Initialize(&argc, argv);
