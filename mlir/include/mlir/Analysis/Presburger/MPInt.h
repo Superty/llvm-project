@@ -112,10 +112,10 @@ inline MPInt MPInt::__AP_mul(const MPInt &o) const {
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]] {
+  if (isSmall() && o.isSmall()) {
     MPInt result;
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
-    if (!overflow) [[likely]] {
+    if (!overflow) {
       return result;
     }
   }
