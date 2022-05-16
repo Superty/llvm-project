@@ -62,7 +62,7 @@ public:
   MPInt operator*(const MPInt &o) const;
 
 private:
-  explicit MPInt(detail::MPAPInt val) : valAP(val), holdsAP(true) {}
+  explicit MPInt(const detail::MPAPInt &val) : valAP(val), holdsAP(true) {}
   __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
   __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
   __attribute__((always_inline)) int64_t get64() const {
