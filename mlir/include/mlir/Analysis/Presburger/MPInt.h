@@ -92,6 +92,7 @@ private:
     return detail::MPAPInt(*this);
   }
 
+  MPInt __AP_mul(const MPInt &o) const;
   union {
     int64_t val64;
     detail::MPAPInt valAP;
@@ -107,6 +108,10 @@ private:
   bool holdsAP;
 };
 
+__attribute__((noinline))
+inline MPInt MPInt::__AP_mul(const MPInt &o) const {
+  return MPInt(getAsAP() * o.getAsAP());
+}
 __attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
   if (isSmall() && o.isSmall()) {
@@ -116,7 +121,7 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
       return result;
     }
   }
-  return MPInt(getAsAP() * o.getAsAP());
+  return __AP_mul(o);
 }
 
 } // namespace presburger
