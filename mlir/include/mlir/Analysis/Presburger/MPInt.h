@@ -116,7 +116,6 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
       return result;
     }
   }
-  abort();
   return MPInt(getAsAP() * o.getAsAP());
 }
 
