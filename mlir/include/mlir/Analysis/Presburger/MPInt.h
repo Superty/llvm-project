@@ -35,18 +35,20 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
+  __attribute__((always_inline))
   explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
+  __attribute__((always_inline))
   MPInt() : MPInt(0) {}
   ~MPInt() {
     if (isLarge())
       valAP.detail::MPAPInt::~MPAPInt();
   }
-  __attribute__((noinline))
+  __attribute__((always_inline))
   MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
     if (o.isLarge())
       initAP(o.valAP);
   }
-  __attribute__((noinline))
+  __attribute__((always_inline))
   MPInt &operator=(const MPInt &o) {
     if (o.isLarge())
       initAP(o.valAP);
