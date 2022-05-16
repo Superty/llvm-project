@@ -28,9 +28,10 @@ static void mulI64(benchmark::State &state) {
   }
 
   for (auto _ : state)
+  // #pragma nounroll
  	for (int i = 0; i < N; i+=16) {
-//	    __sync_synchronize();
-	    c[i] = a[i] * b[i];
+    // __sync_synchronize();
+    c[i] = a[i] * b[i];
 	}
 
   benchmark::DoNotOptimize(c[42]);
@@ -47,7 +48,7 @@ static void mulMpint(benchmark::State &state) {
   }
 
   for (auto _ : state)
-	#pragma clang loop unroll(full) 
+  // #pragma nounroll
  	for (int i = 0; i < N; i+=16) {
 	    c[i] = a[i] * b[i];
 	}
