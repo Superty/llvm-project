@@ -15,8 +15,8 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_MPINT_H
 #define MLIR_ANALYSIS_PRESBURGER_MPINT_H
 
-#include "mlir/Support/MathExtras.h"
 #include "mlir/Analysis/Presburger/APInt2.h"
+#include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <unistd.h>
@@ -30,27 +30,24 @@ namespace presburger {
 /// Unlike APInt2, this extends the precision as necessary to prevent overflows
 /// and supports operations between objects with differing internal precisions.
 ///
-/// Since it uses APInt2 internally, MPInt (MultiPrecision Integer) stores values
-/// in a 64-bit machine integer for small values and uses slower
+/// Since it uses APInt2 internally, MPInt (MultiPrecision Integer) stores
+/// values in a 64-bit machine integer for small values and uses slower
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  __attribute__((always_inline))
-  explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
-  __attribute__((always_inline))
-  MPInt() : MPInt(0) {}
-  __attribute__((always_inline))
-  ~MPInt() {
+  __attribute__((always_inline)) explicit MPInt(int64_t val)
+      : val64(val), holdsAP(false) {}
+  __attribute__((always_inline)) MPInt() : MPInt(0) {}
+  __attribute__((always_inline)) ~MPInt() {
     if (isLarge()) [[unlikely]]
       valAP.~APInt();
   }
-  __attribute__((always_inline))
-  MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
+  __attribute__((always_inline)) MPInt(const MPInt &o)
+      : val64(o.val64), holdsAP(false) {
     if (o.isLarge()) [[unlikely]]
       initAP(o.valAP);
   }
-  __attribute__((always_inline))
-  MPInt &operator=(const MPInt &o) {
+  __attribute__((always_inline)) MPInt &operator=(const MPInt &o) {
     if (o.isSmall()) [[likely]] {
       init64(o.val64);
       return *this;
@@ -58,8 +55,7 @@ public:
     initAP(o.valAP);
     return *this;
   }
-  __attribute__((always_inline))
-  MPInt &operator=(int x) {
+  __attribute__((always_inline)) MPInt &operator=(int x) {
     init64(x);
     return *this;
   }
@@ -85,7 +81,11 @@ public:
   MPInt &operator++();
   MPInt &operator--();
 
-  explicit operator int64_t() const { if (isSmall()) return get64(); abort(); }
+  explicit operator int64_t() const {
+    if (isSmall())
+      return get64();
+    abort();
+  }
   friend MPInt abs(const MPInt &x);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
@@ -98,51 +98,197 @@ public:
   /// ---------------------------------------------------------------------------
   /// Convenience operator overloads for int64_t.
   /// ---------------------------------------------------------------------------
-  friend MPInt &operator+=(MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } a.get64() += b; return a; }
-  friend MPInt &operator-=(MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } a.get64() -= b; return a; }
-  friend MPInt &operator*=(MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } a.get64() *= b; return a; }
-  friend MPInt &operator/=(MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } a.get64() /= b; return a; }
-  friend MPInt &operator%=(MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } a.get64() %= b; return a; }
+  friend MPInt &operator+=(MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    a.get64() += b;
+    return a;
+  }
+  friend MPInt &operator-=(MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    a.get64() -= b;
+    return a;
+  }
+  friend MPInt &operator*=(MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    a.get64() *= b;
+    return a;
+  }
+  friend MPInt &operator/=(MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    a.get64() /= b;
+    return a;
+  }
+  friend MPInt &operator%=(MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    a.get64() %= b;
+    return a;
+  }
 
-  friend bool operator==(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() == b; }
-  friend bool operator!=(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() != b; }
-  friend bool operator>(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() > b; }
-  friend bool operator<(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() < b; }
-  friend bool operator<=(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() <= b; }
-  friend bool operator>=(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return a.get64() >= b; }
-  friend MPInt operator+(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return MPInt(a.get64() + b); }
-  friend MPInt operator-(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return MPInt(a.get64() - b); }
-  friend MPInt operator*(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return MPInt(a.get64() * b); }
-  friend MPInt operator/(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return MPInt(a.get64() / b); }
-  friend MPInt operator%(const MPInt &a, int64_t b) { if (a.isLarge()) { abort(); } return MPInt(a.get64() % b); }
+  friend bool operator==(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() == b;
+  }
+  friend bool operator!=(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() != b;
+  }
+  friend bool operator>(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() > b;
+  }
+  friend bool operator<(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() < b;
+  }
+  friend bool operator<=(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() <= b;
+  }
+  friend bool operator>=(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return a.get64() >= b;
+  }
+  friend MPInt operator+(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return MPInt(a.get64() + b);
+  }
+  friend MPInt operator-(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return MPInt(a.get64() - b);
+  }
+  friend MPInt operator*(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return MPInt(a.get64() * b);
+  }
+  friend MPInt operator/(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return MPInt(a.get64() / b);
+  }
+  friend MPInt operator%(const MPInt &a, int64_t b) {
+    if (a.isLarge()) {
+      abort();
+    }
+    return MPInt(a.get64() % b);
+  }
 
-  friend bool operator==(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a == b.get64(); }
-  friend bool operator!=(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a != b.get64(); }
-  friend bool operator>(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a > b.get64(); }
-  friend bool operator<(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a < b.get64(); }
-  friend bool operator<=(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a <= b.get64(); }
-  friend bool operator>=(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return a >= b.get64(); }
-  friend MPInt operator+(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return MPInt(a + b.get64()); }
-  friend MPInt operator-(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return MPInt(a - b.get64()); }
-  friend MPInt operator*(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return MPInt(a * b.get64()); }
-  friend MPInt operator/(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return MPInt(a / b.get64()); }
-  friend MPInt operator%(int64_t a, const MPInt &b) { if (b.isLarge()) { abort(); } return MPInt(a % b.get64()); }
+  friend bool operator==(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a == b.get64();
+  }
+  friend bool operator!=(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a != b.get64();
+  }
+  friend bool operator>(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a > b.get64();
+  }
+  friend bool operator<(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a < b.get64();
+  }
+  friend bool operator<=(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a <= b.get64();
+  }
+  friend bool operator>=(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return a >= b.get64();
+  }
+  friend MPInt operator+(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return MPInt(a + b.get64());
+  }
+  friend MPInt operator-(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return MPInt(a - b.get64());
+  }
+  friend MPInt operator*(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return MPInt(a * b.get64());
+  }
+  friend MPInt operator/(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return MPInt(a / b.get64());
+  }
+  friend MPInt operator%(int64_t a, const MPInt &b) {
+    if (b.isLarge()) {
+      abort();
+    }
+    return MPInt(a % b.get64());
+  }
 
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
 private:
-  __attribute__((always_inline))
-  bool isSmall() const { return !holdsAP; }
-  __attribute__((always_inline))
-  bool isLarge() const { return holdsAP; }
-  __attribute__((always_inline))
-  int64_t get64() const { assert(isSmall()); return val64; }
-  __attribute__((always_inline))
-  int64_t &get64() { assert(isSmall()); return val64; }
-  __attribute__((always_inline))
-  const APInt &getAP() const { assert(isLarge()); return valAP; }
-  __attribute__((always_inline))
-  APInt getAP() { assert(isLarge()); return valAP; }
+  __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
+  __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
+  __attribute__((always_inline)) int64_t get64() const {
+    assert(isSmall());
+    return val64;
+  }
+  __attribute__((always_inline)) int64_t &get64() {
+    assert(isSmall());
+    return val64;
+  }
+  __attribute__((always_inline)) const APInt &getAP() const {
+    assert(isLarge());
+    return valAP;
+  }
+  __attribute__((always_inline)) APInt getAP() {
+    assert(isLarge());
+    return valAP;
+  }
 
   union {
     int64_t val64;
@@ -150,13 +296,11 @@ private:
   };
   bool holdsAP;
 
-  __attribute__((always_inline))
-  void init64(int64_t o) {
+  __attribute__((always_inline)) void init64(int64_t o) {
     val64 = o;
     holdsAP = false;
   }
-  __attribute__((always_inline))
-  void initAP(const APInt &o) {
+  __attribute__((always_inline)) void initAP(const APInt &o) {
     valAP = o;
     holdsAP = true;
   }
@@ -164,8 +308,9 @@ private:
 
 /// This just calls through to the operator int64_t, but it's useful when a
 /// function pointer is required.
-__attribute__((always_inline))
-inline int64_t int64FromMPInt(const MPInt &x) { return int64_t(x); }
+__attribute__((always_inline)) inline int64_t int64FromMPInt(const MPInt &x) {
+  return int64_t(x);
+}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MPInt &x);
 
@@ -259,8 +404,9 @@ inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
     if (rhs == -1)
       return -lhs;
     int64_t x = (rhs.get64() > 0) ? -1 : 1;
-    return MPInt(((lhs.get64() != 0) && (lhs.get64() > 0) == (rhs.get64() > 0)) ? ((lhs.get64() + x) / rhs.get64()) + 1
-                                                  : -(-lhs.get64() / rhs.get64()));
+    return MPInt(((lhs.get64() != 0) && (lhs.get64() > 0) == (rhs.get64() > 0))
+                     ? ((lhs.get64() + x) / rhs.get64()) + 1
+                     : -(-lhs.get64() / rhs.get64()));
   }
   abort();
 }
@@ -269,8 +415,10 @@ inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
     if (rhs == -1)
       return -lhs;
     int64_t x = (rhs.get64() < 0) ? 1 : -1;
-    return MPInt(((lhs.get64() != 0) && ((lhs.get64() < 0) != (rhs.get64() < 0))) ? -((-lhs.get64() + x) / rhs.get64()) - 1
-                                                    : lhs.get64() / rhs.get64());
+    return MPInt(
+        ((lhs.get64() != 0) && ((lhs.get64() < 0) != (rhs.get64() < 0)))
+            ? -((-lhs.get64() + x) / rhs.get64()) - 1
+            : lhs.get64() / rhs.get64());
   }
   abort();
 }
@@ -278,7 +426,9 @@ inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
 /// is always non-negative.
 inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
   if (lhs.isSmall() && rhs.isSmall())
-    return MPInt(lhs.get64() % rhs.get64() < 0 ? lhs.get64() % rhs.get64() + rhs.get64() : lhs.get64() % rhs.get64());
+    return MPInt(lhs.get64() % rhs.get64() < 0
+                     ? lhs.get64() % rhs.get64() + rhs.get64()
+                     : lhs.get64() % rhs.get64());
   abort();
 }
 
