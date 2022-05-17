@@ -222,3 +222,5 @@ add_subdirectory(cmake/modules)
 if (MLIR_ENABLE_PYTHON_BENCHMARKS)
   add_subdirectory(utils/mbr)
 endif()
+
+add_subdirectory(benchmarks)
