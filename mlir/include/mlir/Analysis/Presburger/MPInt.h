@@ -38,16 +38,16 @@ public:
   __attribute__((always_inline)) explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
-    if (isLarge()) [[unlikely]]
+    if (__builtin_expect(isLarge(), 0))
       valAP.detail::MPAPInt::~MPAPInt();
   }
   __attribute__((always_inline)) MPInt(const MPInt &o)
       : val64(o.val64), holdsAP(false) {
-    if (o.isLarge()) [[unlikely]]
+    if (__builtin_expect(o.isLarge(), 0))
       initAP(o.valAP);
   }
   __attribute__((always_inline)) MPInt &operator=(const MPInt &o) {
-    if (o.isSmall()) [[likely]] {
+    if (__builtin_expect(o.isSmall(), 1)) {
       init64(o.val64);
       return *this;
     }
@@ -199,37 +199,37 @@ MPInt lcm(const MPInt &a, const MPInt &b);
 /// ---------------------------------------------------------------------------
  __attribute__((always_inline))
 inline bool MPInt::operator==(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() == o.get64();
   return getAsAP() == o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator!=(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() != o.get64();
   return getAsAP() != o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator>(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() > o.get64();
   return getAsAP() > o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator<(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() < o.get64();
   return getAsAP() < o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator<=(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() <= o.get64();
   return getAsAP() <= o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator>=(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]]
+  if (__builtin_expect(isSmall() && o.isSmall(), 1))
     return get64() >= o.get64();
   return getAsAP() >= o.getAsAP();
 }
@@ -239,30 +239,30 @@ inline bool MPInt::operator>=(const MPInt &o) const {
 /// ---------------------------------------------------------------------------
 __attribute__((always_inline))
 inline MPInt MPInt::operator+(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]] {
+  if (__builtin_expect(isSmall() && o.isSmall(), 1)) {
     MPInt result;
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
-    if (!overflow) [[likely]]
+    if (__builtin_expect(!overflow, 1))
       return result;
   }
   return MPInt(getAsAP() + o.getAsAP());
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator-(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]] {
+  if (__builtin_expect(isSmall() && o.isSmall(), 1)) {
     MPInt result;
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
-    if (!overflow) [[likely]]
+    if (__builtin_expect(!overflow, 1))
       return result;
   }
   return MPInt(getAsAP() - o.getAsAP());
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator*(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) [[likely]] {
+  if (__builtin_expect(isSmall() && o.isSmall(), 1)) {
     MPInt result;
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
-    if (!overflow) [[likely]]
+    if (__builtin_expect(!overflow, 1))
       return result;
   }
   return MPInt(getAsAP() * o.getAsAP());
