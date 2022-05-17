@@ -199,37 +199,37 @@ MPInt lcm(const MPInt &a, const MPInt &b);
 /// ---------------------------------------------------------------------------
  __attribute__((always_inline))
 inline bool MPInt::operator==(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() == o.get64();
   return getAsAP() == o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator!=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() != o.get64();
   return getAsAP() != o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator>(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() > o.get64();
   return getAsAP() > o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator<(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() < o.get64();
   return getAsAP() < o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator<=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() <= o.get64();
   return getAsAP() <= o.getAsAP();
 }
 __attribute__((always_inline))
 inline bool MPInt::operator>=(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (isSmall() && o.isSmall()) [[likely]]
     return get64() >= o.get64();
   return getAsAP() >= o.getAsAP();
 }
