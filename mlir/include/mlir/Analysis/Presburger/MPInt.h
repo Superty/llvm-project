@@ -38,17 +38,17 @@ public:
   __attribute__((always_inline))
   ~MPInt() {
     if (isLarge())
-      abort();
+      valAP.~APInt();
   }
   __attribute__((always_inline))
   MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
     if (o.isLarge())
-      abort();
+      initAP(o.valAP);
   }
   __attribute__((always_inline))
   MPInt &operator=(const MPInt &o) {
     if (o.isLarge())
-      abort();
+      initAP(o.valAP);
     else
       init64(o.val64);
     return *this;
@@ -139,17 +139,26 @@ private:
   int64_t get64() const { assert(isSmall()); return val64; }
   __attribute__((always_inline))
   int64_t &get64() { assert(isSmall()); return val64; }
+  __attribute__((always_inline))
+  const APInt &getAP() const { assert(isLarge()); return valAP; }
+  __attribute__((always_inline))
+  APInt getAP() { assert(isLarge()); return valAP; }
 
   union {
     int64_t val64;
+    APInt valAP;
   };
-  unsigned padding;
   bool holdsAP;
 
   __attribute__((always_inline))
   void init64(int64_t o) {
     val64 = o;
     holdsAP = false;
+  }
+  __attribute__((always_inline))
+  void initAP(const APInt &o) {
+    valAP = o;
+    holdsAP = true;
   }
 };
 
