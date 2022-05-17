@@ -382,7 +382,7 @@ inline MPInt &MPInt::operator--() {
 /// Convenience operator overloads for int64_t.
 /// ----------------------------------------------------------------------------
 inline MPInt &operator+=(MPInt &a, int64_t b) {
-  if (a.isSmall()) {
+  if (LLVM_LIKELY(a.isSmall())) {
     a.get64() += b;
     return a;
   }
@@ -391,7 +391,7 @@ inline MPInt &operator+=(MPInt &a, int64_t b) {
 }
 __attribute__((always_inline))
 inline MPInt &operator-=(MPInt &a, int64_t b) {
-  if (a.isSmall()) {
+  if (LLVM_LIKELY(a.isSmall())) {
     a.get64() -= b;
     return a;
   }
@@ -400,7 +400,7 @@ inline MPInt &operator-=(MPInt &a, int64_t b) {
 }
 __attribute__((always_inline))
 inline MPInt &operator*=(MPInt &a, int64_t b) {
-  if (a.isSmall()) {
+  if (LLVM_LIKELY(a.isSmall())) {
     a.get64() *= b;
     return a;
   }
@@ -409,7 +409,7 @@ inline MPInt &operator*=(MPInt &a, int64_t b) {
 }
 __attribute__((always_inline))
 inline MPInt &operator/=(MPInt &a, int64_t b) {
-  if (a.isSmall()) {
+  if (LLVM_LIKELY(a.isSmall())) {
     a.get64() /= b;
     return a;
   }
@@ -418,7 +418,7 @@ inline MPInt &operator/=(MPInt &a, int64_t b) {
 }
 __attribute__((always_inline))
 inline MPInt &operator%=(MPInt &a, int64_t b) {
-  if (a.isSmall()) {
+  if (LLVM_LIKELY(a.isSmall())) {
     a.get64() %= b;
     return a;
   }
@@ -426,136 +426,114 @@ inline MPInt &operator%=(MPInt &a, int64_t b) {
   return a;
 }
 
-__attribute__((always_inline))
 inline bool operator==(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() == b;
   return a.getAP() == b;
 }
-__attribute__((always_inline))
 inline bool operator!=(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() != b;
   return a.getAP() != b;
 }
-__attribute__((always_inline))
 inline bool operator>(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() > b;
   return a.getAP() > b;
 }
-__attribute__((always_inline))
 inline bool operator<(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() < b;
   return a.getAP() < b;
 }
-__attribute__((always_inline))
 inline bool operator<=(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() <= b;
   return a.getAP() <= b;
 }
-__attribute__((always_inline))
 inline bool operator>=(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return a.get64() >= b;
   return a.getAP() >= b;
 }
-__attribute__((always_inline))
 inline MPInt operator+(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return MPInt(a.get64() + b);
   return MPInt(a.getAP() + b);
 }
-__attribute__((always_inline))
 inline MPInt operator-(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return MPInt(a.get64() - b);
   return MPInt(a.getAP() - b);
 }
-__attribute__((always_inline))
 inline MPInt operator*(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return MPInt(a.get64() * b);
   return MPInt(a.getAP() * b);
 }
-__attribute__((always_inline))
 inline MPInt operator/(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return MPInt(a.get64() / b);
   return MPInt(a.getAP() / b);
 }
-__attribute__((always_inline))
 inline MPInt operator%(const MPInt &a, int64_t b) {
-  if (a.isSmall())
+  if (LLVM_LIKELY(a.isSmall()))
     return MPInt(a.get64() % b);
   return MPInt(a.getAP() % b);
 }
 
-__attribute__((always_inline))
 inline bool operator==(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a == b.get64();
   return a == b.getAP();
 }
-__attribute__((always_inline))
 inline bool operator!=(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a != b.get64();
   return a != b.getAP();
 }
-__attribute__((always_inline))
 inline bool operator>(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a > b.get64();
   return a > b.getAP();
 }
-__attribute__((always_inline))
 inline bool operator<(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a < b.get64();
   return a < b.getAP();
 }
-__attribute__((always_inline))
 inline bool operator<=(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a <= b.get64();
   return a <= b.getAP();
 }
-__attribute__((always_inline))
 inline bool operator>=(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return a >= b.get64();
   return a >= b.getAP();
 }
-__attribute__((always_inline))
 inline MPInt operator+(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return MPInt(a + b.get64());
   return MPInt(a + b.getAP());
 }
-__attribute__((always_inline))
 inline MPInt operator-(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return MPInt(a - b.get64());
   return MPInt(a - b.getAP());
 }
-__attribute__((always_inline))
 inline MPInt operator*(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return MPInt(a * b.get64());
   return MPInt(a * b.getAP());
 }
-__attribute__((always_inline))
 inline MPInt operator/(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return MPInt(a / b.get64());
   return MPInt(a / b.getAP());
 }
-__attribute__((always_inline))
 inline MPInt operator%(int64_t a, const MPInt &b) {
-  if (b.isSmall())
+  if (LLVM_LIKELY(b.isSmall()))
     return MPInt(a % b.get64());
   return MPInt(a % b.getAP());
 }
