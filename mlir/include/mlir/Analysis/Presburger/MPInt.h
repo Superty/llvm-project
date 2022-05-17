@@ -325,14 +325,14 @@ inline MPInt lcm(const MPInt &a, const MPInt &b) {
 
 /// This operation cannot overflow.
 inline MPInt MPInt::operator%(const MPInt &o) const {
-  if (isSmall() && o.isSmall())
+  if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return MPInt(get64() % o.get64());
   return MPInt(getAsAP() % o.getAsAP());
 }
 
 inline MPInt MPInt::operator-() const {
-  if (isSmall()) {
-    if (get64() != std::numeric_limits<int64_t>::min())
+  if (LLVM_LIKELY(isSmall())) {
+    if (LLVM_LIKELY(get64() != std::numeric_limits<int64_t>::min()))
       return MPInt(-get64());
     return MPInt(-getAsAP());
   }
