@@ -37,20 +37,21 @@ class MPInt {
 public:
   __attribute__((always_inline))
   ~MPInt() {
-    if (isLarge())
+    if (isLarge()) [[unlikely]]
       valAP.~APInt();
   }
   __attribute__((always_inline))
   MPInt(const MPInt &o) : val64(o.val64), holdsAP(false) {
-    if (o.isLarge())
+    if (o.isLarge()) [[unlikely]]
       initAP(o.valAP);
   }
   __attribute__((always_inline))
   MPInt &operator=(const MPInt &o) {
-    if (o.isLarge())
-      initAP(o.valAP);
-    else
+    if (o.isSmall()) [[likely]] {
       init64(o.val64);
+      return *this;
+    }
+    initAP(o.valAP);
     return *this;
   }
 
