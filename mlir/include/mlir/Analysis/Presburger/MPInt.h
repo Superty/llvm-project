@@ -278,7 +278,7 @@ inline MPInt MPInt::operator/(const MPInt &o) const {
 }
 inline MPInt abs(const MPInt &x) { return MPInt(x >= 0 ? x : -x); }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
-  if (lhs.isSmall() && rhs.isSmall()) {
+  if (LLVM_LIKELY(lhs.isSmall() && rhs.isSmall())) {
     if (rhs == -1)
       return -lhs;
     int64_t x = (rhs.get64() > 0) ? -1 : 1;
@@ -289,7 +289,7 @@ inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
   return MPInt(ceilDiv(lhs.getAsAP(), rhs.getAsAP()));
 }
 inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
-  if (lhs.isSmall() && rhs.isSmall()) {
+  if (LLVM_LIKELY(lhs.isSmall() && rhs.isSmall())) {
     if (rhs == -1)
       return -lhs;
     int64_t x = (rhs.get64() < 0) ? 1 : -1;
@@ -303,7 +303,7 @@ inline MPInt floorDiv(const MPInt &lhs, const MPInt &rhs) {
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
 inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
-  if (lhs.isSmall() && rhs.isSmall())
+  if (LLVM_LIKELY(lhs.isSmall() && rhs.isSmall()))
     return MPInt(lhs.get64() % rhs.get64() < 0
                      ? lhs.get64() % rhs.get64() + rhs.get64()
                      : lhs.get64() % rhs.get64());
@@ -311,7 +311,7 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
 }
 
 inline MPInt gcd(const MPInt &a, const MPInt &b) {
-  if (a.isSmall() && b.isSmall())
+  if (LLVM_LIKELY(a.isSmall() && b.isSmall()))
     return MPInt(llvm::GreatestCommonDivisor64(a.get64(), b.get64()));
   return MPInt(gcd(a.getAsAP(), b.getAsAP()));
 }
