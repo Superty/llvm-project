@@ -59,6 +59,7 @@ public:
     init64(x);
     return *this;
   }
+  __attribute__((always_inline))
   explicit operator int64_t() const {
     if (isSmall())
       return get64();
