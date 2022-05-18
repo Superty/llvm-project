@@ -244,6 +244,7 @@ inline MPInt MPInt::operator+(const MPInt &o) const {
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
+    return MPInt(getAsAP() * o.getAsAP());
   }
   return MPInt(getAsAP() + o.getAsAP());
 }
@@ -254,6 +255,7 @@ inline MPInt MPInt::operator-(const MPInt &o) const {
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
+    return MPInt(getAsAP() * o.getAsAP());
   }
   return MPInt(getAsAP() - o.getAsAP());
 }
@@ -264,6 +266,7 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
+    return MPInt(getAsAP() * o.getAsAP());
   }
   return MPInt(getAsAP() * o.getAsAP());
 }
