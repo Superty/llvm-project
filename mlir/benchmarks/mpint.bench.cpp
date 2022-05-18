@@ -7,6 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/MPInt.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
+#include "llvm/ADT/ArrayRef.h"
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -56,6 +58,18 @@ static void mulMpint(benchmark::State &state) {
   benchmark::DoNotOptimize(c[42]);
 }
 BENCHMARK(mulMpint);
+
+static void simplex(benchmark::State &state) {
+  auto ineq1 = getMPIntVec({1, -1});
+  auto ineq2 = getMPIntVec({-1, 0});
+  for (auto _ : state) {
+    Simplex simplex(1);
+    simplex.addInequality(ineq1);
+    simplex.addInequality(ineq2);
+	}
+  benchmark::DoNotOptimize(simplex);
+}
+BENCHMARK(simplex);
 
 int main(int argc, char** argv) {
   benchmark::Initialize(&argc, argv);
