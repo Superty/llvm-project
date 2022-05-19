@@ -59,6 +59,17 @@ static void mulMpint(benchmark::State &state) {
 }
 BENCHMARK(mulMpint);
 
+static void matrix(benchmark::State &state) {
+  for (auto _ : state) {
+    Matrix mat(2, 2);
+    mat.fillRow(0, 1);
+    // mat.fillRow(0, 2);
+    // mat.addToRow(0, 1, 1);
+    benchmark::DoNotOptimize(matrix);
+  }
+}
+BENCHMARK(matrix);
+
 static void simplex(benchmark::State &state) {
   auto ineq1 = getMPIntVec({1, -1});
   auto ineq2 = getMPIntVec({-1, 0});
@@ -66,8 +77,8 @@ static void simplex(benchmark::State &state) {
     Simplex simplex(1);
     simplex.addInequality(ineq1);
     simplex.addInequality(ineq2);
+    benchmark::DoNotOptimize(simplex);
 	}
-  benchmark::DoNotOptimize(simplex);
 }
 BENCHMARK(simplex);
 
