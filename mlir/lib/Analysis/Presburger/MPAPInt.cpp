@@ -167,7 +167,7 @@ MPAPInt detail::gcd(const MPAPInt &a, const MPAPInt &b) {
 MPAPInt detail::lcm(const MPAPInt &a, const MPAPInt &b) {
   MPAPInt x = abs(a);
   MPAPInt y = abs(b);
-  return (x * y) / greatestCommonDivisor(x, y);
+  return (x * y) / gcd(x, y);
 }
 
 /// This operation cannot overflow.

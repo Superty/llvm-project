@@ -79,7 +79,7 @@ MPAPInt lcm(const MPAPInt &a, const MPAPInt &b);
 MPAPInt abs(const MPAPInt &x);
 MPAPInt ceilDiv(const MPAPInt &lhs, const MPAPInt &rhs);
 MPAPInt floorDiv(const MPAPInt &lhs, const MPAPInt &rhs);
-MPAPInt greatestCommonDivisor(const MPAPInt &a, const MPAPInt &b);
+MPAPInt gcd(const MPAPInt &a, const MPAPInt &b);
 /// Overload to compute a hash_code for a MPAPInt value.
 llvm::hash_code hash_value(const MPAPInt &x); // NOLINT
 
