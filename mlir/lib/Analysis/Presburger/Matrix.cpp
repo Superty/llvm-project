@@ -17,8 +17,9 @@ Matrix::Matrix(unsigned rows, unsigned columns, unsigned reservedRows,
                unsigned reservedColumns)
     : nRows(rows), nColumns(columns),
       nReservedColumns(std::max(nColumns, reservedColumns)),
-      data(nRows * nReservedColumns) {
-  data.reserve(std::max(nRows, reservedRows) * nReservedColumns);
+      data(reservedRows * nReservedColumns) {
+  assert(nRows <= reservedRows);
+  data.truncate(nRows * nReservedColumns);
 }
 
 Matrix Matrix::identity(unsigned dimension) {
