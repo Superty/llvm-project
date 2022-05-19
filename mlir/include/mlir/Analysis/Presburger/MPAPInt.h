@@ -16,7 +16,7 @@
 #define MLIR_ANALYSIS_PRESBURGER_MPAPINT_H
 
 #include "mlir/Support/MathExtras.h"
-#include "llvm/ADT/APSInt.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -28,7 +28,7 @@ class MPAPInt {
 public:
   explicit MPAPInt(int64_t val);
   MPAPInt();
-  explicit MPAPInt(const llvm::APSInt &val);
+  explicit MPAPInt(const llvm::APInt &val);
   MPAPInt &operator=(int64_t val);
   explicit operator int64_t() const;
   MPAPInt operator-() const;
@@ -63,8 +63,9 @@ public:
   void dump() const;
 
 private:
+  int compare(const MPAPInt &o);
   unsigned getBitWidth() const { return val.getBitWidth(); }
-  llvm::APSInt val;
+  llvm::APInt val;
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MPAPInt &x);

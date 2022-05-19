@@ -13,9 +13,9 @@ using namespace mlir;
 using namespace presburger;
 using detail::MPAPInt;
 
-MPAPInt::MPAPInt(int64_t val) : val(llvm::APSInt::get(val)) {}
+MPAPInt::MPAPInt(int64_t val) : val(64, val, /*isSigned=*/true) {}
 MPAPInt::MPAPInt() : MPAPInt(0) {}
-MPAPInt::MPAPInt(const llvm::APSInt &val) : val(val) {}
+MPAPInt::MPAPInt(const llvm::APInt &val) : val(val) {}
 MPAPInt &MPAPInt::operator=(int64_t val) { return *this = MPAPInt(val); }
 MPAPInt::operator int64_t() const { return val.getSExtValue(); }
 
@@ -77,23 +77,27 @@ MPAPInt operator%(int64_t a, const MPAPInt &b) { return MPAPInt(a) % b; }
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
+int MPAPInt::compare(const MPAPInt &o) {
+  unsigned width = std::max(val.getBitWidth(), o.val.getBitWidth());
+  return val.sextOrSelf(width).compare(o.val.sextOrSelf(width));
+}
 bool MPAPInt::operator==(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) == 0;
+  return val.compare(o.val) == 0;
 }
 bool MPAPInt::operator!=(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) != 0;
+  return val.compare(o.val) != 0;
 }
 bool MPAPInt::operator>(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) > 0;
+  return val.compare(o.val) > 0;
 }
 bool MPAPInt::operator<(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) < 0;
+  return val.compare(o.val) < 0;
 }
 bool MPAPInt::operator<=(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) <= 0;
+  return val.compare(o.val) <= 0;
 }
 bool MPAPInt::operator>=(const MPAPInt &o) const {
-  return APSInt::compareValues(val, o.val) >= 0;
+  return val.compare(o.val) >= 0;
 }
 
 /// ---------------------------------------------------------------------------
@@ -105,18 +109,18 @@ bool MPAPInt::operator>=(const MPAPInt &o) const {
 /// call a.op(b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
 template <typename Function>
-APSInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
+APInt runOpWithExpandOnOverflow(const APInt &a, const APInt &b,
                                         const Function &op) {
   bool overflow;
   unsigned width = std::max(a.getBitWidth(), b.getBitWidth());
   APInt ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
   if (!overflow)
-    return APSInt(ret, /*isUnsigned=*/false);
+    return ret;
 
   width *= 2;
   ret = op(a.sextOrSelf(width), b.sextOrSelf(width), overflow);
   assert(!overflow && "double width should be sufficient to avoid overflow!");
-  return APSInt(ret, /*isUnsigned=*/false);
+  return ret;
 }
 
 MPAPInt MPAPInt::operator+(const MPAPInt &o) const {
@@ -139,16 +143,12 @@ MPAPInt detail::abs(const MPAPInt &x) { return x >= 0 ? x : -x; }
 MPAPInt detail::ceilDiv(const MPAPInt &lhs, const MPAPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPAPInt(APSInt(
-      llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::UP),
-      /*isUnsigned=*/false));
+  return MPAPInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::UP));
 }
 MPAPInt detail::floorDiv(const MPAPInt &lhs, const MPAPInt &rhs) {
   if (rhs == -1)
     return -lhs;
-  return MPAPInt(APSInt(
-      llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::DOWN),
-      /*isUnsigned=*/false));
+  return MPAPInt(llvm::APIntOps::RoundingSDiv(lhs.val, rhs.val, APInt::Rounding::DOWN));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
@@ -158,9 +158,7 @@ MPAPInt detail::mod(const MPAPInt &lhs, const MPAPInt &rhs) {
 }
 
 MPAPInt detail::gcd(const MPAPInt &a, const MPAPInt &b) {
-  return MPAPInt(
-      APSInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()),
-             /*isUnsigned=*/false));
+  return MPAPInt(llvm::APIntOps::GreatestCommonDivisor(a.val.abs(), b.val.abs()));
 }
 
 /// Returns the least common multiple of 'a' and 'b'.
@@ -173,14 +171,13 @@ MPAPInt detail::lcm(const MPAPInt &a, const MPAPInt &b) {
 /// This operation cannot overflow.
 MPAPInt MPAPInt::operator%(const MPAPInt &o) const {
   unsigned width = std::max(val.getBitWidth(), o.val.getBitWidth());
-  return MPAPInt(APSInt(val.sextOrSelf(width).srem(o.val.sextOrSelf(width)),
-                      /*isUnsigned=*/false));
+  return MPAPInt(val.sextOrSelf(width).srem(o.val.sextOrSelf(width)));
 }
 
 MPAPInt MPAPInt::operator-() const {
   if (val.isMinSignedValue()) {
     /// Overflow only occurs when the value is the minimum possible value.
-    APSInt ret = val.extend(2 * val.getBitWidth());
+    APInt ret = val.sext(2 * val.getBitWidth());
     return MPAPInt(-ret);
   }
   return MPAPInt(-val);
