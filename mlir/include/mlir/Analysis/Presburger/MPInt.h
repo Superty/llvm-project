@@ -164,6 +164,7 @@ private:
   struct Val64 {
     int64_t val64;
     bool holdsAP;
+    uint32_t padding = 0;
   };
 
   union {
