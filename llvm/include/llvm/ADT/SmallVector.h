@@ -16,6 +16,7 @@
 
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/type_traits.h"
+#include <type_traits>
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -692,6 +693,24 @@ public:
       return;
     }
 
+    // llvm::errs() << std::is_trivially_copyable<T>::value << ' ' << std::is_trivially_copy_constructible<T>::value << '\n';
+    // if (std::is_same<T,MPInt>) {
+    bool allZero = true;
+    const char * bytes = (const char *)&Elt;
+    for (unsigned i = 0; i < sizeof(T); ++i) {
+      if (bytes[i] != 0) {
+        allZero = false;
+        break;
+      }
+    }
+    if (allZero) {
+      memset(this->begin(), 0, NumElts*sizeof(T));
+      if (NumElts < this->size())
+        this->destroy_range(this->begin() + NumElts, this->end());
+      this->set_size(NumElts);
+      return;
+    }
+    // }
     // Assign over existing elements.
     std::fill_n(this->begin(), std::min(NumElts, this->size()), Elt);
     if (NumElts > this->size())
