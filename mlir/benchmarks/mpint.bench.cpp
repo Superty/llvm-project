@@ -40,8 +40,8 @@ static void mulI64(benchmark::State &state) {
 BENCHMARK(mulI64);
 
 static void matrix(benchmark::State &state) {
-  Matrix mat(16, 4);
   for (auto _ : state) {
+    Matrix mat(16, 4);
     mat.swapColumns(1, 3);
     mat.swapColumns(1, 3);
     // benchmark::DoNotOptimize(matrix);
