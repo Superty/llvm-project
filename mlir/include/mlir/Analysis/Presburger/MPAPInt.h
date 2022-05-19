@@ -62,9 +62,9 @@ public:
   llvm::raw_ostream &print(llvm::raw_ostream &os) const;
   void dump() const;
 
+  unsigned getBitWidth() const { return val.getBitWidth(); }
 private:
   int compare(const MPAPInt &o) const;
-  unsigned getBitWidth() const { return val.getBitWidth(); }
   llvm::APInt val;
 };
 
