@@ -164,7 +164,8 @@ private:
   union {
     struct {
       int64_t val64;
-      bool holdsAP;
+      unsigned holdsAP;
+      uint32_t padding = 0;
     };
     detail::MPAPInt valAP;
   };
