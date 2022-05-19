@@ -60,7 +60,7 @@ static void mulMpint(benchmark::State &state) {
 BENCHMARK(mulMpint);
 
 static void matrix(benchmark::State &state) {
-  Matrix mat(4, 200);
+  Matrix mat(4, 16);
   for (auto _ : state) {
     mat.fillRow(3, 1);
     mat.fillRow(3, 0);
