@@ -64,18 +64,18 @@ static void matrix(benchmark::State &state) {
   for (auto _ : state) {
     mat.swapColumns(1, 3);
     mat.swapColumns(1, 3);
-    // benchmark::DoNotOptimize(matrix);
+    benchmark::DoNotOptimize(mat);
   }
 }
 BENCHMARK(matrix);
 
 static void simplex(benchmark::State &state) {
-  auto ineq1 = getMPIntVec({1, -1});
-  auto ineq2 = getMPIntVec({-1, 0});
+  auto ineq = getMPIntVec({1, -1});
+  auto coeffs = getMPIntVec({-1, 0});
+  Simplex simplex(1);
+  simplex.addInequality(ineq);
   for (auto _ : state) {
-    Simplex simplex(1);
-    simplex.addInequality(ineq1);
-    simplex.addInequality(ineq2);
+    simplex.computeOptimum(Simplex::Direction::Up, coeffs);
     benchmark::DoNotOptimize(simplex);
 	}
 }
