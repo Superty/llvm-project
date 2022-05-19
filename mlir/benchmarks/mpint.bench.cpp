@@ -41,10 +41,8 @@ BENCHMARK(mulI64);
 
 static void matrix(benchmark::State &state) {
   for (auto _ : state) {
-    Matrix mat(2, 2);
-    mat.fillRow(0, 1);
-    mat.fillRow(0, 2);
-    mat.addToRow(0, 1, 1);
+    Matrix mat(4, 200);
+    mat.fillRow(3, 1);
     benchmark::DoNotOptimize(matrix);
 	}
 }
