@@ -40,10 +40,10 @@ static void mulI64(benchmark::State &state) {
 BENCHMARK(mulI64);
 
 static void matrix(benchmark::State &state) {
-  Matrix mat(4, 200);
+  Matrix mat(16, 4);
   for (auto _ : state) {
-    mat.fillRow(3, 1);
-    mat.fillRow(3, 0);
+    mat.swapColumns(1, 3);
+    mat.swapColumns(1, 3);
     // benchmark::DoNotOptimize(matrix);
   }
 }
