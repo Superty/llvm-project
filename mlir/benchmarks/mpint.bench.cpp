@@ -24,16 +24,16 @@ static void mulI64(benchmark::State &state) {
   long b[N];
   long c[N];
   for (int i = 0; i < N; i++) {
-	a[i] = i;
-	b[i] = i;
+    a[i] = i;
+    b[i] = i;
   }
 
   for (auto _ : state)
   // #pragma nounroll
- 	for (int i = 0; i < N; i+=16) {
+  for (int i = 0; i < N; i+=16) {
     // __sync_synchronize();
     c[i] = a[i] * b[i];
-	}
+  }
 
   benchmark::DoNotOptimize(c[42]);
 }
@@ -57,7 +57,7 @@ static void simplex(benchmark::State &state) {
   for (auto _ : state) {
     simplex.computeOptimum(Simplex::Direction::Up, coeffs);
     benchmark::DoNotOptimize(simplex);
-	}
+  }
 }
 BENCHMARK(simplex);
 
