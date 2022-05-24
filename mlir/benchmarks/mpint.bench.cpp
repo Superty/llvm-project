@@ -60,8 +60,8 @@ static void mulMpint(benchmark::State &state) {
 BENCHMARK(mulMpint);
 
 static void matrix(benchmark::State &state) {
-  Matrix mat(4, 16);
   for (auto _ : state) {
+    Matrix mat(4, 16);
     mat.swapColumns(1, 3);
     mat.swapColumns(1, 3);
     benchmark::DoNotOptimize(mat);
