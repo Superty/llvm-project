@@ -52,10 +52,29 @@ public:
   static Matrix identity(unsigned dimension);
 
   /// Access the element at the specified row and column.
-  int64_t &at(unsigned row, unsigned column);
-  int64_t at(unsigned row, unsigned column) const;
-  int64_t &operator()(unsigned row, unsigned column);
-  int64_t operator()(unsigned row, unsigned column) const;
+  __attribute((always_inline))
+  int64_t &at(unsigned row, unsigned column) {
+    assert(row < nRows && "Row outside of range");
+    assert(column < nColumns && "Column outside of range");
+    return data[row * nReservedColumns + column];
+  }
+
+  __attribute((always_inline))
+  int64_t at(unsigned row, unsigned column) const {
+    assert(row < nRows && "Row outside of range");
+    assert(column < nColumns && "Column outside of range");
+    return data[row * nReservedColumns + column];
+  }
+
+  __attribute((always_inline))
+  int64_t &operator()(unsigned row, unsigned column) {
+    return at(row, column);
+  }
+
+  __attribute((always_inline))
+  int64_t operator()(unsigned row, unsigned column) const {
+    return at(row, column);
+  }
 
   /// Swap the given columns.
   void swapColumns(unsigned column, unsigned otherColumn);
