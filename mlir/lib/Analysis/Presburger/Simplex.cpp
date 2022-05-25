@@ -936,18 +936,22 @@ void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
   }
   tableau.normalizeRow(pivotRow);
 
+
+
+  int64_t pivotRowDenom = tableau(pivotRow, 0);
   for (unsigned row = 0; row < nRow; ++row) {
     if (row == pivotRow)
       continue;
     if (tableau(row, pivotCol) == 0) // Nothing to do.
       continue;
     tableau(row, 0) *= tableau(pivotRow, 0);
+    int64_t c = tableau(row, pivotCol);
     for (unsigned j = 1; j < nCol; ++j) {
       if (j == pivotCol)
         continue;
       // Add rather than subtract because the pivot row has been negated.
-      tableau(row, j) = tableau(row, j) * tableau(pivotRow, 0) +
-                        tableau(row, pivotCol) * tableau(pivotRow, j);
+      tableau(row, j) *= pivotRowDenom;
+      tableau(row, j) += c * tableau(pivotRow, j);
     }
     tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
     tableau.normalizeRow(row);
