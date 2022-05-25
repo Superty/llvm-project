@@ -38,8 +38,8 @@ public:
   __attribute__((always_inline)) explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
-    if (LLVM_UNLIKELY(isLarge()))
-      valAP.detail::MPAPInt::~MPAPInt();
+    // if (LLVM_UNLIKELY(isLarge()))
+    //   valAP.detail::MPAPInt::~MPAPInt();
   }
   __attribute__((always_inline)) MPInt(const MPInt &o)
       : val64(o.val64), holdsAP(false) {
