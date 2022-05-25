@@ -1334,8 +1334,7 @@ MaybeOptimum<Fraction> Simplex::computeOptimum(Direction direction,
   SimplexRollbackScopeExit scopeExit(*this);
   unsigned conIndex = addRow(coeffs);
   unsigned row = con[conIndex].pos;
-  MaybeOptimum<Fraction> optimum = computeRowOptimum(direction, row);
-  return optimum;
+  return computeRowOptimum(direction, row);
 }
 
 MaybeOptimum<Fraction> Simplex::computeOptimum(Direction direction,
