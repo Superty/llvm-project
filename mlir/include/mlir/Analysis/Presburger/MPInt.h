@@ -276,8 +276,8 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
 }
 __attribute__((always_inline))
 inline MPInt MPInt::operator/(const MPInt &o) const {
-  if (isSmall() && o.isSmall()) {
-    if (o.get64() == -1)
+  if (LLVM_LIKELY(isSmall() && o.isSmall())) {
+    if (LLVM_UNLIKELY(o.get64() == -1))
       return -*this;
     return MPInt(get64() / o.get64());
   }
