@@ -53,10 +53,29 @@ public:
   static Matrix identity(unsigned dimension);
 
   /// Access the element at the specified row and column.
-  MPInt &at(unsigned row, unsigned column);
-  MPInt at(unsigned row, unsigned column) const;
-  MPInt &operator()(unsigned row, unsigned column);
-  MPInt operator()(unsigned row, unsigned column) const;
+  __attribute__((always_inline))
+  MPInt &at(unsigned row, unsigned column) {
+    assert(row < nRows && "Row outside of range");
+    assert(column < nColumns && "Column outside of range");
+    return data[row * nReservedColumns + column];
+  }
+
+  __attribute__((always_inline))
+  MPInt at(unsigned row, unsigned column) const {
+    assert(row < nRows && "Row outside of range");
+    assert(column < nColumns && "Column outside of range");
+    return data[row * nReservedColumns + column];
+  }
+
+  __attribute__((always_inline))
+  MPInt &operator()(unsigned row, unsigned column) {
+    return at(row, column);
+  }
+
+  __attribute__((always_inline))
+  MPInt operator()(unsigned row, unsigned column) const {
+    return at(row, column);
+  }
 
   /// Swap the given columns.
   void swapColumns(unsigned column, unsigned otherColumn);

@@ -29,26 +29,6 @@ Matrix Matrix::identity(unsigned dimension) {
   return matrix;
 }
 
-MPInt &Matrix::at(unsigned row, unsigned column) {
-  assert(row < nRows && "Row outside of range");
-  assert(column < nColumns && "Column outside of range");
-  return data[row * nReservedColumns + column];
-}
-
-MPInt Matrix::at(unsigned row, unsigned column) const {
-  assert(row < nRows && "Row outside of range");
-  assert(column < nColumns && "Column outside of range");
-  return data[row * nReservedColumns + column];
-}
-
-MPInt &Matrix::operator()(unsigned row, unsigned column) {
-  return at(row, column);
-}
-
-MPInt Matrix::operator()(unsigned row, unsigned column) const {
-  return at(row, column);
-}
-
 unsigned Matrix::getNumRows() const { return nRows; }
 
 unsigned Matrix::getNumColumns() const { return nColumns; }
