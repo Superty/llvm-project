@@ -340,7 +340,6 @@ MPInt presburger::gcdRange(ArrayRef<MPInt> range) {
   return MPInt(curGCD);
 }
 
-
 MPInt presburger::normalizeRange(MutableArrayRef<MPInt> range) {
   MPInt curGCD = gcdRange(range);
   if ((curGCD == 0) || (curGCD == 1))

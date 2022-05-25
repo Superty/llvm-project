@@ -74,6 +74,7 @@ public:
   MPInt operator+(const MPInt &o) const;
   MPInt operator-(const MPInt &o) const;
   MPInt operator*(const MPInt &o) const;
+  MPInt divByPositive(const MPInt &o) const;
   MPInt operator/(const MPInt &o) const;
   MPInt operator%(const MPInt &o) const;
   MPInt &operator+=(const MPInt &o);
@@ -273,6 +274,15 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
   }
   return MPInt(getAsAP() * o.getAsAP());
 }
+
+__attribute__((always_inline))
+inline MPInt MPInt::divByPositive(const MPInt &o) const {
+  assert(o > 0);
+  if (LLVM_LIKELY(isSmall() && o.isSmall()))
+    return MPInt(get64() / o.get64());
+  return MPInt(getAsAP() / o.getAsAP());
+}
+
 __attribute__((always_inline))
 inline MPInt MPInt::operator/(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
@@ -282,6 +292,7 @@ inline MPInt MPInt::operator/(const MPInt &o) const {
   }
   return MPInt(getAsAP() / o.getAsAP());
 }
+
 inline MPInt abs(const MPInt &x) { return MPInt(x >= 0 ? x : -x); }
 inline MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs) {
   if (LLVM_LIKELY(lhs.isSmall() && rhs.isSmall())) {
