@@ -87,6 +87,7 @@ public:
   MPInt &operator--();
 
   friend MPInt abs(const MPInt &x);
+  friend MPInt gcdRange(ArrayRef<MPInt> range);
   friend MPInt ceilDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt floorDiv(const MPInt &lhs, const MPInt &rhs);
   friend MPInt gcd(const MPInt &a, const MPInt &b);
