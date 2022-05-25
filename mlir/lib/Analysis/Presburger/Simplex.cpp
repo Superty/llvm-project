@@ -151,9 +151,10 @@ unsigned SimplexBase::addRow(ArrayRef<MPInt> coeffs, bool makeRestricted) {
     MPInt nRowCoeff = lcm / tableau(nRow - 1, 0);
     MPInt idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
     tableau(nRow - 1, 0) = lcm;
-    for (unsigned col = 1; col < nCol; ++col)
-      tableau(nRow - 1, col) =
-          nRowCoeff * tableau(nRow - 1, col) + idxRowCoeff * tableau(pos, col);
+    for (unsigned col = 1; col < nCol; ++col) {
+      tableau(nRow - 1, col) *= nRowCoeff;
+      tableau(nRow - 1, col) += idxRowCoeff * tableau(pos, col);
+    }
   }
 
   tableau.normalizeRow(nRow - 1);
