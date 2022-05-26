@@ -334,6 +334,7 @@ MPInt presburger::gcdRange(ArrayRef<MPInt> range) {
       curGCD = llvm::GreatestCommonDivisor64(curGCD, std::abs(elem.get64()));
       if (curGCD == 1)
         return MPInt(curGCD);
+      continue;
     }
     return gcdRangeSlow(range);
   }
