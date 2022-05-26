@@ -336,11 +336,6 @@ inline MPInt gcd(const MPInt &a, const MPInt &b) {
 
 /// Returns the least common multiple of 'a' and 'b'.
 inline MPInt lcm(const MPInt &a, const MPInt &b) {
-  if (LLVM_LIKELY(a.isSmall() && b.isSmall())) {
-    int64_t absA = std::abs(a.get64());
-    int64_t absB = std::abs(b.get64());
-    return MPInt((absA * absB) / llvm::GreatestCommonDivisor64(absA, absB));
-  }
   MPInt x = abs(a);
   MPInt y = abs(b);
   return (x * y) / gcd(x, y);
