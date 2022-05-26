@@ -91,7 +91,7 @@ unsigned SimplexBase::addZeroRow(bool makeRestricted) {
   undoLog.push_back(UndoLogEntry::RemoveLastConstraint);
 
   // Zero out the new row.
-  tableau.fillRow(nRow - 1, 0);
+  tableau.fillZeroRow(nRow - 1);
 
   tableau(nRow - 1, 0) = 1;
   return con.size() - 1;

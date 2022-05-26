@@ -187,9 +187,18 @@ void Matrix::copyRow(unsigned sourceRow, unsigned targetRow) {
 }
 
 void Matrix::fillRow(unsigned row, const MPInt &value) {
+  if (value == 0) {
+    fillZeroRow(row);
+  }
+
   for (unsigned col = 0; col < nColumns; ++col)
     at(row, col) = value;
 }
+
+void Matrix::fillZeroRow(unsigned row) {
+  memset(&at(row, 0), 0, sizeof(MPInt)*nColumns);
+}
+
 
 void Matrix::addToRow(unsigned sourceRow, unsigned targetRow, const MPInt &scale) {
   if (scale == 0)

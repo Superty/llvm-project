@@ -133,8 +133,12 @@ public:
   void copyRow(unsigned sourceRow, unsigned targetRow);
 
   void fillRow(unsigned row, const MPInt &value);
+  void fillZeroRow(unsigned row);
   void fillRow(unsigned row, int64_t value) {
-    fillRow(row, MPInt(value));
+    if (value == 0)
+      fillZeroRow(row);
+    else
+      fillRow(row, MPInt(value));
   }
 
   /// Add `scale` multiples of the source row to the target row.
