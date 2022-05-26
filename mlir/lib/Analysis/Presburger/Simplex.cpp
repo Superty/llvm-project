@@ -1128,7 +1128,13 @@ void SimplexBase::removeLastConstraintRowOrientation() {
 
   // Move this unknown to the last row and remove the last row from the
   // tableau.
-  swapRows(con.back().pos, nRow - 1);
+  unsigned i = con.back().pos;
+  unsigned j = nRow - 1;
+  if (i != j) {
+    tableau.copyRow(j, i);
+    rowUnknown[i] = rowUnknown[j];
+    unknownFromRow(i).pos = i;
+  }
   // It is not strictly necessary to shrink the tableau, but for now we
   // maintain the invariant that the tableau has exactly nRow rows.
   tableau.resizeVertically(nRow - 1);
