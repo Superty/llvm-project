@@ -134,6 +134,7 @@ public:
 
   void fillRow(unsigned row, const MPInt &value);
   void fillZeroRow(unsigned row);
+  void fillZeroRows(unsigned row, unsigned numRowsToZero);
   void fillRow(unsigned row, int64_t value) {
     if (value == 0)
       fillZeroRow(row);
