@@ -77,27 +77,27 @@ MPAPInt operator%(int64_t a, const MPAPInt &b) { return MPAPInt(a) % b; }
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
-int MPAPInt::compare(const MPAPInt &o) {
+int MPAPInt::compare(const MPAPInt &o) const {
   unsigned width = std::max(val.getBitWidth(), o.val.getBitWidth());
   return val.sextOrSelf(width).compare(o.val.sextOrSelf(width));
 }
 bool MPAPInt::operator==(const MPAPInt &o) const {
-  return val.compare(o.val) == 0;
+  return compare(o) == 0;
 }
 bool MPAPInt::operator!=(const MPAPInt &o) const {
-  return val.compare(o.val) != 0;
+  return compare(o) != 0;
 }
 bool MPAPInt::operator>(const MPAPInt &o) const {
-  return val.compare(o.val) > 0;
+  return compare(o) > 0;
 }
 bool MPAPInt::operator<(const MPAPInt &o) const {
-  return val.compare(o.val) < 0;
+  return compare(o) < 0;
 }
 bool MPAPInt::operator<=(const MPAPInt &o) const {
-  return val.compare(o.val) <= 0;
+  return compare(o) <= 0;
 }
 bool MPAPInt::operator>=(const MPAPInt &o) const {
-  return val.compare(o.val) >= 0;
+  return compare(o) >= 0;
 }
 
 /// ---------------------------------------------------------------------------

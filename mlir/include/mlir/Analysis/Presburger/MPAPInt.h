@@ -63,7 +63,7 @@ public:
   void dump() const;
 
 private:
-  int compare(const MPAPInt &o);
+  int compare(const MPAPInt &o) const;
   unsigned getBitWidth() const { return val.getBitWidth(); }
   llvm::APInt val;
 };
