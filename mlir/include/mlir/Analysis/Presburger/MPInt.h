@@ -328,6 +328,7 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
   return MPInt(mod(lhs.getAsAP(), rhs.getAsAP()));
 }
 
+__attribute__((always_inline))
 inline MPInt gcd(const MPInt &a, const MPInt &b) {
   if (LLVM_LIKELY(a.isSmall() && b.isSmall()))
     return MPInt(llvm::GreatestCommonDivisor64(a.get64(), b.get64()));
