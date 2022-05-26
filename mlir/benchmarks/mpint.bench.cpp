@@ -82,10 +82,10 @@ static void simplex(benchmark::State &state) {
 BENCHMARK(simplex);
 
 static void emptiness(benchmark::State &state) {
-  llvm::SmallVector<int64_t, 8> ineq1 = {0, 1, 0, 0};  // y >= 0
-  llvm::SmallVector<int64_t, 8> ineq2 = {0, -1, 1, 0}; // z >= y
-  llvm::SmallVector<int64_t, 8> ineq3 = {300000, -299998, -1, -100000}; // -300000x + 299998y + 100000 + z <= 0.
-  llvm::SmallVector<int64_t, 8> ineq4 = {-150000, 149999, 0, 100000}; // -150000x + 149999y + 100000 >= 0.
+  auto ineq1 = getMPIntVec({0, 1, 0, 0});  // y >= 0
+  auto ineq2 = getMPIntVec({0, -1, 1, 0}); // z >= y
+  auto ineq3 = getMPIntVec({300000, -299998, -1, -100000}); // -300000x + 299998y + 100000 + z <= 0.
+  auto ineq4 = getMPIntVec({-150000, 149999, 0, 100000}); // -150000x + 149999y + 100000 >= 0.
 
   IntegerPolyhedron set(PresburgerSpace::getSetSpace(3));
   set.addInequality(ineq1);
