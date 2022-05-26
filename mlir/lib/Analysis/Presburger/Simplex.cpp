@@ -147,10 +147,11 @@ unsigned SimplexBase::addRow(ArrayRef<MPInt> coeffs, bool makeRestricted) {
     // row, scaled by the coefficient for the variable, accounting for the two
     // rows potentially having different denominators. The new denominator is
     // the lcm of the two.
-    MPInt lcm = mlir::presburger::lcm(tableau(nRow - 1, 0), tableau(pos, 0));
-    MPInt nRowCoeff = lcm.divByPositive(tableau(nRow - 1, 0));
-    MPInt idxRowCoeff = coeffs[i] * (lcm.divByPositive(tableau(pos, 0)));
-    tableau(nRow - 1, 0) = lcm;
+    MPInt gcd = mlir::presburger::gcd(tableau(nRow - 1, 0), tableau(pos, 0));
+    MPInt nRowCoeff = tableau(pos, 0).divByPositive(gcd);
+    MPInt idxRowCoeff = coeffs[i] * (tableau(nRow - 1, 0).divByPositive(gcd));
+    tableau(nRow - 1, 0) *= tableau(pos, 0);
+    tableau(nRow - 1, 0).divByPositiveInPlace(gcd);
     for (unsigned col = 1; col < nCol; ++col) {
       tableau(nRow - 1, col) *= nRowCoeff;
       tableau(nRow - 1, col) += idxRowCoeff * tableau(pos, col);

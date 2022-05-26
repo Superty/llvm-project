@@ -81,6 +81,7 @@ public:
   MPInt &operator-=(const MPInt &o);
   MPInt &operator*=(const MPInt &o);
   MPInt &operator/=(const MPInt &o);
+  MPInt &divByPositiveInPlace(const MPInt &o);
   MPInt &operator%=(const MPInt &o);
 
   MPInt operator-() const;
@@ -413,6 +414,18 @@ inline MPInt &MPInt::operator/=(const MPInt &o) {
   }
   return *this = MPInt(getAsAP() / o.getAsAP());
 }
+
+__attribute__((always_inline))
+inline MPInt &MPInt::divByPositiveInPlace(const MPInt &o) {
+  assert(o > 0);
+  if (LLVM_LIKELY(isSmall() && o.isSmall())) {
+    get64() /= o.get64();
+    return *this;
+  }
+  return *this = MPInt(getAsAP() / o.getAsAP());
+}
+
+
 __attribute__((always_inline))
 inline MPInt &MPInt::operator%=(const MPInt &o) {
   *this = *this % o;
