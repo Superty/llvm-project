@@ -14,7 +14,7 @@ using namespace presburger;
 
 llvm::hash_code mlir::presburger::hash_value(const MPInt &x) {
   if (x.isSmall())
-    return llvm::hash_value(x.val64);
+    return llvm::hash_value(x.get64());
   return detail::hash_value(x.valAP);
 }
 
@@ -23,7 +23,7 @@ llvm::hash_code mlir::presburger::hash_value(const MPInt &x) {
 /// ---------------------------------------------------------------------------
 llvm::raw_ostream &MPInt::print(llvm::raw_ostream &os) const {
   if (isSmall())
-    return os << val64;
+    return os << get64();
   return os << valAP;
 }
 

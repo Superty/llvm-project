@@ -35,20 +35,20 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  __attribute__((always_inline)) explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
+  __attribute__((always_inline)) explicit MPInt(int64_t val) : val64({val, false}) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
     if (LLVM_UNLIKELY(isLarge()))
       valAP.detail::MPAPInt::~MPAPInt();
   }
   __attribute__((always_inline)) MPInt(const MPInt &o)
-      : val64(o.val64), holdsAP(false) {
+      : val64(o.val64) {
     if (LLVM_UNLIKELY(o.isLarge()))
       initAP(o.valAP);
   }
   __attribute__((always_inline)) MPInt &operator=(const MPInt &o) {
     if (LLVM_LIKELY(o.isSmall())) {
-      init64(o.val64);
+      val64 = o.val64;
       return *this;
     }
     initAP(o.valAP);
@@ -133,15 +133,15 @@ public:
 private:
   __attribute__((always_inline))
   explicit MPInt(const detail::MPAPInt &val) : valAP(val) { assert(val.getBitWidth() > 0); }
-  __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
-  __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
+  __attribute__((always_inline)) bool isSmall() const { return !val64.holdsAP; }
+  __attribute__((always_inline)) bool isLarge() const { return val64.holdsAP; }
   __attribute__((always_inline)) int64_t get64() const {
     assert(isSmall());
-    return val64;
+    return val64.val64;
   }
   __attribute__((always_inline)) int64_t &get64() {
     assert(isSmall());
-    return val64;
+    return val64.val64;
   }
   __attribute__((always_inline)) const detail::MPAPInt &getAP() const {
     assert(isLarge());
@@ -161,22 +161,24 @@ private:
     return detail::MPAPInt(*this);
   }
 
+  struct Val64 {
+    int64_t val64;
+    bool holdsAP;
+  };
+
   union {
-    struct {
-      int64_t val64;
-      bool holdsAP;
-    };
+    Val64 val64;
     detail::MPAPInt valAP;
   };
 
   __attribute__((always_inline)) void init64(int64_t o) {
-    val64 = o;
-    holdsAP = false;
+    val64.val64 = o;
+    val64.holdsAP = false;
   }
   __attribute__((always_inline)) void initAP(const detail::MPAPInt &o) {
     assert(o.getBitWidth() > 0);
     valAP = o;
-    holdsAP = true;
+    val64.holdsAP = true;
   }
 };
 
