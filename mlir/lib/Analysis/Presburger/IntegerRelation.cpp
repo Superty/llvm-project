@@ -153,6 +153,8 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
 }
 
 PresburgerSet IntegerPolyhedron::computeReprWithoutNonDivLocals() const {
+  if (getNumLocalIds() == 0)
+    return PresburgerSet(*this);
   IntegerPolyhedron copy = *this;
   std::vector<MaybeLocalRepr> reprs;
   copy.getLocalReprs(reprs);
@@ -163,14 +165,17 @@ PresburgerSet IntegerPolyhedron::computeReprWithoutNonDivLocals() const {
   for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals; ) {
     if (!reprs[i]) {
       copy.swapId(offset + i, offset + e - numNonDivLocals - 1);
-      std::swap(reprs[offset + i], reprs[offset + e - numNonDivLocals - 1]);
+      std::swap(reprs[i], reprs[e - numNonDivLocals - 1]);
       ++numNonDivLocals;
       continue;
     }
     ++i;
   }
 
-  SymbolicLexMin result = SymbolicLexSimplex(copy, IntegerPolyhedron(PresburgerSpace::getSetSpace(/*numDims=*/copy.getNumIds() - numNonDivLocals))).computeSymbolicIntegerLexMin();
+  if (numNonDivLocals == 0)
+    return PresburgerSet(*this);
+
+  SymbolicLexMin result = SymbolicLexSimplex(copy, /*symbolOffset*/0, IntegerPolyhedron(PresburgerSpace::getSetSpace(/*numDims=*/copy.getNumIds() - numNonDivLocals))).computeSymbolicIntegerLexMin();
   return result.lexmin.getDomain().unionSet(result.unboundedDomain);
 }
 
@@ -1142,6 +1147,12 @@ unsigned IntegerRelation::mergeLocalIds(IntegerRelation &other) {
   // Since we do not remove duplicate divisions in relA, this is guranteed to be
   // non-negative.
   return relA.getNumLocalIds() - oldALocals;
+}
+
+bool IntegerRelation::hasOnlyDivLocals() const {
+  std::vector<MaybeLocalRepr> reprs;
+  getLocalReprs(reprs);
+  return llvm::all_of(reprs, [](const MaybeLocalRepr &repr){ return bool(repr); });
 }
 
 void IntegerRelation::removeDuplicateDivs() {

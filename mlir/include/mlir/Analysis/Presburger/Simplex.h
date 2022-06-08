@@ -571,6 +571,10 @@ public:
                      const IntegerPolyhedron &symbolDomain)
       : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset, symbolDomain.getNumIds()), domainPoly(symbolDomain),
         domainSimplex(symbolDomain) {
+    // TODO consider supporting this case. It amounts
+    // to just returning the input constraints.
+    assert(domainPoly.getNumIds() > 0 && "there must be some non-symbols to optimize!");
+
     assert(domainPoly.getNumIds() == domainPoly.getNumDimIds());
     intersectIntegerRelation(constraints);
   }

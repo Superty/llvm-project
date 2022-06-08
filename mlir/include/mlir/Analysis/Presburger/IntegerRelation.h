@@ -501,6 +501,8 @@ public:
   /// locals that have been added to `this`.
   unsigned mergeLocalIds(IntegerRelation &other);
 
+  bool hasOnlyDivLocals() const;
+
   /// Changes the partition between dimensions and symbols. Depending on the new
   /// symbol count, either a chunk of dimensional identifiers immediately before
   /// the split become symbols, or some of the symbols immediately after the
