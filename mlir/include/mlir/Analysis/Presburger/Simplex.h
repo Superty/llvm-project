@@ -566,17 +566,24 @@ struct SymbolicLexMin {
 /// where it is.
 class SymbolicLexSimplex : public LexSimplexBase {
 public:
+  SymbolicLexSimplex(const IntegerPolyhedron &constraints,
+                     unsigned symbolOffset,
+                     const IntegerPolyhedron &symbolDomain)
+      : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset, symbolDomain.getNumIds()), domainPoly(symbolDomain),
+        domainSimplex(symbolDomain) {
+    assert(domainPoly.getNumIds() == domainPoly.getNumDimIds());
+    intersectIntegerRelation(constraints);
+  }
+
   /// `constraints` is the set for which the symbolic lexmin will be computed.
   /// `symbolDomain` is the set of values of the symbols for which the lexmin
   /// will be computed. `symbolDomain` should have a dim id for every symbol in
   /// `constraints`, and no other ids.
   SymbolicLexSimplex(const IntegerPolyhedron &constraints,
                      const IntegerPolyhedron &symbolDomain)
-      : LexSimplexBase(constraints), domainPoly(symbolDomain),
-        domainSimplex(symbolDomain) {
-    assert(domainPoly.getNumIds() == constraints.getNumSymbolIds());
-    assert(domainPoly.getNumDimIds() == constraints.getNumSymbolIds());
-  }
+      : SymbolicLexSimplex(constraints, constraints.getIdKindOffset(IdKind::Symbol), symbolDomain) {
+   assert(constraints.getNumSymbolIds() == symbolDomain.getNumIds());
+ }
 
   /// The lexmin will be stored as a function `lexmin` from symbols to
   /// non-symbols in the result.

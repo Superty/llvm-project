@@ -152,6 +152,28 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   removeEqualityRange(counts.getNumEqs(), getNumEqualities());
 }
 
+PresburgerSet IntegerPolyhedron::computeReprWithoutNonDivLocals() const {
+  IntegerPolyhedron copy = *this;
+  std::vector<MaybeLocalRepr> reprs;
+  copy.getLocalReprs(reprs);
+
+  // Move all the non-div locals to the end.
+  unsigned offset = copy.getIdKindOffset(IdKind::Local);
+  unsigned numNonDivLocals = 0;
+  for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals; ) {
+    if (!reprs[i]) {
+      copy.swapId(offset + i, offset + e - numNonDivLocals - 1);
+      std::swap(reprs[offset + i], reprs[offset + e - numNonDivLocals - 1]);
+      ++numNonDivLocals;
+      continue;
+    }
+    ++i;
+  }
+
+  SymbolicLexMin result = SymbolicLexSimplex(copy, IntegerPolyhedron(PresburgerSpace::getSetSpace(/*numDims=*/copy.getNumIds() - numNonDivLocals))).computeSymbolicIntegerLexMin();
+  return result.lexmin.getDomain().unionSet(result.unboundedDomain);
+}
+
 SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin() const {
   // Compute the symbolic lexmin of the dims and locals, with the symbols being
   // the actual symbols of this set.

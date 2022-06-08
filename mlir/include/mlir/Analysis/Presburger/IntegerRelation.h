@@ -26,6 +26,7 @@ namespace presburger {
 
 class IntegerRelation;
 class IntegerPolyhedron;
+class PresburgerSet;
 
 /// An IntegerRelation represents the set of points from a PresburgerSpace that
 /// satisfy a list of affine constraints. Affine constraints can be inequalities
@@ -373,6 +374,9 @@ public:
   // mark exactness for example.
   void projectOut(unsigned pos, unsigned num);
   inline void projectOut(unsigned pos) { return projectOut(pos, 1); }
+  void projectOutExact(IdKind kind, unsigned pos, unsigned num) {
+    convertIdKind(kind, pos, pos + num, IdKind::Local);
+  }
 
   /// Tries to fold the specified identifier to a constant using a trivial
   /// equality detection; if successful, the constant is substituted for the
@@ -738,6 +742,8 @@ public:
   /// column position (i.e., not relative to the kind of identifier) of the
   /// first added identifier.
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
+
+  PresburgerSet computeReprWithoutNonDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.
   /// This finds, for every assignment to the symbols, the lexicographically
