@@ -152,7 +152,7 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   removeEqualityRange(counts.getNumEqs(), getNumEqualities());
 }
 
-PresburgerSet IntegerPolyhedron::computeReprWithoutNonDivLocals() const {
+PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
   if (getNumLocalIds() == 0)
     return PresburgerSet(*this);
   IntegerPolyhedron copy = *this;

@@ -745,7 +745,7 @@ public:
   /// first added identifier.
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
-  PresburgerSet computeReprWithoutNonDivLocals() const;
+  PresburgerSet computeReprWithOnlyDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.
   /// This finds, for every assignment to the symbols, the lexicographically
