@@ -770,6 +770,8 @@ TEST(SetTest, computeReprWithoutNonDivLocals) {
     {{1, 0}, {2, 1}, {3, 0}, {4, 2}, {5, 3}}, /*numLocals=*/0);
   testComputeReprAtPoints(parsePoly("(x, e) : (x - 2*e == 0)"),
     {{1}, {2}, {3}, {4}, {5}}, /*numLocals=*/1);
+  // Bezout's lemma: if a, b are constants,
+  // the set of values that ax + by can take is all multiples of gcd(a, b).
   testComputeRepr(parsePoly("(x, e, f) : (x - 15*e - 21*f == 0)"),
     parsePresburgerSetFromPolyStrings(1, {{"(x) : (x - 3*(x floordiv 3) == 0)"}}), /*numLocals=*/2);
 }
