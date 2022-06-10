@@ -771,7 +771,9 @@ PresburgerRelation PresburgerRelation::coalesce() const {
 }
 
 bool PresburgerRelation::hasOnlyDivLocals() const {
-  return llvm::all_of(disjuncts, [](const IntegerRelation &rel){ return rel.hasOnlyDivLocals(); });
+  return llvm::all_of(disjuncts, [](const IntegerRelation &rel) {
+    return rel.hasOnlyDivLocals();
+  });
 }
 
 void PresburgerRelation::print(raw_ostream &os) const {
