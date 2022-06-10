@@ -572,8 +572,10 @@ public:
   /// `constraints`, and no other ids.
   SymbolicLexSimplex(const IntegerPolyhedron &constraints,
                      const IntegerPolyhedron &symbolDomain)
-      : SymbolicLexSimplex(constraints, constraints.getIdKindOffset(IdKind::Symbol), symbolDomain) {
-   assert(constraints.getNumSymbolIds() == symbolDomain.getNumIds());
+      : SymbolicLexSimplex(constraints,
+                           constraints.getIdKindOffset(IdKind::Symbol),
+                           symbolDomain) {
+    assert(constraints.getNumSymbolIds() == symbolDomain.getNumIds());
   }
 
   /// An overload to select some other subrange of ids as symbols for lexmin.
@@ -583,11 +585,13 @@ public:
   SymbolicLexSimplex(const IntegerPolyhedron &constraints,
                      unsigned symbolOffset,
                      const IntegerPolyhedron &symbolDomain)
-      : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset, symbolDomain.getNumIds()), domainPoly(symbolDomain),
-        domainSimplex(symbolDomain) {
+      : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset,
+                       symbolDomain.getNumIds()),
+        domainPoly(symbolDomain), domainSimplex(symbolDomain) {
     // TODO consider supporting this case. It amounts
     // to just returning the input constraints.
-    assert(domainPoly.getNumIds() > 0 && "there must be some non-symbols to optimize!");
+    assert(domainPoly.getNumIds() > 0 &&
+           "there must be some non-symbols to optimize!");
     assert(domainPoly.getNumIds() == domainPoly.getNumDimIds());
     intersectIntegerRelation(constraints);
   }

@@ -747,35 +747,40 @@ TEST(SetTest, computeVolume) {
                                         /*resultBound=*/{});
 }
 
-// The last `numToProject` dims will be projected out, i.e., converted to locals.
+// The last `numToProject` dims will be projected out, i.e., converted to
+// locals.
 void testComputeReprAtPoints(IntegerPolyhedron poly,
-                                   ArrayRef<SmallVector<int64_t, 4>> points,
+                             ArrayRef<SmallVector<int64_t, 4>> points,
                              unsigned numToProject) {
-  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject, poly.getNumDimIds(), IdKind::Local);
+  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject,
+                     poly.getNumDimIds(), IdKind::Local);
   PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
   for (const SmallVector<int64_t, 4> &point : points) {
-    EXPECT_EQ(poly.containsPointNoLocal(point).hasValue(), repr.containsPoint(point));
+    EXPECT_EQ(poly.containsPointNoLocal(point).hasValue(),
+              repr.containsPoint(point));
   }
 }
 
-void testComputeRepr(IntegerPolyhedron poly,
-                     const PresburgerSet &expected,
+void testComputeRepr(IntegerPolyhedron poly, const PresburgerSet &expected,
                      unsigned numToProject) {
-  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject, poly.getNumDimIds(), IdKind::Local);
+  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject,
+                     poly.getNumDimIds(), IdKind::Local);
   EXPECT_TRUE(poly.computeReprWithOnlyDivLocals().isEqual(expected));
 }
 
 TEST(SetTest, computeReprWithOnlyDivLocals) {
   testComputeReprAtPoints(parsePoly("(x, y) : (x - 2*y == 0)"),
-    {{1, 0}, {2, 1}, {3, 0}, {4, 2}, {5, 3}}, /*numToProject=*/0);
+                          {{1, 0}, {2, 1}, {3, 0}, {4, 2}, {5, 3}},
+                          /*numToProject=*/0);
   testComputeReprAtPoints(parsePoly("(x, e) : (x - 2*e == 0)"),
-    {{1}, {2}, {3}, {4}, {5}}, /*numToProject=*/1);
+                          {{1}, {2}, {3}, {4}, {5}}, /*numToProject=*/1);
 
   // Bezout's lemma: if a, b are constants,
   // the set of values that ax + by can take is all multiples of gcd(a, b).
-  testComputeRepr(parsePoly("(x, e, f) : (x - 15*e - 21*f == 0)"),
-    PresburgerSet(parsePoly({"(x) : (x - 3*(x floordiv 3) == 0)"})), /*numToProject=*/2);
-
+  testComputeRepr(
+      parsePoly("(x, e, f) : (x - 15*e - 21*f == 0)"),
+      PresburgerSet(parsePoly({"(x) : (x - 3*(x floordiv 3) == 0)"})),
+      /*numToProject=*/2);
 }
 
 TEST(SetTest, subtractOutputSizeRegression) {
