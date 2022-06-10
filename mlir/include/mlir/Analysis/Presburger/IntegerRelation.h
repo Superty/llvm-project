@@ -374,9 +374,6 @@ public:
   // mark exactness for example.
   void projectOut(unsigned pos, unsigned num);
   inline void projectOut(unsigned pos) { return projectOut(pos, 1); }
-  void projectOutExact(IdKind kind, unsigned pos, unsigned num) {
-    convertIdKind(kind, pos, pos + num, IdKind::Local);
-  }
 
   /// Tries to fold the specified identifier to a constant using a trivial
   /// equality detection; if successful, the constant is substituted for the

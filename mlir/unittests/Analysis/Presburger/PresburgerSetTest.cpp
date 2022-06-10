@@ -751,8 +751,8 @@ TEST(SetTest, computeVolume) {
 void testComputeReprAtPoints(IntegerPolyhedron poly,
                                    ArrayRef<SmallVector<int64_t, 4>> points,
                              unsigned numToProject) {
-  poly.projectOutExact(IdKind::SetDim, poly.getNumDimIds() - numToProject, numToProject);
-  PresburgerSet repr = poly.computeReprWithoutNonDivLocals();
+  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject, poly.getNumDimIds(), IdKind::Local);
+  PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
   for (const SmallVector<int64_t, 4> &point : points) {
     EXPECT_EQ(poly.containsPointNoLocal(point).hasValue(), repr.containsPoint(point));
   }
@@ -761,11 +761,11 @@ void testComputeReprAtPoints(IntegerPolyhedron poly,
 void testComputeRepr(IntegerPolyhedron poly,
                      const PresburgerSet &expected,
                      unsigned numToProject) {
-  poly.projectOutExact(IdKind::SetDim, poly.getNumDimIds() - numToProject, numToProject);
-  EXPECT_TRUE(poly.computeReprWithoutNonDivLocals().isEqual(expected));
+  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject, poly.getNumDimIds(), IdKind::Local);
+  EXPECT_TRUE(poly.computeReprWithOnlyDivLocals().isEqual(expected));
 }
 
-TEST(SetTest, computeReprWithoutNonDivLocals) {
+TEST(SetTest, computeReprWithOnlyDivLocals) {
   testComputeReprAtPoints(parsePoly("(x, y) : (x - 2*y == 0)"),
     {{1, 0}, {2, 1}, {3, 0}, {4, 2}, {5, 3}}, /*numToProject=*/0);
   testComputeReprAtPoints(parsePoly("(x, e) : (x - 2*e == 0)"),
