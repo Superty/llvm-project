@@ -498,6 +498,7 @@ public:
   /// locals that have been added to `this`.
   unsigned mergeLocalIds(IntegerRelation &other);
 
+  /// Check whether all local ids have a division representation.
   bool hasOnlyDivLocals() const;
 
   /// Changes the partition between dimensions and symbols. Depending on the new
@@ -742,6 +743,10 @@ public:
   /// first added identifier.
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
+  /// Compute an equivalent representation of the same set, such that all local
+  /// ids have division representations. This representation may involve
+  /// local ids that correspond to divisions, and may also be a union of convex
+  /// disjuncts (IntegerRelations).
   PresburgerSet computeReprWithOnlyDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.

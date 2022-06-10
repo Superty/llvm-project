@@ -153,13 +153,15 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
 }
 
 PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
+  // If there are no locals, we're done.
   if (getNumLocalIds() == 0)
     return PresburgerSet(*this);
+
+  // Move all the non-div locals to the end, as we need these to form a
+  // contiguous range.
   IntegerPolyhedron copy = *this;
   std::vector<MaybeLocalRepr> reprs;
   copy.getLocalReprs(reprs);
-
-  // Move all the non-div locals to the end.
   unsigned offset = copy.getIdKindOffset(IdKind::Local);
   unsigned numNonDivLocals = 0;
   for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals; ) {
@@ -172,9 +174,15 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
     ++i;
   }
 
+  // If there are no non-div locals, we're done.
   if (numNonDivLocals == 0)
     return PresburgerSet(*this);
 
+  // We computeSymbolicIntegerLexMin by considering the non-div locals as "non-symbols" and considering everything else as "symbols".
+  // This will compute a function mapping assignments to "symbols" to the lexicographically minimal valid assignment of "non-symbols", when a
+  // satisfying assignment exists. It separately returns the set of assignments to the "symbols" such that a satisfying assignment
+  // to the "non-symbols" exists but the lexmin is unbounded. We basically want to find the set of values of the "symbols" such that
+  // an assignment to the "non-symbols" exists, which is the union of the domain of the returned lexmin function and the returned set of assignments to the "symbols" that makes the lexmin unbounded.
   SymbolicLexMin result = SymbolicLexSimplex(copy, /*symbolOffset*/0, IntegerPolyhedron(PresburgerSpace::getSetSpace(/*numDims=*/copy.getNumIds() - numNonDivLocals))).computeSymbolicIntegerLexMin();
   return result.lexmin.getDomain().unionSet(result.unboundedDomain);
 }

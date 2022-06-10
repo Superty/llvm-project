@@ -747,7 +747,7 @@ TEST(SetTest, computeVolume) {
                                         /*resultBound=*/{});
 }
 
-// The last `numLocals` dims will be converted to locals.
+// The last `numToProject` dims will be projected out, i.e., converted to locals.
 void testComputeReprAtPoints(IntegerPolyhedron poly,
                                    ArrayRef<SmallVector<int64_t, 4>> points,
                              unsigned numToProject) {
