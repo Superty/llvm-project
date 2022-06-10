@@ -770,6 +770,10 @@ PresburgerRelation PresburgerRelation::coalesce() const {
   return SetCoalescer(*this).coalesce();
 }
 
+bool PresburgerRelation::hasOnlyDivLocals() const {
+  return llvm::all_of(disjuncts, [](const IntegerRelation &rel){ return rel.hasOnlyDivLocals(); });
+}
+
 void PresburgerRelation::print(raw_ostream &os) const {
   os << "Number of Disjuncts: " << getNumDisjuncts() << "\n";
   for (const IntegerRelation &disjunct : disjuncts) {

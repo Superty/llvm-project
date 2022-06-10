@@ -755,17 +755,19 @@ void testComputeReprAtPoints(IntegerPolyhedron poly,
   poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject,
                      poly.getNumDimIds(), IdKind::Local);
   PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
+  EXPECT_TRUE(repr.hasOnlyDivLocals());
   for (const SmallVector<int64_t, 4> &point : points) {
     EXPECT_EQ(poly.containsPointNoLocal(point).hasValue(),
               repr.containsPoint(point));
   }
 }
-
 void testComputeRepr(IntegerPolyhedron poly, const PresburgerSet &expected,
                      unsigned numToProject) {
   poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject,
                      poly.getNumDimIds(), IdKind::Local);
-  EXPECT_TRUE(poly.computeReprWithOnlyDivLocals().isEqual(expected));
+  PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
+  EXPECT_TRUE(repr.hasOnlyDivLocals());
+  EXPECT_TRUE(repr.isEqual(expected));
 }
 
 TEST(SetTest, computeReprWithOnlyDivLocals) {
