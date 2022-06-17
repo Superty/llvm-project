@@ -157,15 +157,23 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
   if (getNumLocalIds() == 0)
     return PresburgerSet(*this);
 
-  // Move all the non-div locals to the end, as we need these to form a
-  // contiguous range.
+  // Move all the non-div locals to the end, as the current API to
+  // SymbolicLexMin requires these to form a contiguous range.
+  //
+  // Take a copy so we can perform mutations.
   IntegerPolyhedron copy = *this;
   std::vector<MaybeLocalRepr> reprs;
   copy.getLocalReprs(reprs);
-  unsigned offset = copy.getIdKindOffset(IdKind::Local);
+
+  // Iterate through all the locals. The last `numNonDivLocals` are the locals
+  // that have been scanned already and do not have division representations.
   unsigned numNonDivLocals = 0;
+  unsigned offset = copy.getIdKindOffset(IdKind::Local);
   for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals;) {
     if (!reprs[i]) {
+      // Whenever we come across a local that does not have a division
+      // representation, we swap it to the `numNonDivLocals`-th last position and
+      // increment `numNonDivLocal`s. `reprs` also needs to be swapped.
       copy.swapId(offset + i, offset + e - numNonDivLocals - 1);
       std::swap(reprs[i], reprs[e - numNonDivLocals - 1]);
       ++numNonDivLocals;

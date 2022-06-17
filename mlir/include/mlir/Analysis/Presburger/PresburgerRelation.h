@@ -55,6 +55,8 @@ public:
 
   const PresburgerSpace &getSpace() const { return space; }
 
+  void convertIdKind();
+
   /// Return a reference to the list of disjuncts.
   ArrayRef<IntegerRelation> getAllDisjuncts() const;
 
