@@ -756,6 +756,7 @@ void testComputeReprAtPoints(IntegerPolyhedron poly,
                      poly.getNumDimIds(), IdKind::Local);
   PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
   EXPECT_TRUE(repr.hasOnlyDivLocals());
+  EXPECT_TRUE(repr.getSpace().isCompatible(poly.getSpace()));
   for (const SmallVector<int64_t, 4> &point : points) {
     EXPECT_EQ(poly.containsPointNoLocal(point).hasValue(),
               repr.containsPoint(point));
@@ -767,6 +768,7 @@ void testComputeRepr(IntegerPolyhedron poly, const PresburgerSet &expected,
                      poly.getNumDimIds(), IdKind::Local);
   PresburgerSet repr = poly.computeReprWithOnlyDivLocals();
   EXPECT_TRUE(repr.hasOnlyDivLocals());
+  EXPECT_TRUE(repr.getSpace().isCompatible(poly.getSpace()));
   EXPECT_TRUE(repr.isEqual(expected));
 }
 
@@ -776,6 +778,8 @@ TEST(SetTest, computeReprWithOnlyDivLocals) {
                           /*numToProject=*/0);
   testComputeReprAtPoints(parsePoly("(x, e) : (x - 2*e == 0)"),
                           {{1}, {2}, {3}, {4}, {5}}, /*numToProject=*/1);
+  testComputeReprAtPoints(parsePoly("(x, y)[z, w] : ()"),
+                          {}, /*numToProject=*/1);
 
   // Bezout's lemma: if a, b are constants,
   // the set of values that ax + by can take is all multiples of gcd(a, b).
