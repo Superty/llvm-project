@@ -778,8 +778,8 @@ TEST(SetTest, computeReprWithOnlyDivLocals) {
                           /*numToProject=*/0);
   testComputeReprAtPoints(parsePoly("(x, e) : (x - 2*e == 0)"),
                           {{1}, {2}, {3}, {4}, {5}}, /*numToProject=*/1);
-  testComputeReprAtPoints(parsePoly("(x, y)[z, w] : ()"),
-                          {}, /*numToProject=*/1);
+  testComputeReprAtPoints(parsePoly("(x, y)[z, w] : ()"), {},
+                          /*numToProject=*/1);
 
   // Bezout's lemma: if a, b are constants,
   // the set of values that ax + by can take is all multiples of gcd(a, b).

@@ -172,8 +172,8 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
   for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals;) {
     if (!reprs[i]) {
       // Whenever we come across a local that does not have a division
-      // representation, we swap it to the `numNonDivLocals`-th last position and
-      // increment `numNonDivLocal`s. `reprs` also needs to be swapped.
+      // representation, we swap it to the `numNonDivLocals`-th last position
+      // and increment `numNonDivLocal`s. `reprs` also needs to be swapped.
       copy.swapId(offset + i, offset + e - numNonDivLocals - 1);
       std::swap(reprs[i], reprs[e - numNonDivLocals - 1]);
       ++numNonDivLocals;
