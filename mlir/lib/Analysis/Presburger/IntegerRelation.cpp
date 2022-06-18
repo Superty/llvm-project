@@ -215,7 +215,8 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
                          IntegerPolyhedron(PresburgerSpace::getSetSpace(
                              /*numDims=*/copy.getNumIds() - numNonDivLocals)))
           .computeSymbolicIntegerLexMin();
-  PresburgerSet result = lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
+  PresburgerSet result =
+      lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
 
   // The result value lies in the wrong space -- all its ids are dims. Set it to
   // the desired space and return.
