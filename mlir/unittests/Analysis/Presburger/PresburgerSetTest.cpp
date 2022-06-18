@@ -782,7 +782,8 @@ TEST(SetTest, computeReprWithOnlyDivLocals) {
   // Tests to check that the space is preserved.
   testComputeReprAtPoints(parsePoly("(x, y)[z, w] : ()"), {},
                           /*numToProject=*/1);
-  testComputeReprAtPoints(parsePoly("(x, y)[z, w] : (x - (y floordiv 2) == 0)"), {},
+  testComputeReprAtPoints(parsePoly("(x, y)[z, w] : (z - (w floordiv 2) == 0)"),
+                          {},
                           /*numToProject=*/1);
 
   // Bezout's lemma: if a, b are constants,
