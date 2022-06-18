@@ -218,8 +218,8 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
   PresburgerSet result =
       lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
 
-  // The result value lies in the wrong space -- all its ids are dims. Set it to
-  // the desired space and return.
+  // The result set might lie in the wrong space -- all its ids are dims.
+  // Set it to the desired space and return.
   PresburgerSpace space = getSpace();
   space.removeIdRange(IdKind::Local, 0, getNumLocalIds());
   result.setSpace(space);
