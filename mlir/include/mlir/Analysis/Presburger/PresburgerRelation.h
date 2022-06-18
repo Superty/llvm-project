@@ -55,7 +55,13 @@ public:
 
   const PresburgerSpace &getSpace() const { return space; }
 
-  void convertIdKind();
+  /// Set the space to `oSpace`. `oSpace` should not contain any local ids.
+  /// `oSpace` need not have the same number of ids as the current space;
+  /// it could have more or less. If it has less, the remaining ids become
+  /// locals of the disjuncts. It can also have more, in which case the
+  /// disjuncts will have fewer locals. If its total number of ids
+  /// exceeds that of some disjunct, an  assert failure will occur.
+  void setSpace(const PresburgerSpace &oSpace);
 
   /// Return a reference to the list of disjuncts.
   ArrayRef<IntegerRelation> getAllDisjuncts() const;

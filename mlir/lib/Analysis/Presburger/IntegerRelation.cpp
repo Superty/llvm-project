@@ -38,6 +38,19 @@ std::unique_ptr<IntegerPolyhedron> IntegerPolyhedron::clone() const {
   return std::make_unique<IntegerPolyhedron>(*this);
 }
 
+void IntegerRelation::setSpace(const PresburgerSpace &oSpace) {
+  assert(space.getNumIds() == oSpace.getNumIds() && "invalid space!");
+  space = oSpace;
+}
+
+void IntegerRelation::setSpaceExceptLocals(const PresburgerSpace &oSpace) {
+  assert(oSpace.getNumLocalIds() == 0 && "no locals should be present!");
+  assert(oSpace.getNumIds() <= getNumIds() && "invalid space!");
+  unsigned newNumLocals = getNumIds() - oSpace.getNumIds();
+  space = oSpace;
+  space.insertId(IdKind::Local, 0, newNumLocals);
+}
+
 void IntegerRelation::append(const IntegerRelation &other) {
   assert(space.isEqual(other.getSpace()) && "Spaces must be equal.");
 
@@ -197,12 +210,19 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
   // exists, which is the union of the domain of the returned lexmin function
   // and the returned set of assignments to the "symbols" that makes the lexmin
   // unbounded.
-  SymbolicLexMin result =
+  SymbolicLexMin lexminResult =
       SymbolicLexSimplex(copy, /*symbolOffset*/ 0,
                          IntegerPolyhedron(PresburgerSpace::getSetSpace(
                              /*numDims=*/copy.getNumIds() - numNonDivLocals)))
           .computeSymbolicIntegerLexMin();
-  return result.lexmin.getDomain().unionSet(result.unboundedDomain);
+  PresburgerSet result = lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
+
+  // The result value lies in the wrong space -- all its ids are dims. Set it to
+  // the desired space and return.
+  PresburgerSpace space = getSpace();
+  space.removeIdRange(IdKind::Local, 0, getNumLocalIds());
+  result.setSpace(space);
+  return result;
 }
 
 SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin() const {

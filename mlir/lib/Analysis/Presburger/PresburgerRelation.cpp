@@ -21,6 +21,13 @@ PresburgerRelation::PresburgerRelation(const IntegerRelation &disjunct)
   unionInPlace(disjunct);
 }
 
+void PresburgerRelation::setSpace(const PresburgerSpace &oSpace) {
+  assert(space.getNumLocalIds() == 0 && "no locals should be present");
+  space = oSpace;
+  for (IntegerRelation &disjunct : disjuncts)
+    disjunct.setSpaceExceptLocals(space);
+}
+
 unsigned PresburgerRelation::getNumDisjuncts() const {
   return disjuncts.size();
 }

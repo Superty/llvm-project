@@ -601,6 +601,9 @@ public:
   ///
   /// For some values of the symbols, the lexmin may be unbounded.
   /// These parts of the symbol domain will be stored in `unboundedDomain`.
+  /// 
+  /// The spaces of the sets in the result are compatible with the symbolDomain
+  /// passed in the SymbolicLexSimplex constructor.
   SymbolicLexMin computeSymbolicIntegerLexMin();
 
 private:

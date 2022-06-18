@@ -94,6 +94,16 @@ public:
   /// Returns a reference to the underlying space.
   const PresburgerSpace &getSpace() const { return space; }
 
+  /// Set the space to `oSpace`, which should have the same number of ids as
+  /// the current space.
+  void setSpace(const PresburgerSpace &oSpace);
+
+  /// Set the space to `oSpace`, which should not have any local ids.
+  /// It can have a differing number of ids to the current space.
+  /// The remaining ids will be set to be locals. If `oSpace` has more ids than
+  /// the current space, an assert failure will occur.
+  void setSpaceExceptLocals(const PresburgerSpace &oSpace);
+
   /// Returns a copy of the space without locals.
   PresburgerSpace getSpaceWithoutLocals() const {
     return PresburgerSpace::getRelationSpace(space.getNumDomainIds(),
