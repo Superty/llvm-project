@@ -99,9 +99,9 @@ public:
   void setSpace(const PresburgerSpace &oSpace);
 
   /// Set the space to `oSpace`, which should not have any local ids.
-  /// `oSpace` can have a differing number of ids to the current space.
-  /// If `oSpace` has fewer ids, the extra ids will be set to be local ids.
-  /// `oSpace` should not have more ids than the current space; this will result
+  /// `oSpace` can have fewer ids than the current space; in that case, the
+  /// the extra ids in `this` that are not accounted for by `oSpace` will be
+  /// considered as local ids. `oSpace` should not have more ids than the current space; this will result
   /// in an assert failure.
   void setSpaceExceptLocals(const PresburgerSpace &oSpace);
 
