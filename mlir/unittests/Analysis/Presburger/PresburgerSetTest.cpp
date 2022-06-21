@@ -762,6 +762,7 @@ void testComputeReprAtPoints(IntegerPolyhedron poly,
               repr.containsPoint(point));
   }
 }
+
 void testComputeRepr(IntegerPolyhedron poly, const PresburgerSet &expected,
                      unsigned numToProject) {
   poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numToProject,

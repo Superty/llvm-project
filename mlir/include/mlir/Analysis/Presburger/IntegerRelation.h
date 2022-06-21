@@ -99,9 +99,10 @@ public:
   void setSpace(const PresburgerSpace &oSpace);
 
   /// Set the space to `oSpace`, which should not have any local ids.
-  /// It can have a differing number of ids to the current space.
-  /// The remaining ids will be set to be locals. If `oSpace` has more ids than
-  /// the current space, an assert failure will occur.
+  /// `oSpace` can have a differing number of ids to the current space.
+  /// If `oSpace` has fewer ids, the extra ids will be set to be local ids.
+  /// `oSpace` should not have more ids than the current space; this will result
+  /// in an assert failure.
   void setSpaceExceptLocals(const PresburgerSpace &oSpace);
 
   /// Returns a copy of the space without locals.
@@ -756,7 +757,7 @@ public:
   /// Compute an equivalent representation of the same set, such that all local
   /// ids have division representations. This representation may involve
   /// local ids that correspond to divisions, and may also be a union of convex
-  /// disjuncts (IntegerRelations).
+  /// disjuncts.
   PresburgerSet computeReprWithOnlyDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.
