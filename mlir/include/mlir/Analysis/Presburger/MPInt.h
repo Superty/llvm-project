@@ -7,8 +7,9 @@
 //===----------------------------------------------------------------------===//
 //
 // This is a simple class to represent arbitrary precision signed integers.
-// Unlike APInt2, one does not have to specify a fixed maximum size, and the
-// integer can take on any aribtrary values.
+// Unlike APInt, one does not have to specify a fixed maximum size, and the
+// integer can take on any arbitrary values. This is optimized for small-values
+// by providing fast-paths for the cases when the value stored fits in 64-bits.
 //
 //===----------------------------------------------------------------------===//
 
@@ -27,12 +28,13 @@ namespace presburger {
 
 /// This class provides support for multi-precision arithmetic.
 ///
-/// Unlike APInt2, this extends the precision as necessary to prevent overflows
+/// Unlike APInt, this extends the precision as necessary to prevent overflows
 /// and supports operations between objects with differing internal precisions.
 ///
-/// Since it uses APInt2 internally, MPInt (MultiPrecision Integer) stores
-/// values in a 64-bit machine integer for small values and uses slower
-/// arbitrary-precision arithmetic only for larger values.
+/// This is optimized for small-values by providing fast-paths for the cases when the value stored fits in 64-bits.
+/// We annotate all fastpaths by using the LLVM_LIKELY/LLVM_UNLIKELY annotations. Removing these would result in a 1.2x performance slowdown.
+/// 
+/// We always_inline all operations; removing these results in a 1.5x performance slowdown.
 class MPInt {
 public:
   __attribute__((always_inline)) explicit MPInt(int64_t val)
@@ -178,15 +180,17 @@ private:
   }
   __attribute__((always_inline)) void initAP(const detail::SlowMPInt &o) {
     // The data in the buffer could be in an arbitrary state, not necessarily
-    // corresponding to any valid state of valAP; we cannot call the
-    // assignment operator on it.
+    // corresponding to any valid state of valAP; we cannot call any member
+    // functions, e.g. the assignment operator on it. We have to construct
+    // a new object using placement new.
     new (&valAP) APInt;
     holdsAP = true;
   }
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
-/// function pointer is required.
+/// function pointer is required. (Although this is marked inline, it is still
+/// possible to obtain and use a function pointer to this.)
 __attribute__((always_inline)) inline int64_t int64FromMPInt(const MPInt &x) {
   return int64_t(x);
 }
