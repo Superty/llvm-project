@@ -35,7 +35,8 @@ namespace presburger {
 /// arbitrary-precision arithmetic only for larger values.
 class MPInt {
 public:
-  __attribute__((always_inline)) explicit MPInt(int64_t val) : val64(val), holdsAP(false) {}
+  __attribute__((always_inline)) explicit MPInt(int64_t val)
+      : val64(val), holdsAP(false) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
     if (LLVM_UNLIKELY(isLarge()))
@@ -58,8 +59,7 @@ public:
     init64(x);
     return *this;
   }
-  __attribute__((always_inline))
-  explicit operator int64_t() const {
+  __attribute__((always_inline)) explicit operator int64_t() const {
     if (isSmall())
       return get64();
     return static_cast<int64_t>(getAP());
@@ -135,8 +135,8 @@ public:
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
 
 private:
-  __attribute__((always_inline))
-  explicit MPInt(const detail::SlowMPInt &val) : valAP(val) { }
+  __attribute__((always_inline)) explicit MPInt(const detail::SlowMPInt &val)
+      : valAP(val) {}
   __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
   __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
   __attribute__((always_inline)) int64_t get64() const {
@@ -160,8 +160,7 @@ private:
       return detail::SlowMPInt(get64());
     return getAP();
   }
-  __attribute__((always_inline))
-  detail::SlowMPInt getAsAP() const {
+  __attribute__((always_inline)) detail::SlowMPInt getAsAP() const {
     return detail::SlowMPInt(*this);
   }
 
@@ -203,38 +202,38 @@ MPInt mod(const MPInt &lhs, const MPInt &rhs);
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
 /// ---------------------------------------------------------------------------
- __attribute__((always_inline))
-inline bool MPInt::operator==(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator==(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() == o.get64();
   return getAsAP() == o.getAsAP();
 }
-__attribute__((always_inline))
-inline bool MPInt::operator!=(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator!=(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() != o.get64();
   return getAsAP() != o.getAsAP();
 }
-__attribute__((always_inline))
-inline bool MPInt::operator>(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator>(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() > o.get64();
   return getAsAP() > o.getAsAP();
 }
-__attribute__((always_inline))
-inline bool MPInt::operator<(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator<(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() < o.get64();
   return getAsAP() < o.getAsAP();
 }
-__attribute__((always_inline))
-inline bool MPInt::operator<=(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator<=(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() <= o.get64();
   return getAsAP() <= o.getAsAP();
 }
-__attribute__((always_inline))
-inline bool MPInt::operator>=(const MPInt &o) const {
+__attribute__((always_inline)) inline bool
+MPInt::operator>=(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return get64() >= o.get64();
   return getAsAP() >= o.getAsAP();
@@ -243,8 +242,8 @@ inline bool MPInt::operator>=(const MPInt &o) const {
 /// ---------------------------------------------------------------------------
 /// Arithmetic operators.
 /// ---------------------------------------------------------------------------
-__attribute__((always_inline))
-inline MPInt MPInt::operator+(const MPInt &o) const {
+__attribute__((always_inline)) inline MPInt
+MPInt::operator+(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
@@ -254,8 +253,8 @@ inline MPInt MPInt::operator+(const MPInt &o) const {
   }
   return MPInt(getAsAP() + o.getAsAP());
 }
-__attribute__((always_inline))
-inline MPInt MPInt::operator-(const MPInt &o) const {
+__attribute__((always_inline)) inline MPInt
+MPInt::operator-(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
@@ -265,8 +264,8 @@ inline MPInt MPInt::operator-(const MPInt &o) const {
   }
   return MPInt(getAsAP() - o.getAsAP());
 }
-__attribute__((always_inline))
-inline MPInt MPInt::operator*(const MPInt &o) const {
+__attribute__((always_inline)) inline MPInt
+MPInt::operator*(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
@@ -277,16 +276,16 @@ inline MPInt MPInt::operator*(const MPInt &o) const {
   return MPInt(getAsAP() * o.getAsAP());
 }
 
-__attribute__((always_inline))
-inline MPInt MPInt::divByPositive(const MPInt &o) const {
+__attribute__((always_inline)) inline MPInt
+MPInt::divByPositive(const MPInt &o) const {
   assert(o > 0);
   if (LLVM_LIKELY(isSmall() && o.isSmall()))
     return MPInt(get64() / o.get64());
   return MPInt(getAsAP() / o.getAsAP());
 }
 
-__attribute__((always_inline))
-inline MPInt MPInt::operator/(const MPInt &o) const {
+__attribute__((always_inline)) inline MPInt
+MPInt::operator/(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     if (LLVM_UNLIKELY(o.get64() == -1))
       return -*this;
@@ -329,8 +328,8 @@ inline MPInt mod(const MPInt &lhs, const MPInt &rhs) {
   return MPInt(mod(lhs.getAsAP(), rhs.getAsAP()));
 }
 
-__attribute__((always_inline))
-inline MPInt gcd(const MPInt &a, const MPInt &b) {
+__attribute__((always_inline)) inline MPInt gcd(const MPInt &a,
+                                                const MPInt &b) {
   // TODO: fix unsigned/signed overflow issues
   if (LLVM_LIKELY(a.isSmall() && b.isSmall()))
     return MPInt(int64_t(llvm::GreatestCommonDivisor64(a.get64(), b.get64())));
@@ -363,8 +362,7 @@ inline MPInt MPInt::operator-() const {
 /// ---------------------------------------------------------------------------
 /// Assignment operators, preincrement, predecrement.
 /// ---------------------------------------------------------------------------
-__attribute__((always_inline))
-inline MPInt &MPInt::operator+=(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &MPInt::operator+=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result);
@@ -376,8 +374,7 @@ inline MPInt &MPInt::operator+=(const MPInt &o) {
   }
   return *this = MPInt(getAsAP() + o.getAsAP());
 }
-__attribute__((always_inline))
-inline MPInt &MPInt::operator-=(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &MPInt::operator-=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result);
@@ -389,8 +386,7 @@ inline MPInt &MPInt::operator-=(const MPInt &o) {
   }
   return *this = MPInt(getAsAP() - o.getAsAP());
 }
-__attribute__((always_inline))
-inline MPInt &MPInt::operator*=(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &MPInt::operator*=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
     bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result);
@@ -402,8 +398,7 @@ inline MPInt &MPInt::operator*=(const MPInt &o) {
   }
   return *this = MPInt(getAsAP() * o.getAsAP());
 }
-__attribute__((always_inline))
-inline MPInt &MPInt::operator/=(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &MPInt::operator/=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     if (LLVM_UNLIKELY(o.get64() == -1))
       return *this = -*this;
@@ -413,8 +408,8 @@ inline MPInt &MPInt::operator/=(const MPInt &o) {
   return *this = MPInt(getAsAP() / o.getAsAP());
 }
 
-__attribute__((always_inline))
-inline MPInt &MPInt::divByPositiveInPlace(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &
+MPInt::divByPositiveInPlace(const MPInt &o) {
   assert(o > 0);
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     get64() /= o.get64();
@@ -423,19 +418,15 @@ inline MPInt &MPInt::divByPositiveInPlace(const MPInt &o) {
   return *this = MPInt(getAsAP() / o.getAsAP());
 }
 
-
-__attribute__((always_inline))
-inline MPInt &MPInt::operator%=(const MPInt &o) {
+__attribute__((always_inline)) inline MPInt &MPInt::operator%=(const MPInt &o) {
   *this = *this % o;
   return *this;
 }
-__attribute__((always_inline))
-inline MPInt &MPInt::operator++() {
+__attribute__((always_inline)) inline MPInt &MPInt::operator++() {
   *this += 1;
   return *this;
 }
-__attribute__((always_inline))
-inline MPInt &MPInt::operator--() {
+__attribute__((always_inline)) inline MPInt &MPInt::operator--() {
   *this -= 1;
   return *this;
 }
@@ -451,8 +442,7 @@ inline MPInt &operator+=(MPInt &a, int64_t b) {
   a.getAP() += b;
   return a;
 }
-__attribute__((always_inline))
-inline MPInt &operator-=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator-=(MPInt &a, int64_t b) {
   if (LLVM_LIKELY(a.isSmall())) {
     a.get64() -= b;
     return a;
@@ -460,8 +450,7 @@ inline MPInt &operator-=(MPInt &a, int64_t b) {
   a.getAP() -= b;
   return a;
 }
-__attribute__((always_inline))
-inline MPInt &operator*=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator*=(MPInt &a, int64_t b) {
   if (LLVM_LIKELY(a.isSmall())) {
     a.get64() *= b;
     return a;
@@ -469,8 +458,7 @@ inline MPInt &operator*=(MPInt &a, int64_t b) {
   a.getAP() *= b;
   return a;
 }
-__attribute__((always_inline))
-inline MPInt &operator/=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator/=(MPInt &a, int64_t b) {
   if (LLVM_LIKELY(a.isSmall())) {
     a.get64() /= b;
     return a;
@@ -478,8 +466,7 @@ inline MPInt &operator/=(MPInt &a, int64_t b) {
   a.getAP() /= b;
   return a;
 }
-__attribute__((always_inline))
-inline MPInt &operator%=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator%=(MPInt &a, int64_t b) {
   if (LLVM_LIKELY(a.isSmall())) {
     a.get64() %= b;
     return a;
