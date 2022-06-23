@@ -31,10 +31,13 @@ namespace presburger {
 /// Unlike APInt, this extends the precision as necessary to prevent overflows
 /// and supports operations between objects with differing internal precisions.
 ///
-/// This is optimized for small-values by providing fast-paths for the cases when the value stored fits in 64-bits.
-/// We annotate all fastpaths by using the LLVM_LIKELY/LLVM_UNLIKELY annotations. Removing these would result in a 1.2x performance slowdown.
-/// 
-/// We always_inline all operations; removing these results in a 1.5x performance slowdown.
+/// This is optimized for small-values by providing fast-paths for the cases
+/// when the value stored fits in 64-bits. We annotate all fastpaths by using
+/// the LLVM_LIKELY/LLVM_UNLIKELY annotations. Removing these would result in
+/// a 1.2x performance slowdown.
+///
+/// We always_inline all operations; removing these results in a 1.5x
+/// performance slowdown.
 class MPInt {
 public:
   __attribute__((always_inline)) explicit MPInt(int64_t val)
