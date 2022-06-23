@@ -38,7 +38,7 @@ namespace presburger {
 ///
 /// We always_inline all operations; removing these results in a 1.5x
 /// performance slowdown.
-/// 
+///
 /// When holdsSlow is true, a SlowMPInt is held in the union. If it is false,
 /// the int64_t is held. Using std::variant instead significantly impacts
 /// performance.
@@ -60,7 +60,8 @@ private:
     // The data in the buffer could be in an arbitrary state, not necessarily
     // corresponding to any valid state of valSlow; we cannot call any member
     // functions, e.g. the assignment operator on it, as they may access the
-    // invalid internal state. We instead construct a new object using placement new.
+    // invalid internal state. We instead construct a new object using placement
+    // new.
     new (&valSlow) detail::SlowMPInt;
     holdsSlow = true;
   }
