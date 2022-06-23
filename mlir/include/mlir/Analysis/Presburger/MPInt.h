@@ -38,26 +38,81 @@ namespace presburger {
 ///
 /// We always_inline all operations; removing these results in a 1.5x
 /// performance slowdown.
+/// 
+/// When holdsSlow is true, a SlowMPInt is held in the union. If it is false,
+/// the int64_t is held. Using std::variant instead significantly impacts
+/// performance.
 class MPInt {
+private:
+  union {
+    int64_t val64;
+    detail::SlowMPInt valSlow;
+  };
+  unsigned holdsSlow;
+
+  __attribute__((always_inline)) void init64(int64_t o) {
+    if (LLVM_UNLIKELY(isLarge()))
+      valSlow.detail::SlowMPInt::~SlowMPInt();
+    val64 = o;
+    holdsSlow = false;
+  }
+  __attribute__((always_inline)) void initAP(const detail::SlowMPInt &o) {
+    // The data in the buffer could be in an arbitrary state, not necessarily
+    // corresponding to any valid state of valSlow; we cannot call any member
+    // functions, e.g. the assignment operator on it, as they may access the
+    // invalid internal state. We instead construct a new object using placement new.
+    new (&valSlow) detail::SlowMPInt;
+    holdsSlow = true;
+  }
+
+  __attribute__((always_inline)) explicit MPInt(const detail::SlowMPInt &val)
+      : valSlow(val) {}
+  __attribute__((always_inline)) bool isSmall() const { return !holdsSlow; }
+  __attribute__((always_inline)) bool isLarge() const { return holdsSlow; }
+  __attribute__((always_inline)) int64_t get64() const {
+    assert(isSmall());
+    return val64;
+  }
+  __attribute__((always_inline)) int64_t &get64() {
+    assert(isSmall());
+    return val64;
+  }
+  __attribute__((always_inline)) const detail::SlowMPInt &getAP() const {
+    assert(isLarge());
+    return valSlow;
+  }
+  __attribute__((always_inline)) detail::SlowMPInt &getAP() {
+    assert(isLarge());
+    return valSlow;
+  }
+  explicit operator detail::SlowMPInt() const {
+    if (isSmall())
+      return detail::SlowMPInt(get64());
+    return getAP();
+  }
+  __attribute__((always_inline)) detail::SlowMPInt getAsAP() const {
+    return detail::SlowMPInt(*this);
+  }
+
 public:
   __attribute__((always_inline)) explicit MPInt(int64_t val)
-      : val64(val), holdsAP(false) {}
+      : val64(val), holdsSlow(false) {}
   __attribute__((always_inline)) MPInt() : MPInt(0) {}
   __attribute__((always_inline)) ~MPInt() {
     if (LLVM_UNLIKELY(isLarge()))
-      valAP.detail::SlowMPInt::~SlowMPInt();
+      valSlow.detail::SlowMPInt::~SlowMPInt();
   }
   __attribute__((always_inline)) MPInt(const MPInt &o)
-      : val64(o.val64), holdsAP(false) {
+      : val64(o.val64), holdsSlow(false) {
     if (LLVM_UNLIKELY(o.isLarge()))
-      initAP(o.valAP);
+      initAP(o.valSlow);
   }
   __attribute__((always_inline)) MPInt &operator=(const MPInt &o) {
     if (LLVM_LIKELY(o.isSmall())) {
       init64(o.val64);
       return *this;
     }
-    initAP(o.valAP);
+    initAP(o.valSlow);
     return *this;
   }
   __attribute__((always_inline)) MPInt &operator=(int x) {
@@ -79,19 +134,21 @@ public:
   MPInt operator+(const MPInt &o) const;
   MPInt operator-(const MPInt &o) const;
   MPInt operator*(const MPInt &o) const;
-  MPInt divByPositive(const MPInt &o) const;
   MPInt operator/(const MPInt &o) const;
   MPInt operator%(const MPInt &o) const;
   MPInt &operator+=(const MPInt &o);
   MPInt &operator-=(const MPInt &o);
   MPInt &operator*=(const MPInt &o);
   MPInt &operator/=(const MPInt &o);
-  MPInt &divByPositiveInPlace(const MPInt &o);
   MPInt &operator%=(const MPInt &o);
-
   MPInt operator-() const;
   MPInt &operator++();
   MPInt &operator--();
+
+  // Divide by a number that is known to be positive.
+  // This is slightly more efficient because it saves an overflow check.
+  MPInt divByPositive(const MPInt &o) const;
+  MPInt &divByPositiveInPlace(const MPInt &o);
 
   friend MPInt abs(const MPInt &x);
   friend MPInt gcdRange(ArrayRef<MPInt> range);
@@ -138,57 +195,6 @@ public:
   friend MPInt operator%(int64_t a, const MPInt &b);
 
   friend llvm::hash_code hash_value(const MPInt &x); // NOLINT
-
-private:
-  __attribute__((always_inline)) explicit MPInt(const detail::SlowMPInt &val)
-      : valAP(val) {}
-  __attribute__((always_inline)) bool isSmall() const { return !holdsAP; }
-  __attribute__((always_inline)) bool isLarge() const { return holdsAP; }
-  __attribute__((always_inline)) int64_t get64() const {
-    assert(isSmall());
-    return val64;
-  }
-  __attribute__((always_inline)) int64_t &get64() {
-    assert(isSmall());
-    return val64;
-  }
-  __attribute__((always_inline)) const detail::SlowMPInt &getAP() const {
-    assert(isLarge());
-    return valAP;
-  }
-  __attribute__((always_inline)) detail::SlowMPInt &getAP() {
-    assert(isLarge());
-    return valAP;
-  }
-  explicit operator detail::SlowMPInt() const {
-    if (isSmall())
-      return detail::SlowMPInt(get64());
-    return getAP();
-  }
-  __attribute__((always_inline)) detail::SlowMPInt getAsAP() const {
-    return detail::SlowMPInt(*this);
-  }
-
-  union {
-    int64_t val64;
-    detail::SlowMPInt valAP;
-  };
-  unsigned holdsAP;
-
-  __attribute__((always_inline)) void init64(int64_t o) {
-    if (LLVM_UNLIKELY(isLarge()))
-      valAP.detail::SlowMPInt::~SlowMPInt();
-    val64 = o;
-    holdsAP = false;
-  }
-  __attribute__((always_inline)) void initAP(const detail::SlowMPInt &o) {
-    // The data in the buffer could be in an arbitrary state, not necessarily
-    // corresponding to any valid state of valAP; we cannot call any member
-    // functions, e.g. the assignment operator on it. We have to construct
-    // a new object using placement new.
-    new (&valAP) APInt;
-    holdsAP = true;
-  }
 };
 
 /// This just calls through to the operator int64_t, but it's useful when a
