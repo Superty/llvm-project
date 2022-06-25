@@ -570,7 +570,7 @@ public:
   /// `symbolDomain` is the set of values of the symbols for which the lexmin
   /// will be computed. `symbolDomain` should have a dim id for every symbol in
   /// `constraints`, and no other ids.
-  SymbolicLexSimplex(const IntegerPolyhedron &constraints,
+  SymbolicLexSimplex(const IntegerRelation &constraints,
                      const IntegerPolyhedron &symbolDomain)
       : SymbolicLexSimplex(constraints,
                            constraints.getIdKindOffset(IdKind::Symbol),
@@ -582,7 +582,7 @@ public:
   /// The symbol ids are the range of ids with absolute index
   /// [symbolOffset, symbolOffset + symbolDomain.getNumIds())
   /// symbolDomain should only have dim ids.
-  SymbolicLexSimplex(const IntegerPolyhedron &constraints,
+  SymbolicLexSimplex(const IntegerRelation &constraints,
                      unsigned symbolOffset,
                      const IntegerPolyhedron &symbolDomain)
       : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset,

@@ -755,8 +755,8 @@ public:
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
   /// Compute an equivalent representation of the same set, such that all local
-  /// ids have division representations. This representation may involve
-  /// local ids that correspond to divisions, and may also be a union of convex
+  /// vars in all disjuncts have division representations. This representation may involve
+  /// local vars that correspond to divisions, and may also be a union of convex
   /// disjuncts.
   PresburgerSet computeReprWithOnlyDivLocals() const;
 
