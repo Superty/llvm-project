@@ -435,6 +435,16 @@ void expectEqual(const PresburgerSet &s, const PresburgerSet &t) {
   }
 }
 
+void expectEqual(const IntegerPolyhedron &s, const IntegerPolyhedron &t) {
+  EXPECT_TRUE(s.isEqual(t));
+  if (!s.isEqual(t)) {
+    llvm::errs() << "s = \n";
+    s.dump();
+    llvm::errs() << "t = \n";
+    t.dump();
+  }
+}
+
 void expectEmpty(const PresburgerSet &s) { EXPECT_TRUE(s.isIntegerEmpty()); }
 
 TEST(SetTest, divisions) {
@@ -463,22 +473,21 @@ TEST(SetTest, divisions) {
   PresburgerSet setA{parsePoly("(x) : (-x >= 0)")};
   PresburgerSet setB{parsePoly("(x) : (x floordiv 2 - 4 >= 0)")};
   EXPECT_TRUE(setA.subtract(setB).isEqual(setA));
+}
 
-  IntegerPolyhedron evensDefByEquality(PresburgerSpace::getSetSpace(
-      /*numDims=*/1, /*numSymbols=*/0, /*numLocals=*/1));
-  evensDefByEquality.addEquality({1, -2, 0});
-  expectEqual(evens, PresburgerSet(evensDefByEquality));
+void convertSuffixDimsToLocals(IntegerPolyhedron &poly, unsigned numLocals) {
+  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numLocals,
+                     poly.getNumDimIds(), IdKind::Local);
 }
 
 inline IntegerPolyhedron parsePolyAndMakeLocals(StringRef str,
                                                 unsigned numLocals) {
   IntegerPolyhedron poly = parsePoly(str);
-  poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numLocals,
-                     poly.getNumDimIds(), IdKind::Local);
+  convertSuffixDimsToLocals(poly, numLocals);
   return poly;
 }
 
-TEST(SetTest, subtractNonDivLocals) {
+TEST(SetTest, divisionsDefByEq) {
   // evens = {x : exists q, x = 2q}.
   PresburgerSet evens{
       parsePolyAndMakeLocals("(x, y) : (x - 2 * y == 0)", /*numLocals=*/1)};
@@ -505,14 +514,44 @@ TEST(SetTest, subtractNonDivLocals) {
   // even multiples of 3 = multiples of 6.
   expectEqual(multiples3.intersect(evens), multiples6);
 
-  PresburgerSet setA{parsePoly("(x) : (-x >= 0)")};
-  PresburgerSet setB{parsePoly("(x) : (x floordiv 2 - 4 >= 0)")};
-  EXPECT_TRUE(setA.subtract(setB).isEqual(setA));
+  PresburgerSet evensDefByIneq{parsePoly("(x) : (x - 2 * (x floordiv 2) == 0)")};
+  expectEqual(evens, PresburgerSet(evensDefByIneq));
+}
 
-  IntegerPolyhedron evensDefByEquality(PresburgerSpace::getSetSpace(
-      /*numDims=*/1, /*numSymbols=*/0, /*numLocals=*/1));
-  evensDefByEquality.addEquality({1, -2, 0});
-  expectEqual(evens, PresburgerSet(evensDefByEquality));
+TEST(SetTest, divisionNonDivLocals) {
+  // This is a tetrahedron with vertices at
+  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 1000), and (1000, 1000, 1000).
+  // 
+  // The only integer point in this is at (1000, 1000, 1000).
+  // We project this to the xy plane.
+  IntegerPolyhedron tetrahedron = parsePolyAndMakeLocals(
+    "(x, y, z) : (y >= 0, z - y >= 0, 3000*x - 2998*y - 1000 - z >= 0, -1500*x + 1499*y + 1000 >= 0)", /*numLocals=*/1);
+
+  // This is a triangle with vertices at (1/3, 0), (2/3, 0) and (1000, 1000).
+  // The only integer point in this is at (1000, 1000).
+  // 
+  // It also happens to be the projection of the above onto the xy plane.
+  IntegerPolyhedron triangle = parsePoly("(x,y) : (y >= 0, "
+                              "3000 * x - 2999 * y - 1000 >= 0, "
+                              "-3000 * x + 2998 * y + 2000 >= 0)");
+  EXPECT_TRUE(triangle.containsPoint({1000, 1000}));
+  EXPECT_FALSE(triangle.containsPoint({1001, 1001}));
+  // expectEqual(triangle, tetrahedron);
+
+  convertSuffixDimsToLocals(triangle, 1);
+  IntegerPolyhedron line = parsePoly("(x) : (x - 1000 == 0)");
+  expectEqual(line, triangle);
+
+  // Triangle with vertices (0, 0), (5, 0), (15, 5).
+  // Projected on x, it becomes [0, 13] U {15} as it becomes too narrow towards
+  // the apex and so does not have have any integer point at x = 14.
+  // At x = 15, the apex is an integer point.
+  PresburgerSet triangle2{parsePolyAndMakeLocals("(x,y) : (y >= 0, "
+                              "x - 3*y >= 0, "
+                              "2*y - x + 5 >= 0)", /*numLocals=*/1)};
+  PresburgerSet zeroToThirteen{parsePoly("(x) : (13 - x >= 0, x >= 0)")};
+  PresburgerSet fifteen{parsePoly("(x) : (x - 15 == 0)")};
+  expectEqual(triangle2.subtract(zeroToThirteen), fifteen);
 }
 
 TEST(SetTest, subtractDuplicateDivsRegression) {
