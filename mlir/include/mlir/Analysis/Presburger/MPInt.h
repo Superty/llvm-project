@@ -67,7 +67,7 @@ private:
   }
 
   __attribute__((always_inline)) explicit MPInt(const detail::SlowMPInt &val)
-      : valSlow(val) {}
+      : valSlow(val), holdsSlow(true) {}
   __attribute__((always_inline)) bool isSmall() const { return !holdsSlow; }
   __attribute__((always_inline)) bool isLarge() const { return holdsSlow; }
   __attribute__((always_inline)) int64_t get64() const {
@@ -263,7 +263,7 @@ MPInt::operator+(const MPInt &o) const {
     bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
-    return MPInt(getAsAP() * o.getAsAP());
+    return MPInt(getAsAP() + o.getAsAP());
   }
   return MPInt(getAsAP() + o.getAsAP());
 }
@@ -274,7 +274,7 @@ MPInt::operator-(const MPInt &o) const {
     bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
-    return MPInt(getAsAP() * o.getAsAP());
+    return MPInt(getAsAP() - o.getAsAP());
   }
   return MPInt(getAsAP() - o.getAsAP());
 }
