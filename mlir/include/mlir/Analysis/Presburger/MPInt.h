@@ -455,45 +455,25 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator--() {
 /// ----------------------------------------------------------------------------
 /// Convenience operator overloads for int64_t.
 /// ----------------------------------------------------------------------------
+__attribute__((always_inline))
 inline MPInt &operator+=(MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall())) {
-    a.get64() += b;
-    return a;
-  }
-  a.getAP() += b;
-  return a;
+  return a = a + b;
 }
-__attribute__((always_inline)) inline MPInt &operator-=(MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall())) {
-    a.get64() -= b;
-    return a;
-  }
-  a.getAP() -= b;
-  return a;
+__attribute__((always_inline))
+inline MPInt &operator-=(MPInt &a, int64_t b) {
+  return a = a - b;
 }
-__attribute__((always_inline)) inline MPInt &operator*=(MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall())) {
-    a.get64() *= b;
-    return a;
-  }
-  a.getAP() *= b;
-  return a;
+__attribute__((always_inline))
+inline MPInt &operator*=(MPInt &a, int64_t b) {
+  return a = a * b;
 }
-__attribute__((always_inline)) inline MPInt &operator/=(MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall())) {
-    a.get64() /= b;
-    return a;
-  }
-  a.getAP() /= b;
-  return a;
+__attribute__((always_inline))
+inline MPInt &operator/=(MPInt &a, int64_t b) {
+  return a = a / b;
 }
-__attribute__((always_inline)) inline MPInt &operator%=(MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall())) {
-    a.get64() %= b;
-    return a;
-  }
-  a.getAP() %= b;
-  return a;
+__attribute__((always_inline))
+inline MPInt &operator%=(MPInt &a, int64_t b) {
+  return a = a % b;
 }
 
 inline MPInt operator+(const MPInt &a, int64_t b) {
