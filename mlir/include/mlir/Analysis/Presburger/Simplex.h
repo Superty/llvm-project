@@ -582,8 +582,7 @@ public:
   /// The symbol ids are the range of ids with absolute index
   /// [symbolOffset, symbolOffset + symbolDomain.getNumIds())
   /// symbolDomain should only have dim ids.
-  SymbolicLexSimplex(const IntegerRelation &constraints,
-                     unsigned symbolOffset,
+  SymbolicLexSimplex(const IntegerRelation &constraints, unsigned symbolOffset,
                      const IntegerPolyhedron &symbolDomain)
       : LexSimplexBase(/*nVar=*/constraints.getNumIds(), symbolOffset,
                        symbolDomain.getNumIds()),

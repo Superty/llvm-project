@@ -143,7 +143,8 @@ PresburgerRelation PresburgerRelation::computeReprWithOnlyDivLocals() const {
   // The result is just the union of the reprs of the disjuncts.
   PresburgerRelation result(getSpace());
   for (const IntegerRelation &disjunct : disjuncts)
-    result.unionInPlace(((IntegerPolyhedron)disjunct).computeReprWithOnlyDivLocals());
+    result.unionInPlace(
+        ((IntegerPolyhedron)disjunct).computeReprWithOnlyDivLocals());
   return result;
 }
 
@@ -250,7 +251,7 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
 
       // Find out which inequalities of sI correspond to division inequalities
       // for the local variables of sI.
-      // 
+      //
       // Careful! This has to be done after the merge above; otherwise, the
       // dividends won't contain the new ids inserted during the merge.
       std::vector<MaybeLocalRepr> repr;
@@ -262,7 +263,9 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
       // such inequalities to b.
       llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() +
                                          2 * sI.getNumEqualities());
-      for (unsigned i = initBCounts.getSpace().getNumLocalIds(), e = sI.getNumLocalIds(); i < e; ++i) {
+      for (unsigned i = initBCounts.getSpace().getNumLocalIds(),
+                    e = sI.getNumLocalIds();
+           i < e; ++i) {
         assert(
             repr[i] &&
             "Subtraction is not supported when a representation of the local "
@@ -284,11 +287,11 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
                  "ReprKind isn't inequality so should be equality");
 
           // Consider the case (x) : (x = 3e + 1), where e is a local.
-          // Its complement is (x) : (x = 3e) or (x = 3e + 2). 
-          // 
+          // Its complement is (x) : (x = 3e) or (x = 3e + 2).
+          //
           // This can be computed by considering the set to be
           // (x) : (x = 3*(x floordiv 3) + 1).
-          // 
+          //
           // Now there are no equalities defining divisions; the division is
           // defined by the standard division equalities for e = x floordiv 3,
           // i.e., 0 <= x - 3*e <= 2.
@@ -298,8 +301,12 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
           // need not be considered, same as above, and they automatically will
           // not be because they were never a part of sI; we just infer them
           // from the equality and add them only to b.
-          b.addInequality(getDivLowerBound(dividends[i], divisors[i], sI.getIdKindOffset(IdKind::Local) + i));
-          b.addInequality(getDivUpperBound(dividends[i], divisors[i], sI.getIdKindOffset(IdKind::Local) + i));
+          b.addInequality(
+              getDivLowerBound(dividends[i], divisors[i],
+                               sI.getIdKindOffset(IdKind::Local) + i));
+          b.addInequality(
+              getDivUpperBound(dividends[i], divisors[i],
+                               sI.getIdKindOffset(IdKind::Local) + i));
         }
       }
 

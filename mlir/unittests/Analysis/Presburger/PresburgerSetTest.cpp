@@ -470,7 +470,8 @@ TEST(SetTest, divisions) {
   expectEqual(evens, PresburgerSet(evensDefByEquality));
 }
 
-inline IntegerPolyhedron parsePolyAndMakeLocals(StringRef str, unsigned numLocals) {
+inline IntegerPolyhedron parsePolyAndMakeLocals(StringRef str,
+                                                unsigned numLocals) {
   IntegerPolyhedron poly = parsePoly(str);
   poly.convertIdKind(IdKind::SetDim, poly.getNumDimIds() - numLocals,
                      poly.getNumDimIds(), IdKind::Local);
@@ -479,16 +480,20 @@ inline IntegerPolyhedron parsePolyAndMakeLocals(StringRef str, unsigned numLocal
 
 TEST(SetTest, subtractNonDivLocals) {
   // evens = {x : exists q, x = 2q}.
-  PresburgerSet evens{parsePolyAndMakeLocals("(x, y) : (x - 2 * y == 0)", /*numLocals=*/1)};
+  PresburgerSet evens{
+      parsePolyAndMakeLocals("(x, y) : (x - 2 * y == 0)", /*numLocals=*/1)};
 
   //  odds = {x : exists q, x = 2q + 1}.
-  PresburgerSet odds{parsePolyAndMakeLocals("(x, y) : (x - 2 * y - 1 == 0)", /*numLocals=*/1)};
+  PresburgerSet odds{
+      parsePolyAndMakeLocals("(x, y) : (x - 2 * y - 1 == 0)", /*numLocals=*/1)};
 
   // multiples3 = {x : exists q, x = 3q}.
-  PresburgerSet multiples3{parsePolyAndMakeLocals("(x, y) : (x - 3 * y == 0)", /*numLocals=*/1)};
+  PresburgerSet multiples3{
+      parsePolyAndMakeLocals("(x, y) : (x - 3 * y == 0)", /*numLocals=*/1)};
 
   // multiples6 = {x : exists q, x = 6q}.
-  PresburgerSet multiples6{parsePolyAndMakeLocals("(x, y) : (x - 6 * y == 0)", /*numLocals=*/1)};
+  PresburgerSet multiples6{
+      parsePolyAndMakeLocals("(x, y) : (x - 6 * y == 0)", /*numLocals=*/1)};
 
   // evens /\ odds = empty.
   expectEmpty(PresburgerSet(evens).intersect(PresburgerSet(odds)));
@@ -866,4 +871,3 @@ TEST(SetTest, subtractOutputSizeRegression) {
   // sets, which is correct, but bad for output size.
   EXPECT_EQ(subtractSelf.getNumDisjuncts(), 0u);
 }
-

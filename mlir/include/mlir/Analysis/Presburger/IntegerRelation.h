@@ -755,9 +755,9 @@ public:
   unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
 
   /// Compute an equivalent representation of the same set, such that all local
-  /// vars in all disjuncts have division representations. This representation may involve
-  /// local vars that correspond to divisions, and may also be a union of convex
-  /// disjuncts.
+  /// vars in all disjuncts have division representations. This representation
+  /// may involve local vars that correspond to divisions, and may also be a
+  /// union of convex disjuncts.
   PresburgerSet computeReprWithOnlyDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.
