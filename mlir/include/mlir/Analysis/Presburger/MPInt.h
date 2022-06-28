@@ -520,29 +520,19 @@ inline bool operator>=(const MPInt &a, int64_t b) {
   return a.getAP() >= b;
 }
 inline MPInt operator+(const MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall()))
-    return MPInt(a.get64() + b);
-  return MPInt(a.getAP() + b);
+  return a + MPInt(b);
 }
 inline MPInt operator-(const MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall()))
-    return MPInt(a.get64() - b);
-  return MPInt(a.getAP() - b);
+  return a - MPInt(b);
 }
 inline MPInt operator*(const MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall()))
-    return MPInt(a.get64() * b);
-  return MPInt(a.getAP() * b);
+  return a * MPInt(b);
 }
 inline MPInt operator/(const MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall()))
-    return MPInt(a.get64() / b);
-  return MPInt(a.getAP() / b);
+  return a / MPInt(b);
 }
 inline MPInt operator%(const MPInt &a, int64_t b) {
-  if (LLVM_LIKELY(a.isSmall()))
-    return MPInt(a.get64() % b);
-  return MPInt(a.getAP() % b);
+  return a % MPInt(b);
 }
 
 inline bool operator==(int64_t a, const MPInt &b) {
@@ -576,29 +566,19 @@ inline bool operator>=(int64_t a, const MPInt &b) {
   return a >= b.getAP();
 }
 inline MPInt operator+(int64_t a, const MPInt &b) {
-  if (LLVM_LIKELY(b.isSmall()))
-    return MPInt(a + b.get64());
-  return MPInt(a + b.getAP());
+  return MPInt(a) + b;
 }
 inline MPInt operator-(int64_t a, const MPInt &b) {
-  if (LLVM_LIKELY(b.isSmall()))
-    return MPInt(a - b.get64());
-  return MPInt(a - b.getAP());
+  return MPInt(a) - b;
 }
 inline MPInt operator*(int64_t a, const MPInt &b) {
-  if (LLVM_LIKELY(b.isSmall()))
-    return MPInt(a * b.get64());
-  return MPInt(a * b.getAP());
+  return MPInt(a) * b;
 }
 inline MPInt operator/(int64_t a, const MPInt &b) {
-  if (LLVM_LIKELY(b.isSmall()))
-    return MPInt(a / b.get64());
-  return MPInt(a / b.getAP());
+  return MPInt(a) / b;
 }
 inline MPInt operator%(int64_t a, const MPInt &b) {
-  if (LLVM_LIKELY(b.isSmall()))
-    return MPInt(a % b.get64());
-  return MPInt(a % b.getAP());
+  return MPInt(a) % b;
 }
 
 } // namespace presburger
