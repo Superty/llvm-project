@@ -242,24 +242,27 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
       // Similarly, we also want to rollback simplex to its original state.
       unsigned initialSnapshot = simplex.getSnapshot();
 
-      // Find out which inequalities of sI correspond to division inequalities
-      // for the local variables of sI.
-      std::vector<MaybeLocalRepr> repr(sI.getNumLocalIds());
-      std::vector<SmallVector<int64_t, 8>> dividends;
-      SmallVector<unsigned, 4> divisors;
-      sI.getLocalReprs(dividends, divisors, repr);
-
       // Add sI's locals to b, after b's locals. Only those locals of sI which
       // do not already exist in b will be added. (i.e., duplicate divisions
       // will not be added.) Also add b's locals to sI, in such a way that both
       // have the same locals in the same order in the end.
       b.mergeLocalIds(sI);
 
+      // Find out which inequalities of sI correspond to division inequalities
+      // for the local variables of sI.
+      // 
+      // Careful! This has to be done after the merge above; otherwise, the
+      // dividends won't contain the new ids inserted during the merge.
+      std::vector<MaybeLocalRepr> repr;
+      std::vector<SmallVector<int64_t, 8>> dividends;
+      SmallVector<unsigned, 4> divisors;
+      sI.getLocalReprs(dividends, divisors, repr);
+
       // Mark which inequalities of sI are division inequalities and add all
       // such inequalities to b.
       llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() +
                                          2 * sI.getNumEqualities());
-      for (unsigned i = 0, e = repr.size(); i < e; ++i) {
+      for (unsigned i = initBCounts.getSpace().getNumLocalIds(), e = sI.getNumLocalIds(); i < e; ++i) {
         assert(
             repr[i] &&
             "Subtraction is not supported when a representation of the local "
@@ -280,18 +283,23 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
           assert(repr[i].kind == ReprKind::Equality &&
                  "ReprKind isn't inequality so should be equality");
 
-          // Add two constraints for this new identifier 'q'.
-          SmallVector<int64_t, 8> bound = dividends[i];
-
-          // dividends[i] - q * divisor >= 0.
-          bound[b.getIdKindOffset(IdKind::Local) + i] = -divisors[i];
-          b.addInequality(bound);
-
-          // -dividends[i] + q*divisor + divisor - 1 >= 0.
-          std::transform(bound.begin(), bound.end(), bound.begin(),
-                         std::negate<int64_t>());
-          bound[bound.size() - 1] += divisors[i] - 1;
-          b.addInequality(bound);
+          // Consider the case (x) : (x = 3e + 1), where e is a local.
+          // Its complement is (x) : (x = 3e) or (x = 3e + 2). 
+          // 
+          // This can be computed by considering the set to be
+          // (x) : (x = 3*(x floordiv 3) + 1).
+          // 
+          // Now there are no equalities defining divisions; the division is
+          // defined by the standard division equalities for e = x floordiv 3,
+          // i.e., 0 <= x - 3*e <= 2.
+          // So now as before, we add these division inequalities to b. The
+          // equality is now just an ordinary constraint that must be considered
+          // in the remainder of the algorithm. The division inequalities must
+          // need not be considered, same as above, and they automatically will
+          // not be because they were never a part of sI; we just infer them
+          // from the equality and add them only to b.
+          b.addInequality(getDivLowerBound(dividends[i], divisors[i], sI.getIdKindOffset(IdKind::Local) + i));
+          b.addInequality(getDivUpperBound(dividends[i], divisors[i], sI.getIdKindOffset(IdKind::Local) + i));
         }
       }
 
