@@ -61,8 +61,8 @@ private:
       // The data in memory could be in an arbitrary state, not necessarily
       // corresponding to any valid state of valSlow; we cannot call any member
       // functions, e.g. the assignment operator on it, as they may access the
-      // invalid internal state. We instead construct a new object using placement
-      // new.
+      // invalid internal state. We instead construct a new object using
+      // placement new.
       new (&valSlow) detail::SlowMPInt(o);
     } else {
       // In this case, we need to use the assignment operator, because if we use
@@ -455,56 +455,31 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator--() {
 /// ----------------------------------------------------------------------------
 /// Convenience operator overloads for int64_t.
 /// ----------------------------------------------------------------------------
-__attribute__((always_inline))
-inline MPInt &operator+=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator+=(MPInt &a, int64_t b) {
   return a = a + b;
 }
-__attribute__((always_inline))
-inline MPInt &operator-=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator-=(MPInt &a, int64_t b) {
   return a = a - b;
 }
-__attribute__((always_inline))
-inline MPInt &operator*=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator*=(MPInt &a, int64_t b) {
   return a = a * b;
 }
-__attribute__((always_inline))
-inline MPInt &operator/=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator/=(MPInt &a, int64_t b) {
   return a = a / b;
 }
-__attribute__((always_inline))
-inline MPInt &operator%=(MPInt &a, int64_t b) {
+__attribute__((always_inline)) inline MPInt &operator%=(MPInt &a, int64_t b) {
   return a = a % b;
 }
-inline MPInt operator+(const MPInt &a, int64_t b) {
-  return a + MPInt(b);
-}
-inline MPInt operator-(const MPInt &a, int64_t b) {
-  return a - MPInt(b);
-}
-inline MPInt operator*(const MPInt &a, int64_t b) {
-  return a * MPInt(b);
-}
-inline MPInt operator/(const MPInt &a, int64_t b) {
-  return a / MPInt(b);
-}
-inline MPInt operator%(const MPInt &a, int64_t b) {
-  return a % MPInt(b);
-}
-inline MPInt operator+(int64_t a, const MPInt &b) {
-  return MPInt(a) + b;
-}
-inline MPInt operator-(int64_t a, const MPInt &b) {
-  return MPInt(a) - b;
-}
-inline MPInt operator*(int64_t a, const MPInt &b) {
-  return MPInt(a) * b;
-}
-inline MPInt operator/(int64_t a, const MPInt &b) {
-  return MPInt(a) / b;
-}
-inline MPInt operator%(int64_t a, const MPInt &b) {
-  return MPInt(a) % b;
-}
+inline MPInt operator+(const MPInt &a, int64_t b) { return a + MPInt(b); }
+inline MPInt operator-(const MPInt &a, int64_t b) { return a - MPInt(b); }
+inline MPInt operator*(const MPInt &a, int64_t b) { return a * MPInt(b); }
+inline MPInt operator/(const MPInt &a, int64_t b) { return a / MPInt(b); }
+inline MPInt operator%(const MPInt &a, int64_t b) { return a % MPInt(b); }
+inline MPInt operator+(int64_t a, const MPInt &b) { return MPInt(a) + b; }
+inline MPInt operator-(int64_t a, const MPInt &b) { return MPInt(a) - b; }
+inline MPInt operator*(int64_t a, const MPInt &b) { return MPInt(a) * b; }
+inline MPInt operator/(int64_t a, const MPInt &b) { return MPInt(a) / b; }
+inline MPInt operator%(int64_t a, const MPInt &b) { return MPInt(a) % b; }
 
 /// We provide special implementations of the comparison operators rather than
 /// calling through as above, as this would result in a 1.2x slowdown.
