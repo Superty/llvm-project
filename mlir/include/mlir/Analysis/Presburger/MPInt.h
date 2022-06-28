@@ -57,12 +57,19 @@ private:
     holdsSlow = false;
   }
   __attribute__((always_inline)) void initAP(const detail::SlowMPInt &o) {
-    // The data in the buffer could be in an arbitrary state, not necessarily
-    // corresponding to any valid state of valSlow; we cannot call any member
-    // functions, e.g. the assignment operator on it, as they may access the
-    // invalid internal state. We instead construct a new object using placement
-    // new.
-    new (&valSlow) detail::SlowMPInt;
+    if (LLVM_LIKELY(isSmall())) {
+      // The data in memory could be in an arbitrary state, not necessarily
+      // corresponding to any valid state of valSlow; we cannot call any member
+      // functions, e.g. the assignment operator on it, as they may access the
+      // invalid internal state. We instead construct a new object using placement
+      // new.
+      new (&valSlow) detail::SlowMPInt(o);
+    } else {
+      // In this case, we need to use the assignment operator, because if we use
+      // placement-new as above we would lose track of allocated memory
+      // and leak it.
+      valSlow = o;
+    }
     holdsSlow = true;
   }
 
