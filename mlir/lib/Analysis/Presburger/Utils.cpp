@@ -337,14 +337,14 @@ void presburger::mergeLocalIds(
   presburger::removeDuplicateDivs(divsA, denomsA, localOffset, merge);
 }
 
-SmallVector<int64_t, 8> getDivUpperBound(ArrayRef<int64_t> dividend, int64_t divisor, unsigned localVarIdx) {
+SmallVector<int64_t, 8> presburger::getDivUpperBound(ArrayRef<int64_t> dividend, int64_t divisor, unsigned localVarIdx) {
   assert(dividend[localVarIdx] == 0 && "Local to be set to division must have zero coeff!");
   SmallVector<int64_t, 8> ineq(dividend.begin(), dividend.end());
   ineq[localVarIdx] = -divisor;
   return ineq;
 }
 
-SmallVector<int64_t, 8> getDivLowerBound(ArrayRef<int64_t> dividend, int64_t divisor, unsigned localVarIdx) {
+SmallVector<int64_t, 8> presburger::getDivLowerBound(ArrayRef<int64_t> dividend, int64_t divisor, unsigned localVarIdx) {
   assert(dividend[localVarIdx] == 0 && "Local to be set to division must have zero coeff!");
   SmallVector<int64_t, 8> ineq(dividend.size());
   std::transform(dividend.begin(), dividend.end(), ineq.begin(), std::negate<int64_t>());
