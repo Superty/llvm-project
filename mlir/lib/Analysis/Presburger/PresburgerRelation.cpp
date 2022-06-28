@@ -245,7 +245,9 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
       // Find out which inequalities of sI correspond to division inequalities
       // for the local variables of sI.
       std::vector<MaybeLocalRepr> repr(sI.getNumLocalIds());
-      sI.getLocalReprs(repr);
+      std::vector<SmallVector<int64_t, 8>> dividends;
+      SmallVector<unsigned, 4> divisors;
+      sI.getLocalReprs(dividends, divisors, repr);
 
       // Add sI's locals to b, after b's locals. Only those locals of sI which
       // do not already exist in b will be added. (i.e., duplicate divisions
@@ -257,15 +259,15 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
       // such inequalities to b.
       llvm::SmallBitVector canIgnoreIneq(sI.getNumInequalities() +
                                          2 * sI.getNumEqualities());
-      for (MaybeLocalRepr &maybeRepr : repr) {
+      for (unsigned i = 0, e = repr.size(); i < e; ++i) {
         assert(
-            maybeRepr &&
+            repr[i] &&
             "Subtraction is not supported when a representation of the local "
             "variables of the subtrahend cannot be found!");
 
-        if (maybeRepr.kind == ReprKind::Inequality) {
-          unsigned lb = maybeRepr.repr.inequalityPair.lowerBoundIdx;
-          unsigned ub = maybeRepr.repr.inequalityPair.upperBoundIdx;
+        if (repr[i].kind == ReprKind::Inequality) {
+          unsigned lb = repr[i].repr.inequalityPair.lowerBoundIdx;
+          unsigned ub = repr[i].repr.inequalityPair.upperBoundIdx;
 
           b.addInequality(sI.getInequality(lb));
           b.addInequality(sI.getInequality(ub));
@@ -275,14 +277,21 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
           canIgnoreIneq[lb] = true;
           canIgnoreIneq[ub] = true;
         } else {
-          assert(maybeRepr.kind == ReprKind::Equality &&
+          assert(repr[i].kind == ReprKind::Equality &&
                  "ReprKind isn't inequality so should be equality");
-          unsigned idx = maybeRepr.repr.equalityIdx;
-          b.addEquality(sI.getEquality(idx));
-          // We can ignore both inequalities corresponding to this equality.
-          unsigned offset = sI.getNumInequalities();
-          canIgnoreIneq[offset + 2 * idx] = true;
-          canIgnoreIneq[offset + 2 * idx + 1] = true;
+
+          // Add two constraints for this new identifier 'q'.
+          SmallVector<int64_t, 8> bound = dividends[i];
+
+          // dividends[i] - q * divisor >= 0.
+          bound[b.getIdKindOffset(IdKind::Local) + i] = -divisors[i];
+          b.addInequality(bound);
+
+          // -dividends[i] + q*divisor + divisor - 1 >= 0.
+          std::transform(bound.begin(), bound.end(), bound.begin(),
+                         std::negate<int64_t>());
+          bound[bound.size() - 1] += divisors[i] - 1;
+          b.addInequality(bound);
         }
       }
 
