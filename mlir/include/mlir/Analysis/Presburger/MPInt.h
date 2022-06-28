@@ -475,7 +475,6 @@ __attribute__((always_inline))
 inline MPInt &operator%=(MPInt &a, int64_t b) {
   return a = a % b;
 }
-
 inline MPInt operator+(const MPInt &a, int64_t b) {
   return a + MPInt(b);
 }
