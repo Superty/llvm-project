@@ -40,7 +40,7 @@ namespace presburger {
 /// performance slowdown.
 ///
 /// When holdsSlow is true, a SlowMPInt is held in the union. If it is false,
-/// the int64_t is held. Using std::variant instead significantly impacts
+/// the int64_t is held. Using std::variant instead would significantly impact
 /// performance.
 class MPInt {
 private:
@@ -496,6 +496,39 @@ __attribute__((always_inline)) inline MPInt &operator%=(MPInt &a, int64_t b) {
   return a;
 }
 
+inline MPInt operator+(const MPInt &a, int64_t b) {
+  return a + MPInt(b);
+}
+inline MPInt operator-(const MPInt &a, int64_t b) {
+  return a - MPInt(b);
+}
+inline MPInt operator*(const MPInt &a, int64_t b) {
+  return a * MPInt(b);
+}
+inline MPInt operator/(const MPInt &a, int64_t b) {
+  return a / MPInt(b);
+}
+inline MPInt operator%(const MPInt &a, int64_t b) {
+  return a % MPInt(b);
+}
+inline MPInt operator+(int64_t a, const MPInt &b) {
+  return MPInt(a) + b;
+}
+inline MPInt operator-(int64_t a, const MPInt &b) {
+  return MPInt(a) - b;
+}
+inline MPInt operator*(int64_t a, const MPInt &b) {
+  return MPInt(a) * b;
+}
+inline MPInt operator/(int64_t a, const MPInt &b) {
+  return MPInt(a) / b;
+}
+inline MPInt operator%(int64_t a, const MPInt &b) {
+  return MPInt(a) % b;
+}
+
+/// We provide special implementations of the comparison operators rather than
+/// calling through as above, as this would result in a 1.2x slowdown.
 inline bool operator==(const MPInt &a, int64_t b) {
   if (LLVM_LIKELY(a.isSmall()))
     return a.get64() == b;
@@ -526,22 +559,6 @@ inline bool operator>=(const MPInt &a, int64_t b) {
     return a.get64() >= b;
   return a.getAP() >= b;
 }
-inline MPInt operator+(const MPInt &a, int64_t b) {
-  return a + MPInt(b);
-}
-inline MPInt operator-(const MPInt &a, int64_t b) {
-  return a - MPInt(b);
-}
-inline MPInt operator*(const MPInt &a, int64_t b) {
-  return a * MPInt(b);
-}
-inline MPInt operator/(const MPInt &a, int64_t b) {
-  return a / MPInt(b);
-}
-inline MPInt operator%(const MPInt &a, int64_t b) {
-  return a % MPInt(b);
-}
-
 inline bool operator==(int64_t a, const MPInt &b) {
   if (LLVM_LIKELY(b.isSmall()))
     return a == b.get64();
@@ -571,21 +588,6 @@ inline bool operator>=(int64_t a, const MPInt &b) {
   if (LLVM_LIKELY(b.isSmall()))
     return a >= b.get64();
   return a >= b.getAP();
-}
-inline MPInt operator+(int64_t a, const MPInt &b) {
-  return MPInt(a) + b;
-}
-inline MPInt operator-(int64_t a, const MPInt &b) {
-  return MPInt(a) - b;
-}
-inline MPInt operator*(int64_t a, const MPInt &b) {
-  return MPInt(a) * b;
-}
-inline MPInt operator/(int64_t a, const MPInt &b) {
-  return MPInt(a) / b;
-}
-inline MPInt operator%(int64_t a, const MPInt &b) {
-  return MPInt(a) % b;
 }
 
 } // namespace presburger
