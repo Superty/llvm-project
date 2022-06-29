@@ -651,7 +651,6 @@ bool IntegerRelation::isEmpty() const {
 // has an integer solution iff:
 //
 //  GCD of c_1, c_2, ..., c_n divides c_0.
-//
 bool IntegerRelation::isEmptyByGCDTest() const {
   assert(hasConsistentState());
   unsigned numCols = getNumCols();

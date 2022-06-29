@@ -10,8 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
+#include "mlir/Analysis/Presburger/MPInt.h"
+#include "mlir/Analysis/Presburger/Utils.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Support/MathExtras.h"
 
