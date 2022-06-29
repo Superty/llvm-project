@@ -218,6 +218,9 @@ MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     MutableArrayRef<MPInt> dividend,
                                     MPInt &divisor);
+
+/// The following overload using int64_t is required for a callsite in 
+/// AffineStructures.h.
 MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     SmallVector<int64_t, 8> &dividend,
