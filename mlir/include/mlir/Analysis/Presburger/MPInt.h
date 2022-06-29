@@ -20,8 +20,6 @@
 #include "mlir/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <variant>
-
 namespace mlir {
 namespace presburger {
 
