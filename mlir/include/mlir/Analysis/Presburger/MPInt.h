@@ -30,22 +30,22 @@ namespace detail {
 // however they are not always_inlined, which is important for us to achieve
 // high-performance; calling the functions directly would result in a slowdown
 // of 1.15x.
-__attribute__((always_inline))
-inline bool addOverflow(int64_t x, int64_t y, int64_t &result) {
+__attribute__((always_inline)) inline bool addOverflow(int64_t x, int64_t y,
+                                                       int64_t &result) {
 #if __has_builtin(__builtin_add_overflow)
   return __builtin_add_overflow(x, y, &result);
 #else
   return llvm::AddOverflow(x, y, result);
 #endif
 }
-inline bool subOverflow(int64_t x, int64_t y, int64_t &result) {
+__attribute__((always_inline)) inline bool subOverflow(int64_t x, int64_t y, int64_t &result) {
 #if __has_builtin(__builtin_sub_overflow)
   return __builtin_sub_overflow(x, y, &result);
 #else
   return llvm::subOverflow(x, y, result);
 #endif
 }
-inline bool mulOverflow(int64_t x, int64_t y, int64_t &result) {
+__attribute__((always_inline)) inline bool mulOverflow(int64_t x, int64_t y, int64_t &result) {
 #if __has_builtin(__builtin_mul_overflow)
   return __builtin_mul_overflow(x, y, &result);
 #else
