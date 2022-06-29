@@ -149,7 +149,7 @@ unsigned SimplexBase::addRow(ArrayRef<MPInt> coeffs, bool makeRestricted) {
     // row, scaled by the coefficient for the variable, accounting for the two
     // rows potentially having different denominators. The new denominator is
     // the lcm of the two.
-    MPInt lcm = mlir::presburger::lcm(tableau(newRow, 0), tableau(pos, 0));
+    MPInt lcm = presburger::lcm(tableau(newRow, 0), tableau(pos, 0));
     MPInt nRowCoeff = lcm / tableau(newRow, 0);
     MPInt idxRowCoeff = coeffs[i] * (lcm / tableau(pos, 0));
     tableau(newRow, 0) = lcm;

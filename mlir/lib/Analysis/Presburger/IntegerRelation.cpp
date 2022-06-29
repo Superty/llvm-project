@@ -537,7 +537,7 @@ static void eliminateFromConstraint(IntegerRelation *constraints,
     return;
   MPInt pivotCoeff = constraints->atEq(pivotRow, pivotCol);
   int sign = (leadCoeff * pivotCoeff > 0) ? -1 : 1;
-  MPInt lcm = mlir::presburger::lcm(pivotCoeff, leadCoeff);
+  MPInt lcm = presburger::lcm(pivotCoeff, leadCoeff);
   MPInt pivotMultiplier = sign * (lcm / abs(pivotCoeff));
   MPInt rowMultiplier = lcm / abs(leadCoeff);
 
@@ -657,7 +657,7 @@ bool IntegerRelation::isEmptyByGCDTest() const {
   for (unsigned i = 0, e = getNumEqualities(); i < e; ++i) {
     MPInt gcd = abs(atEq(i, 0));
     for (unsigned j = 1; j < numCols - 1; ++j) {
-      gcd = greatestCommonDivisor(gcd, abs(atEq(i, j)));
+      gcd = presburger::gcd(gcd, abs(atEq(i, j)));
     }
     MPInt v = abs(atEq(i, numCols - 1));
     if (gcd > 0 && (v % gcd != 0)) {
@@ -900,7 +900,7 @@ bool IntegerRelation::containsPoint(ArrayRef<MPInt> point) const {
 /// compute the values of the locals that have division representations and
 /// only use the integer emptiness check for the locals that don't have this.
 /// Handling this correctly requires ordering the divs, though.
-Optional<SmallVector<int64_t, 8>>
+Optional<SmallVector<MPInt, 8>>
 IntegerRelation::containsPointNoLocal(ArrayRef<MPInt> point) const {
   assert(point.size() == getNumVars() - getNumLocalVars() &&
          "Point should contain all vars except locals!");
@@ -1222,7 +1222,7 @@ void IntegerRelation::removeRedundantLocalVars() {
     for (i = 0, e = getNumEqualities(); i < e; ++i) {
       // Find a local variable to eliminate using ith equality.
       for (j = getNumDimAndSymbolVars(), f = getNumVars(); j < f; ++j)
-        if (std::abs(atEq(i, j)) == 1)
+        if (abs(atEq(i, j)) == 1)
           break;
 
       // Local variable can be eliminated using ith equality.
@@ -1827,7 +1827,7 @@ void IntegerRelation::fourierMotzkinEliminate(unsigned pos, bool darkShadow,
         if (l == pos)
           continue;
         assert(lbCoeff >= 1 && ubCoeff >= 1 && "bounds wrongly identified");
-        MPInt lcm = mlir::presburger::lcm(lbCoeff, ubCoeff);
+        MPInt lcm = presburger::lcm(lbCoeff, ubCoeff);
         ineq.push_back(atIneq(ubPos, l) * (lcm / ubCoeff) +
                        atIneq(lbPos, l) * (lcm / lbCoeff));
         lcmProducts *= lcm;
@@ -1994,7 +1994,7 @@ IntegerRelation::unionBoundingBox(const IntegerRelation &otherCst) {
   // To compute final new lower and upper bounds for the union.
   SmallVector<MPInt, 8> newLb(getNumCols()), newUb(getNumCols());
 
-  int64_t lbFloorDivisor, otherLbFloorDivisor;
+  MPInt lbFloorDivisor, otherLbFloorDivisor;
   for (unsigned d = 0, e = getNumDimVars(); d < e; ++d) {
     auto extent = getConstantBoundOnDimSize(d, &lb, &lbFloorDivisor, &ub);
     if (!extent.hasValue())
