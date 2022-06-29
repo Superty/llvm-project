@@ -23,6 +23,37 @@
 namespace mlir {
 namespace presburger {
 
+namespace detail {
+// If builtin intrinsics for overflow-checked arithmetic are available,
+// use them. Otherwise, call through to LLVM's overflow-checked arithmetic
+// functionality. Those functions also have such macro-gated uses of intrinsics,
+// however they are not always_inlined, which is important for us to achieve
+// high-performance; calling the functions directly would result in a slowdown
+// of 1.15x.
+__attribute__((always_inline))
+inline bool addOverflow(int64_t x, int64_t y, int64_t &result) {
+#if __has_builtin(__builtin_add_overflow)
+  return __builtin_add_overflow(x, y, &result);
+#else
+  return llvm::AddOverflow(x, y, result);
+#endif
+}
+inline bool subOverflow(int64_t x, int64_t y, int64_t &result) {
+#if __has_builtin(__builtin_sub_overflow)
+  return __builtin_sub_overflow(x, y, &result);
+#else
+  return llvm::subOverflow(x, y, result);
+#endif
+}
+inline bool mulOverflow(int64_t x, int64_t y, int64_t &result) {
+#if __has_builtin(__builtin_mul_overflow)
+  return __builtin_mul_overflow(x, y, &result);
+#else
+  return llvm::MulOverflow(x, y, result);
+#endif
+}
+} // namespace detail
+
 /// This class provides support for multi-precision arithmetic.
 ///
 /// Unlike APInt, this extends the precision as necessary to prevent overflows
@@ -264,7 +295,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator+(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = llvm::AddOverflow(get64(), o.get64(), result.get64());
+    bool overflow = detail::addOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() + o.getAsAP());
@@ -275,7 +306,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator-(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = llvm::SubOverflow(get64(), o.get64(), result.get64());
+    bool overflow = detail::subOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() - o.getAsAP());
@@ -286,7 +317,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator*(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = llvm::MulOverflow(get64(), o.get64(), result.get64());
+    bool overflow = detail::mulOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() * o.getAsAP());
@@ -383,7 +414,7 @@ inline MPInt MPInt::operator-() const {
 __attribute__((always_inline)) inline MPInt &MPInt::operator+=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = llvm::AddOverflow(get64(), o.get64(), result);
+    bool overflow = detail::addOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
@@ -395,7 +426,7 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator+=(const MPInt &o) {
 __attribute__((always_inline)) inline MPInt &MPInt::operator-=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = llvm::SubOverflow(get64(), o.get64(), result);
+    bool overflow = detail::subOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
@@ -407,7 +438,7 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator-=(const MPInt &o) {
 __attribute__((always_inline)) inline MPInt &MPInt::operator*=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = llvm::MulOverflow(get64(), o.get64(), result);
+    bool overflow = detail::mulOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
