@@ -267,7 +267,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator+(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = __builtin_add_overflow(get64(), o.get64(), &result.get64());
+    bool overflow = llvm::AddOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() + o.getAsAP());
@@ -278,7 +278,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator-(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result.get64());
+    bool overflow = llvm::SubOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() - o.getAsAP());
@@ -289,7 +289,7 @@ __attribute__((always_inline)) inline MPInt
 MPInt::operator*(const MPInt &o) const {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     MPInt result;
-    bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result.get64());
+    bool overflow = llvm::MulOverflow(get64(), o.get64(), result.get64());
     if (LLVM_LIKELY(!overflow))
       return result;
     return MPInt(getAsAP() * o.getAsAP());
@@ -386,7 +386,7 @@ inline MPInt MPInt::operator-() const {
 __attribute__((always_inline)) inline MPInt &MPInt::operator+=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = __builtin_add_overflow(get64(), o.get64(), &result);
+    bool overflow = llvm::AddOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
@@ -398,7 +398,7 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator+=(const MPInt &o) {
 __attribute__((always_inline)) inline MPInt &MPInt::operator-=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = __builtin_sub_overflow(get64(), o.get64(), &result);
+    bool overflow = llvm::SubOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
@@ -410,7 +410,7 @@ __attribute__((always_inline)) inline MPInt &MPInt::operator-=(const MPInt &o) {
 __attribute__((always_inline)) inline MPInt &MPInt::operator*=(const MPInt &o) {
   if (LLVM_LIKELY(isSmall() && o.isSmall())) {
     int64_t result = get64();
-    bool overflow = __builtin_mul_overflow(get64(), o.get64(), &result);
+    bool overflow = llvm::MulOverflow(get64(), o.get64(), result);
     if (LLVM_LIKELY(!overflow)) {
       get64() = result;
       return *this;
