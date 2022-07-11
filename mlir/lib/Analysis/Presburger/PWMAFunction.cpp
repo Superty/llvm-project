@@ -15,11 +15,11 @@ using namespace presburger;
 // Return the result of subtracting the two given vectors pointwise.
 // The vectors must be of the same size.
 // e.g., [3, 4, 6] - [2, 5, 1] = [1, -1, 5].
-static SmallVector<int64_t, 8> subtract(ArrayRef<int64_t> vecA,
-                                        ArrayRef<int64_t> vecB) {
+static SmallVector<MPInt, 8> subtract(ArrayRef<MPInt> vecA,
+                                      ArrayRef<MPInt> vecB) {
   assert(vecA.size() == vecB.size() &&
          "Cannot subtract vectors of differing lengths!");
-  SmallVector<int64_t, 8> result;
+  SmallVector<MPInt, 8> result;
   result.reserve(vecA.size());
   for (unsigned i = 0, e = vecA.size(); i < e; ++i)
     result.push_back(vecA[i] - vecB[i]);
@@ -33,18 +33,18 @@ PresburgerSet PWMAFunction::getDomain() const {
   return domain;
 }
 
-Optional<SmallVector<int64_t, 8>>
-MultiAffineFunction::valueAt(ArrayRef<int64_t> point) const {
+Optional<SmallVector<MPInt, 8>>
+MultiAffineFunction::valueAt(ArrayRef<MPInt> point) const {
   assert(point.size() == domainSet.getNumDimAndSymbolVars() &&
          "Point has incorrect dimensionality!");
 
-  Optional<SmallVector<int64_t, 8>> maybeLocalValues =
+  Optional<SmallVector<MPInt, 8>> maybeLocalValues =
       getDomain().containsPointNoLocal(point);
   if (!maybeLocalValues)
     return {};
 
   // The point lies in the domain, so we need to compute the output value.
-  SmallVector<int64_t, 8> pointHomogenous{llvm::to_vector(point)};
+  SmallVector<MPInt, 8> pointHomogenous{llvm::to_vector(point)};
   // The given point didn't include the values of locals which the output is a
   // function of; we have computed one possible set of values and use them
   // here. The function is not allowed to have local vars that take more than
@@ -56,18 +56,17 @@ MultiAffineFunction::valueAt(ArrayRef<int64_t> point) const {
   // a 1 appended at the end. We can see that output * v gives the desired
   // output vector.
   pointHomogenous.emplace_back(1);
-  SmallVector<int64_t, 8> result =
-      output.postMultiplyWithColumn(pointHomogenous);
+  SmallVector<MPInt, 8> result = output.postMultiplyWithColumn(pointHomogenous);
   assert(result.size() == getNumOutputs());
   return result;
 }
 
-Optional<SmallVector<int64_t, 8>>
-PWMAFunction::valueAt(ArrayRef<int64_t> point) const {
+Optional<SmallVector<MPInt, 8>>
+PWMAFunction::valueAt(ArrayRef<MPInt> point) const {
   assert(point.size() == getNumInputs() &&
          "Point has incorrect dimensionality!");
   for (const MultiAffineFunction &piece : pieces)
-    if (Optional<SmallVector<int64_t, 8>> output = piece.valueAt(point))
+    if (Optional<SmallVector<MPInt, 8>> output = piece.valueAt(point))
       return output;
   return {};
 }
@@ -318,7 +317,7 @@ static PresburgerSet tiebreakLex(const MultiAffineFunction &mafA,
   for (unsigned level = 0; level < mafA.getNumOutputs(); ++level) {
 
     // Create the expression `outA - outB` for this level.
-    SmallVector<int64_t, 8> subExpr =
+    SmallVector<MPInt, 8> subExpr =
         subtract(mafA.getOutputExpr(level), mafB.getOutputExpr(level));
 
     if (lexMin) {
@@ -326,13 +325,13 @@ static PresburgerSet tiebreakLex(const MultiAffineFunction &mafA,
       //        outA - outB <= -1
       //        outA <= outB - 1
       //        outA < outB
-      levelSet.addBound(IntegerPolyhedron::BoundType::UB, subExpr, -1);
+      levelSet.addBound(IntegerPolyhedron::BoundType::UB, subExpr, MPInt(-1));
     } else {
       // For lexMax, we add a lower bound of 1:
       //        outA - outB >= 1
       //        outA > outB + 1
       //        outA > outB
-      levelSet.addBound(IntegerPolyhedron::BoundType::LB, subExpr, 1);
+      levelSet.addBound(IntegerPolyhedron::BoundType::LB, subExpr, MPInt(1));
     }
 
     // Union the set with the result.
