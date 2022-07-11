@@ -607,12 +607,12 @@ TEST(IntegerPolyhedronTest, addConstantLowerBound) {
 /// `expectedDenominators` and `expectedDividends` respectively.
 static void checkDivisionRepresentation(
     IntegerPolyhedron &poly,
-    const std::vector<SmallVector<MPInt, 8>> &expectedDividends,
-    ArrayRef<MPInt> expectedDenominators) {
+    const std::vector<SmallVector<int64_t, 8>> &expectedDividends,
+    ArrayRef<int64_t> expectedDenominators) {
   DivisionRepr divs = poly.getLocalReprs();
 
   // Check that the `denominators` and `expectedDenominators` match.
-  EXPECT_TRUE(getMPIntVec(expectedDenominators) == divs.getDenoms());
+  EXPECT_EQ(ArrayRef<MPInt>(getMPIntVec(expectedDenominators)), divs.getDenoms());
 
   // Check that the `dividends` and `expectedDividends` match. If the
   // denominator for a division is zero, we ignore its dividend.

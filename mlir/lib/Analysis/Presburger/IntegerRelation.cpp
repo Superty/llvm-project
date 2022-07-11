@@ -860,7 +860,7 @@ Optional<SmallVector<MPInt, 8>> IntegerRelation::findIntegerSample() const {
   SmallVector<MPInt, 8> coneSample(llvm::map_range(shrunkenConeSample, ceil));
 
   // 6) Return transform * concat(boundedSample, coneSample).
-  SmallVector<MPInt, 8> &sample = *boundedSample.getValue();
+  SmallVector<MPInt, 8> &sample = *boundedSample;
   sample.append(coneSample.begin(), coneSample.end());
   return transform.postMultiplyWithColumn(sample);
 }
@@ -1102,7 +1102,7 @@ Optional<MPInt> IntegerRelation::computeVolume() const {
   //
   // If there is no such empty dimension, if any dimension is unbounded we
   // just return the result as unbounded.
-  MPInt count = 1;
+  MPInt count(1);
   SmallVector<MPInt, 8> dim(getNumVars() + 1);
   bool hasUnboundedVar = false;
   for (unsigned i = 0, e = getNumDimAndSymbolVars(); i < e; ++i) {
@@ -1318,7 +1318,7 @@ void IntegerRelation::addLocalFloorDiv(ArrayRef<MPInt> dividend,
   appendVar(VarKind::Local);
 
   SmallVector<MPInt, 8> dividendCopy(dividend.begin(), dividend.end());
-  dividendCopy.insert(dividendCopy.end() - 1, 0);
+  dividendCopy.insert(dividendCopy.end() - 1, MPInt(0));
   addInequality(
       getDivLowerBound(dividendCopy, divisor, dividendCopy.size() - 2));
   addInequality(

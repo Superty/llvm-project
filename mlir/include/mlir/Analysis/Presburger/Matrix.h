@@ -91,7 +91,7 @@ public:
   ArrayRef<MPInt> getRow(unsigned row) const;
 
   /// Set the specified row to `elems`.
-  void setRow(unsigned row, ArrayRef<int64_t> elems);
+  void setRow(unsigned row, ArrayRef<MPInt> elems);
 
   /// Insert columns having positions pos, pos + 1, ... pos + count - 1.
   /// Columns that were at positions 0 to pos - 1 will stay where they are;

@@ -62,7 +62,7 @@ public:
   /// Get a matrix with each row representing row^th output expression.
   const Matrix &getOutputMatrix() const { return output; }
   /// Get the `i^th` output expression.
-  ArrayRef<int64_t> getOutputExpr(unsigned i) const { return output.getRow(i); }
+  ArrayRef<MPInt> getOutputExpr(unsigned i) const { return output.getRow(i); }
 
   /// Insert `num` variables of the specified kind at position `pos`.
   /// Positions are relative to the kind of variable. The coefficient columns

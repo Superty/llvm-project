@@ -116,7 +116,7 @@ struct MaybeLocalRepr {
 class DivisionRepr {
 public:
   DivisionRepr(unsigned numVars, unsigned numDivs)
-      : dividends(numDivs, numVars + 1), denoms(numDivs, 0) {}
+      : dividends(numDivs, numVars + 1), denoms(numDivs, MPInt(0)) {}
 
   DivisionRepr(unsigned numVars) : dividends(numVars + 1, 0) {}
 
@@ -130,27 +130,27 @@ public:
   bool hasRepr(unsigned i) const { return denoms[i] != 0; }
   // Check whether all the divisions have a division representation or not.
   bool hasAllReprs() const {
-    return all_of(denoms, [](unsigned denom) { return denom != 0; });
+    return all_of(denoms, [](const MPInt &denom) { return denom != 0; });
   }
 
   // Clear the division representation of the i^th local variable.
   void clearRepr(unsigned i) { denoms[i] = 0; }
 
   // Get the dividend of the `i^th` division.
-  MutableArrayRef<int64_t> getDividend(unsigned i) {
+  MutableArrayRef<MPInt> getDividend(unsigned i) {
     return dividends.getRow(i);
   }
-  ArrayRef<int64_t> getDividend(unsigned i) const {
+  ArrayRef<MPInt> getDividend(unsigned i) const {
     return dividends.getRow(i);
   }
 
   // Get the `i^th` denominator.
-  unsigned &getDenom(unsigned i) { return denoms[i]; }
-  unsigned getDenom(unsigned i) const { return denoms[i]; }
+  MPInt &getDenom(unsigned i) { return denoms[i]; }
+  MPInt getDenom(unsigned i) const { return denoms[i]; }
 
-  ArrayRef<unsigned> getDenoms() const { return denoms; }
+  ArrayRef<MPInt> getDenoms() const { return denoms; }
 
-  void setDividend(unsigned i, ArrayRef<int64_t> dividend) {
+  void setDividend(unsigned i, ArrayRef<MPInt> dividend) {
     dividends.setRow(i, dividend);
   }
 
@@ -176,7 +176,7 @@ private:
 
   /// Denominators of each division. If a denominator of a division is `0`, the
   /// division variable is considered to not have a division representation.
-  SmallVector<unsigned, 4> denoms;
+  SmallVector<MPInt, 4> denoms;
 };
 
 /// If `q` is defined to be equal to `expr floordiv d`, this equivalent to
@@ -193,10 +193,10 @@ private:
 ///
 /// The coefficient of `q` in `dividend` must be zero, as it is not allowed for
 /// local variable to be a floor division of an expression involving itself.
-SmallVector<int64_t, 8> getDivUpperBound(ArrayRef<int64_t> dividend,
-                                         int64_t divisor, unsigned localVarIdx);
-SmallVector<int64_t, 8> getDivLowerBound(ArrayRef<int64_t> dividend,
-                                         int64_t divisor, unsigned localVarIdx);
+SmallVector<MPInt, 8> getDivUpperBound(ArrayRef<MPInt> dividend,
+                                         const MPInt &divisor, unsigned localVarIdx);
+SmallVector<MPInt, 8> getDivLowerBound(ArrayRef<MPInt> dividend,
+                                         const MPInt &divisor, unsigned localVarIdx);
 
 llvm::SmallBitVector getSubrangeBitVector(unsigned len, unsigned setOffset,
                                           unsigned numSet);
@@ -208,7 +208,7 @@ llvm::SmallBitVector getSubrangeBitVector(unsigned len, unsigned setOffset,
 /// Return the given array as an array of MPInts.
 SmallVector<MPInt, 8> getMPIntVec(ArrayRef<int64_t> range);
 /// Return the given array as an array of int64_t.
-SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
+SmallVector<int64_t, 8> getInt64Vec(ArrayRef<MPInt> range);
 /// Returns the `MaybeLocalRepr` struct which contains the indices of the
 /// constraints that can be expressed as a floordiv of an affine function. If
 /// the representation could be computed, `dividend` and `denominator` are set.

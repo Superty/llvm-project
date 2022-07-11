@@ -34,7 +34,7 @@ PresburgerSet PWMAFunction::getDomain() const {
 }
 
 Optional<SmallVector<MPInt, 8>>
-MultiAffineFunction::valueAt(ArrayRef<int64_t> point) const {
+MultiAffineFunction::valueAt(ArrayRef<MPInt> point) const {
   assert(point.size() == domainSet.getNumDimAndSymbolVars() &&
          "Point has incorrect dimensionality!");
 
@@ -318,7 +318,7 @@ static PresburgerSet tiebreakLex(const MultiAffineFunction &mafA,
   for (unsigned level = 0; level < mafA.getNumOutputs(); ++level) {
 
     // Create the expression `outA - outB` for this level.
-    SmallVector<int64_t, 8> subExpr =
+    SmallVector<MPInt, 8> subExpr =
         subtract(mafA.getOutputExpr(level), mafB.getOutputExpr(level));
 
     if (lexMin) {
@@ -326,13 +326,13 @@ static PresburgerSet tiebreakLex(const MultiAffineFunction &mafA,
       //        outA - outB <= -1
       //        outA <= outB - 1
       //        outA < outB
-      levelSet.addBound(IntegerPolyhedron::BoundType::UB, subExpr, -1);
+      levelSet.addBound(IntegerPolyhedron::BoundType::UB, subExpr, MPInt(-1));
     } else {
       // For lexMax, we add a lower bound of 1:
       //        outA - outB >= 1
       //        outA > outB + 1
       //        outA > outB
-      levelSet.addBound(IntegerPolyhedron::BoundType::LB, subExpr, 1);
+      levelSet.addBound(IntegerPolyhedron::BoundType::LB, subExpr, MPInt(1));
     }
 
     // Union the set with the result.

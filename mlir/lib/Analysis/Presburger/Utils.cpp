@@ -23,13 +23,13 @@ using namespace presburger;
 /// example: if the dividend and divisor are [2,0,4] and 4 respectively,
 /// they get normalized to [1,0,2] and 2.
 static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
-                                   unsigned &divisor) {
+                                   MPInt &divisor) {
   if (divisor == 0 || dividend.empty())
     return;
   // We take the absolute value of dividend's coefficients to make sure that
   // `gcd` is positive.
   MPInt gcd =
-      greatestCommonDivisor(abs(dividend.front()), divisor);
+      presburger::gcd(abs(dividend.front()), divisor);
 
   // The reason for ignoring the constant term is as follows.
   // For a division:
@@ -39,7 +39,7 @@ static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
   // Since `{a/m}/d` in the dividend satisfies 0 <= {a/m}/d < 1/d, it will not
   // influence the result of the floor division and thus, can be ignored.
   for (size_t i = 1, m = dividend.size() - 1; i < m; i++) {
-    gcd = greatestCommonDivisor(abs(dividend[i]), gcd);
+    gcd = presburger::gcd(abs(dividend[i]), gcd);
     if (gcd == 1)
       return;
   }
@@ -91,7 +91,7 @@ static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned ubIneq, unsigned lbIneq,
                                 MutableArrayRef<MPInt> expr,
-                                unsigned &divisor) {
+                                MPInt &divisor) {
 
   assert(pos <= cst.getNumVars() && "Invalid variable position");
   assert(ubIneq <= cst.getNumInequalities() &&
@@ -154,7 +154,7 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
 /// normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned eqInd, MutableArrayRef<MPInt> expr,
-                                unsigned &divisor) {
+                                MPInt &divisor) {
 
   assert(pos <= cst.getNumVars() && "Invalid variable position");
   assert(eqInd <= cst.getNumEqualities() && "Invalid equality position");
@@ -303,24 +303,24 @@ void presburger::mergeLocalVars(
   divsA.removeDuplicateDivs(merge);
 }
 
-SmallVector<int64_t, 8> presburger::getDivUpperBound(ArrayRef<int64_t> dividend,
-                                                     int64_t divisor,
+SmallVector<MPInt, 8> presburger::getDivUpperBound(ArrayRef<MPInt> dividend,
+                                                     const MPInt &divisor,
                                                      unsigned localVarIdx) {
   assert(dividend[localVarIdx] == 0 &&
          "Local to be set to division must have zero coeff!");
-  SmallVector<int64_t, 8> ineq(dividend.begin(), dividend.end());
+  SmallVector<MPInt, 8> ineq(dividend.begin(), dividend.end());
   ineq[localVarIdx] = -divisor;
   return ineq;
 }
 
-SmallVector<int64_t, 8> presburger::getDivLowerBound(ArrayRef<int64_t> dividend,
-                                                     int64_t divisor,
+SmallVector<MPInt, 8> presburger::getDivLowerBound(ArrayRef<MPInt> dividend,
+                                                     const MPInt &divisor,
                                                      unsigned localVarIdx) {
   assert(dividend[localVarIdx] == 0 &&
          "Local to be set to division must have zero coeff!");
-  SmallVector<int64_t, 8> ineq(dividend.size());
+  SmallVector<MPInt, 8> ineq(dividend.size());
   std::transform(dividend.begin(), dividend.end(), ineq.begin(),
-                 std::negate<int64_t>());
+                 std::negate<MPInt>());
   ineq[localVarIdx] = divisor;
   ineq.back() += divisor - 1;
   return ineq;
@@ -329,7 +329,7 @@ SmallVector<int64_t, 8> presburger::getDivLowerBound(ArrayRef<int64_t> dividend,
 MPInt presburger::gcdRange(ArrayRef<MPInt> range) {
   MPInt gcd(0);
   for (const MPInt &elem : range) {
-    gcd = greatestCommonDivisor(gcd, abs(elem));
+    gcd = presburger::gcd(gcd, abs(elem));
     if (gcd == 1)
       return gcd;
   }
@@ -347,7 +347,7 @@ MPInt presburger::normalizeRange(MutableArrayRef<MPInt> range) {
 
 void presburger::normalizeDiv(MutableArrayRef<MPInt> num, MPInt &denom) {
   assert(denom > 0 && "denom must be positive!");
-  MPInt gcd = greatestCommonDivisor(gcdRange(num), denom);
+  MPInt gcd = presburger::gcd(gcdRange(num), denom);
   for (MPInt &coeff : num)
     coeff /= gcd;
   denom /= gcd;

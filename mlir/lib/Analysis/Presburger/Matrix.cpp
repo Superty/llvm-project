@@ -92,7 +92,7 @@ ArrayRef<MPInt> Matrix::getRow(unsigned row) const {
   return {&data[row * nReservedColumns], nColumns};
 }
 
-void Matrix::setRow(unsigned row, ArrayRef<int64_t> elems) {
+void Matrix::setRow(unsigned row, ArrayRef<MPInt> elems) {
   assert(elems.size() == getNumColumns() &&
          "elems size must match row length!");
   for (unsigned i = 0, e = getNumColumns(); i < e; ++i)
