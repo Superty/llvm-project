@@ -412,3 +412,19 @@ void DivisionRepr::print(raw_ostream &os) const {
 }
 
 void DivisionRepr::dump() const { print(llvm::errs()); }
+SmallVector<TPInt, 8> presburger::getTPIntVec(ArrayRef<int64_t> range) {
+  SmallVector<TPInt, 8> coeffs;
+  coeffs.reserve(range.size());
+  for (int64_t elem : range)
+    coeffs.emplace_back(elem);
+  return coeffs;
+}
+
+SmallVector<int64_t, 8> presburger::getInt64Vec(ArrayRef<TPInt> range) {
+  SmallVector<int64_t, 8> coeffs;
+  coeffs.reserve(range.size());
+  for (const TPInt &elem : range)
+    coeffs.emplace_back(elem);
+  return coeffs;
+}
+

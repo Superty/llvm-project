@@ -204,6 +204,10 @@ llvm::SmallBitVector getSubrangeBitVector(unsigned len, unsigned setOffset,
 /// function of other variables (where the divisor is a positive constant).
 /// `foundRepr` contains a boolean for each variable indicating if the
 /// explicit representation for that variable has already been computed.
+/// Return the given array as an array of TPInts.
+SmallVector<TPInt, 8> getTPIntVec(ArrayRef<int64_t> range);
+/// Return the given array as an array of int64_t.
+SmallVector<int64_t, 8> getInt64Vec(ArrayRef<TPInt> range);
 /// Returns the `MaybeLocalRepr` struct which contains the indices of the
 /// constraints that can be expressed as a floordiv of an affine function. If
 /// the representation could be computed, `dividend` and `denominator` are set.
