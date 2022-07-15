@@ -36,6 +36,7 @@ struct Fraction {
       den = -den;
     }
   }
+  /// Overloads for passing literals.
   Fraction(const MPInt &num, int64_t den) : Fraction(num, MPInt(den)) {}
   Fraction(int64_t num, const MPInt &den) : Fraction(MPInt(num), den) {}
   Fraction(int64_t num, int64_t den) : Fraction(MPInt(num), MPInt(den)) {}

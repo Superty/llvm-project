@@ -17,13 +17,30 @@
 using namespace mlir;
 using namespace presburger;
 
+/// Convenience functions to pass literals to Simplex.
 void addInequality(SimplexBase &simplex, ArrayRef<int64_t> coeffs) {
   simplex.addInequality(getMPIntVec(coeffs));
 }
 void addEquality(SimplexBase &simplex, ArrayRef<int64_t> coeffs) {
   simplex.addEquality(getMPIntVec(coeffs));
 }
+bool isRedundantInequality(Simplex &simplex, ArrayRef<int64_t> coeffs) {
+  return simplex.isRedundantInequality(getMPIntVec(coeffs));
+}
+bool isRedundantInequality(LexSimplex &simplex, ArrayRef<int64_t> coeffs) {
+  return simplex.isRedundantInequality(getMPIntVec(coeffs));
+}
+bool isRedundantEquality(Simplex &simplex, ArrayRef<int64_t> coeffs) {
+  return simplex.isRedundantEquality(getMPIntVec(coeffs));
+}
+bool isSeparateInequality(LexSimplex &simplex, ArrayRef<int64_t> coeffs) {
+  return simplex.isSeparateInequality(getMPIntVec(coeffs));
+}
 
+Simplex::IneqType findIneqType(Simplex &simplex, ArrayRef<int64_t> coeffs) {
+  return simplex.findIneqType(getMPIntVec(coeffs));
+}
+ 
 /// Take a snapshot, add constraints making the set empty, and rollback.
 /// The set should not be empty after rolling back. We add additional
 /// constraints after the set is already empty and roll back the addition
@@ -415,7 +432,7 @@ TEST(SimplexTest, pivotRedundantRegressionTest) {
   // The maximum value of x should be -1.
   simplex.rollback(snapshot);
   MaybeOptimum<Fraction> maxX =
-      simplex.computeOptimum(Simplex::Direction::Up, {1, 0, 0});
+      simplex.computeOptimum(Simplex::Direction::Up, getMPIntVec({1, 0, 0}));
   EXPECT_TRUE(maxX.isBounded() && *maxX == Fraction(-1, 1));
 }
 
@@ -448,7 +465,7 @@ TEST(SimplexTest, appendVariable) {
 
   EXPECT_EQ(simplex.getNumVariables(), 2u);
   EXPECT_EQ(simplex.getNumConstraints(), 2u);
-  EXPECT_EQ(simplex.computeIntegerBounds({0, 1, 0}),
+  EXPECT_EQ(simplex.computeIntegerBounds(getMPIntVec({0, 1, 0})),
             std::make_pair(MaybeOptimum<MPInt>(MPInt(yMin)),
                            MaybeOptimum<MPInt>(MPInt(yMax))));
 
@@ -463,12 +480,12 @@ TEST(SimplexTest, isRedundantInequality) {
   addInequality(simplex, {1, 0, 0});  // x >= 0.
   addEquality(simplex, {-1, 1, 0});   // y = x.
 
-  EXPECT_TRUE(simplex.isRedundantInequality({-1, 0, 2})); // x <= 2.
-  EXPECT_TRUE(simplex.isRedundantInequality({0, 1, 0}));  // y >= 0.
+  EXPECT_TRUE(isRedundantInequality(simplex, {-1, 0, 2})); // x <= 2.
+  EXPECT_TRUE(isRedundantInequality(simplex, {0, 1, 0}));  // y >= 0.
 
-  EXPECT_FALSE(simplex.isRedundantInequality({-1, 0, -1})); // x <= -1.
-  EXPECT_FALSE(simplex.isRedundantInequality({0, 1, -2}));  // y >= 2.
-  EXPECT_FALSE(simplex.isRedundantInequality({0, 1, -1}));  // y >= 1.
+  EXPECT_FALSE(isRedundantInequality(simplex, {-1, 0, -1})); // x <= -1.
+  EXPECT_FALSE(isRedundantInequality(simplex, {0, 1, -2}));  // y >= 2.
+  EXPECT_FALSE(isRedundantInequality(simplex, {0, 1, -1}));  // y >= 1.
 }
 
 TEST(SimplexTest, ineqType) {
@@ -477,19 +494,19 @@ TEST(SimplexTest, ineqType) {
   addInequality(simplex, {1, 0, 0});  // x >= 0.
   addEquality(simplex, {-1, 1, 0});   // y = x.
 
-  EXPECT_TRUE(simplex.findIneqType({-1, 0, 2}) ==
+  EXPECT_EQ(findIneqType(simplex, {-1, 0, 2}),
               Simplex::IneqType::Redundant); // x <= 2.
-  EXPECT_TRUE(simplex.findIneqType({0, 1, 0}) ==
+  EXPECT_EQ(findIneqType(simplex, {0, 1, 0}),
               Simplex::IneqType::Redundant); // y >= 0.
 
-  EXPECT_TRUE(simplex.findIneqType({0, 1, -1}) ==
+  EXPECT_EQ(findIneqType(simplex, {0, 1, -1}),
               Simplex::IneqType::Cut); // y >= 1.
-  EXPECT_TRUE(simplex.findIneqType({-1, 0, 1}) ==
+  EXPECT_EQ(findIneqType(simplex, {-1, 0, 1}),
               Simplex::IneqType::Cut); // x <= 1.
-  EXPECT_TRUE(simplex.findIneqType({0, 1, -2}) ==
+  EXPECT_EQ(findIneqType(simplex, {0, 1, -2}),
               Simplex::IneqType::Cut); // y >= 2.
 
-  EXPECT_TRUE(simplex.findIneqType({-1, 0, -1}) ==
+  EXPECT_EQ(findIneqType(simplex, {-1, 0, -1}),
               Simplex::IneqType::Separate); // x <= -1.
 }
 
@@ -499,14 +516,14 @@ TEST(SimplexTest, isRedundantEquality) {
   addInequality(simplex, {1, 0, 0});  // x >= 0.
   addEquality(simplex, {-1, 1, 0});   // y = x.
 
-  EXPECT_TRUE(simplex.isRedundantEquality({-1, 1, 0})); // y = x.
-  EXPECT_TRUE(simplex.isRedundantEquality({1, -1, 0})); // x = y.
+  EXPECT_TRUE(isRedundantEquality(simplex, {-1, 1, 0})); // y = x.
+  EXPECT_TRUE(isRedundantEquality(simplex, {1, -1, 0})); // x = y.
 
-  EXPECT_FALSE(simplex.isRedundantEquality({0, 1, -1})); // y = 1.
+  EXPECT_FALSE(isRedundantEquality(simplex, {0, 1, -1})); // y = 1.
 
   addEquality(simplex, {0, -1, 2}); // y = 2.
 
-  EXPECT_TRUE(simplex.isRedundantEquality({-1, 0, 2})); // x = 2.
+  EXPECT_TRUE(isRedundantEquality(simplex, {-1, 0, 2})); // x = 2.
 }
 
 TEST(SimplexTest, IsRationalSubsetOf) {
@@ -548,7 +565,7 @@ TEST(SimplexTest, IsRationalSubsetOf) {
 
 TEST(SimplexTest, addDivisionVariable) {
   Simplex simplex(/*nVar=*/1);
-  simplex.addDivisionVariable({1, 0}, 2);
+  simplex.addDivisionVariable(getMPIntVec({1, 0}), MPInt(2));
   addInequality(simplex, {1, 0, -3}); // x >= 3.
   addInequality(simplex, {-1, 0, 9}); // x <= 9.
   Optional<SmallVector<MPInt, 8>> sample = simplex.findIntegerSample();
@@ -561,14 +578,14 @@ TEST(SimplexTest, LexIneqType) {
   addInequality(simplex, {2, -1}); // x >= 1/2.
 
   // Redundant inequality x >= 2/3.
-  EXPECT_TRUE(simplex.isRedundantInequality({3, -2}));
-  EXPECT_FALSE(simplex.isSeparateInequality({3, -2}));
+  EXPECT_TRUE(isRedundantInequality(simplex, {3, -2}));
+  EXPECT_FALSE(isSeparateInequality(simplex, {3, -2}));
 
   // Separate inequality x <= 2/3.
-  EXPECT_FALSE(simplex.isRedundantInequality({-3, 2}));
-  EXPECT_TRUE(simplex.isSeparateInequality({-3, 2}));
+  EXPECT_FALSE(isRedundantInequality(simplex, {-3, 2}));
+  EXPECT_TRUE(isSeparateInequality(simplex, {-3, 2}));
 
   // Cut inequality x <= 1.
-  EXPECT_FALSE(simplex.isRedundantInequality({-1, 1}));
-  EXPECT_FALSE(simplex.isSeparateInequality({-1, 1}));
+  EXPECT_FALSE(isRedundantInequality(simplex, {-1, 1}));
+  EXPECT_FALSE(isSeparateInequality(simplex, {-1, 1}));
 }
