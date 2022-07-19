@@ -1852,11 +1852,13 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
 
       // Check the value at u - 1.
       assert(gbrSimplex.computeWidth(scaleAndAddForAssert(
-                 basis.getRow(i + 1), MPInt(-1), basis.getRow(i))) >= widthI[j] &&
+                 basis.getRow(i + 1), MPInt(-1), basis.getRow(i))) >=
+                 widthI[j] &&
              "Computed u value does not minimize the width!");
       // Check the value at u + 1.
       assert(gbrSimplex.computeWidth(scaleAndAddForAssert(
-                 basis.getRow(i + 1), MPInt(+1), basis.getRow(i))) >= widthI[j] &&
+                 basis.getRow(i + 1), MPInt(+1), basis.getRow(i))) >=
+                 widthI[j] &&
              "Computed u value does not minimize the width!");
 
       dual = std::move(candidateDual[j]);
