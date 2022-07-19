@@ -109,8 +109,9 @@ struct MaybeLocalRepr {
 /// system. The coefficients of the dividends are stored in order:
 /// [nonLocalVars, localVars, constant]. Each local variable may or may not have
 /// a representation. If the local does not have a representation, the dividend
-/// of the division has no meaning and the denominator is zero.
-///
+/// of the division has no meaning and the denominator is zero. If it has a
+/// representation, the denominator will be positive.
+/// 
 /// The i^th division here, represents the division representation of the
 /// variable at position `divOffset + i` in the constraint system.
 class DivisionRepr {
@@ -172,6 +173,7 @@ private:
 
   /// Denominators of each division. If a denominator of a division is `0`, the
   /// division variable is considered to not have a division representation.
+  /// Otherwise, the denominator is positive.
   SmallVector<MPInt, 4> denoms;
 };
 
@@ -189,6 +191,7 @@ private:
 ///
 /// The coefficient of `q` in `dividend` must be zero, as it is not allowed for
 /// local variable to be a floor division of an expression involving itself.
+/// The divisor must be positive.
 SmallVector<MPInt, 8> getDivUpperBound(ArrayRef<MPInt> dividend,
                                        const MPInt &divisor,
                                        unsigned localVarIdx);
@@ -207,11 +210,12 @@ llvm::SmallBitVector getSubrangeBitVector(unsigned len, unsigned setOffset,
 SmallVector<MPInt, 8> getMPIntVec(ArrayRef<int64_t> range);
 /// Return the given array as an array of int64_t.
 SmallVector<int64_t, 8> getInt64Vec(ArrayRef<MPInt> range);
+
 /// Returns the `MaybeLocalRepr` struct which contains the indices of the
 /// constraints that can be expressed as a floordiv of an affine function. If
-/// the representation could be computed, `dividend` and `denominator` are set.
-/// If the representation could not be computed, the kind attribute in
-/// `MaybeLocalRepr` is set to None.
+/// the representation could be computed, `dividend` and `divisor` are set,
+/// in which case, denominator will be positive. If the representation could
+/// not be computed, the kind attribute in `MaybeLocalRepr` is set to None.
 MaybeLocalRepr computeSingleVarRepr(const IntegerRelation &cst,
                                     ArrayRef<bool> foundRepr, unsigned pos,
                                     MutableArrayRef<MPInt> dividend,
@@ -247,7 +251,7 @@ MPInt normalizeRange(MutableArrayRef<MPInt> range);
 
 /// Normalize the given (numerator, denominator) pair by dividing out the
 /// common factors between them. The numerator here is an affine expression
-/// with integer coefficients.
+/// with integer coefficients. The denominator must be positive.
 void normalizeDiv(MutableArrayRef<MPInt> num, MPInt &denom);
 
 /// Return `coeffs` with all the elements negated.

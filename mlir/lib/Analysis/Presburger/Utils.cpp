@@ -21,9 +21,11 @@ using namespace presburger;
 
 /// Normalize a division's `dividend` and the `divisor` by their GCD. For
 /// example: if the dividend and divisor are [2,0,4] and 4 respectively,
-/// they get normalized to [1,0,2] and 2.
+/// they get normalized to [1,0,2] and 2. The divisor must be non-negative;
+/// it is allowed for the divisor to be zero, but nothing is done in this case.
 static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
                                    MPInt &divisor) {
+  assert(divisor > 0 && "divisor must be non-negative!");
   if (divisor == 0 || dividend.empty())
     return;
   // We take the absolute value of dividend's coefficients to make sure that
@@ -85,8 +87,8 @@ static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
 ///    -divisor * var + expr - c             >= 0  <-- Upper bound for 'var'
 ///
 /// If successful, `expr` is set to dividend of the division and `divisor` is
-/// set to the denominator of the division. The final division expression is
-/// normalized by GCD.
+/// set to the denominator of the division, which will be positive.
+/// The final division expression is normalized by GCD. 
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned ubIneq, unsigned lbIneq,
                                 MutableArrayRef<MPInt> expr, MPInt &divisor) {
@@ -97,6 +99,8 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
   assert(lbIneq <= cst.getNumInequalities() &&
          "Invalid upper bound inequality position");
   assert(expr.size() == cst.getNumCols() && "Invalid expression size");
+  assert(cst.atIneq(lbIneq, pos) > 0 && "lbIneq is not a lower bound!");
+  assert(cst.atIneq(ubIneq, pos) < 0 && "ubIneq is not an upper bound!");
 
   // Extract divisor from the lower bound.
   divisor = cst.atIneq(lbIneq, pos);
@@ -118,8 +122,8 @@ static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                       cst.atIneq(ubIneq, cst.getNumCols() - 1);
   MPInt c = divisor - 1 - constantSum;
 
-  // Check if `c` satisfies the condition `0 <= c <= divisor - 1`. This also
-  // implictly checks that `divisor` is positive.
+  // Check if `c` satisfies the condition `0 <= c <= divisor - 1`.
+  // This also implictly checks that `divisor` is positive.
   if (!(0 <= c && c <= divisor - 1)) // NOLINT
     return failure();
 
@@ -306,6 +310,7 @@ void presburger::mergeLocalVars(
 SmallVector<MPInt, 8> presburger::getDivUpperBound(ArrayRef<MPInt> dividend,
                                                    const MPInt &divisor,
                                                    unsigned localVarIdx) {
+  assert(divisor > 0 && "divisor must be positive!");
   assert(dividend[localVarIdx] == 0 &&
          "Local to be set to division must have zero coeff!");
   SmallVector<MPInt, 8> ineq(dividend.begin(), dividend.end());
@@ -316,6 +321,7 @@ SmallVector<MPInt, 8> presburger::getDivUpperBound(ArrayRef<MPInt> dividend,
 SmallVector<MPInt, 8> presburger::getDivLowerBound(ArrayRef<MPInt> dividend,
                                                    const MPInt &divisor,
                                                    unsigned localVarIdx) {
+  assert(divisor > 0 && "divisor must be positive!");
   assert(dividend[localVarIdx] == 0 &&
          "Local to be set to division must have zero coeff!");
   SmallVector<MPInt, 8> ineq(dividend.size());

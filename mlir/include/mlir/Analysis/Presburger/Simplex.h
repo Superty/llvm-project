@@ -184,6 +184,8 @@ public:
 
   /// Append a new variable to the simplex and constrain it such that its only
   /// integer value is the floor div of `coeffs` and `denom`.
+  /// 
+  /// `denom` must be positive.
   void addDivisionVariable(ArrayRef<MPInt> coeffs, const MPInt &denom);
 
   /// Mark the tableau as being empty.

@@ -1271,7 +1271,7 @@ void SimplexBase::rollback(unsigned snapshot) {
 /// range `[0, denom - 1]`, which fixes the integer value of the quotient `q`.
 void SimplexBase::addDivisionVariable(ArrayRef<MPInt> coeffs,
                                       const MPInt &denom) {
-  assert(denom != 0 && "Cannot divide by zero!\n");
+  assert(denom > 0 && "Denominator must be positive!");
   appendVariable();
 
   SmallVector<MPInt, 8> ineq(coeffs.begin(), coeffs.end());
