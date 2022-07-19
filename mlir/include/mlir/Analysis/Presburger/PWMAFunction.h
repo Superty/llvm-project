@@ -62,7 +62,7 @@ public:
   /// Get a matrix with each row representing row^th output expression.
   const Matrix &getOutputMatrix() const { return output; }
   /// Get the `i^th` output expression.
-  ArrayRef<int64_t> getOutputExpr(unsigned i) const { return output.getRow(i); }
+  ArrayRef<MPInt> getOutputExpr(unsigned i) const { return output.getRow(i); }
 
   /// Insert `num` variables of the specified kind at position `pos`.
   /// Positions are relative to the kind of variable. The coefficient columns
@@ -91,7 +91,10 @@ public:
 
   /// Get the value of the function at the specified point. If the point lies
   /// outside the domain, an empty optional is returned.
-  Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
+  Optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<MPInt> point) const;
+  Optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<int64_t> point) const {
+    return valueAt(getMPIntVec(point));
+  }
 
   /// Truncate the output dimensions to the first `count` dimensions.
   ///
@@ -159,7 +162,10 @@ public:
 
   /// Return the value at the specified point and an empty optional if the
   /// point does not lie in the domain.
-  Optional<SmallVector<int64_t, 8>> valueAt(ArrayRef<int64_t> point) const;
+  Optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<MPInt> point) const;
+  Optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<int64_t> point) const {
+    return valueAt(getMPIntVec(point));
+  }
 
   /// Return whether `this` and `other` are equal as PWMAFunctions, i.e. whether
   /// they have the same dimensions, the same domain and they take the same
