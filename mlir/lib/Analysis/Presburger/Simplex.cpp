@@ -22,7 +22,7 @@ const int nullIndex = std::numeric_limits<int>::max();
 // Return a + scale*b;
 LLVM_ATTRIBUTE_UNUSED
 static SmallVector<MPInt, 8>
-scaleAndAddForAssert(ArrayRef<MPInt> a, int64_t scale, ArrayRef<MPInt> b) {
+scaleAndAddForAssert(ArrayRef<MPInt> a, const MPInt &scale, ArrayRef<MPInt> b) {
   assert(a.size() == b.size());
   SmallVector<MPInt, 8> res;
   res.reserve(a.size());
@@ -1852,11 +1852,11 @@ void Simplex::reduceBasis(Matrix &basis, unsigned level) {
 
       // Check the value at u - 1.
       assert(gbrSimplex.computeWidth(scaleAndAddForAssert(
-                 basis.getRow(i + 1), -1, basis.getRow(i))) >= widthI[j] &&
+                 basis.getRow(i + 1), MPInt(-1), basis.getRow(i))) >= widthI[j] &&
              "Computed u value does not minimize the width!");
       // Check the value at u + 1.
       assert(gbrSimplex.computeWidth(scaleAndAddForAssert(
-                 basis.getRow(i + 1), +1, basis.getRow(i))) >= widthI[j] &&
+                 basis.getRow(i + 1), MPInt(+1), basis.getRow(i))) >= widthI[j] &&
              "Computed u value does not minimize the width!");
 
       dual = std::move(candidateDual[j]);

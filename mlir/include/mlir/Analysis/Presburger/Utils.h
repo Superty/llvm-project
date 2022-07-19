@@ -111,7 +111,7 @@ struct MaybeLocalRepr {
 /// a representation. If the local does not have a representation, the dividend
 /// of the division has no meaning and the denominator is zero. If it has a
 /// representation, the denominator will be positive.
-/// 
+///
 /// The i^th division here, represents the division representation of the
 /// variable at position `divOffset + i` in the constraint system.
 class DivisionRepr {

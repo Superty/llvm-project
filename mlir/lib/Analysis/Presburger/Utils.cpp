@@ -88,7 +88,7 @@ static void normalizeDivisionByGCD(MutableArrayRef<MPInt> dividend,
 ///
 /// If successful, `expr` is set to dividend of the division and `divisor` is
 /// set to the denominator of the division, which will be positive.
-/// The final division expression is normalized by GCD. 
+/// The final division expression is normalized by GCD.
 static LogicalResult getDivRepr(const IntegerRelation &cst, unsigned pos,
                                 unsigned ubIneq, unsigned lbIneq,
                                 MutableArrayRef<MPInt> expr, MPInt &divisor) {
