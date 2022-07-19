@@ -368,6 +368,17 @@ TEST(SetTest, Complement) {
        {2, 10},
        {2, 11},
        {1, 10}});
+
+   PresburgerSet set = parsePresburgerSetFromPolyStrings(3, {"(x, y, z) : (-1 + 1*x >= 0, -2147483648 + -1*y >= 0)", "(x, y, z) : (-1 + 1*x >= 0, -2147483648 + 1*y >= 0)", "(x, y, z) : (-1 + 1*x >= 0, -2 + 1*y >= 0, 2147483647 + -1*y >= 0, -2147483648 + -1*z >= 0)", "(x, y, z) : (-1 + 1*x >= 0, -2 + 1*y >= 0, 2147483647 + -1*y >= 0, -2147483648 + 1*z >= 0)", "(x, y, z) : (-1 + 1*x >= 0, 2147483647 + 1*y >= 0, -1*y >= 0, -2147483648 + 1*z >= 0)", "(x, y, z) : (-2147483648 + 1*x >= 0, 2147483647 + -1*z >= 0, 2147483647 + 1*y >= 0, -1*y >= 0)", "(x, y, z) : (-2147483648 + 1*x >= 0, 2147483647 + -1*z >= 0, -2 + 1*y >= 0, 2147483647 + -1*y >= 0, 2147483647 + 1*z >= 0)", "(x, y, z) : (-1 + 1*y == 0, -1 + 1*x >= 0, -2147483648 + 1*z >= 0)", "(x, y, z) : (-1 + 1*y == 0, -2147483648 + 1*x >= 0, 2147483647 + -1*z >= 0)"});
+   PresburgerSet complement = set.complement();
+   ASSERT_FALSE(set.isIntegerEmpty());
+   EXPECT_FALSE(set.isEqual(complement));
+   EXPECT_TRUE(set.isEqual(set));
+   EXPECT_TRUE(set.subtract(complement).isEqual(set));
+   EXPECT_TRUE(set.isEqual(complement.complement()));
+
+   PresburgerSet universe3 = PresburgerSet::getUniverse(PresburgerSpace::getSetSpace(3));
+   EXPECT_TRUE(set.unionSet(complement).isEqual(universe3));
 }
 
 TEST(SetTest, isEqual) {

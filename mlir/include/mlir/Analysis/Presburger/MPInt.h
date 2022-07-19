@@ -98,6 +98,7 @@ private:
     holdsLarge = false;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE void initLarge(const detail::SlowMPInt &o) {
+    llvm::errs() << "initLarge ";
     if (LLVM_LIKELY(isSmall())) {
       // The data in memory could be in an arbitrary state, not necessarily
       // corresponding to any valid state of valLarge; we cannot call any member
