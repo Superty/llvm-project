@@ -451,6 +451,8 @@ std::optional<SDBMExpr> SDBMExpr::tryConvertAffineExpr(AffineExpr affine) {
       AffineExprMatcher x, C;
       AffineExprMatcher pattern = (x.floorDiv(C)) * C;
       if (pattern.match(expr)) {
+        if (!C.getMatchedConstantValue())
+          return {};
         if (SDBMExpr converted = visit(x.matched())) {
           if (auto varConverted = converted.dyn_cast<SDBMTermExpr>())
             // TODO: return varConverted.stripe(C.getConstantValue());
@@ -495,7 +497,7 @@ std::optional<SDBMExpr> SDBMExpr::tryConvertAffineExpr(AffineExpr affine) {
       // and its RHS is a constant.  Then it `x mod c = x - x stripe c`.
       auto rhsConstant = rhs.dyn_cast<SDBMConstantExpr>();
       auto lhsVar = lhs.dyn_cast<SDBMDirectExpr>();
-      if (!lhsVar || !rhsConstant)
+      if (!lhsVar || !rhsConstant || rhsConstant.getValue() <= 0)
         return {};
       return SDBMDiffExpr::get(lhsVar,
                                SDBMStripeExpr::get(lhsVar, rhsConstant));
