@@ -30,6 +30,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -670,11 +671,22 @@ static unsigned getBestVarToEliminate(const IntegerRelation &cst,
   return minLoc;
 }
 
+std::atomic<int> &getNumPresburgerEmptinessChecks() {
+  static std::atomic<int> counter;
+  return counter;
+}
+std::atomic<int> &getNumCompatiblePresburgerEmptinessChecks() {
+  static std::atomic<int> counter;
+  return counter;
+}
+
 // Checks for emptiness of the set by eliminating variables successively and
 // using the GCD test (on all equality constraints) and checking for trivially
 // invalid constraints. Returns 'true' if the constraint system is found to be
 // empty; false otherwise.
 bool IntegerRelation::isEmpty() const {
+  ++getNumPresburgerEmptinessChecks();
+
   if (isEmptyByGCDTest() || hasInvalidConstraint())
     return true;
 
@@ -804,7 +816,10 @@ IntMatrix IntegerRelation::getBoundedDirections() const {
   return dirs;
 }
 
-bool IntegerRelation::isIntegerEmpty() const { return !findIntegerSample(); }
+bool IntegerRelation::isIntegerEmpty() const {
+  ++getNumPresburgerEmptinessChecks();
+  return !findIntegerSample();
+}
 
 /// Let this set be S. If S is bounded then we directly call into the GBR
 /// sampling algorithm. Otherwise, there are some unbounded directions, i.e.,

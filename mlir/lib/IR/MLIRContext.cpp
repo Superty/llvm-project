@@ -1166,7 +1166,10 @@ AffineMap AffineMap::getImpl(unsigned dimCount, unsigned symbolCount,
   auto *storage = impl.affineUniquer.get<AffineMapStorage>(
       [&](AffineMapStorage *storage) { storage->context = context; }, dimCount,
       symbolCount, results);
-  return AffineMap(storage);
+  auto map = AffineMap(storage);
+  if (context->affineMapPostCreationHook)
+    context->affineMapPostCreationHook(map.getAsOpaquePointer());
+  return map;
 }
 
 /// Check whether the arguments passed to the AffineMap::get() are consistent.

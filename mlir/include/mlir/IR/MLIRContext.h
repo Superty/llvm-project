@@ -275,6 +275,10 @@ public:
       actionFn();
   }
 
+  /// Hook called immediately after creating an affine map for statistic
+  /// collection purposes. The affine map is passed in as an opaque pointer.
+  std::function<void(const void *)> affineMapPostCreationHook = nullptr;
+
 private:
   /// Return true if the given dialect is currently loading.
   bool isDialectLoading(StringRef dialectNamespace);

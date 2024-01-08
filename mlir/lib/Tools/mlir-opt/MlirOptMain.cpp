@@ -20,6 +20,8 @@
 #include "mlir/Debug/Observers/ActionLogging.h"
 #include "mlir/Dialect/IRDL/IR/IRDL.h"
 #include "mlir/Dialect/IRDL/IRDLLoading.h"
+#include "mlir/Dialect/SDBM/SDBMDialect.h"
+#include "mlir/Dialect/SDBM/SDBMExpr.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -38,6 +40,7 @@
 #include "mlir/Tools/Plugins/PassPlugin.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FileUtilities.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/ManagedStatic.h"
@@ -47,9 +50,14 @@
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/raw_ostream.h"
+#include <atomic>
 
 using namespace mlir;
 using namespace llvm;
+
+std::atomic<int> &getNumPresburgerEmptinessChecks();
+std::atomic<int> &getNumCompatiblePresburgerEmptinessChecks();
 
 namespace {
 class BytecodeVersionParser : public cl::parser<std::optional<int64_t>> {
@@ -425,11 +433,12 @@ performActions(raw_ostream &os,
 
 /// Parses the memory buffer.  If successfully, run a series of passes against
 /// it and print the result.
-static LogicalResult processBuffer(raw_ostream &os,
-                                   std::unique_ptr<MemoryBuffer> ownedBuffer,
-                                   const MlirOptMainConfig &config,
-                                   DialectRegistry &registry,
-                                   llvm::ThreadPool *threadPool) {
+static LogicalResult
+processBuffer(raw_ostream &os, std::unique_ptr<MemoryBuffer> ownedBuffer,
+              const MlirOptMainConfig &config, DialectRegistry &registry,
+              llvm::ThreadPool *threadPool,
+              llvm::function_ref<void(const void *)> affineMapPostCreationHook =
+                  nullptr) {
   // Tell sourceMgr about this buffer, which is what the parser will pick up.
   auto sourceMgr = std::make_shared<SourceMgr>();
   sourceMgr->AddNewSourceBuffer(std::move(ownedBuffer), SMLoc());
@@ -437,6 +446,8 @@ static LogicalResult processBuffer(raw_ostream &os,
   // Create a context just for the current buffer. Disable threading on creation
   // since we'll inject the thread-pool separately.
   MLIRContext context(registry, MLIRContext::Threading::DISABLED);
+  context.affineMapPostCreationHook = affineMapPostCreationHook;
+  context.loadDialect<SDBMDialect>();
   if (threadPool)
     context.setThreadPool(*threadPool);
 
@@ -525,14 +536,61 @@ LogicalResult mlir::MlirOptMain(llvm::raw_ostream &outputStream,
   if (threadPoolCtx.isMultithreadingEnabled())
     threadPool = &threadPoolCtx.getThreadPool();
 
+  static std::atomic<int64_t> numAffineMaps = 0;
+  static std::atomic<int64_t> numAffineExprs = 0;
+  static std::atomic<int64_t> numCompatibleMaps = 0;
+  static std::atomic<int64_t> numCompatibleExprs = 0;
+  auto affineMapPostCreationHook = [&](const void *ptr) {
+    AffineMap map = AffineMap::getFromOpaquePointer(ptr);
+    ++numAffineMaps;
+    numAffineExprs += map.getNumResults();
+
+    int64_t localNumCompatibleExprs = 0;
+    for (AffineExpr expr : map.getResults()) {
+      if (!SDBMExpr::tryConvertAffineExpr(expr))
+        continue;
+      ++localNumCompatibleExprs;
+    }
+    numCompatibleExprs += localNumCompatibleExprs;
+    if (localNumCompatibleExprs == map.getNumResults())
+      ++numCompatibleMaps;
+  };
+
   auto chunkFn = [&](std::unique_ptr<MemoryBuffer> chunkBuffer,
                      raw_ostream &os) {
     return processBuffer(os, std::move(chunkBuffer), config, registry,
-                         threadPool);
+                         threadPool, affineMapPostCreationHook);
   };
-  return splitAndProcessBuffer(std::move(buffer), chunkFn, outputStream,
-                               config.shouldSplitInputFile(),
-                               /*insertMarkerInOutput=*/true);
+  std::string bufferName = buffer->getBufferIdentifier().str();
+  LogicalResult result = splitAndProcessBuffer(
+      std::move(buffer), chunkFn, outputStream, config.shouldSplitInputFile(),
+      /*insertMarkerInOutput=*/true);
+
+  {
+    int fd;
+    std::error_code errc = llvm::sys::fs::openFile(
+        "/tmp/pb_stats.txt", fd, sys::fs::CreationDisposition::CD_OpenExisting,
+        sys::fs::FileAccess::FA_Write,
+        sys::fs::OpenFlags::OF_Append | sys::fs::OpenFlags::OF_Text);
+    if (errc)
+      llvm::report_fatal_error(errc.message().c_str());
+
+    llvm::raw_fd_ostream os(fd, /*shouldClose=*/true);
+    Expected<sys::fs::FileLocker> locker = os.lock();
+    if (!locker)
+      llvm::report_fatal_error(locker.takeError());
+
+    os << bufferName << " ";
+    os << "stats: ";
+    os << getNumPresburgerEmptinessChecks().load();
+    // llvm::interleaveComma(
+    //     ArrayRef({numAffineMaps.load(), numCompatibleMaps.load(),
+    //               numAffineExprs.load(), numCompatibleExprs.load(),}),
+    //     os);
+    os << "\n";
+  }
+
+  return result;
 }
 
 LogicalResult mlir::MlirOptMain(int argc, char **argv,
