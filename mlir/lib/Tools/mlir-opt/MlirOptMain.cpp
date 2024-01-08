@@ -12,6 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
+#include "mlir/Analysis/FlatLinearValueConstraints.h"
+#include "mlir/Analysis/Presburger/IntegerRelation.h"
 #include "mlir/Bytecode/BytecodeWriter.h"
 #include "mlir/Debug/CLOptionsSetup.h"
 #include "mlir/Debug/Counter.h"
@@ -27,6 +29,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Dialect.h"
+#include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Parser/Parser.h"
@@ -52,6 +55,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
 #include <atomic>
+#include <vector>
 
 using namespace mlir;
 using namespace llvm;
@@ -512,6 +516,27 @@ mlir::registerAndParseCLIOptions(int argc, char **argv,
   return std::make_pair(inputFilename.getValue(), outputFilename.getValue());
 }
 
+std::vector<presburger::IntegerRelation> &
+getIntegerRelationsForEmptinessCheck();
+
+static std::pair<size_t, size_t>
+checkRecordedIntegerRelations(MLIRContext &context) {
+  using namespace presburger;
+  size_t numCompatibleRelations = 0;
+  for (const IntegerRelation &relation :
+       getIntegerRelationsForEmptinessCheck()) {
+    IntegerRelation rel(relation);
+    rel.convertVarKind(VarKind::Domain, 0, rel.getNumDomainVars(),
+                       VarKind::Range);
+    FlatLinearConstraints flc((IntegerPolyhedron(rel)));
+    IntegerSet set = flc.getAsIntegerSet(&context);
+    numCompatibleRelations +=
+        llvm::all_of(set.getConstraints(), SDBMExpr::tryConvertAffineExpr);
+  }
+  return std::make_pair(getIntegerRelationsForEmptinessCheck().size(),
+                        numCompatibleRelations);
+}
+
 LogicalResult mlir::MlirOptMain(llvm::raw_ostream &outputStream,
                                 std::unique_ptr<llvm::MemoryBuffer> buffer,
                                 DialectRegistry &registry,
@@ -580,13 +605,22 @@ LogicalResult mlir::MlirOptMain(llvm::raw_ostream &outputStream,
     if (!locker)
       llvm::report_fatal_error(locker.takeError());
 
+    MLIRContext localContext;
+    auto [numTotalEmptinessChecks, numCompatibleEmptinessChecks] =
+        checkRecordedIntegerRelations(localContext);
     os << bufferName << " ";
     os << "stats: ";
-    os << getNumPresburgerEmptinessChecks().load();
-    // llvm::interleaveComma(
-    //     ArrayRef({numAffineMaps.load(), numCompatibleMaps.load(),
-    //               numAffineExprs.load(), numCompatibleExprs.load(),}),
-    //     os);
+    os << numTotalEmptinessChecks;
+    os << ", ";
+    os << numCompatibleEmptinessChecks;
+    os << ", ";
+    llvm::interleaveComma(ArrayRef({
+                              numAffineMaps.load(),
+                              numCompatibleMaps.load(),
+                              numAffineExprs.load(),
+                              numCompatibleExprs.load(),
+                          }),
+                          os);
     os << "\n";
   }
 

@@ -13,4 +13,5 @@ add_mlir_library(MLIRPresburger
 
   LINK_LIBS PUBLIC
   MLIRSupport
+  MLIRSDBM
   )

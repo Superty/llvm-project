@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
+#include "mlir/Analysis/FlatLinearValueConstraints.h"
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/LinearTransform.h"
 #include "mlir/Analysis/Presburger/MPInt.h"
@@ -21,19 +22,29 @@
 #include "mlir/Analysis/Presburger/PresburgerSpace.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
+#include "mlir/Dialect/SDBM/SDBM.h"
+#include "mlir/Dialect/SDBM/SDBMExpr.h"
+#include "mlir/IR/AffineExpr.h"
+#include "mlir/IR/IntegerSet.h"
+#include "mlir/IR/MLIRContext.h"
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/ADT/SmallVectorExtras.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Signals.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -671,13 +682,19 @@ static unsigned getBestVarToEliminate(const IntegerRelation &cst,
   return minLoc;
 }
 
-std::atomic<int> &getNumPresburgerEmptinessChecks() {
-  static std::atomic<int> counter;
-  return counter;
+std::vector<IntegerRelation> &getIntegerRelationsForEmptinessCheck() {
+  static std::vector<IntegerRelation> relations = {};
+  return relations;
 }
-std::atomic<int> &getNumCompatiblePresburgerEmptinessChecks() {
-  static std::atomic<int> counter;
-  return counter;
+
+std::mutex &getIntegerRelationsMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
+
+static void isSDBM(const IntegerRelation &relation) {
+  std::lock_guard<std::mutex> guard(getIntegerRelationsMutex());
+  getIntegerRelationsForEmptinessCheck().push_back(relation);
 }
 
 // Checks for emptiness of the set by eliminating variables successively and
@@ -685,7 +702,7 @@ std::atomic<int> &getNumCompatiblePresburgerEmptinessChecks() {
 // invalid constraints. Returns 'true' if the constraint system is found to be
 // empty; false otherwise.
 bool IntegerRelation::isEmpty() const {
-  ++getNumPresburgerEmptinessChecks();
+  isSDBM(*this);
 
   if (isEmptyByGCDTest() || hasInvalidConstraint())
     return true;
@@ -817,7 +834,7 @@ IntMatrix IntegerRelation::getBoundedDirections() const {
 }
 
 bool IntegerRelation::isIntegerEmpty() const {
-  ++getNumPresburgerEmptinessChecks();
+  isSDBM(*this);
   return !findIntegerSample();
 }
 
