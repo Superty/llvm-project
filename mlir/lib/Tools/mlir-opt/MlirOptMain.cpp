@@ -533,6 +533,7 @@ checkRecordedIntegerRelations(MLIRContext &context) {
     IntegerSet set = flc.getAsIntegerSet(&context);
     bool isSDBMCompatible =
         llvm::all_of(set.getConstraints(), SDBMExpr::tryConvertAffineExpr);
+
     if (isSDBMCompatible) {
       numCompatibleRelations++;
       SmallVector<int64_t, 8> stripeFactors;
@@ -540,15 +541,53 @@ checkRecordedIntegerRelations(MLIRContext &context) {
         auto sdbmExpr = SDBMExpr::tryConvertAffineExpr(expr).value();
         sdbmExpr.getStripeConstants(stripeFactors);
       }
+      if (stripeFactors.empty())
+        continue;
+
+      
       sort(stripeFactors.begin(), stripeFactors.end());
       bool isHSDBMCompatible = true;
-      for (int i = 0; i < stripeFactors.size() - 1; ++i) {
+      for (int i = 0; i < int(stripeFactors.size()) - 1; ++i) {
         if (stripeFactors[i + 1] % stripeFactors[i] != 0) {
           isHSDBMCompatible = false;
           break;
         }
       }
+
+      {
+        int fd;
+        std::error_code errc = llvm::sys::fs::openFile(
+            "/tmp/sdbm_strides.txt", fd, sys::fs::CreationDisposition::CD_OpenExisting,
+            sys::fs::FileAccess::FA_Write,
+            sys::fs::OpenFlags::OF_Append | sys::fs::OpenFlags::OF_Text);
+        if (errc)
+          llvm::report_fatal_error(errc.message().c_str());
+
+        llvm::raw_fd_ostream os(fd, /*shouldClose=*/true);
+        Expected<sys::fs::FileLocker> locker = os.lock();
+        if (!locker)
+          llvm::report_fatal_error(locker.takeError());
+        llvm::interleaveComma(stripeFactors, os);
+        os << '\n';
+      }
+      
       numHSDBMRelations += isHSDBMCompatible;
+      if (!isHSDBMCompatible) {
+        int fd;
+        std::error_code errc = llvm::sys::fs::openFile(
+            "/tmp/nonharmonic_sdbms.txt", fd, sys::fs::CreationDisposition::CD_OpenExisting,
+            sys::fs::FileAccess::FA_Write,
+            sys::fs::OpenFlags::OF_Append | sys::fs::OpenFlags::OF_Text);
+        if (errc)
+          llvm::report_fatal_error(errc.message().c_str());
+
+        llvm::raw_fd_ostream os(fd, /*shouldClose=*/true);
+        Expected<sys::fs::FileLocker> locker = os.lock();
+        if (!locker)
+          llvm::report_fatal_error(locker.takeError());
+
+        flc.print(os);
+      }
     }
   }
   return std::make_tuple(getIntegerRelationsForEmptinessCheck().size(),
