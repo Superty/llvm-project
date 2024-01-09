@@ -298,6 +298,39 @@ AffineExpr SDBMExpr::getAsAffineExpr() const {
   return converter.visit(*this);
 }
 
+void SDBMExpr::getStripeConstants(SmallVector<int64_t, 8> &result) const {
+  struct Extractor : public SDBMVisitor<Extractor, void> {
+    Extractor(SmallVector<int64_t, 8> &result) : result(result) {}
+    void visitSum(SDBMSumExpr expr) {
+      visit(expr.getLHS());
+      visit(expr.getRHS());
+    }
+
+    void visitStripe(SDBMStripeExpr expr) {
+      visit(expr.getLHS());
+      result.push_back(expr.getStripeFactor().getValue());
+    }
+
+    void visitDiff(SDBMDiffExpr expr) {
+      visit(expr.getLHS());
+      visit(expr.getRHS());
+    }
+
+    void visitDim(SDBMDimExpr expr) {}
+
+    void visitSymbol(SDBMSymbolExpr expr) {}
+
+    void visitNeg(SDBMNegExpr expr) {
+      visit(expr.getVar());
+    }
+
+    void visitConstant(SDBMConstantExpr expr) {}
+
+    SmallVector<int64_t, 8> &result;
+  } converter(result);
+  converter.visit(*this);
+}
+
 // Given a direct expression `expr`, add the given constant to it and pass the
 // resulting expression to `builder` before returning its result.  If the
 // expression is already a sum expression, update its constant and extract the

@@ -20,6 +20,7 @@
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/ADT/Hashing.h"
+#include "llvm/ADT/SmallVector.h"
 
 namespace mlir {
 
@@ -148,6 +149,10 @@ public:
   /// succeeds because SDBM are a subset of affine.
   AffineExpr getAsAffineExpr() const;
 
+  /// Append the list of Stripe Constant Factors appearing in this expression
+  /// to `result`. `result` is not cleared before appending.
+  void getStripeConstants(llvm::SmallVector<int64_t, 8> &result) const;
+    
   /// Try constructing an SDBM expression from the given affine expression.
   /// This may fail if the affine expression is not representable as SDBM, in
   /// which case std::nullopt is returned.  The conversion procedure recognizes

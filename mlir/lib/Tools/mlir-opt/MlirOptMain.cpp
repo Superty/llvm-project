@@ -519,10 +519,11 @@ mlir::registerAndParseCLIOptions(int argc, char **argv,
 std::vector<presburger::IntegerRelation> &
 getIntegerRelationsForEmptinessCheck();
 
-static std::pair<size_t, size_t>
+static std::tuple<size_t, size_t, size_t>
 checkRecordedIntegerRelations(MLIRContext &context) {
   using namespace presburger;
   size_t numCompatibleRelations = 0;
+  size_t numHSDBMRelations = 0;
   for (const IntegerRelation &relation :
        getIntegerRelationsForEmptinessCheck()) {
     IntegerRelation rel(relation);
@@ -530,11 +531,28 @@ checkRecordedIntegerRelations(MLIRContext &context) {
                        VarKind::Range);
     FlatLinearConstraints flc((IntegerPolyhedron(rel)));
     IntegerSet set = flc.getAsIntegerSet(&context);
-    numCompatibleRelations +=
+    bool isSDBMCompatible =
         llvm::all_of(set.getConstraints(), SDBMExpr::tryConvertAffineExpr);
+    if (isSDBMCompatible) {
+      numCompatibleRelations++;
+      SmallVector<int64_t, 8> stripeFactors;
+      for (auto expr : set.getConstraints()) {
+        auto sdbmExpr = SDBMExpr::tryConvertAffineExpr(expr).value();
+        sdbmExpr.getStripeConstants(stripeFactors);
+      }
+      sort(stripeFactors.begin(), stripeFactors.end());
+      bool isHSDBMCompatible = true;
+      for (int i = 0; i < stripeFactors.size() - 1; ++i) {
+        if (stripeFactors[i + 1] % stripeFactors[i] != 0) {
+          isHSDBMCompatible = false;
+          break;
+        }
+      }
+      numHSDBMRelations += isHSDBMCompatible;
+    }
   }
-  return std::make_pair(getIntegerRelationsForEmptinessCheck().size(),
-                        numCompatibleRelations);
+  return std::make_tuple(getIntegerRelationsForEmptinessCheck().size(),
+                        numCompatibleRelations, numHSDBMRelations);
 }
 
 LogicalResult mlir::MlirOptMain(llvm::raw_ostream &outputStream,
@@ -606,13 +624,15 @@ LogicalResult mlir::MlirOptMain(llvm::raw_ostream &outputStream,
       llvm::report_fatal_error(locker.takeError());
 
     MLIRContext localContext;
-    auto [numTotalEmptinessChecks, numCompatibleEmptinessChecks] =
+    auto [numTotalEmptinessChecks, numCompatibleEmptinessChecks, numHSDBMEmptinessChecks] =
         checkRecordedIntegerRelations(localContext);
     os << bufferName << " ";
     os << "stats: ";
     os << numTotalEmptinessChecks;
     os << ", ";
     os << numCompatibleEmptinessChecks;
+    os << ", ";
+    os << numHSDBMEmptinessChecks;
     os << ", ";
     llvm::interleaveComma(ArrayRef({
                               numAffineMaps.load(),
