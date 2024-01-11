@@ -541,8 +541,10 @@ checkRecordedIntegerRelations(MLIRContext &context) {
         auto sdbmExpr = SDBMExpr::tryConvertAffineExpr(expr).value();
         sdbmExpr.getStripeConstants(stripeFactors);
       }
-      if (stripeFactors.empty())
+      if (stripeFactors.empty()) {
+        numHSDBMRelations++;
         continue;
+      }
 
       
       sort(stripeFactors.begin(), stripeFactors.end());
