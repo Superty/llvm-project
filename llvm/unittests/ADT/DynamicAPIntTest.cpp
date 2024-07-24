@@ -8,6 +8,7 @@
 
 #include "llvm/ADT/DynamicAPInt.h"
 #include "llvm/ADT/SlowDynamicAPInt.h"
+#include "llvm/Support/MathExtras.h"
 #include "gtest/gtest.h"
 
 using namespace llvm;
@@ -197,4 +198,88 @@ TYPED_TEST(IntTest, floorCeilModAbsLcmGcd) {
     EXPECT_EQ(lcm(15 * Y, 6 * Y), 30 * Y);
   }
 }
+
+const int numIts = 1e7;
+
+TEST(DynamicAPIntBenchmarkAdd, Int64) {
+  for (int i = 0; i < numIts; ++i) {
+    int64_t X(1);
+    int64_t Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X += X;
+    EXPECT_EQ(X, Result);
+  }
+}
+ 
+TEST(DynamicAPIntBenchmarkAdd, DynamicAPInt) {
+  for (int i = 0; i < numIts; ++i) {
+    DynamicAPInt X(1);
+    DynamicAPInt Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X += X;
+    EXPECT_EQ(X, Result);
+  }
+}
+
+TEST(DynamicAPIntBenchmarkAdd, Int64Overflow) {
+  for (int i = 0; i < numIts; ++i) {
+    int64_t X(1);
+    int64_t Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      ASSERT_FALSE(AddOverflow(X, X, X));
+    EXPECT_EQ(X, Result);
+  }
+}
+  
+TEST(DynamicAPIntBenchmarkAdd, APInt) {
+  for (int i = 0; i < numIts; ++i) {
+    APInt X(64, 1);
+    APInt Result(64, (1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X += X;
+    EXPECT_EQ(X, Result);
+  }
+}
+
+TEST(DynamicAPIntBenchmarkMul, Int64) {
+  for (int i = 0; i < numIts; ++i) {
+    int64_t X(1);
+    int64_t Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X *= 2;
+    EXPECT_EQ(X, Result);
+  }
+}
+
+
+TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
+  for (int i = 0; i < numIts; ++i) {
+    int64_t X(1);
+    int64_t Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      ASSERT_FALSE(MulOverflow(X, 2l, X));
+    EXPECT_EQ(X, Result);
+  }
+}
+  
+TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
+  for (int i = 0; i < numIts; ++i) {
+    DynamicAPInt X(1);
+    DynamicAPInt Result((1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X *= 2;
+    EXPECT_EQ(X, Result);
+  }
+}
+  
+TEST(DynamicAPIntBenchmarkMul, APInt) {
+  for (int i = 0; i < numIts; ++i) {
+    APInt X(64, 1);
+    APInt Result(64, (1ll << 60));
+    for (int j = 0; j < 60; ++j)
+      X *= 2;
+    EXPECT_EQ(X, Result);
+  }
+}
+  
 } // namespace
