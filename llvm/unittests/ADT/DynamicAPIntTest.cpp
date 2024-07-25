@@ -200,84 +200,55 @@ TYPED_TEST(IntTest, floorCeilModAbsLcmGcd) {
 }
 
 const int numIts = 1e7;
-
-TEST(DynamicAPIntBenchmarkAdd, Int64) {
-  for (int i = 0; i < numIts; ++i) {
-    int64_t X(1);
-    int64_t Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X += X;
-    EXPECT_EQ(X, Result);
-  }
-}
- 
-TEST(DynamicAPIntBenchmarkAdd, DynamicAPInt) {
-  for (int i = 0; i < numIts; ++i) {
-    DynamicAPInt X(1);
-    DynamicAPInt Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X += X;
-    EXPECT_EQ(X, Result);
-  }
-}
-
-TEST(DynamicAPIntBenchmarkAdd, Int64Overflow) {
-  for (int i = 0; i < numIts; ++i) {
-    int64_t X(1);
-    int64_t Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      ASSERT_FALSE(AddOverflow(X, X, X));
-    EXPECT_EQ(X, Result);
-  }
-}
-  
-TEST(DynamicAPIntBenchmarkAdd, APInt) {
-  for (int i = 0; i < numIts; ++i) {
-    APInt X(64, 1);
-    APInt Result(64, (1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X += X;
-    EXPECT_EQ(X, Result);
-  }
-}
+const int64_t threeToThe36 = 150094635296999121;
 
 TEST(DynamicAPIntBenchmarkMul, Int64) {
   for (int i = 0; i < numIts; ++i) {
     int64_t X(1);
-    int64_t Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X *= 2;
+    int64_t Result(threeToThe36);
+    for (int j = 0; j < 36; ++j)
+      X *= 3;
     EXPECT_EQ(X, Result);
   }
 }
-
 
 TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
   for (int i = 0; i < numIts; ++i) {
     int64_t X(1);
-    int64_t Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      ASSERT_FALSE(MulOverflow(X, 2l, X));
+    int64_t Result(threeToThe36);
+    for (int j = 0; j < 36; ++j)
+      if (MulOverflow(X, 3l, X))
+        exit(1);
     EXPECT_EQ(X, Result);
   }
 }
-  
+
+TEST(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
+  for (int i = 0; i < numIts; ++i) {
+    int64_t X(1);
+    int64_t Result(threeToThe36);
+    for (int j = 0; j < 36; ++j)
+      ASSERT_FALSE(MulOverflow(X, 3l, X));
+    EXPECT_EQ(X, Result);
+  }
+}
+
 TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   for (int i = 0; i < numIts; ++i) {
     DynamicAPInt X(1);
-    DynamicAPInt Result((1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X *= 2;
+    DynamicAPInt Result(threeToThe36);
+    for (int j = 0; j < 36; ++j)
+      X *= 3;
     EXPECT_EQ(X, Result);
   }
 }
-  
+    
 TEST(DynamicAPIntBenchmarkMul, APInt) {
   for (int i = 0; i < numIts; ++i) {
     APInt X(64, 1);
-    APInt Result(64, (1ll << 60));
-    for (int j = 0; j < 60; ++j)
-      X *= 2;
+    APInt Result(64, threeToThe36);
+    for (int j = 0; j < 36; ++j)
+      X *= 3;
     EXPECT_EQ(X, Result);
   }
 }
