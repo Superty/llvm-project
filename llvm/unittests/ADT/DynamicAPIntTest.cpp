@@ -215,41 +215,37 @@ TEST(DynamicAPIntBenchmarkMul, Int64) {
 TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
   for (int i = 0; i < numIts; ++i) {
     int64_t X(1);
-    int64_t Result(threeToThe36);
     for (int j = 0; j < 36; ++j)
       if (MulOverflow(X, 3l, X))
         exit(1);
-    EXPECT_EQ(X, Result);
+    EXPECT_EQ(X, threeToThe36);
   }
 }
 
 TEST(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
   for (int i = 0; i < numIts; ++i) {
     int64_t X(1);
-    int64_t Result(threeToThe36);
     for (int j = 0; j < 36; ++j)
       ASSERT_FALSE(MulOverflow(X, 3l, X));
-    EXPECT_EQ(X, Result);
+    EXPECT_EQ(X, threeToThe36);
   }
 }
 
 TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   for (int i = 0; i < numIts; ++i) {
     DynamicAPInt X(1);
-    DynamicAPInt Result(threeToThe36);
     for (int j = 0; j < 36; ++j)
       X *= 3;
-    EXPECT_EQ(X, Result);
+    EXPECT_EQ(X, threeToThe36);
   }
 }
     
 TEST(DynamicAPIntBenchmarkMul, APInt) {
   for (int i = 0; i < numIts; ++i) {
     APInt X(64, 1);
-    APInt Result(64, threeToThe36);
     for (int j = 0; j < 36; ++j)
       X *= 3;
-    EXPECT_EQ(X, Result);
+    EXPECT_EQ(X, threeToThe36);
   }
 }
   
