@@ -232,6 +232,7 @@ TEST(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
 }
 
 TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
+  // DynamicAPInt three(3);
   for (int i = 0; i < numIts; ++i) {
     DynamicAPInt X(1);
     for (int j = 0; j < 36; ++j)

@@ -17,6 +17,7 @@
 #define LLVM_ADT_DYNAMICAPINT_H
 
 #include "llvm/ADT/SlowDynamicAPInt.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include <numeric>
@@ -215,6 +216,9 @@ public:
 
   raw_ostream &print(raw_ostream &OS) const;
   LLVM_DUMP_METHOD void dump() const;
+
+
+  friend DynamicAPInt &fallbackOpMulEqual(DynamicAPInt &A, int64_t B);
 };
 
 inline raw_ostream &operator<<(raw_ostream &OS, const DynamicAPInt &X) {
@@ -471,8 +475,9 @@ DynamicAPInt::operator*=(const DynamicAPInt &O) {
     return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
                                 detail::SlowDynamicAPInt(O));
   }
-  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-                              detail::SlowDynamicAPInt(O));
+  exit(2);
+  // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+  //                             detail::SlowDynamicAPInt(O));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(const DynamicAPInt &O) {
@@ -521,10 +526,31 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator-=(DynamicAPInt &A,
                                                       int64_t B) {
   return A = A - B;
 }
+
+inline LLVM_ATTRIBUTE_NOINLINE DynamicAPInt &fallbackOpMulEqual(DynamicAPInt &A,
+                                                      int64_t B) {
+  return A = DynamicAPInt(detail::SlowDynamicAPInt(A) * detail::SlowDynamicAPInt(B));
+}
+
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
                                                       int64_t B) {
-  return A = A * B;
+  int64_t backup = A.getSmall();
+  if (LLVM_LIKELY(A.isSmall())) {
+    bool Overflow = MulOverflow(A.getSmall(), B, A.getSmall());
+    if (LLVM_LIKELY(!Overflow))
+      return A;
+    A.getSmall() = backup;
+    exit(2);
+    // Note: this return is not strictly required but
+    // removing it leads to a performance regression.
+    // return A = DynamicAPInt(detail::SlowDynamicAPInt(backup) *
+    //                             detail::SlowDynamicAPInt(B));
+  }
+  exit(2);
+  // return A = DynamicAPInt(detail::SlowDynamicAPInt(backup) *
+  //                             detail::SlowDynamicAPInt(B));
 }
+
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator/=(DynamicAPInt &A,
                                                       int64_t B) {
   return A = A / B;
