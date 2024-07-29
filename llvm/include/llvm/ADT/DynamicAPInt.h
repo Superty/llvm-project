@@ -540,7 +540,7 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
     if (LLVM_LIKELY(!Overflow))
       return A;
     A.getSmall() = backup;
-    exit(2);
+    // exit(2);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
     // return A = DynamicAPInt(detail::SlowDynamicAPInt(backup) *
