@@ -549,9 +549,12 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
     // return A = DynamicAPInt(detail::SlowDynamicAPInt(backup) *
     //                             detail::SlowDynamicAPInt(B));
   }
-  exit(2);
-  // return A = DynamicAPInt(detail::SlowDynamicAPInt(backup) *
-  //                             detail::SlowDynamicAPInt(B));
+  // llvm_unreachable("");
+  // exit(2);
+  // {
+  return A = DynamicAPInt(detail::SlowDynamicAPInt(A) *
+                          detail::SlowDynamicAPInt(B));
+  // }
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator/=(DynamicAPInt &A,
