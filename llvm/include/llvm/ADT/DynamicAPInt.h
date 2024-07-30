@@ -534,12 +534,15 @@ inline LLVM_ATTRIBUTE_NOINLINE DynamicAPInt &fallbackOpMulEqual(DynamicAPInt &A,
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
                                                       int64_t B) {
-  int64_t backup = A.getSmall();
+  // int64_t backup = A.getSmall();
   if (LLVM_LIKELY(A.isSmall())) {
-    bool Overflow = MulOverflow(A.getSmall(), B, A.getSmall());
-    if (LLVM_LIKELY(!Overflow))
+    int64_t result;
+    bool Overflow = MulOverflow(A.getSmall(), B, result);
+    if (LLVM_LIKELY(!Overflow)) {
+      A.getSmall() = result;
       return A;
-    A.getSmall() = backup;
+    }
+    // A.getSmall() = backup;
     // exit(2);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
