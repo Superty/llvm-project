@@ -537,9 +537,9 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
   // int64_t backup = A.getSmall();
   if (LLVM_LIKELY(A.isSmall())) {
     int64_t result;
-    bool Overflow = MulOverflow(A.getSmall(), B, result);
+    bool Overflow = MulOverflow(A.ValSmall, B, result);
     if (LLVM_LIKELY(!Overflow)) {
-      A.getSmall() = result;
+      A.ValSmall = result;
       return A;
     }
     // A.getSmall() = backup;
