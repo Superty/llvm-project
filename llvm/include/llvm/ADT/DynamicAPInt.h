@@ -475,9 +475,9 @@ DynamicAPInt::operator*=(const DynamicAPInt &O) {
     return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
                                 detail::SlowDynamicAPInt(O));
   }
-  exit(2);
-  // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-  //                             detail::SlowDynamicAPInt(O));
+  // exit(2);
+  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+                              detail::SlowDynamicAPInt(O));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(const DynamicAPInt &O) {
