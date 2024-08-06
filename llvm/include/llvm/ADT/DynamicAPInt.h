@@ -472,8 +472,8 @@ DynamicAPInt::operator*=(const DynamicAPInt &O) {
     }
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
-    return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-                                detail::SlowDynamicAPInt(O));
+    // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+    //                             detail::SlowDynamicAPInt(O));
   }
   // exit(2);
   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
