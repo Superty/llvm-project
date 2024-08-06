@@ -201,7 +201,7 @@ TYPED_TEST_SUITE(IntTest, TypeList, TypeNames);
 
 const int64_t Init[] = {3, 0};
 const int64_t Coeff[] = {3, 0};
-const int64_t ExpectedResult[] = {450283905890997363, 1490116119384765625};
+const int64_t ExpectedResult[] = {450283905890997363, 0};
   
 class DynamicAPIntBenchmarkMul :
   public testing::TestWithParam<int> {
@@ -268,6 +268,6 @@ TEST_P(DynamicAPIntBenchmarkMul, APInt) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Group, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
+INSTANTIATE_TEST_SUITE_P(Bench, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
   
 } // namespace
