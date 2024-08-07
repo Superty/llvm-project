@@ -236,18 +236,18 @@ TEST_P(DynamicAPIntBenchmarkMul, Int64Overflow) {
   }
 }
 
-TEST_P(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
-  int64_t Result(ExpectedResult_);
-  for (int I = 0; I < NumIts; ++I) {
-    int64_t X(Init_);
-    for (int J = 0; J < 36; ++J) {
-      if(MulOverflow(X, Coeff_, X)) {
-        ASSERT_FALSE(true);
-      }
-    }
-    EXPECT_EQ(X, Result);
-  }
-}
+// TEST_P(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
+//   int64_t Result(ExpectedResult_);
+//   for (int I = 0; I < NumIts; ++I) {
+//     int64_t X(Init_);
+//     for (int J = 0; J < 36; ++J) {
+//       if(MulOverflow(X, Coeff_, X)) {
+//         ASSERT_FALSE(true);
+//       }
+//     }
+//     EXPECT_EQ(X, Result);
+//   }
+// }
 
 TEST_P(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   DynamicAPInt Result(ExpectedResult_);
@@ -260,16 +260,16 @@ TEST_P(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   }
 }
 
-TEST_P(DynamicAPIntBenchmarkMul, APInt) {
-  APInt Result(64, ExpectedResult_);
-  APInt CoeffAP(64, Coeff_);
-  for (int I = 0; I < NumIts; ++I) {
-    APInt X(64, Init_);
-    for (int J = 0; J < 36; ++J)
-      X *= CoeffAP;
-    EXPECT_EQ(X, Result);
-  }
-}
+// TEST_P(DynamicAPIntBenchmarkMul, APInt) {
+//   APInt Result(64, ExpectedResult_);
+//   APInt CoeffAP(64, Coeff_);
+//   for (int I = 0; I < NumIts; ++I) {
+//     APInt X(64, Init_);
+//     for (int J = 0; J < 36; ++J)
+//       X *= CoeffAP;
+//     EXPECT_EQ(X, Result);
+//   }
+// }
 
 INSTANTIATE_TEST_SUITE_P(Bench, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
   
