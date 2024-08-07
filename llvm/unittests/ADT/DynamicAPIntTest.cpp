@@ -240,8 +240,11 @@ TEST_P(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
   int64_t Result(ExpectedResult_);
   for (int I = 0; I < NumIts; ++I) {
     int64_t X(Init_);
-    for (int J = 0; J < 36; ++J)
-      ASSERT_FALSE(MulOverflow(X, Coeff_, X));
+    for (int J = 0; J < 36; ++J) {
+      if(MulOverflow(X, Coeff_, X)) {
+        ASSERT_FALSE(true);
+      }
+    }
     EXPECT_EQ(X, Result);
   }
 }
