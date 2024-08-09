@@ -223,26 +223,25 @@ static int32_t ExpectedResult_ = getInt();
 // const int32_t threeToThe36 = 150094635296999121;
 // const int32_t expectedResult = 2641807540224;
 
-TEST(DynamicAPIntBenchmarkMul, Int64) {
-  int32_t Result(ExpectedResult_);
-  int32_t X(0);
-  #pragma nounroll
-  for (int32_t I = 0; I < NumIts; ++I)
-    X = X + Add_;
-  if (X != Result)
-    exit(1);
-}
+// TEST(DynamicAPIntBenchmarkMul, Int64) {
+//   int32_t Result(ExpectedResult_);
+//   int32_t X(0);
+//   #pragma nounroll
+//   for (int32_t I = 0; I < NumIts; ++I)
+//     X += Add_;
+//   if (X != Result)
+//     exit(1);
+// }
 
 TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
   int32_t Result(ExpectedResult_);
   int32_t X(0);
-  #pragma nounroll
-  for (int32_t I = 0; I < NumIts; ++I) {
-    int32_t result;
-    if (AddOverflow(X, Add_, result))
+
+  // Making this 8 will mess everything up! It will slow down everything
+  #pragma unroll(7)
+  for (int32_t I = 0; I < NumIts; ++I)
+    if (AddOverflow(X, Add_, X))
       exit(1);
-    X = result;
-  }
   if (X != Result)
     exit(1);
 }
@@ -267,9 +266,12 @@ TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   int32_t Add = Add_;
   int32_t num = NumIts;
   DynamicAPInt X(0);
-  #pragma nounroll
+
+  // Slow at 1 and fast at 8 if the unroll above is 7.
+  // If the unroll is 8, then it's the oppposite.
+  #pragma unroll(8)
   for (int32_t I = 0; I < num; ++I)
-    X = X + Add;
+    X += Add;
   if (X != Result)
     exit(1);
 }

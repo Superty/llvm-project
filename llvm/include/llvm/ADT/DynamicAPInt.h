@@ -22,6 +22,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <memory>
 #include <numeric>
+#include <bit>
 
 namespace llvm {
 /// This class provides support for dynamic arbitrary-precision arithmetic.
@@ -43,6 +44,7 @@ namespace llvm {
 /// use because we know that the memory layout of APInt is such that BitWidth
 /// doesn't overlap with ValSmall (see static_assert_layout). Using std::variant
 /// instead would lead to significantly worse performance.
+const int32_t HoldsSmallVal = 1 << 31;
 class DynamicAPInt {
   int32_t HoldsSmall;
   int32_t ValSmall;
@@ -51,21 +53,27 @@ class DynamicAPInt {
     if (LLVM_UNLIKELY(isLarge()))
       delete &getLarge();
     ValSmall = O;
-    HoldsSmall = 1;
+    HoldsSmall = HoldsSmallVal;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE void
-  initLarge(const detail::SlowDynamicAPInt &O) {
-    // exit(3);
-    if (LLVM_UNLIKELY(isLarge()))
-      delete &getLarge();
+  setLarge(const detail::SlowDynamicAPInt &O) {
     detail::SlowDynamicAPInt *Ptr = new detail::SlowDynamicAPInt(O);
-    int64_t PtrInt = reinterpret_cast<int64_t>(Ptr);
+    int64_t PtrInt = bit_cast<int64_t>(Ptr);
     HoldsSmall = static_cast<int32_t>(PtrInt >> 32);
     ValSmall = static_cast<int32_t>(PtrInt);
   }
 
+  LLVM_ATTRIBUTE_ALWAYS_INLINE void
+  initLarge(const detail::SlowDynamicAPInt &O) {
+    if (LLVM_UNLIKELY(isLarge()))
+      delete &getLarge();
+    setLarge(O);
+}
+
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(
-      const detail::SlowDynamicAPInt &Val) { initLarge(Val); }
+      const detail::SlowDynamicAPInt &Val) {
+    setLarge(Val);
+}
   LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isSmall() const {
     return HoldsSmall != 0;
   }
@@ -110,7 +118,7 @@ class DynamicAPInt {
 public:
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(int32_t Val)
       : ValSmall(Val) {
-    HoldsSmall = 1;
+    HoldsSmall = HoldsSmallVal;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt() : DynamicAPInt(0) {}
   LLVM_ATTRIBUTE_ALWAYS_INLINE ~DynamicAPInt() {
@@ -119,9 +127,9 @@ public:
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt(const DynamicAPInt &O)
       : ValSmall(O.ValSmall) {
-    HoldsSmall = 1;
+    HoldsSmall = HoldsSmallVal;
     if (LLVM_UNLIKELY(O.isLarge()))
-      initLarge(O.getLarge());
+      setLarge(O.getLarge());
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(const DynamicAPInt &O) {
     if (LLVM_LIKELY(O.isSmall())) {
@@ -191,7 +199,7 @@ public:
   friend bool operator<(const DynamicAPInt &A, int32_t B);
   friend bool operator<=(const DynamicAPInt &A, int32_t B);
   friend bool operator>=(const DynamicAPInt &A, int32_t B);
-  friend DynamicAPInt operator+(const DynamicAPInt &A, int32_t B);
+  friend DynamicAPInt operator+(DynamicAPInt &A, int32_t B);
   friend DynamicAPInt operator-(const DynamicAPInt &A, int32_t B);
   friend DynamicAPInt operator*(const DynamicAPInt &A, int32_t B);
   friend DynamicAPInt operator/(const DynamicAPInt &A, int32_t B);
@@ -538,9 +546,9 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator+=(DynamicAPInt &A,
   // exit(2);
   // {
   // __sync_synchronize();
-  A.ValSmall -= B;
-  return A = DynamicAPInt(detail::SlowDynamicAPInt(A) +
-                          detail::SlowDynamicAPInt(B));
+  // assert(false);
+  A.ValSmall = bit_cast<int32_t>(bit_cast<uint32_t>(A.ValSmall) - bit_cast<uint32_t>(B));
+  return A = DynamicAPInt(detail::SlowDynamicAPInt(A) + detail::SlowDynamicAPInt(B));
   // }
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator-=(DynamicAPInt &A,
@@ -586,16 +594,19 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator%=(DynamicAPInt &A,
                                                       int32_t B) {
   return A = A % B;
 }
-LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(const DynamicAPInt &A,
+LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(DynamicAPInt &A,
                                                     int32_t B) {
   if (LLVM_LIKELY(A.isSmall())) {
-    int32_t Result;
-    bool Overflow = AddOverflow(A.ValSmall, B, Result);
-    if (LLVM_LIKELY(!Overflow))
-      return DynamicAPInt(Result);
+    bool Overflow = AddOverflow(A.ValSmall, B, A.ValSmall);
+    if (LLVM_LIKELY(!Overflow)) {
+      DynamicAPInt Result(A.ValSmall);
+      A.ValSmall -= B;
+      return Result;
+    }
     // return DynamicAPInt(detail::SlowDynamicAPInt(A) +
     //                     detail::SlowDynamicAPInt(B));
   }
+  A.ValSmall -= B;
   return DynamicAPInt(detail::SlowDynamicAPInt(A) +
                       detail::SlowDynamicAPInt(B));
 }
