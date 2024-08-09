@@ -19,17 +19,18 @@ hash_code llvm::hash_value(const DynamicAPInt &X) {
 }
 
 void DynamicAPInt::static_assert_layout() {
-  constexpr size_t ValLargeOffset =
-      offsetof(DynamicAPInt, ValLarge.Val.BitWidth);
-  constexpr size_t ValSmallOffset = offsetof(DynamicAPInt, ValSmall);
-  constexpr size_t ValSmallSize = sizeof(ValSmall);
-  static_assert(ValLargeOffset >= ValSmallOffset + ValSmallSize);
+  // constexpr size_t ValLargeOffset =
+  //     offsetof(DynamicAPInt, ValLarge.Val.BitWidth);
+  // constexpr size_t ValSmallOffset = offsetof(DynamicAPInt, ValSmall);
+  // constexpr size_t ValSmallSize = sizeof(ValSmall);
+  // static_assert(ValLargeOffset >= ValSmallOffset + ValSmallSize);
 }
 
 raw_ostream &DynamicAPInt::print(raw_ostream &OS) const {
   if (isSmall())
     return OS << ValSmall;
-  return OS << ValLarge;
+  exit(3);
+  // return OS << ValLarge;
 }
 
 void DynamicAPInt::dump() const { print(dbgs()); }

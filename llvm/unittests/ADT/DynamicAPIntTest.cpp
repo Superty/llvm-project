@@ -135,7 +135,7 @@ TYPED_TEST_SUITE(IntTest, TypeList, TypeNames);
 //   Y /= 8;
 //   EXPECT_EQ(Y, 1ll << 62);
 
-//   TypeParam Min(std::numeric_limits<int64_t>::min());
+//   TypeParam Min(std::numeric_limits<int32_t>::min());
 //   TypeParam One(1);
 //   EXPECT_EQ(floorDiv(Min, -One), -Min);
 //   EXPECT_EQ(ceilDiv(Min, -One), -Min);
@@ -151,7 +151,7 @@ TYPED_TEST_SUITE(IntTest, TypeList, TypeNames);
 //   U -= 1;
 //   EXPECT_EQ(U, W);
 
-//   TypeParam Max(std::numeric_limits<int64_t>::max());
+//   TypeParam Max(std::numeric_limits<int32_t>::max());
 //   TypeParam V = Max;
 //   ++V;
 //   EXPECT_EQ(V, Max + 1);
@@ -199,49 +199,61 @@ TYPED_TEST_SUITE(IntTest, TypeList, TypeNames);
 //   }
 // }
 
-const int64_t Init[] = {3, 0};
-const int64_t Coeff[] = {3, 0};
-const int64_t ExpectedResult[] = {450283905890997363, 0};
-  
-class DynamicAPIntBenchmarkMul :
-  public testing::TestWithParam<int> {
-public:
-  int64_t Init_ = Init[GetParam()];
-  int64_t Coeff_ = Coeff[GetParam()];
-  int64_t ExpectedResult_ = ExpectedResult[GetParam()];
-};
+// const int32_t Init[] = {3, 0};
+// const int32_t Val[] = {3, 0};
+// const int32_t ExpectedResult[] = {450283905890997363, 0};
 
-const int NumIts = 1e8;
-// const int64_t threeToThe36 = 150094635296999121;
-// const int64_t expectedResult = 2641807540224;
+// class DynamicAPIntBenchmarkMul :
+//   public testing::TestWithParam<int> {
+// public:
+//   // int32_t Init_ = Init[GetParam()];
+//   // int32_t Add_ = Coeff[GetParam()];
+//   // int32_t ExpectedResult_ = ExpectedResult[GetParam()];
+// };
 
-TEST_P(DynamicAPIntBenchmarkMul, Int64) {
-  int64_t Result(ExpectedResult_);
-  for (int I = 0; I < NumIts; ++I) {
-    int64_t X(Init_);
-    for (int J = 0; J < 36; ++J)
-      X *= Coeff_;
-    EXPECT_EQ(X, Result);
-  }
+int32_t getInt() {
+  int32_t x;
+  std::cin >> x;
+  return x;
 }
 
-TEST_P(DynamicAPIntBenchmarkMul, Int64Overflow) {
-  int64_t Result(ExpectedResult_);
-  for (int I = 0; I < NumIts; ++I) {
-    int64_t X(Init_);
-    for (int J = 0; J < 36; ++J)
-      if (MulOverflow(X, Coeff_, X))
-        exit(1);
-    EXPECT_EQ(X, Result);
-  }
+static int32_t Add_ = getInt();
+static int32_t NumIts = getInt();
+static int32_t ExpectedResult_ = getInt();
+// const int32_t threeToThe36 = 150094635296999121;
+// const int32_t expectedResult = 2641807540224;
+
+TEST(DynamicAPIntBenchmarkMul, Int64) {
+  int32_t Result(ExpectedResult_);
+  int32_t X(0);
+  #pragma nounroll
+  for (int32_t I = 0; I < NumIts; ++I)
+    X = X + Add_;
+  if (X != Result)
+    exit(1);
 }
 
-// TEST_P(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
-//   int64_t Result(ExpectedResult_);
-//   for (int I = 0; I < NumIts; ++I) {
-//     int64_t X(Init_);
+TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
+  int32_t Result(ExpectedResult_);
+  int32_t X(0);
+  #pragma nounroll
+  for (int32_t I = 0; I < NumIts; ++I) {
+    int32_t result;
+    if (AddOverflow(X, Add_, result))
+      exit(1);
+    X = result;
+  }
+  if (X != Result)
+    exit(1);
+}
+
+// TEST(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
+//   int32_t Result(ExpectedResult_);
+    // #pragma nounroll
+//   for (int32_t I = 0; I < NumIts; ++I) {
+//     int32_t X(0);
 //     for (int J = 0; J < 36; ++J) {
-//       if(MulOverflow(X, Coeff_, X)) {
+//       if(AddOverflow(X, Add_, X)) {
 //         ASSERT_FALSE(true);
 //       }
 //     }
@@ -249,21 +261,23 @@ TEST_P(DynamicAPIntBenchmarkMul, Int64Overflow) {
 //   }
 // }
 
-TEST_P(DynamicAPIntBenchmarkMul, DynamicAPInt) {
+TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   DynamicAPInt Result(ExpectedResult_);
-  DynamicAPInt CoeffAP(Coeff_);
-  for (int I = 0; I < NumIts; ++I) {
-    DynamicAPInt X(Init_);
-    for (int J = 0; J < 36; ++J)
-      X *= CoeffAP;
-    EXPECT_EQ(X, Result);
-  }
+  // DynamicAPInt Add(Add_);
+  int32_t Add = Add_;
+  int32_t num = NumIts;
+  DynamicAPInt X(0);
+  #pragma nounroll
+  for (int32_t I = 0; I < num; ++I)
+    X = X + Add;
+  if (X != Result)
+    exit(1);
 }
 
 // TEST_P(DynamicAPIntBenchmarkMul, APInt) {
 //   APInt Result(64, ExpectedResult_);
-//   APInt CoeffAP(64, Coeff_);
-//   for (int I = 0; I < NumIts; ++I) {
+//   APInt CoeffAP(64, Add_);
+//   for (int32_t I = 0; I < NumIts; ++I) {
 //     APInt X(64, Init_);
 //     for (int J = 0; J < 36; ++J)
 //       X *= CoeffAP;
@@ -271,6 +285,6 @@ TEST_P(DynamicAPIntBenchmarkMul, DynamicAPInt) {
 //   }
 // }
 
-INSTANTIATE_TEST_SUITE_P(Bench, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
+// INSTANTIATE_TEST_SUITE_P(Bench, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
   
 } // namespace
