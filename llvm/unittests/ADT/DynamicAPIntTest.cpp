@@ -233,19 +233,6 @@ static int32_t ExpectedResult_ = getInt();
 //     exit(1);
 // }
 
-TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
-  int32_t Result(ExpectedResult_);
-  int32_t X(0);
-
-  // Making this 8 will mess everything up! It will slow down everything
-  #pragma unroll(7)
-  for (int32_t I = 0; I < NumIts; ++I)
-    if (AddOverflow(X, Add_, X))
-      exit(1);
-  if (X != Result)
-    exit(1);
-}
-
 // TEST(DynamicAPIntBenchmarkMul, Int64OverflowAssert) {
 //   int32_t Result(ExpectedResult_);
     // #pragma nounroll
@@ -260,31 +247,50 @@ TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
 //   }
 // }
 
+TEST(DynamicAPIntBenchmarkMul, Int64Overflow) {
+  int32_t Result(ExpectedResult_);
+  int32_t X(0);
+
+  // #pragma unroll(1)
+  for (int32_t I = 0; I < NumIts; ++I)
+    if (AddOverflow(X, Add_, X))
+      exit(1);
+  if (X != Result)
+    exit(1);
+}
+
 TEST(DynamicAPIntBenchmarkMul, DynamicAPInt) {
   DynamicAPInt Result(ExpectedResult_);
   // DynamicAPInt Add(Add_);
   int32_t Add = Add_;
   int32_t num = NumIts;
   DynamicAPInt X(0);
+  // std::cerr << int64_t(&Add) % 64 << ' ' << int64_t(&num) % 64 << ' ' << int64_t(&X) % 64 << '\n';
 
   // Slow at 1 and fast at 8 if the unroll above is 7.
   // If the unroll is 8, then it's the oppposite.
-  #pragma unroll(8)
+  // #pragma unroll(8)
   for (int32_t I = 0; I < num; ++I)
     X += Add;
   if (X != Result)
     exit(1);
 }
 
-// TEST_P(DynamicAPIntBenchmarkMul, APInt) {
+// TEST(DynamicAPIntBenchmarkMul, APInt) {
 //   APInt Result(64, ExpectedResult_);
-//   APInt CoeffAP(64, Add_);
-//   for (int32_t I = 0; I < NumIts; ++I) {
-//     APInt X(64, Init_);
-//     for (int J = 0; J < 36; ++J)
-//       X *= CoeffAP;
-//     EXPECT_EQ(X, Result);
-//   }
+//   // APInt Add(64, Add_);
+//   int32_t Add = Add_;
+//   int32_t num = NumIts;
+//   APInt X(64, 0);
+//   // std::cerr << int64_t(&Add) % 64 << ' ' << int64_t(&num) % 64 << ' ' << int64_t(&X) % 64 << '\n';
+
+//   // Slow at 1 and fast at 8 if the unroll above is 7.
+//   // If the unroll is 8, then it's the oppposite.
+//   #pragma unroll(8)
+//   for (int32_t I = 0; I < num; ++I)
+//     X += Add;
+//   if (X != Result)
+//     exit(1);
 // }
 
 // INSTANTIATE_TEST_SUITE_P(Bench, DynamicAPIntBenchmarkMul, testing::Values(0, 1));
