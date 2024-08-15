@@ -48,8 +48,8 @@ namespace llvm {
 const int8_t HoldsSmallVal = -1;
 class DynamicAPInt {
   int8_t HoldsSmall;
-  int8_t data1;
-  int16_t data2;
+  // int8_t data1;
+  // int16_t data2;
   int32_t ValSmall;
 
   LLVM_ATTRIBUTE_ALWAYS_INLINE void initSmall(int32_t O) {
@@ -62,9 +62,9 @@ class DynamicAPInt {
   setLarge(const detail::SlowDynamicAPInt &O) {
     detail::SlowDynamicAPInt *Ptr = new detail::SlowDynamicAPInt(O);
     int64_t PtrInt = bit_cast<int64_t>(Ptr);
-    // HoldsSmall = static_cast<int32_t>(PtrInt >> 32);
     HoldsSmall = 0;
     assert(PtrInt >> 56 == 0);
+    // HoldsSmall = static_cast<int8_t>(PtrInt >> 56);
     ValSmall = static_cast<int32_t>(PtrInt);
   }
 
@@ -145,12 +145,12 @@ public:
     initLarge(O.getLarge());
     return *this;
   }
-  LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(int X) {
-    initSmall(X);
-    return *this;
-  }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(const detail::SlowDynamicAPInt &O) {
     initLarge(O);
+    return *this;
+  }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(int X) {
+    initSmall(X);
     return *this;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit operator int32_t() const {
@@ -197,7 +197,7 @@ public:
   /// ---------------------------------------------------------------------------
   /// Convenience operator overloads for int32_t.
   /// ---------------------------------------------------------------------------
-  friend void slowpathOpPlusEqual(DynamicAPInt &A, int32_t B);
+  friend detail::SlowDynamicAPInt slowpathOpPlusEqual(DynamicAPInt &A, int32_t B);
   friend DynamicAPInt &operator+=(DynamicAPInt &A, int32_t B);
   friend DynamicAPInt &operator-=(DynamicAPInt &A, int32_t B);
   friend DynamicAPInt &operator*=(DynamicAPInt &A, int32_t B);
@@ -534,9 +534,9 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &DynamicAPInt::operator--() {
 }
 
 
-LLVM_ATTRIBUTE_NOINLINE inline void slowpathOpPlusEqual(DynamicAPInt &A, int32_t B) {
-  A = DynamicAPInt(detail::SlowDynamicAPInt(A) + detail::SlowDynamicAPInt(B));
-}
+// LLVM_ATTRIBUTE_NOINLINE inline detail::SlowDynamicAPInt slowpathOpPlusEqual(DynamicAPInt &A, int32_t B) {
+//   return detail::SlowDynamicAPInt(A) + detail::SlowDynamicAPInt(B);
+// }
 
 /// ----------------------------------------------------------------------------
 /// Convenience operator overloads for int32_t.
@@ -548,7 +548,6 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator+=(DynamicAPInt &A,
   if (LLVM_LIKELY(FastPathValid))
     return A;
   A.ValSmall = bit_cast<int32_t>(bit_cast<uint32_t>(A.ValSmall) - bit_cast<uint32_t>(B));
-  // slowpathOpPlusEqual(A, B);
   return A = detail::SlowDynamicAPInt(A) + detail::SlowDynamicAPInt(B);
 }
 
@@ -713,3 +712,5 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator>=(int32_t A, const DynamicAPInt &B) {
 } // namespace llvm
 
 #endif // LLVM_ADT_DYNAMICAPINT_H
+
+
