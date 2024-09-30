@@ -565,12 +565,15 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
                                                       int32_t B) {
   // int32_t backup = A.getSmall();
   if (LLVM_LIKELY(A.isSmall())) {
-    int32_t result;
-    bool Overflow = MulOverflow(A.ValSmall, B, result);
+    // int32_t result;
+    int k = __builtin_ctz(B);
+    B >>= k;
+    bool Overflow = MulOverflow(A.ValSmall, B, A.ValSmall);
     if (LLVM_LIKELY(!Overflow)) {
-      A.ValSmall = result;
+      // A.ValSmall = result;
       return A;
     }
+    B <<= k;
     // A.getSmall() = backup;
     // exit(2);
     // Note: this return is not strictly required but
@@ -581,8 +584,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator*=(DynamicAPInt &A,
   // llvm_unreachable("");
   // exit(2);
   // {
-  return A = DynamicAPInt(detail::SlowDynamicAPInt(A) *
-                          detail::SlowDynamicAPInt(B));
+  return A = detail::SlowDynamicAPInt(A) *
+             detail::SlowDynamicAPInt(B);
   // }
 }
 
