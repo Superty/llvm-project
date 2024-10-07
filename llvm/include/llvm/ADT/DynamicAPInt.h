@@ -405,10 +405,10 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt lcm(const DynamicAPInt &A,
 /// This operation cannot overflow.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator%(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return DynamicAPInt(getSmall() % O.getSmall());
-  // return DynamicAPInt(detail::SlowDynamicAPInt(*this) %
-  //                     detail::SlowDynamicAPInt(O));
+  return DynamicAPInt(detail::SlowDynamicAPInt(*this) %
+                      detail::SlowDynamicAPInt(O));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
