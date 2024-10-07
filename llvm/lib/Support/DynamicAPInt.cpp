@@ -13,23 +13,23 @@
 using namespace llvm;
 
 hash_code llvm::hash_value(const DynamicAPInt &X) {
-  // if (X.isSmall())
+  if (X.isSmall())
     return llvm::hash_value(X.getSmall());
-  // return detail::hash_value(X.getLarge());
+  return detail::hash_value(X.getLarge());
 }
 
 void DynamicAPInt::static_assert_layout() {
-  // constexpr size_t ValLargeOffset =
-  //     offsetof(DynamicAPInt, ValLarge.Val.BitWidth);
-  // constexpr size_t ValSmallOffset = offsetof(DynamicAPInt, ValSmall);
-  // constexpr size_t ValSmallSize = sizeof(ValSmall);
-  // static_assert(ValLargeOffset >= ValSmallOffset + ValSmallSize);
+  constexpr size_t ValLargeOffset =
+      offsetof(DynamicAPInt, ValLarge.Val.BitWidth);
+  constexpr size_t ValSmallOffset = offsetof(DynamicAPInt, ValSmall);
+  constexpr size_t ValSmallSize = sizeof(ValSmall);
+  static_assert(ValLargeOffset >= ValSmallOffset + ValSmallSize);
 }
 
 raw_ostream &DynamicAPInt::print(raw_ostream &OS) const {
-  // if (isSmall())
+  if (isSmall())
     return OS << ValSmall;
-  // return OS << ValLarge;
+  return OS << ValLarge;
 }
 
 void DynamicAPInt::dump() const { print(dbgs()); }
