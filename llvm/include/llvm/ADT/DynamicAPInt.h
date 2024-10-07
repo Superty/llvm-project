@@ -248,39 +248,39 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt mod(const DynamicAPInt &LHS,
 /// ---------------------------------------------------------------------------
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator==(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() == O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) == detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) == detail::SlowDynamicAPInt(O);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator!=(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() != O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) != detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) != detail::SlowDynamicAPInt(O);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator>(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() > O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) > detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) > detail::SlowDynamicAPInt(O);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator<(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() < O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) < detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) < detail::SlowDynamicAPInt(O);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator<=(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() <= O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) <= detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) <= detail::SlowDynamicAPInt(O);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator>=(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return getSmall() >= O.getSmall();
-  // return detail::SlowDynamicAPInt(*this) >= detail::SlowDynamicAPInt(O);
+  return detail::SlowDynamicAPInt(*this) >= detail::SlowDynamicAPInt(O);
 }
 
 /// ---------------------------------------------------------------------------
