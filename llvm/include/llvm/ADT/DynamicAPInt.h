@@ -331,23 +331,22 @@ DynamicAPInt::operator*(const DynamicAPInt &O) const {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::divByPositive(const DynamicAPInt &O) const {
   assert(O > 0);
-  // if (LLVM_LIKELY(isSmall() && O.isSmall()))
+  if (LLVM_LIKELY(isSmall() && O.isSmall()))
     return DynamicAPInt(getSmall() / O.getSmall());
-  // return DynamicAPInt(detail::SlowDynamicAPInt(*this) /
-  //                     detail::SlowDynamicAPInt(O));
+  return DynamicAPInt(detail::SlowDynamicAPInt(*this) /
+                      detail::SlowDynamicAPInt(O));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator/(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
+  if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
     if (LLVM_UNLIKELY(divideSignedWouldOverflow(getSmall(), O.getSmall())))
-      exit(1);
-      // return -*this;
+      return -*this;
     return DynamicAPInt(getSmall() / O.getSmall());
-  // }
-  // return DynamicAPInt(detail::SlowDynamicAPInt(*this) /
-  //                     detail::SlowDynamicAPInt(O));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(*this) /
+                      detail::SlowDynamicAPInt(O));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt abs(const DynamicAPInt &X) {
@@ -356,27 +355,25 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt abs(const DynamicAPInt &X) {
 // Division overflows only occur when negating the minimal possible value.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt ceilDiv(const DynamicAPInt &LHS,
                                                   const DynamicAPInt &RHS) {
-  // if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
+  if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
     if (LLVM_UNLIKELY(
             divideSignedWouldOverflow(LHS.getSmall(), RHS.getSmall())))
-      exit(1);
-      // return -LHS;
+      return -LHS;
     return DynamicAPInt(divideCeilSigned(LHS.getSmall(), RHS.getSmall()));
-  // }
-  // return DynamicAPInt(
-  //     ceilDiv(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
+  }
+  return DynamicAPInt(
+      ceilDiv(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt floorDiv(const DynamicAPInt &LHS,
                                                    const DynamicAPInt &RHS) {
-  // if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
+  if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
     if (LLVM_UNLIKELY(
             divideSignedWouldOverflow(LHS.getSmall(), RHS.getSmall())))
-      exit(1);
-      // return -LHS;
+      return -LHS;
     return DynamicAPInt(divideFloorSigned(LHS.getSmall(), RHS.getSmall()));
-  // }
-  // return DynamicAPInt(
-  //     floorDiv(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
+  }
+  return DynamicAPInt(
+      floorDiv(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
