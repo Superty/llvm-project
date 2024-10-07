@@ -388,10 +388,10 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt mod(const DynamicAPInt &LHS,
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt gcd(const DynamicAPInt &A,
                                               const DynamicAPInt &B) {
   assert(A >= 0 && B >= 0 && "operands must be non-negative!");
-  // if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
+  if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
     return DynamicAPInt(std::gcd(A.getSmall(), B.getSmall()));
-  // return DynamicAPInt(
-  //     gcd(detail::SlowDynamicAPInt(A), detail::SlowDynamicAPInt(B)));
+  return DynamicAPInt(
+      gcd(detail::SlowDynamicAPInt(A), detail::SlowDynamicAPInt(B)));
 }
 
 /// Returns the least common multiple of A and B.
