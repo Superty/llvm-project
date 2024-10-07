@@ -477,28 +477,27 @@ DynamicAPInt::operator*=(const DynamicAPInt &O) {
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(const DynamicAPInt &O) {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
+  if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
     if (LLVM_UNLIKELY(divideSignedWouldOverflow(getSmall(), O.getSmall())))
-      exit(1);
-      // return *this = -*this;
+      return *this = -*this;
     getSmall() /= O.getSmall();
     return *this;
-  // }
-  // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
-  //                             detail::SlowDynamicAPInt(O));
+  }
+  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
+                              detail::SlowDynamicAPInt(O));
 }
 
 // Division overflows only occur when the divisor is -1.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::divByPositiveInPlace(const DynamicAPInt &O) {
   assert(O > 0);
-  // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
+  if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     getSmall() /= O.getSmall();
     return *this;
-  // }
-  // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
-  //                             detail::SlowDynamicAPInt(O));
+  }
+  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
+                              detail::SlowDynamicAPInt(O));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
