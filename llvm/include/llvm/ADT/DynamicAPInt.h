@@ -588,64 +588,64 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator%(int64_t A,
 /// We provide special implementations of the comparison operators rather than
 /// calling through as above, as this would result in a 1.2x slowdown.
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator==(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() == B;
-  // return A.getLarge() == B;
+  return A.getLarge() == B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator!=(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() != B;
-  // return A.getLarge() != B;
+  return A.getLarge() != B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator>(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() > B;
-  // return A.getLarge() > B;
+  return A.getLarge() > B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator<(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() < B;
-  // return A.getLarge() < B;
+  return A.getLarge() < B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator<=(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() <= B;
-  // return A.getLarge() <= B;
+  return A.getLarge() <= B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator>=(const DynamicAPInt &A, int64_t B) {
-  // if (LLVM_LIKELY(A.isSmall()))
+  if (LLVM_LIKELY(A.isSmall()))
     return A.getSmall() >= B;
-  // return A.getLarge() >= B;
+  return A.getLarge() >= B;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator==(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A == B.getSmall();
-  // return A == B.getLarge();
+  return A == B.getLarge();
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator!=(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A != B.getSmall();
-  // return A != B.getLarge();
+  return A != B.getLarge();
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator>(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A > B.getSmall();
-  // return A > B.getLarge();
+  return A > B.getLarge();
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator<(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A < B.getSmall();
-  // return A < B.getLarge();
+  return A < B.getLarge();
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator<=(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A <= B.getSmall();
-  // return A <= B.getLarge();
+  return A <= B.getLarge();
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool operator>=(int64_t A, const DynamicAPInt &B) {
-  // if (LLVM_LIKELY(B.isSmall()))
+  if (LLVM_LIKELY(B.isSmall()))
     return A >= B.getSmall();
-  // return A >= B.getLarge();
+  return A >= B.getLarge();
 }
 } // namespace llvm
 
