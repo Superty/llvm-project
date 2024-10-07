@@ -53,61 +53,60 @@ class DynamicAPInt {
     ValSmall = O;
     // ValLarge.Val.BitWidth = 0;
   }
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE void
-  // initLarge(const detail::SlowDynamicAPInt &O) {
-  //   if (LLVM_LIKELY(isSmall())) {
-  //     // The data in memory could be in an arbitrary state, not necessarily
-  //     // corresponding to any valid state of ValLarge; we cannot call any member
-  //     // functions, e.g. the assignment operator on it, as they may access the
-  //     // invalid internal state. We instead construct a new object using
-  //     // placement new.
-  //     // new (&ValLarge) detail::SlowDynamicAPInt(O);
-  //   } else {
-  //     // In this case, we need to use the assignment operator, because if we use
-  //     // placement-new as above we would lose track of allocated memory
-  //     // and leak it.
-  //     // ValLarge = O;
-  //   }
-  // }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE void
+  initLarge(const detail::SlowDynamicAPInt &O) {
+    if (LLVM_LIKELY(isSmall())) {
+      // The data in memory could be in an arbitrary state, not necessarily
+      // corresponding to any valid state of ValLarge; we cannot call any member
+      // functions, e.g. the assignment operator on it, as they may access the
+      // invalid internal state. We instead construct a new object using
+      // placement new.
+      new (&ValLarge) detail::SlowDynamicAPInt(O);
+    } else {
+      // In this case, we need to use the assignment operator, because if we use
+      // placement-new as above we would lose track of allocated memory
+      // and leak it.
+      ValLarge = O;
+    }
+  }
 
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(
-  //     const detail::SlowDynamicAPInt &Val)
-  //     : ValLarge(Val) {}
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isSmall() const {
-  //   return true;
-  //   // return ValLarge.Val.BitWidth == 0;
-  // }
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isLarge() const {
-  //   return !isSmall();
-  // }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(
+      const detail::SlowDynamicAPInt &Val)
+      : ValLarge(Val) {}
+  LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isSmall() const {
+    return ValLarge.Val.BitWidth == 0;
+  }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isLarge() const {
+    return !isSmall();
+  }
   /// Get the stored value. For getSmall/Large,
   /// the stored value should be small/large.
   LLVM_ATTRIBUTE_ALWAYS_INLINE int64_t getSmall() const {
-    // assert(isSmall() &&
-    //        "getSmall should only be called when the value stored is small!");
+    assert(isSmall() &&
+           "getSmall should only be called when the value stored is small!");
     return ValSmall;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE int64_t &getSmall() {
-    // assert(isSmall() &&
-    //        "getSmall should only be called when the value stored is small!");
+    assert(isSmall() &&
+           "getSmall should only be called when the value stored is small!");
     return ValSmall;
   }
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE const detail::SlowDynamicAPInt &
-  // getLarge() const {
-  //   assert(isLarge() &&
-  //          "getLarge should only be called when the value stored is large!");
-  //   return ValLarge;
-  // }
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE detail::SlowDynamicAPInt &getLarge() {
-  //   assert(isLarge() &&
-  //          "getLarge should only be called when the value stored is large!");
-  //   return ValLarge;
-  // }
-  // explicit operator detail::SlowDynamicAPInt() const {
-  //   if (isSmall())
-  //     return detail::SlowDynamicAPInt(getSmall());
-  //   return getLarge();
-  // }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE const detail::SlowDynamicAPInt &
+  getLarge() const {
+    assert(isLarge() &&
+           "getLarge should only be called when the value stored is large!");
+    return ValLarge;
+  }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE detail::SlowDynamicAPInt &getLarge() {
+    assert(isLarge() &&
+           "getLarge should only be called when the value stored is large!");
+    return ValLarge;
+  }
+  explicit operator detail::SlowDynamicAPInt() const {
+    if (isSmall())
+      return detail::SlowDynamicAPInt(getSmall());
+    return getLarge();
+  }
 
 public:
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(int64_t Val)
