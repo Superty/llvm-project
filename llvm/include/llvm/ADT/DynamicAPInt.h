@@ -111,7 +111,7 @@ class DynamicAPInt {
 public:
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(int64_t Val)
       : ValSmall(Val) {
-    // ValLarge.Val.BitWidth = 0;
+    ValLarge.Val.BitWidth = 0;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt() : DynamicAPInt(0) {}
   LLVM_ATTRIBUTE_ALWAYS_INLINE ~DynamicAPInt() {
