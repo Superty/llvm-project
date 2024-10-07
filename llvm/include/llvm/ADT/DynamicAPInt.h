@@ -412,13 +412,12 @@ DynamicAPInt::operator%(const DynamicAPInt &O) const {
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
-  // if (LLVM_LIKELY(isSmall())) {
+  if (LLVM_LIKELY(isSmall())) {
     if (LLVM_LIKELY(getSmall() != std::numeric_limits<int64_t>::min()))
       return DynamicAPInt(-getSmall());
-    exit(1);
-    // return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
-  // }
-  // return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
+    return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
+  }
+  return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
 }
 
 /// ---------------------------------------------------------------------------
