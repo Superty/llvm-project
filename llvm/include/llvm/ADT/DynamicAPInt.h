@@ -120,16 +120,16 @@ public:
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt(const DynamicAPInt &O)
       : ValSmall(O.ValSmall) {
-    // ValLarge.Val.BitWidth = 0;
-    // if (LLVM_UNLIKELY(O.isLarge()))
-    //   initLarge(O.ValLarge);
+    ValLarge.Val.BitWidth = 0;
+    if (LLVM_UNLIKELY(O.isLarge()))
+      initLarge(O.ValLarge);
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(const DynamicAPInt &O) {
-    // if (LLVM_LIKELY(O.isSmall())) {
+    if (LLVM_LIKELY(O.isSmall())) {
       initSmall(O.ValSmall);
       return *this;
-    // }
-    // initLarge(O.ValLarge);
+    }
+    initLarge(O.ValLarge);
     return *this;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator=(int X) {
