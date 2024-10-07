@@ -137,9 +137,9 @@ public:
     return *this;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit operator int64_t() const {
-    // if (isSmall())
+    if (isSmall())
       return getSmall();
-    // return static_cast<int64_t>(getLarge());
+    return static_cast<int64_t>(getLarge());
   }
 
   bool operator==(const DynamicAPInt &O) const;
