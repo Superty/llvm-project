@@ -48,10 +48,10 @@ class DynamicAPInt {
   };
 
   LLVM_ATTRIBUTE_ALWAYS_INLINE void initSmall(int64_t O) {
-    // if (LLVM_UNLIKELY(isLarge()))
-    //   ValLarge.detail::SlowDynamicAPInt::~SlowDynamicAPInt();
+    if (LLVM_UNLIKELY(isLarge()))
+      ValLarge.detail::SlowDynamicAPInt::~SlowDynamicAPInt();
     ValSmall = O;
-    // ValLarge.Val.BitWidth = 0;
+    ValLarge.Val.BitWidth = 0;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE void
   initLarge(const detail::SlowDynamicAPInt &O) {
