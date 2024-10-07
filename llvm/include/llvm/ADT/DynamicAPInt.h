@@ -44,7 +44,7 @@ namespace llvm {
 class DynamicAPInt {
   union {
     int64_t ValSmall;
-    // detail::SlowDynamicAPInt ValLarge;
+    detail::SlowDynamicAPInt ValLarge;
   };
 
   LLVM_ATTRIBUTE_ALWAYS_INLINE void initSmall(int64_t O) {
