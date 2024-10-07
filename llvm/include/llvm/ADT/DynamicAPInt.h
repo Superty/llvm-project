@@ -379,10 +379,10 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt floorDiv(const DynamicAPInt &LHS,
 /// is always non-negative.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt mod(const DynamicAPInt &LHS,
                                               const DynamicAPInt &RHS) {
-  // if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall()))
+  if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall()))
     return DynamicAPInt(mod(LHS.getSmall(), RHS.getSmall()));
-  // return DynamicAPInt(
-  //     mod(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
+  return DynamicAPInt(
+      mod(detail::SlowDynamicAPInt(LHS), detail::SlowDynamicAPInt(RHS)));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt gcd(const DynamicAPInt &A,
