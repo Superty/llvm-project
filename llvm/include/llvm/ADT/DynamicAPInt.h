@@ -468,7 +468,7 @@ DynamicAPInt::operator-=(const DynamicAPInt &O) {
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator*=(const DynamicAPInt &O) {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
+  if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     int64_t Result = getSmall();
     bool Overflow = MulOverflow(getSmall(), O.getSmall(), Result);
     if (LLVM_LIKELY(!Overflow)) {
@@ -477,12 +477,11 @@ DynamicAPInt::operator*=(const DynamicAPInt &O) {
     }
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
-    exit(1);
-  //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-  //                               detail::SlowDynamicAPInt(O));
-  // }
-  // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-  //                             detail::SlowDynamicAPInt(O));
+    return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+                                detail::SlowDynamicAPInt(O));
+  }
+  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+                              detail::SlowDynamicAPInt(O));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(const DynamicAPInt &O) {
