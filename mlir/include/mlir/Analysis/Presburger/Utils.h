@@ -14,7 +14,7 @@
 #define MLIR_ANALYSIS_PRESBURGER_UTILS_H
 
 #include "mlir/Analysis/Presburger/Matrix.h"
-#include "llvm/ADT/DynamicAPInt.h"
+#include "mlir/Analysis/Presburger/DynamicAPInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include <optional>

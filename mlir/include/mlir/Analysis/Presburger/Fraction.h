@@ -14,7 +14,7 @@
 #ifndef MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 #define MLIR_ANALYSIS_PRESBURGER_FRACTION_H
 
-#include "llvm/ADT/DynamicAPInt.h"
+#include "mlir/Analysis/Presburger/DynamicAPInt.h"
 
 namespace mlir {
 namespace presburger {
