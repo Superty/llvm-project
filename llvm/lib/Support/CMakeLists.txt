@@ -171,7 +171,6 @@ add_llvm_component_library(LLVMSupport
   DivisionByConstantInfo.cpp
   DAGDeltaAlgorithm.cpp
   DJB.cpp
-  DynamicAPInt.cpp
   ELFAttributeParser.cpp
   ELFAttributes.cpp
   Error.cpp
