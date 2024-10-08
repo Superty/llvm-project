@@ -1,8 +1,11 @@
+add_mlir_unittest(MLIRPresburgerBench
+  IntegerPolyhedronTest.cpp
+)
+
 add_mlir_unittest(MLIRPresburgerTests
   BarvinokTest.cpp
   FractionTest.cpp
   GeneratingFunctionTest.cpp
-  IntegerPolyhedronTest.cpp
   IntegerRelationTest.cpp
   LinearTransformTest.cpp
   MatrixTest.cpp
@@ -17,8 +20,16 @@ add_mlir_unittest(MLIRPresburgerTests
   UtilsTest.cpp
 )
 
+
 target_link_libraries(MLIRPresburgerTests
   PRIVATE MLIRPresburger
   MLIRAffineAnalysis
   MLIRParser
   )
+
+target_link_libraries(MLIRPresburgerBench
+  PRIVATE MLIRPresburger
+  MLIRAffineAnalysis
+  MLIRParser
+  )
+  
