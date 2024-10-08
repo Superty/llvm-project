@@ -199,400 +199,14 @@ static void checkPermutationsSample(bool hasSample, unsigned nDim,
 //   EXPECT_THAT(set.getInequality(0), testing::ElementsAre(12, 20, 40));
 // }
 
-TEST(IntegerPolyhedronTest, FindSampleTest) {
-  // Bounded sets with only inequalities.
-  // 0 <= 7x <= 5
-  checkSample(true,
-              parseIntegerPolyhedron("(x) : (7 * x >= 0, -7 * x + 5 >= 0)"));
+// TEST(IntegerPolyhedronTest, FindSampleTest) {
+// }
 
-  // 1 <= 5x and 5x <= 4 (no solution).
-  checkSample(
-      false, parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 4 >= 0)"));
+// TEST(IntegerPolyhedronTest, IsIntegerEmptyTest) {
+// }
 
-  // 1 <= 5x and 5x <= 9 (solution: x = 1).
-  checkSample(
-      true, parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 9 >= 0)"));
-
-  // Bounded sets with equalities.
-  // x >= 8 and 40 >= y and x = y.
-  checkSample(true, parseIntegerPolyhedron(
-                        "(x,y) : (x - 8 >= 0, -y + 40 >= 0, x - y == 0)"));
-
-  // x <= 10 and y <= 10 and 10 <= z and x + 2y = 3z.
-  // solution: x = y = z = 10.
-  checkSample(true,
-              parseIntegerPolyhedron("(x,y,z) : (-x + 10 >= 0, -y + 10 >= 0, "
-                                     "z - 10 >= 0, x + 2 * y - 3 * z == 0)"));
-
-  // x <= 10 and y <= 10 and 11 <= z and x + 2y = 3z.
-  // This implies x + 2y >= 33 and x + 2y <= 30, which has no solution.
-  checkSample(false,
-              parseIntegerPolyhedron("(x,y,z) : (-x + 10 >= 0, -y + 10 >= 0, "
-                                     "z - 11 >= 0, x + 2 * y - 3 * z == 0)"));
-
-  // 0 <= r and r <= 3 and 4q + r = 7.
-  // Solution: q = 1, r = 3.
-  checkSample(true, parseIntegerPolyhedron(
-                        "(q,r) : (r >= 0, -r + 3 >= 0, 4 * q + r - 7 == 0)"));
-
-  // 4q + r = 7 and r = 0.
-  // Solution: q = 1, r = 3.
-  checkSample(false,
-              parseIntegerPolyhedron("(q,r) : (4 * q + r - 7 == 0, r == 0)"));
-
-  // The next two sets are large sets that should take a long time to sample
-  // with a naive branch and bound algorithm but can be sampled efficiently with
-  // the GBR algorithm.
-  //
-  // This is a triangle with vertices at (1/3, 0), (2/3, 0) and (10000, 10000).
-  checkSample(
-      true, parseIntegerPolyhedron("(x,y) : (y >= 0, "
-                                   "300000 * x - 299999 * y - 100000 >= 0, "
-                                   "-300000 * x + 299998 * y + 200000 >= 0)"));
-
-  // This is a tetrahedron with vertices at
-  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 10000), and (10000, 10000, 10000).
-  // The first three points form a triangular base on the xz plane with the
-  // apex at the fourth point, which is the only integer point.
-  checkPermutationsSample(
-      true, 3,
-      {
-          {0, 1, 0, 0},  // y >= 0
-          {0, -1, 1, 0}, // z >= y
-          {300000, -299998, -1,
-           -100000},                    // -300000x + 299998y + 100000 + z <= 0.
-          {-150000, 149999, 0, 100000}, // -150000x + 149999y + 100000 >= 0.
-      },
-      {});
-
-  // Same thing with some spurious extra dimensions equated to constants.
-  checkSample(true,
-              parseIntegerPolyhedron(
-                  "(a,b,c,d,e) : (b + d - e >= 0, -b + c - d + e >= 0, "
-                  "300000 * a - 299998 * b - c - 9 * d + 21 * e - 112000 >= 0, "
-                  "-150000 * a + 149999 * b - 15 * d + 47 * e + 68000 >= 0, "
-                  "d - e == 0, d + e - 2000 == 0)"));
-
-  // This is a tetrahedron with vertices at
-  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 100), (100, 100 - 1/3, 100).
-  checkPermutationsSample(false, 3,
-                          {
-                              {0, 1, 0, 0},
-                              {0, -300, 299, 0},
-                              {300 * 299, -89400, -299, -100 * 299},
-                              {-897, 894, 0, 598},
-                          },
-                          {});
-
-  // Two tests involving equalities that are integer empty but not rational
-  // empty.
-
-  // This is a line segment from (0, 1/3) to (100, 100 + 1/3).
-  checkSample(false,
-              parseIntegerPolyhedron(
-                  "(x,y) : (x >= 0, -x + 100 >= 0, 3 * x - 3 * y + 1 == 0)"));
-
-  // A thin parallelogram. 0 <= x <= 100 and x + 1/3 <= y <= x + 2/3.
-  checkSample(false, parseIntegerPolyhedron(
-                         "(x,y) : (x >= 0, -x + 100 >= 0, "
-                         "3 * x - 3 * y + 2 >= 0, -3 * x + 3 * y - 1 >= 0)"));
-
-  checkSample(true,
-              parseIntegerPolyhedron("(x,y) : (2 * x >= 0, -2 * x + 99 >= 0, "
-                                     "2 * y >= 0, -2 * y + 99 >= 0)"));
-
-  // 2D cone with apex at (10000, 10000) and
-  // edges passing through (1/3, 0) and (2/3, 0).
-  checkSample(true, parseIntegerPolyhedron(
-                        "(x,y) : (300000 * x - 299999 * y - 100000 >= 0, "
-                        "-300000 * x + 299998 * y + 200000 >= 0)"));
-
-  // Cartesian product of a tetrahedron and a 2D cone.
-  // The tetrahedron has vertices at
-  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 10000), and (10000, 10000, 10000).
-  // The first three points form a triangular base on the xz plane with the
-  // apex at the fourth point, which is the only integer point.
-  // The cone has apex at (10000, 10000) and
-  // edges passing through (1/3, 0) and (2/3, 0).
-  checkPermutationsSample(
-      true /* not empty */, 5,
-      {
-          // Tetrahedron contraints:
-          {0, 1, 0, 0, 0, 0},  // y >= 0
-          {0, -1, 1, 0, 0, 0}, // z >= y
-                               // -300000x + 299998y + 100000 + z <= 0.
-          {300000, -299998, -1, 0, 0, -100000},
-          // -150000x + 149999y + 100000 >= 0.
-          {-150000, 149999, 0, 0, 0, 100000},
-
-          // Triangle constraints:
-          // 300000p - 299999q >= 100000
-          {0, 0, 0, 300000, -299999, -100000},
-          // -300000p + 299998q + 200000 >= 0
-          {0, 0, 0, -300000, 299998, 200000},
-      },
-      {});
-
-  // Cartesian product of same tetrahedron as above and {(p, q) : 1/3 <= p <=
-  // 2/3}. Since the second set is empty, the whole set is too.
-  checkPermutationsSample(
-      false /* empty */, 5,
-      {
-          // Tetrahedron contraints:
-          {0, 1, 0, 0, 0, 0},  // y >= 0
-          {0, -1, 1, 0, 0, 0}, // z >= y
-                               // -300000x + 299998y + 100000 + z <= 0.
-          {300000, -299998, -1, 0, 0, -100000},
-          // -150000x + 149999y + 100000 >= 0.
-          {-150000, 149999, 0, 0, 0, 100000},
-
-          // Second set constraints:
-          // 3p >= 1
-          {0, 0, 0, 3, 0, -1},
-          // 3p <= 2
-          {0, 0, 0, -3, 0, 2},
-      },
-      {});
-
-  // Cartesian product of same tetrahedron as above and
-  // {(p, q, r) : 1 <= p <= 2 and p = 3q + 3r}.
-  // Since the second set is empty, the whole set is too.
-  checkPermutationsSample(
-      false /* empty */, 5,
-      {
-          // Tetrahedron contraints:
-          {0, 1, 0, 0, 0, 0, 0},  // y >= 0
-          {0, -1, 1, 0, 0, 0, 0}, // z >= y
-                                  // -300000x + 299998y + 100000 + z <= 0.
-          {300000, -299998, -1, 0, 0, 0, -100000},
-          // -150000x + 149999y + 100000 >= 0.
-          {-150000, 149999, 0, 0, 0, 0, 100000},
-
-          // Second set constraints:
-          // p >= 1
-          {0, 0, 0, 1, 0, 0, -1},
-          // p <= 2
-          {0, 0, 0, -1, 0, 0, 2},
-      },
-      {
-          {0, 0, 0, 1, -3, -3, 0}, // p = 3q + 3r
-      });
-
-  // Cartesian product of a tetrahedron and a 2D cone.
-  // The tetrahedron is empty and has vertices at
-  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 100), and (100, 100 - 1/3, 100).
-  // The cone has apex at (10000, 10000) and
-  // edges passing through (1/3, 0) and (2/3, 0).
-  // Since the tetrahedron is empty, the Cartesian product is too.
-  checkPermutationsSample(false /* empty */, 5,
-                          {
-                              // Tetrahedron contraints:
-                              {0, 1, 0, 0, 0, 0},
-                              {0, -300, 299, 0, 0, 0},
-                              {300 * 299, -89400, -299, 0, 0, -100 * 299},
-                              {-897, 894, 0, 0, 0, 598},
-
-                              // Triangle constraints:
-                              // 300000p - 299999q >= 100000
-                              {0, 0, 0, 300000, -299999, -100000},
-                              // -300000p + 299998q + 200000 >= 0
-                              {0, 0, 0, -300000, 299998, 200000},
-                          },
-                          {});
-
-  // Cartesian product of same tetrahedron as above and
-  // {(p, q) : 1/3 <= p <= 2/3}.
-  checkPermutationsSample(false /* empty */, 5,
-                          {
-                              // Tetrahedron contraints:
-                              {0, 1, 0, 0, 0, 0},
-                              {0, -300, 299, 0, 0, 0},
-                              {300 * 299, -89400, -299, 0, 0, -100 * 299},
-                              {-897, 894, 0, 0, 0, 598},
-
-                              // Second set constraints:
-                              // 3p >= 1
-                              {0, 0, 0, 3, 0, -1},
-                              // 3p <= 2
-                              {0, 0, 0, -3, 0, 2},
-                          },
-                          {});
-
-  checkSample(true, parseIntegerPolyhedron(
-                        "(x, y, z) : (2 * x - 1 >= 0, x - y - 1 == 0, "
-                        "y - z == 0)"));
-
-  // Test with a local id.
-  checkSample(true, parseIntegerPolyhedron("(x) : (x == 5*(x floordiv 2))"));
-
-  // Regression tests for the computation of dual coefficients.
-  checkSample(false, parseIntegerPolyhedron("(x, y, z) : ("
-                                            "6*x - 4*y + 9*z + 2 >= 0,"
-                                            "x + 5*y + z + 5 >= 0,"
-                                            "-4*x + y + 2*z - 1 >= 0,"
-                                            "-3*x - 2*y - 7*z - 1 >= 0,"
-                                            "-7*x - 5*y - 9*z - 1 >= 0)"));
-  checkSample(true, parseIntegerPolyhedron("(x, y, z) : ("
-                                           "3*x + 3*y + 3 >= 0,"
-                                           "-4*x - 8*y - z + 4 >= 0,"
-                                           "-7*x - 4*y + z + 1 >= 0,"
-                                           "2*x - 7*y - 8*z - 7 >= 0,"
-                                           "9*x + 8*y - 9*z - 7 >= 0)"));
-}
-
-TEST(IntegerPolyhedronTest, IsIntegerEmptyTest) {
-  // 1 <= 5x and 5x <= 4 (no solution).
-  EXPECT_TRUE(parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 4 >= 0)")
-                  .isIntegerEmpty());
-  // 1 <= 5x and 5x <= 9 (solution: x = 1).
-  EXPECT_FALSE(parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 9 >= 0)")
-                   .isIntegerEmpty());
-
-  // Unbounded sets.
-  EXPECT_TRUE(
-      parseIntegerPolyhedron("(x,y,z) : (2 * y - 1 >= 0, -2 * y + 1 >= 0, "
-                             "2 * z - 1 >= 0, 2 * x - 1 == 0)")
-          .isIntegerEmpty());
-
-  EXPECT_FALSE(parseIntegerPolyhedron(
-                   "(x,y,z) : (2 * x - 1 >= 0, -3 * x + 3 >= 0, "
-                   "5 * z - 6 >= 0, -7 * z + 17 >= 0, 3 * y - 2 >= 0)")
-                   .isIntegerEmpty());
-
-  EXPECT_FALSE(parseIntegerPolyhedron(
-                   "(x,y,z) : (2 * x - 1 >= 0, x - y - 1 == 0, y - z == 0)")
-                   .isIntegerEmpty());
-
-  // IntegerPolyhedron::isEmpty() does not detect the following sets to be
-  // empty.
-
-  // 3x + 7y = 1 and 0 <= x, y <= 10.
-  // Since x and y are non-negative, 3x + 7y can never be 1.
-  EXPECT_TRUE(parseIntegerPolyhedron(
-                  "(x,y) : (x >= 0, -x + 10 >= 0, y >= 0, -y + 10 >= 0, "
-                  "3 * x + 7 * y - 1 == 0)")
-                  .isIntegerEmpty());
-
-  // 2x = 3y and y = x - 1 and x + y = 6z + 2 and 0 <= x, y <= 100.
-  // Substituting y = x - 1 in 3y = 2x, we obtain x = 3 and hence y = 2.
-  // Since x + y = 5 cannot be equal to 6z + 2 for any z, the set is empty.
-  EXPECT_TRUE(parseIntegerPolyhedron(
-                  "(x,y,z) : (x >= 0, -x + 100 >= 0, y >= 0, -y + 100 >= 0, "
-                  "2 * x - 3 * y == 0, x - y - 1 == 0, x + y - 6 * z - 2 == 0)")
-                  .isIntegerEmpty());
-
-  // 2x = 3y and y = x - 1 + 6z and x + y = 6q + 2 and 0 <= x, y <= 100.
-  // 2x = 3y implies x is a multiple of 3 and y is even.
-  // Now y = x - 1 + 6z implies y = 2 mod 3. In fact, since y is even, we have
-  // y = 2 mod 6. Then since x = y + 1 + 6z, we have x = 3 mod 6, implying
-  // x + y = 5 mod 6, which contradicts x + y = 6q + 2, so the set is empty.
-  EXPECT_TRUE(
-      parseIntegerPolyhedron(
-          "(x,y,z,q) : (x >= 0, -x + 100 >= 0, y >= 0, -y + 100 >= 0, "
-          "2 * x - 3 * y == 0, x - y + 6 * z - 1 == 0, x + y - 6 * q - 2 == 0)")
-          .isIntegerEmpty());
-
-  // Set with symbols.
-  EXPECT_FALSE(parseIntegerPolyhedron("(x)[s] : (x + s >= 0, x - s == 0)")
-                   .isIntegerEmpty());
-}
-
-TEST(IntegerPolyhedronTest, removeRedundantConstraintsTest) {
-  IntegerPolyhedron poly =
-      parseIntegerPolyhedron("(x) : (x - 2 >= 0, -x + 2 >= 0, x - 2 == 0)");
-  poly.removeRedundantConstraints();
-
-  // Both inequalities are redundant given the equality. Both have been removed.
-  EXPECT_EQ(poly.getNumInequalities(), 0u);
-  EXPECT_EQ(poly.getNumEqualities(), 1u);
-
-  IntegerPolyhedron poly2 =
-      parseIntegerPolyhedron("(x,y) : (x - 3 >= 0, y - 2 >= 0, x - y == 0)");
-  poly2.removeRedundantConstraints();
-
-  // The second inequality is redundant and should have been removed. The
-  // remaining inequality should be the first one.
-  EXPECT_EQ(poly2.getNumInequalities(), 1u);
-  EXPECT_THAT(poly2.getInequality(0), ElementsAre(1, 0, -3));
-  EXPECT_EQ(poly2.getNumEqualities(), 1u);
-
-  IntegerPolyhedron poly3 =
-      parseIntegerPolyhedron("(x,y,z) : (x - y == 0, x - z == 0, y - z == 0)");
-  poly3.removeRedundantConstraints();
-
-  // One of the three equalities can be removed.
-  EXPECT_EQ(poly3.getNumInequalities(), 0u);
-  EXPECT_EQ(poly3.getNumEqualities(), 2u);
-
-  IntegerPolyhedron poly4 = parseIntegerPolyhedron(
-      "(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q) : ("
-      "b - 1 >= 0,"
-      "-b + 500 >= 0,"
-      "-16 * d + f >= 0,"
-      "f - 1 >= 0,"
-      "-f + 998 >= 0,"
-      "16 * d - f + 15 >= 0,"
-      "-16 * e + g >= 0,"
-      "g - 1 >= 0,"
-      "-g + 998 >= 0,"
-      "16 * e - g + 15 >= 0,"
-      "h >= 0,"
-      "-h + 1 >= 0,"
-      "j - 1 >= 0,"
-      "-j + 500 >= 0,"
-      "-f + 16 * l + 15 >= 0,"
-      "f - 16 * l >= 0,"
-      "-16 * m + o >= 0,"
-      "o - 1 >= 0,"
-      "-o + 998 >= 0,"
-      "16 * m - o + 15 >= 0,"
-      "p >= 0,"
-      "-p + 1 >= 0,"
-      "-g - h + 8 * q + 8 >= 0,"
-      "-o - p + 8 * q + 8 >= 0,"
-      "o + p - 8 * q - 1 >= 0,"
-      "g + h - 8 * q - 1 >= 0,"
-      "-f + n >= 0,"
-      "f - n >= 0,"
-      "k - 10 >= 0,"
-      "-k + 10 >= 0,"
-      "i - 13 >= 0,"
-      "-i + 13 >= 0,"
-      "c - 10 >= 0,"
-      "-c + 10 >= 0,"
-      "a - 13 >= 0,"
-      "-a + 13 >= 0"
-      ")");
-
-  // The above is a large set of constraints without any redundant constraints,
-  // as verified by the Fourier-Motzkin based removeRedundantInequalities.
-  unsigned nIneq = poly4.getNumInequalities();
-  unsigned nEq = poly4.getNumEqualities();
-  poly4.removeRedundantInequalities();
-  ASSERT_EQ(poly4.getNumInequalities(), nIneq);
-  ASSERT_EQ(poly4.getNumEqualities(), nEq);
-  // Now we test that removeRedundantConstraints does not find any constraints
-  // to be redundant either.
-  poly4.removeRedundantConstraints();
-  EXPECT_EQ(poly4.getNumInequalities(), nIneq);
-  EXPECT_EQ(poly4.getNumEqualities(), nEq);
-
-  IntegerPolyhedron poly5 = parseIntegerPolyhedron(
-      "(x,y) : (128 * x + 127 >= 0, -x + 7 >= 0, -128 * x + y >= 0, y >= 0)");
-  // 128x + 127 >= 0  implies that 128x >= 0, since x has to be an integer.
-  // (This should be caught by GCDTightenInqualities().)
-  // So -128x + y >= 0 and 128x + 127 >= 0 imply y >= 0 since we have
-  // y >= 128x >= 0.
-  poly5.removeRedundantConstraints();
-  EXPECT_EQ(poly5.getNumInequalities(), 3u);
-  SmallVector<DynamicAPInt, 8> redundantConstraint =
-      getDynamicAPIntVec({0, 1, 0});
-  for (unsigned i = 0; i < 3; ++i) {
-    // Ensure that the removed constraint was the redundant constraint [3].
-    EXPECT_NE(poly5.getInequality(i),
-              ArrayRef<DynamicAPInt>(redundantConstraint));
-  }
-}
+// TEST(IntegerPolyhedronTest, removeRedundantConstraintsTest) {
+// }
 
 // TEST(IntegerPolyhedronTest, addConstantUpperBound) {
 //   IntegerPolyhedron poly(PresburgerSpace::getSetSpace(2));
@@ -1100,7 +714,463 @@ void expectNoRationalLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
   EXPECT_EQ(poly.findRationalLexMin().getKind(), kind);
 }
 
-TEST(IntegerPolyhedronTest, findRationalLexMin) {
+// TEST(IntegerPolyhedronTest, findRationalLexMin) {
+// }
+
+void expectIntegerLexMin(const IntegerPolyhedron &poly, ArrayRef<int64_t> min) {
+  MaybeOptimum<SmallVector<DynamicAPInt, 8>> lexMin = poly.findIntegerLexMin();
+  ASSERT_TRUE(lexMin.isBounded());
+  EXPECT_EQ(*lexMin, getDynamicAPIntVec(min));
+}
+
+void expectNoIntegerLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
+  ASSERT_NE(kind, OptimumKind::Bounded)
+      << "Use expectRationalLexMin for bounded min";
+  EXPECT_EQ(poly.findRationalLexMin().getKind(), kind);
+}
+
+// TEST(IntegerPolyhedronTest, findIntegerLexMin) {
+// }
+
+void expectSymbolicIntegerLexMin(
+    StringRef polyStr,
+    ArrayRef<std::pair<StringRef, StringRef>> expectedLexminRepr,
+    ArrayRef<StringRef> expectedUnboundedDomainRepr) {
+  IntegerPolyhedron poly = parseIntegerPolyhedron(polyStr);
+
+  ASSERT_NE(poly.getNumDimVars(), 0u);
+  ASSERT_NE(poly.getNumSymbolVars(), 0u);
+
+  SymbolicLexOpt result = poly.findSymbolicIntegerLexMin();
+
+  if (expectedLexminRepr.empty()) {
+    EXPECT_TRUE(result.lexopt.getDomain().isIntegerEmpty());
+  } else {
+    PWMAFunction expectedLexmin = parsePWMAF(expectedLexminRepr);
+    EXPECT_TRUE(result.lexopt.isEqual(expectedLexmin));
+  }
+
+  if (expectedUnboundedDomainRepr.empty()) {
+    EXPECT_TRUE(result.unboundedDomain.isIntegerEmpty());
+  } else {
+    PresburgerSet expectedUnboundedDomain =
+        parsePresburgerSet(expectedUnboundedDomainRepr);
+    EXPECT_TRUE(result.unboundedDomain.isEqual(expectedUnboundedDomain));
+  }
+}
+
+void expectSymbolicIntegerLexMin(
+    StringRef polyStr, ArrayRef<std::pair<StringRef, StringRef>> result) {
+  expectSymbolicIntegerLexMin(polyStr, result, {});
+}
+
+TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
+}
+
+static void
+expectComputedVolumeIsValidOverapprox(const IntegerPolyhedron &poly,
+                                      std::optional<int64_t> trueVolume,
+                                      std::optional<int64_t> resultBound) {
+  expectComputedVolumeIsValidOverapprox(poly.computeVolume(), trueVolume,
+                                        resultBound);
+}
+
+// TEST(IntegerPolyhedronTest, computeVolume) {
+// }
+
+TEST(IntegerPolyhedronTest, benchmark) {
+for (int i = 0; i < 10; ++i) {
+  // Bounded sets with only inequalities.
+  // 0 <= 7x <= 5
+  checkSample(true,
+              parseIntegerPolyhedron("(x) : (7 * x >= 0, -7 * x + 5 >= 0)"));
+
+  // 1 <= 5x and 5x <= 4 (no solution).
+  checkSample(
+      false, parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 4 >= 0)"));
+
+  // 1 <= 5x and 5x <= 9 (solution: x = 1).
+  checkSample(
+      true, parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 9 >= 0)"));
+
+  // Bounded sets with equalities.
+  // x >= 8 and 40 >= y and x = y.
+  checkSample(true, parseIntegerPolyhedron(
+                        "(x,y) : (x - 8 >= 0, -y + 40 >= 0, x - y == 0)"));
+
+  // x <= 10 and y <= 10 and 10 <= z and x + 2y = 3z.
+  // solution: x = y = z = 10.
+  checkSample(true,
+              parseIntegerPolyhedron("(x,y,z) : (-x + 10 >= 0, -y + 10 >= 0, "
+                                     "z - 10 >= 0, x + 2 * y - 3 * z == 0)"));
+
+  // x <= 10 and y <= 10 and 11 <= z and x + 2y = 3z.
+  // This implies x + 2y >= 33 and x + 2y <= 30, which has no solution.
+  checkSample(false,
+              parseIntegerPolyhedron("(x,y,z) : (-x + 10 >= 0, -y + 10 >= 0, "
+                                     "z - 11 >= 0, x + 2 * y - 3 * z == 0)"));
+
+  // 0 <= r and r <= 3 and 4q + r = 7.
+  // Solution: q = 1, r = 3.
+  checkSample(true, parseIntegerPolyhedron(
+                        "(q,r) : (r >= 0, -r + 3 >= 0, 4 * q + r - 7 == 0)"));
+
+  // 4q + r = 7 and r = 0.
+  // Solution: q = 1, r = 3.
+  checkSample(false,
+              parseIntegerPolyhedron("(q,r) : (4 * q + r - 7 == 0, r == 0)"));
+
+  // The next two sets are large sets that should take a long time to sample
+  // with a naive branch and bound algorithm but can be sampled efficiently with
+  // the GBR algorithm.
+  //
+  // This is a triangle with vertices at (1/3, 0), (2/3, 0) and (10000, 10000).
+  checkSample(
+      true, parseIntegerPolyhedron("(x,y) : (y >= 0, "
+                                   "300000 * x - 299999 * y - 100000 >= 0, "
+                                   "-300000 * x + 299998 * y + 200000 >= 0)"));
+
+  // This is a tetrahedron with vertices at
+  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 10000), and (10000, 10000, 10000).
+  // The first three points form a triangular base on the xz plane with the
+  // apex at the fourth point, which is the only integer point.
+  checkPermutationsSample(
+      true, 3,
+      {
+          {0, 1, 0, 0},  // y >= 0
+          {0, -1, 1, 0}, // z >= y
+          {300000, -299998, -1,
+           -100000},                    // -300000x + 299998y + 100000 + z <= 0.
+          {-150000, 149999, 0, 100000}, // -150000x + 149999y + 100000 >= 0.
+      },
+      {});
+
+  // Same thing with some spurious extra dimensions equated to constants.
+  checkSample(true,
+              parseIntegerPolyhedron(
+                  "(a,b,c,d,e) : (b + d - e >= 0, -b + c - d + e >= 0, "
+                  "300000 * a - 299998 * b - c - 9 * d + 21 * e - 112000 >= 0, "
+                  "-150000 * a + 149999 * b - 15 * d + 47 * e + 68000 >= 0, "
+                  "d - e == 0, d + e - 2000 == 0)"));
+
+  // This is a tetrahedron with vertices at
+  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 100), (100, 100 - 1/3, 100).
+  checkPermutationsSample(false, 3,
+                          {
+                              {0, 1, 0, 0},
+                              {0, -300, 299, 0},
+                              {300 * 299, -89400, -299, -100 * 299},
+                              {-897, 894, 0, 598},
+                          },
+                          {});
+
+  // Two tests involving equalities that are integer empty but not rational
+  // empty.
+
+  // This is a line segment from (0, 1/3) to (100, 100 + 1/3).
+  checkSample(false,
+              parseIntegerPolyhedron(
+                  "(x,y) : (x >= 0, -x + 100 >= 0, 3 * x - 3 * y + 1 == 0)"));
+
+  // A thin parallelogram. 0 <= x <= 100 and x + 1/3 <= y <= x + 2/3.
+  checkSample(false, parseIntegerPolyhedron(
+                         "(x,y) : (x >= 0, -x + 100 >= 0, "
+                         "3 * x - 3 * y + 2 >= 0, -3 * x + 3 * y - 1 >= 0)"));
+
+  checkSample(true,
+              parseIntegerPolyhedron("(x,y) : (2 * x >= 0, -2 * x + 99 >= 0, "
+                                     "2 * y >= 0, -2 * y + 99 >= 0)"));
+
+  // 2D cone with apex at (10000, 10000) and
+  // edges passing through (1/3, 0) and (2/3, 0).
+  checkSample(true, parseIntegerPolyhedron(
+                        "(x,y) : (300000 * x - 299999 * y - 100000 >= 0, "
+                        "-300000 * x + 299998 * y + 200000 >= 0)"));
+
+  // Cartesian product of a tetrahedron and a 2D cone.
+  // The tetrahedron has vertices at
+  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 10000), and (10000, 10000, 10000).
+  // The first three points form a triangular base on the xz plane with the
+  // apex at the fourth point, which is the only integer point.
+  // The cone has apex at (10000, 10000) and
+  // edges passing through (1/3, 0) and (2/3, 0).
+  checkPermutationsSample(
+      true /* not empty */, 5,
+      {
+          // Tetrahedron contraints:
+          {0, 1, 0, 0, 0, 0},  // y >= 0
+          {0, -1, 1, 0, 0, 0}, // z >= y
+                               // -300000x + 299998y + 100000 + z <= 0.
+          {300000, -299998, -1, 0, 0, -100000},
+          // -150000x + 149999y + 100000 >= 0.
+          {-150000, 149999, 0, 0, 0, 100000},
+
+          // Triangle constraints:
+          // 300000p - 299999q >= 100000
+          {0, 0, 0, 300000, -299999, -100000},
+          // -300000p + 299998q + 200000 >= 0
+          {0, 0, 0, -300000, 299998, 200000},
+      },
+      {});
+
+  // Cartesian product of same tetrahedron as above and {(p, q) : 1/3 <= p <=
+  // 2/3}. Since the second set is empty, the whole set is too.
+  checkPermutationsSample(
+      false /* empty */, 5,
+      {
+          // Tetrahedron contraints:
+          {0, 1, 0, 0, 0, 0},  // y >= 0
+          {0, -1, 1, 0, 0, 0}, // z >= y
+                               // -300000x + 299998y + 100000 + z <= 0.
+          {300000, -299998, -1, 0, 0, -100000},
+          // -150000x + 149999y + 100000 >= 0.
+          {-150000, 149999, 0, 0, 0, 100000},
+
+          // Second set constraints:
+          // 3p >= 1
+          {0, 0, 0, 3, 0, -1},
+          // 3p <= 2
+          {0, 0, 0, -3, 0, 2},
+      },
+      {});
+
+  // Cartesian product of same tetrahedron as above and
+  // {(p, q, r) : 1 <= p <= 2 and p = 3q + 3r}.
+  // Since the second set is empty, the whole set is too.
+  checkPermutationsSample(
+      false /* empty */, 5,
+      {
+          // Tetrahedron contraints:
+          {0, 1, 0, 0, 0, 0, 0},  // y >= 0
+          {0, -1, 1, 0, 0, 0, 0}, // z >= y
+                                  // -300000x + 299998y + 100000 + z <= 0.
+          {300000, -299998, -1, 0, 0, 0, -100000},
+          // -150000x + 149999y + 100000 >= 0.
+          {-150000, 149999, 0, 0, 0, 0, 100000},
+
+          // Second set constraints:
+          // p >= 1
+          {0, 0, 0, 1, 0, 0, -1},
+          // p <= 2
+          {0, 0, 0, -1, 0, 0, 2},
+      },
+      {
+          {0, 0, 0, 1, -3, -3, 0}, // p = 3q + 3r
+      });
+
+  // Cartesian product of a tetrahedron and a 2D cone.
+  // The tetrahedron is empty and has vertices at
+  // (1/3, 0, 0), (2/3, 0, 0), (2/3, 0, 100), and (100, 100 - 1/3, 100).
+  // The cone has apex at (10000, 10000) and
+  // edges passing through (1/3, 0) and (2/3, 0).
+  // Since the tetrahedron is empty, the Cartesian product is too.
+  checkPermutationsSample(false /* empty */, 5,
+                          {
+                              // Tetrahedron contraints:
+                              {0, 1, 0, 0, 0, 0},
+                              {0, -300, 299, 0, 0, 0},
+                              {300 * 299, -89400, -299, 0, 0, -100 * 299},
+                              {-897, 894, 0, 0, 0, 598},
+
+                              // Triangle constraints:
+                              // 300000p - 299999q >= 100000
+                              {0, 0, 0, 300000, -299999, -100000},
+                              // -300000p + 299998q + 200000 >= 0
+                              {0, 0, 0, -300000, 299998, 200000},
+                          },
+                          {});
+
+  // Cartesian product of same tetrahedron as above and
+  // {(p, q) : 1/3 <= p <= 2/3}.
+  checkPermutationsSample(false /* empty */, 5,
+                          {
+                              // Tetrahedron contraints:
+                              {0, 1, 0, 0, 0, 0},
+                              {0, -300, 299, 0, 0, 0},
+                              {300 * 299, -89400, -299, 0, 0, -100 * 299},
+                              {-897, 894, 0, 0, 0, 598},
+
+                              // Second set constraints:
+                              // 3p >= 1
+                              {0, 0, 0, 3, 0, -1},
+                              // 3p <= 2
+                              {0, 0, 0, -3, 0, 2},
+                          },
+                          {});
+
+  checkSample(true, parseIntegerPolyhedron(
+                        "(x, y, z) : (2 * x - 1 >= 0, x - y - 1 == 0, "
+                        "y - z == 0)"));
+
+  // Test with a local id.
+  checkSample(true, parseIntegerPolyhedron("(x) : (x == 5*(x floordiv 2))"));
+
+  // Regression tests for the computation of dual coefficients.
+  checkSample(false, parseIntegerPolyhedron("(x, y, z) : ("
+                                            "6*x - 4*y + 9*z + 2 >= 0,"
+                                            "x + 5*y + z + 5 >= 0,"
+                                            "-4*x + y + 2*z - 1 >= 0,"
+                                            "-3*x - 2*y - 7*z - 1 >= 0,"
+                                            "-7*x - 5*y - 9*z - 1 >= 0)"));
+  checkSample(true, parseIntegerPolyhedron("(x, y, z) : ("
+                                           "3*x + 3*y + 3 >= 0,"
+                                           "-4*x - 8*y - z + 4 >= 0,"
+                                           "-7*x - 4*y + z + 1 >= 0,"
+                                           "2*x - 7*y - 8*z - 7 >= 0,"
+                                           "9*x + 8*y - 9*z - 7 >= 0)"));
+
+  
+  // 1 <= 5x and 5x <= 4 (no solution).
+  EXPECT_TRUE(parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 4 >= 0)")
+                  .isIntegerEmpty());
+  // 1 <= 5x and 5x <= 9 (solution: x = 1).
+  EXPECT_FALSE(parseIntegerPolyhedron("(x) : (5 * x - 1 >= 0, -5 * x + 9 >= 0)")
+                   .isIntegerEmpty());
+
+  // Unbounded sets.
+  EXPECT_TRUE(
+      parseIntegerPolyhedron("(x,y,z) : (2 * y - 1 >= 0, -2 * y + 1 >= 0, "
+                             "2 * z - 1 >= 0, 2 * x - 1 == 0)")
+          .isIntegerEmpty());
+
+  EXPECT_FALSE(parseIntegerPolyhedron(
+                   "(x,y,z) : (2 * x - 1 >= 0, -3 * x + 3 >= 0, "
+                   "5 * z - 6 >= 0, -7 * z + 17 >= 0, 3 * y - 2 >= 0)")
+                   .isIntegerEmpty());
+
+  EXPECT_FALSE(parseIntegerPolyhedron(
+                   "(x,y,z) : (2 * x - 1 >= 0, x - y - 1 == 0, y - z == 0)")
+                   .isIntegerEmpty());
+
+  // IntegerPolyhedron::isEmpty() does not detect the following sets to be
+  // empty.
+
+  // 3x + 7y = 1 and 0 <= x, y <= 10.
+  // Since x and y are non-negative, 3x + 7y can never be 1.
+  EXPECT_TRUE(parseIntegerPolyhedron(
+                  "(x,y) : (x >= 0, -x + 10 >= 0, y >= 0, -y + 10 >= 0, "
+                  "3 * x + 7 * y - 1 == 0)")
+                  .isIntegerEmpty());
+
+  // 2x = 3y and y = x - 1 and x + y = 6z + 2 and 0 <= x, y <= 100.
+  // Substituting y = x - 1 in 3y = 2x, we obtain x = 3 and hence y = 2.
+  // Since x + y = 5 cannot be equal to 6z + 2 for any z, the set is empty.
+  EXPECT_TRUE(parseIntegerPolyhedron(
+                  "(x,y,z) : (x >= 0, -x + 100 >= 0, y >= 0, -y + 100 >= 0, "
+                  "2 * x - 3 * y == 0, x - y - 1 == 0, x + y - 6 * z - 2 == 0)")
+                  .isIntegerEmpty());
+
+  // 2x = 3y and y = x - 1 + 6z and x + y = 6q + 2 and 0 <= x, y <= 100.
+  // 2x = 3y implies x is a multiple of 3 and y is even.
+  // Now y = x - 1 + 6z implies y = 2 mod 3. In fact, since y is even, we have
+  // y = 2 mod 6. Then since x = y + 1 + 6z, we have x = 3 mod 6, implying
+  // x + y = 5 mod 6, which contradicts x + y = 6q + 2, so the set is empty.
+  EXPECT_TRUE(
+      parseIntegerPolyhedron(
+          "(x,y,z,q) : (x >= 0, -x + 100 >= 0, y >= 0, -y + 100 >= 0, "
+          "2 * x - 3 * y == 0, x - y + 6 * z - 1 == 0, x + y - 6 * q - 2 == 0)")
+          .isIntegerEmpty());
+
+  // Set with symbols.
+  EXPECT_FALSE(parseIntegerPolyhedron("(x)[s] : (x + s >= 0, x - s == 0)")
+                   .isIntegerEmpty());
+
+  
+  IntegerPolyhedron poly =
+      parseIntegerPolyhedron("(x) : (x - 2 >= 0, -x + 2 >= 0, x - 2 == 0)");
+  poly.removeRedundantConstraints();
+
+  // Both inequalities are redundant given the equality. Both have been removed.
+  EXPECT_EQ(poly.getNumInequalities(), 0u);
+  EXPECT_EQ(poly.getNumEqualities(), 1u);
+
+  IntegerPolyhedron poly2 =
+      parseIntegerPolyhedron("(x,y) : (x - 3 >= 0, y - 2 >= 0, x - y == 0)");
+  poly2.removeRedundantConstraints();
+
+  // The second inequality is redundant and should have been removed. The
+  // remaining inequality should be the first one.
+  EXPECT_EQ(poly2.getNumInequalities(), 1u);
+  EXPECT_THAT(poly2.getInequality(0), ElementsAre(1, 0, -3));
+  EXPECT_EQ(poly2.getNumEqualities(), 1u);
+
+  IntegerPolyhedron poly3 =
+      parseIntegerPolyhedron("(x,y,z) : (x - y == 0, x - z == 0, y - z == 0)");
+  poly3.removeRedundantConstraints();
+
+  // One of the three equalities can be removed.
+  EXPECT_EQ(poly3.getNumInequalities(), 0u);
+  EXPECT_EQ(poly3.getNumEqualities(), 2u);
+
+  IntegerPolyhedron poly4 = parseIntegerPolyhedron(
+      "(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q) : ("
+      "b - 1 >= 0,"
+      "-b + 500 >= 0,"
+      "-16 * d + f >= 0,"
+      "f - 1 >= 0,"
+      "-f + 998 >= 0,"
+      "16 * d - f + 15 >= 0,"
+      "-16 * e + g >= 0,"
+      "g - 1 >= 0,"
+      "-g + 998 >= 0,"
+      "16 * e - g + 15 >= 0,"
+      "h >= 0,"
+      "-h + 1 >= 0,"
+      "j - 1 >= 0,"
+      "-j + 500 >= 0,"
+      "-f + 16 * l + 15 >= 0,"
+      "f - 16 * l >= 0,"
+      "-16 * m + o >= 0,"
+      "o - 1 >= 0,"
+      "-o + 998 >= 0,"
+      "16 * m - o + 15 >= 0,"
+      "p >= 0,"
+      "-p + 1 >= 0,"
+      "-g - h + 8 * q + 8 >= 0,"
+      "-o - p + 8 * q + 8 >= 0,"
+      "o + p - 8 * q - 1 >= 0,"
+      "g + h - 8 * q - 1 >= 0,"
+      "-f + n >= 0,"
+      "f - n >= 0,"
+      "k - 10 >= 0,"
+      "-k + 10 >= 0,"
+      "i - 13 >= 0,"
+      "-i + 13 >= 0,"
+      "c - 10 >= 0,"
+      "-c + 10 >= 0,"
+      "a - 13 >= 0,"
+      "-a + 13 >= 0"
+      ")");
+
+  // The above is a large set of constraints without any redundant constraints,
+  // as verified by the Fourier-Motzkin based removeRedundantInequalities.
+  unsigned nIneq = poly4.getNumInequalities();
+  unsigned nEq = poly4.getNumEqualities();
+  poly4.removeRedundantInequalities();
+  ASSERT_EQ(poly4.getNumInequalities(), nIneq);
+  ASSERT_EQ(poly4.getNumEqualities(), nEq);
+  // Now we test that removeRedundantConstraints does not find any constraints
+  // to be redundant either.
+  poly4.removeRedundantConstraints();
+  EXPECT_EQ(poly4.getNumInequalities(), nIneq);
+  EXPECT_EQ(poly4.getNumEqualities(), nEq);
+
+  IntegerPolyhedron poly5 = parseIntegerPolyhedron(
+      "(x,y) : (128 * x + 127 >= 0, -x + 7 >= 0, -128 * x + y >= 0, y >= 0)");
+  // 128x + 127 >= 0  implies that 128x >= 0, since x has to be an integer.
+  // (This should be caught by GCDTightenInqualities().)
+  // So -128x + y >= 0 and 128x + 127 >= 0 imply y >= 0 since we have
+  // y >= 128x >= 0.
+  poly5.removeRedundantConstraints();
+  EXPECT_EQ(poly5.getNumInequalities(), 3u);
+  SmallVector<DynamicAPInt, 8> redundantConstraint =
+      getDynamicAPIntVec({0, 1, 0});
+  for (unsigned i = 0; i < 3; ++i) {
+    // Ensure that the removed constraint was the redundant constraint [3].
+    EXPECT_NE(poly5.getInequality(i),
+              ArrayRef<DynamicAPInt>(redundantConstraint));
+  }
+
   expectRationalLexMin(
       parseIntegerPolyhedron(
           "(x, y, z) : (x + 10 >= 0, y + 40 >= 0, z + 30 >= 0)"),
@@ -1165,21 +1235,6 @@ TEST(IntegerPolyhedronTest, findRationalLexMin) {
   expectNoRationalLexMin(
       OptimumKind::Empty,
       parseIntegerPolyhedron("(x) : (2*x >= 0, -x - 1 >= 0)"));
-}
-
-void expectIntegerLexMin(const IntegerPolyhedron &poly, ArrayRef<int64_t> min) {
-  MaybeOptimum<SmallVector<DynamicAPInt, 8>> lexMin = poly.findIntegerLexMin();
-  ASSERT_TRUE(lexMin.isBounded());
-  EXPECT_EQ(*lexMin, getDynamicAPIntVec(min));
-}
-
-void expectNoIntegerLexMin(OptimumKind kind, const IntegerPolyhedron &poly) {
-  ASSERT_NE(kind, OptimumKind::Bounded)
-      << "Use expectRationalLexMin for bounded min";
-  EXPECT_EQ(poly.findRationalLexMin().getKind(), kind);
-}
-
-TEST(IntegerPolyhedronTest, findIntegerLexMin) {
   expectIntegerLexMin(
       parseIntegerPolyhedron("(x, y, z) : (2*x + 13 >= 0, 4*y - 3*x - 2  >= "
                              "0, 11*z + 5*y - 3*x + 7 >= 0)"),
@@ -1189,41 +1244,8 @@ TEST(IntegerPolyhedronTest, findIntegerLexMin) {
       OptimumKind::Unbounded,
       parseIntegerPolyhedron("(x, y, z) : (2*x + 13 >= 0, 4*y - 3*x - 2  "
                              ">= 0, -11*z + 5*y - 3*x + 7 >= 0)"));
-}
 
-void expectSymbolicIntegerLexMin(
-    StringRef polyStr,
-    ArrayRef<std::pair<StringRef, StringRef>> expectedLexminRepr,
-    ArrayRef<StringRef> expectedUnboundedDomainRepr) {
-  IntegerPolyhedron poly = parseIntegerPolyhedron(polyStr);
-
-  ASSERT_NE(poly.getNumDimVars(), 0u);
-  ASSERT_NE(poly.getNumSymbolVars(), 0u);
-
-  SymbolicLexOpt result = poly.findSymbolicIntegerLexMin();
-
-  if (expectedLexminRepr.empty()) {
-    EXPECT_TRUE(result.lexopt.getDomain().isIntegerEmpty());
-  } else {
-    PWMAFunction expectedLexmin = parsePWMAF(expectedLexminRepr);
-    EXPECT_TRUE(result.lexopt.isEqual(expectedLexmin));
-  }
-
-  if (expectedUnboundedDomainRepr.empty()) {
-    EXPECT_TRUE(result.unboundedDomain.isIntegerEmpty());
-  } else {
-    PresburgerSet expectedUnboundedDomain =
-        parsePresburgerSet(expectedUnboundedDomainRepr);
-    EXPECT_TRUE(result.unboundedDomain.isEqual(expectedUnboundedDomain));
-  }
-}
-
-void expectSymbolicIntegerLexMin(
-    StringRef polyStr, ArrayRef<std::pair<StringRef, StringRef>> result) {
-  expectSymbolicIntegerLexMin(polyStr, result, {});
-}
-
-TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
+  
   expectSymbolicIntegerLexMin("(x)[a] : (x - a >= 0)",
                               {
                                   {"()[a] : ()", "()[a] -> (a)"},
@@ -1402,17 +1424,7 @@ TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
            "N >= 0, N + K - 2 - x >= 0, x - 4 >= 0)",
            "()[K, N, x, y] -> (1 + x, N)"},
       });
-}
 
-static void
-expectComputedVolumeIsValidOverapprox(const IntegerPolyhedron &poly,
-                                      std::optional<int64_t> trueVolume,
-                                      std::optional<int64_t> resultBound) {
-  expectComputedVolumeIsValidOverapprox(poly.computeVolume(), trueVolume,
-                                        resultBound);
-}
-
-TEST(IntegerPolyhedronTest, computeVolume) {
   // 0 <= x <= 3 + 1/3, -5.5 <= y <= 2 + 3/5, 3 <= z <= 1.75.
   // i.e. 0 <= x <= 3, -5 <= y <= 2, 3 <= z <= 3 + 1/4.
   // So volume is 4 * 8 * 1 = 32.
@@ -1461,6 +1473,7 @@ TEST(IntegerPolyhedronTest, computeVolume) {
   expectComputedVolumeIsValidOverapprox(
       parseIntegerPolyhedron("(x, y) : (2*x - y >= 0, y - 3*x >= 0)"),
       /*trueVolume=*/{}, /*resultBound=*/{});
+}
 }
 
 // bool containsPointNoLocal(const IntegerPolyhedron &poly,
