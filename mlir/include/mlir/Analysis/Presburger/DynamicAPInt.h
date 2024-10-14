@@ -323,7 +323,6 @@ DynamicAPInt::operator*(const DynamicAPInt &O) const {
     bool Overflow = MulOverflow(getSmall(), O.getSmall(), Result.getSmall());
     if (LLVM_LIKELY(!Overflow))
       return Result;
-    // exit(1);
     return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
                         detail::SlowDynamicAPInt(O));
   }
@@ -539,15 +538,42 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &operator%=(DynamicAPInt &A,
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(const DynamicAPInt &A,
                                                     int64_t B) {
-  return A + DynamicAPInt(B);
+  if (LLVM_LIKELY(A.isSmall())) {
+    DynamicAPInt Result;
+    bool Overflow = AddOverflow(A.ValSmall, B, Result.ValSmall);
+    if (LLVM_LIKELY(!Overflow))
+      return Result;
+    return DynamicAPInt(detail::SlowDynamicAPInt(A) +
+                        detail::SlowDynamicAPInt(B));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(A) +
+                      detail::SlowDynamicAPInt(B));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(const DynamicAPInt &A,
                                                     int64_t B) {
-  return A - DynamicAPInt(B);
+  if (LLVM_LIKELY(A.isSmall())) {
+    DynamicAPInt Result;
+    bool Overflow = SubOverflow(A.ValSmall, B, Result.ValSmall);
+    if (LLVM_LIKELY(!Overflow))
+      return Result;
+    return DynamicAPInt(detail::SlowDynamicAPInt(A) -
+                        detail::SlowDynamicAPInt(B));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(A) -
+                      detail::SlowDynamicAPInt(B));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator*(const DynamicAPInt &A,
                                                     int64_t B) {
-  return A * DynamicAPInt(B);
+  if (LLVM_LIKELY(A.isSmall())) {
+    DynamicAPInt Result;
+    bool Overflow = MulOverflow(A.ValSmall, B, Result.ValSmall);
+    if (LLVM_LIKELY(!Overflow))
+      return Result;
+    return DynamicAPInt(detail::SlowDynamicAPInt(A) *
+                        detail::SlowDynamicAPInt(B));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(A) *
+                      detail::SlowDynamicAPInt(B));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator/(const DynamicAPInt &A,
                                                     int64_t B) {
@@ -559,15 +585,24 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator%(const DynamicAPInt &A,
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(int64_t A,
                                                     const DynamicAPInt &B) {
-  return DynamicAPInt(A) + B;
+  return B + A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(int64_t A,
                                                     const DynamicAPInt &B) {
-  return DynamicAPInt(A) - B;
+  if (LLVM_LIKELY(B.isSmall())) {
+    DynamicAPInt Result;
+    bool Overflow = SubOverflow(A, B.ValSmall, Result.ValSmall);
+    if (LLVM_LIKELY(!Overflow))
+      return Result;
+    return DynamicAPInt(detail::SlowDynamicAPInt(A) -
+                        detail::SlowDynamicAPInt(B));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(A) -
+                      detail::SlowDynamicAPInt(B));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator*(int64_t A,
                                                     const DynamicAPInt &B) {
-  return DynamicAPInt(A) * B;
+  return B * A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator/(int64_t A,
                                                     const DynamicAPInt &B) {
@@ -666,3 +701,4 @@ inline void DynamicAPInt::dump() const { print(dbgs()); }
 } // namespace llvm
 
 #endif // LLVM_ADT_DYNAMICAPINT_H
+
