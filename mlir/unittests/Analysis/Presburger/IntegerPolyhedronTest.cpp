@@ -764,8 +764,8 @@ void expectSymbolicIntegerLexMin(
   expectSymbolicIntegerLexMin(polyStr, result, {});
 }
 
-TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
-}
+// TEST(IntegerPolyhedronTest, findSymbolicIntegerLexMin) {
+// }
 
 static void
 expectComputedVolumeIsValidOverapprox(const IntegerPolyhedron &poly,

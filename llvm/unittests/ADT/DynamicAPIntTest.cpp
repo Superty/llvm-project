@@ -15,14 +15,14 @@ using namespace llvm;
 namespace {
 // googletest boilerplate to run the same tests with both MPInt and SlowMPInt.
 template <typename> class IntTest : public testing::Test {};
-using TypeList = testing::Types<DynamicAPInt, detail::SlowDynamicAPInt>;
+using TypeList = testing::Types<LLVMDynamicAPInt, detail::SlowDynamicAPInt>;
 
 // This is for pretty-printing the test name with the name of the class in use.
 class TypeNames {
 public:
   template <typename T>
   static std::string GetName(int) { // NOLINT; gtest mandates this name.
-    if (std::is_same<T, DynamicAPInt>())
+    if (std::is_same<T, LLVMDynamicAPInt>())
       return "MPInt";
     if (std::is_same<T, detail::SlowDynamicAPInt>())
       return "SlowMPInt";

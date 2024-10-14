@@ -22,6 +22,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
+class LLVMDynamicAPInt;
 class DynamicAPInt;
 } // namespace llvm
 
@@ -74,6 +75,7 @@ public:
   friend hash_code hash_value(const SlowDynamicAPInt &X); // NOLINT
 
   // Make DynamicAPInt a friend so it can access Val directly.
+  friend LLVMDynamicAPInt;
   friend DynamicAPInt;
 
   unsigned getBitWidth() const { return Val.getBitWidth(); }

@@ -30,6 +30,7 @@ class StringRef;
 class hash_code;
 class raw_ostream;
 struct Align;
+class LLVMDynamicAPInt;
 class DynamicAPInt;
 
 template <typename T> class SmallVectorImpl;
@@ -1897,6 +1898,7 @@ private:
   friend class APSInt;
 
   // Make DynamicAPInt a friend so it can access BitWidth directly.
+  friend LLVMDynamicAPInt;
   friend DynamicAPInt;
 
   /// This constructor is used only internally for speed of construction of
