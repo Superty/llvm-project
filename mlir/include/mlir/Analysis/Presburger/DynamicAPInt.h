@@ -318,17 +318,17 @@ DynamicAPInt::operator-(const DynamicAPInt &O) const {
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator*(const DynamicAPInt &O) const {
-  // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
+  if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     DynamicAPInt Result;
     bool Overflow = MulOverflow(getSmall(), O.getSmall(), Result.getSmall());
     if (LLVM_LIKELY(!Overflow))
       return Result;
-    exit(1);
-  //   return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-  //                       detail::SlowDynamicAPInt(O));
-  // }
-  // return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
-  //                     detail::SlowDynamicAPInt(O));
+    // exit(1);
+    return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+                        detail::SlowDynamicAPInt(O));
+  }
+  return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
+                      detail::SlowDynamicAPInt(O));
 }
 
 // Division overflows only occur when negating the minimal possible value.
