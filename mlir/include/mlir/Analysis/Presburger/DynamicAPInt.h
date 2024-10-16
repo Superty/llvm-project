@@ -434,7 +434,7 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator+=(const DynamicAPInt &O) {
   if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = AddOverflow(ValSmall, O.ValSmall, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
@@ -451,7 +451,7 @@ DynamicAPInt::operator+=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator-=(const DynamicAPInt &O) {
   if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = SubOverflow(ValSmall, O.ValSmall, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
@@ -468,7 +468,7 @@ DynamicAPInt::operator-=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator*=(const DynamicAPInt &O) {
   if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = MulOverflow(ValSmall, O.ValSmall, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
@@ -498,7 +498,7 @@ DynamicAPInt::operator/=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator+=(int64_t O) {
   if (LLVM_LIKELY(isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = AddOverflow(ValSmall, O, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
@@ -515,7 +515,7 @@ DynamicAPInt::operator+=(int64_t O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator-=(int64_t O) {
   if (LLVM_LIKELY(isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = SubOverflow(ValSmall, O, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
@@ -532,7 +532,7 @@ DynamicAPInt::operator-=(int64_t O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator*=(int64_t O) {
   if (LLVM_LIKELY(isSmall())) {
-    int64_t Result = ValSmall;
+    int64_t Result;
     bool Overflow = MulOverflow(ValSmall, O, Result);
     if (LLVM_LIKELY(!Overflow)) {
       ValSmall = Result;
