@@ -300,10 +300,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator+(const DynamicAPInt &O) const {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     DynamicAPInt Result;
-    bool Overflow = AddOverflow(ValSmall, O.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // bool Overflow = AddOverflow(ValSmall, O.ValSmall, Result.ValSmall);
+    Result.ValSmall = ValSmall + O.ValSmall;
+    // if (LLVM_LIKELY(!Overflow))
+    return Result;
+    // exit(1);
     // return DynamicAPInt(detail::SlowDynamicAPInt(*this) +
     //                     detail::SlowDynamicAPInt(O));
   // }
@@ -314,10 +315,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator-(const DynamicAPInt &O) const {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     DynamicAPInt Result;
-    bool Overflow = SubOverflow(ValSmall, O.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
+    // bool Overflow = SubOverflow(ValSmall, O.ValSmall, Result.ValSmall);
+    Result.ValSmall = ValSmall - O.ValSmall;
+    // if (LLVM_LIKELY(!Overflow))
       return Result;
-    exit(1);
+    // exit(1);
   //   return DynamicAPInt(detail::SlowDynamicAPInt(*this) -
   //                       detail::SlowDynamicAPInt(O));
   // }
@@ -328,10 +330,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator*(const DynamicAPInt &O) const {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     DynamicAPInt Result;
-    bool Overflow = MulOverflow(ValSmall, O.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    Result.ValSmall = ValSmall * O.ValSmall;
+    // bool Overflow = MulOverflow(ValSmall, O.ValSmall, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    return Result;
+    // exit(1);
     // return DynamicAPInt(detail::SlowDynamicAPInt(*this) *
     //                     detail::SlowDynamicAPInt(O));
   // }
@@ -353,8 +356,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt
 DynamicAPInt::operator/(const DynamicAPInt &O) const {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
-    if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O.ValSmall)))
-      exit(1);
+    // if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O.ValSmall)))
+    //   exit(1);
       // return -*this;
     return DynamicAPInt(ValSmall / O.ValSmall);
   // }
@@ -369,9 +372,9 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt abs(const DynamicAPInt &X) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt ceilDiv(const DynamicAPInt &LHS,
                                                   const DynamicAPInt &RHS) {
   // if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
-    if (LLVM_UNLIKELY(
-            divideSignedWouldOverflow(LHS.ValSmall, RHS.ValSmall)))
-      exit(1);
+    // if (LLVM_UNLIKELY(
+    //         divideSignedWouldOverflow(LHS.ValSmall, RHS.ValSmall)))
+    //   exit(1);
       // return -LHS;
     return DynamicAPInt(divideCeilSigned(LHS.ValSmall, RHS.ValSmall));
   // }
@@ -381,9 +384,9 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt ceilDiv(const DynamicAPInt &LHS,
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt floorDiv(const DynamicAPInt &LHS,
                                                    const DynamicAPInt &RHS) {
   // if (LLVM_LIKELY(LHS.isSmall() && RHS.isSmall())) {
-    if (LLVM_UNLIKELY(
-            divideSignedWouldOverflow(LHS.ValSmall, RHS.ValSmall)))
-      exit(1);
+    // if (LLVM_UNLIKELY(
+    //         divideSignedWouldOverflow(LHS.ValSmall, RHS.ValSmall)))
+    //   exit(1);
       // return -LHS;
     return DynamicAPInt(divideFloorSigned(LHS.ValSmall, RHS.ValSmall));
   // }
@@ -428,9 +431,9 @@ DynamicAPInt::operator%(const DynamicAPInt &O) const {
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
   // if (LLVM_LIKELY(isSmall())) {
-    if (LLVM_LIKELY(ValSmall != std::numeric_limits<int64_t>::min()))
-      return DynamicAPInt(-ValSmall);
-    exit(1);
+    // if (LLVM_LIKELY(ValSmall != std::numeric_limits<int64_t>::min()))
+    return DynamicAPInt(-ValSmall);
+    // exit(1);
     // return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
   // }
   // return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
@@ -442,13 +445,14 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator+=(const DynamicAPInt &O) {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result;
-    bool Overflow = AddOverflow(ValSmall, O.ValSmall, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-    exit(1);
+    // int64_t Result;
+    // bool Overflow = AddOverflow(ValSmall, O.ValSmall, Result);
+    // Result = ValSmall + O.ValSmall;
+    // if (LLVM_LIKELY(!Overflow)) {
+    ValSmall += O.ValSmall;
+    return *this;
+    // }
+    // exit(1);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
     // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) +
@@ -460,13 +464,15 @@ DynamicAPInt::operator+=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator-=(const DynamicAPInt &O) {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result;
-    bool Overflow = SubOverflow(ValSmall, O.ValSmall, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-    exit(1);
+    // int64_t Result;
+    // bool Overflow = SubOverflow(ValSmall, O.ValSmall, Result);
+    // if (LLVM_LIKELY(!Overflow)) {
+    //   ValSmall = Result;
+    //   return *this;
+    // }
+    // exit(1);
+  ValSmall -= O.ValSmall;
+  return *this;
   //   // Note: this return is not strictly required but
   //   // removing it leads to a performance regression.
   //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) -
@@ -478,13 +484,16 @@ DynamicAPInt::operator-=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator*=(const DynamicAPInt &O) {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
-    int64_t Result;
-    bool Overflow = MulOverflow(ValSmall, O.ValSmall, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-    exit(1);
+    // int64_t Result;
+    // bool Overflow = MulOverflow(ValSmall, O.ValSmall, Result);
+    // if (LLVM_LIKELY(!Overflow)) {
+      // ValSmall = Result;
+      // return *this;
+    // }
+    // exit(1);
+  ValSmall *= O.ValSmall;
+  return *this;
+
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
   //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
@@ -497,11 +506,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(const DynamicAPInt &O) {
   // if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
-    if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O.ValSmall)))
-      exit(1);
+    // if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O.ValSmall)))
+      // exit(1);
       // return *this = -*this;
-    ValSmall /= O.ValSmall;
-    return *this;
+  ValSmall /= O.ValSmall;
+  return *this;
   // }
   // return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
   //                             detail::SlowDynamicAPInt(O));
@@ -510,13 +519,15 @@ DynamicAPInt::operator/=(const DynamicAPInt &O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator+=(int64_t O) {
   // if (LLVM_LIKELY(isSmall())) {
-    int64_t Result;
-    bool Overflow = AddOverflow(ValSmall, O, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-    exit(1);
+    // int64_t Result;
+    // bool Overflow = AddOverflow(ValSmall, O, Result);
+    // if (LLVM_LIKELY(!Overflow)) {
+    //   ValSmall = Result;
+    //   return *this;
+    // }
+  ValSmall += O;
+  return *this;
+    // exit(1);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
   //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) +
@@ -527,14 +538,16 @@ DynamicAPInt::operator+=(int64_t O) {
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator-=(int64_t O) {
+  ValSmall -= O;
+  return *this;
   // if (LLVM_LIKELY(isSmall())) {
-    int64_t Result;
-    bool Overflow = SubOverflow(ValSmall, O, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-      exit(1);
+    // int64_t Result;
+    // bool Overflow = SubOverflow(ValSmall, O, Result);
+    // if (LLVM_LIKELY(!Overflow)) {
+    //   ValSmall = Result;
+    //   return *this;
+    // }
+      // exit(1);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
   //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) -
@@ -546,13 +559,13 @@ DynamicAPInt::operator-=(int64_t O) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator*=(int64_t O) {
   // if (LLVM_LIKELY(isSmall())) {
-    int64_t Result;
-    bool Overflow = MulOverflow(ValSmall, O, Result);
-    if (LLVM_LIKELY(!Overflow)) {
-      ValSmall = Result;
-      return *this;
-    }
-      exit(1);
+    // int64_t Result;
+    // bool Overflow = MulOverflow(ValSmall, O, Result);
+    // if (LLVM_LIKELY(!Overflow)) {
+    ValSmall *= O;
+    return *this;
+    // }
+      // exit(1);
     // Note: this return is not strictly required but
     // removing it leads to a performance regression.
   //   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) *
@@ -565,8 +578,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
 DynamicAPInt::operator/=(int64_t O) {
   // if (LLVM_LIKELY(isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
-    if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O)))
-      exit(1);
+    // if (LLVM_UNLIKELY(divideSignedWouldOverflow(ValSmall, O)))
+    //   exit(1);
       // return *this = -*this;
     ValSmall /= O;
     return *this;
@@ -620,11 +633,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &DynamicAPInt::operator--() {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(const DynamicAPInt &A,
                                                     int64_t B) {
   // if (LLVM_LIKELY(A.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = AddOverflow(A.ValSmall, B, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // DynamicAPInt Result;
+    // bool Overflow = AddOverflow(A.ValSmall, B, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+      return DynamicAPInt(A.ValSmall + B);
+    // exit(1);
     // return DynamicAPInt(detail::SlowDynamicAPInt(A) +
     //                     detail::SlowDynamicAPInt(B));
   // }
@@ -634,11 +647,12 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(const DynamicAPInt &A,
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(const DynamicAPInt &A,
                                                     int64_t B) {
   // if (LLVM_LIKELY(A.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = SubOverflow(A.ValSmall, B, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // DynamicAPInt Result;
+    // bool Overflow = SubOverflow(A.ValSmall, B, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    //   return Result;
+    // exit(1);
+    return DynamicAPInt(A.ValSmall - B);
     // return DynamicAPInt(detail::SlowDynamicAPInt(A) -
     //                     detail::SlowDynamicAPInt(B));
   // }
@@ -648,11 +662,13 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(const DynamicAPInt &A,
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator*(const DynamicAPInt &A,
                                                     int64_t B) {
   // if (LLVM_LIKELY(A.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = MulOverflow(A.ValSmall, B, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // DynamicAPInt Result;
+    // bool Overflow = MulOverflow(A.ValSmall, B, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    //   return Result;
+    // exit(1);
+    return DynamicAPInt(A.ValSmall * B);
+
     // return DynamicAPInt(detail::SlowDynamicAPInt(A) *
     //                     detail::SlowDynamicAPInt(B));
   // }
@@ -663,8 +679,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator/(const DynamicAPInt &A,
                                                     int64_t B) {
   // if (LLVM_LIKELY(A.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
-    if (LLVM_UNLIKELY(divideSignedWouldOverflow(A.ValSmall, B)))
-      exit(1);
+    // if (LLVM_UNLIKELY(divideSignedWouldOverflow(A.ValSmall, B)))
+    //   exit(1);
       // return -A;
     return DynamicAPInt(A.ValSmall / B);
   // }
@@ -681,11 +697,12 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator%(const DynamicAPInt &A,
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(int64_t A, const DynamicAPInt &B) {
   // if (LLVM_LIKELY(B.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = AddOverflow(A, B.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // DynamicAPInt Result;
+    // bool Overflow = AddOverflow(A, B.ValSmall, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    //   return Result;
+    // exit(1);
+  return DynamicAPInt(A + B.ValSmall);
   //   return DynamicAPInt(detail::SlowDynamicAPInt(A) +
   //                       detail::SlowDynamicAPInt(B));
   // }
@@ -694,11 +711,12 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator+(int64_t A, const DynamicAPIn
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(int64_t A, const DynamicAPInt &B) {
   // if (LLVM_LIKELY(B.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = SubOverflow(A, B.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+    // DynamicAPInt Result;
+    // bool Overflow = SubOverflow(A, B.ValSmall, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    //   return Result;
+    // exit(1);
+  return DynamicAPInt(A - B.ValSmall);
     // return DynamicAPInt(detail::SlowDynamicAPInt(A) -
     //                     detail::SlowDynamicAPInt(B));
   // }
@@ -707,11 +725,12 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator-(int64_t A, const DynamicAPIn
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator*(int64_t A, const DynamicAPInt &B) {
   // if (LLVM_LIKELY(B.isSmall())) {
-    DynamicAPInt Result;
-    bool Overflow = MulOverflow(A, B.ValSmall, Result.ValSmall);
-    if (LLVM_LIKELY(!Overflow))
-      return Result;
-    exit(1);
+  return DynamicAPInt(A * B.ValSmall);
+    // DynamicAPInt Result;
+    // bool Overflow = MulOverflow(A, B.ValSmall, Result.ValSmall);
+    // if (LLVM_LIKELY(!Overflow))
+    //   return Result;
+    // exit(1);
   //   return DynamicAPInt(detail::SlowDynamicAPInt(A) *
   //                       detail::SlowDynamicAPInt(B));
   // }
@@ -721,8 +740,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator*(int64_t A, const DynamicAPIn
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt operator/(int64_t A, const DynamicAPInt &B) {
   // if (LLVM_LIKELY(B.isSmall())) {
     // Division overflows only occur when negating the minimal possible value.
-    if (LLVM_UNLIKELY(divideSignedWouldOverflow(A, B.ValSmall)))
-      exit(1);
+    // if (LLVM_UNLIKELY(divideSignedWouldOverflow(A, B.ValSmall)))
+      // exit(1);
       // return -DynamicAPInt(A);
     return DynamicAPInt(A / B.ValSmall);
   // }
