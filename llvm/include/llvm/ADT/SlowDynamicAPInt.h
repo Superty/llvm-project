@@ -36,9 +36,8 @@ namespace llvm::detail {
 /// SlowDynamicAPInt is primarily intended to be used as a slow fallback path
 /// for the upcoming DynamicAPInt class.
 class SlowDynamicAPInt {
-  APInt Val;
-
 public:
+  APInt Val;
   explicit SlowDynamicAPInt(int64_t Val);
   SlowDynamicAPInt();
   explicit SlowDynamicAPInt(const APInt &Val);
@@ -194,105 +193,112 @@ hash_code hash_value(const SlowDynamicAPInt &X) {
 /// ---------------------------------------------------------------------------
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt &operator+=(SlowDynamicAPInt &A, int64_t B) {
-  return A += SlowDynamicAPInt(B);
+  A.Val += B;
+  return A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt &operator-=(SlowDynamicAPInt &A, int64_t B) {
-  return A -= SlowDynamicAPInt(B);
+  A.Val -= B;
+  return A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt &operator*=(SlowDynamicAPInt &A, int64_t B) {
-  return A *= SlowDynamicAPInt(B);
+  A.Val *= B;
+  return A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt &operator/=(SlowDynamicAPInt &A, int64_t B) {
-  return A /= SlowDynamicAPInt(B);
+  A.Val = A.Val.sdiv(B);
+  return A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt &operator%=(SlowDynamicAPInt &A, int64_t B) {
-  return A %= SlowDynamicAPInt(B);
+  A.Val = A.Val.srem(B);
+  return A;
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator==(const SlowDynamicAPInt &A, int64_t B) {
-  return A == SlowDynamicAPInt(B);
+  // A.dump();
+  // llvm::errs() << " vs " << B << '\n';
+  return A.Val.sle(B) && A.Val.sge(B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator!=(const SlowDynamicAPInt &A, int64_t B) {
-  return A != SlowDynamicAPInt(B);
+  return !(A == B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator>(const SlowDynamicAPInt &A, int64_t B) {
-  return A > SlowDynamicAPInt(B);
+  return A.Val.sgt(B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator<(const SlowDynamicAPInt &A, int64_t B) {
-  return A < SlowDynamicAPInt(B);
+  return A.Val.slt(B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator<=(const SlowDynamicAPInt &A, int64_t B) {
-  return A <= SlowDynamicAPInt(B);
+  return A.Val.sle(B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator>=(const SlowDynamicAPInt &A, int64_t B) {
-  return A >= SlowDynamicAPInt(B);
+  return A.Val.sge(B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator+(const SlowDynamicAPInt &A, int64_t B) {
-  return A + SlowDynamicAPInt(B);
+  return SlowDynamicAPInt(A.Val + B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator-(const SlowDynamicAPInt &A, int64_t B) {
-  return A - SlowDynamicAPInt(B);
+  return SlowDynamicAPInt(A.Val - B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator*(const SlowDynamicAPInt &A, int64_t B) {
-  return A * SlowDynamicAPInt(B);
+  return SlowDynamicAPInt(A.Val * B);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator/(const SlowDynamicAPInt &A, int64_t B) {
-  return A / SlowDynamicAPInt(B);
+  return SlowDynamicAPInt(A.Val.sdiv(B));
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator%(const SlowDynamicAPInt &A, int64_t B) {
-  return A % SlowDynamicAPInt(B);
+  return SlowDynamicAPInt(A.Val.srem(B));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator==(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) == B;
+  return B == A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator!=(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) != B;
+  return B != A;
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator>(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) > B;
+  return B.Val.slt(A);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator<(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) < B;
+  return B.Val.sgt(A);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator<=(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) <= B;
+  return B.Val.sge(A);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool operator>=(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) >= B;
+  return B.Val.sle(A);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator+(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) + B;
+  return SlowDynamicAPInt(A + B.Val);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator-(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) - B;
+  return SlowDynamicAPInt(A - B.Val);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator*(int64_t A, const SlowDynamicAPInt &B) {
-  return SlowDynamicAPInt(A) * B;
+  return SlowDynamicAPInt(A * B.Val);
 }
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt operator/(int64_t A, const SlowDynamicAPInt &B) {
@@ -303,9 +309,9 @@ SlowDynamicAPInt operator%(int64_t A, const SlowDynamicAPInt &B) {
   return SlowDynamicAPInt(A) % B;
 }
 
-static unsigned getMaxWidth(const APInt &A, const APInt &B) {
-  return std::max(A.getBitWidth(), B.getBitWidth());
-}
+// static unsigned getMaxWidth(const APInt &A, const APInt &B) {
+//   return std::max(A.getBitWidth(), B.getBitWidth());
+// }
 
 /// ---------------------------------------------------------------------------
 /// Comparison operators.
@@ -315,38 +321,32 @@ static unsigned getMaxWidth(const APInt &A, const APInt &B) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 // TODO: consider instead making APInt::compare available and using that.
 bool SlowDynamicAPInt::operator==(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width) == O.Val.sext(Width);
+  return Val == O.Val;
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool SlowDynamicAPInt::operator!=(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width) != O.Val.sext(Width);
+  return Val != O.Val;
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool SlowDynamicAPInt::operator>(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width).sgt(O.Val.sext(Width));
+  return Val.sgt(O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool SlowDynamicAPInt::operator<(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width).slt(O.Val.sext(Width));
+  return Val.slt(O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool SlowDynamicAPInt::operator<=(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width).sle(O.Val.sext(Width));
+  return Val.sle(O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool SlowDynamicAPInt::operator>=(const SlowDynamicAPInt &O) const {
-  unsigned Width = getMaxWidth(Val, O.Val);
-  return Val.sext(Width).sge(O.Val.sext(Width));
+  return Val.sge(O.Val);
 }
 
 /// ---------------------------------------------------------------------------
@@ -357,45 +357,39 @@ bool SlowDynamicAPInt::operator>=(const SlowDynamicAPInt &O) const {
 /// If the overflow bit becomes set, resize a and b to double the width and
 /// call op(a, b, overflow), returning its result. The operation with double
 /// widths should not also overflow.
-LLVM_ATTRIBUTE_ALWAYS_INLINE
-APInt runOpWithExpandOnOverflow(
-    const APInt &A, const APInt &B,
-    function_ref<APInt(const APInt &, const APInt &, bool &Overflow)> Op) {
-  bool Overflow;
-  unsigned Width = getMaxWidth(A, B);
-  APInt Ret = Op(A.sext(Width), B.sext(Width), Overflow);
-  if (!Overflow)
-    return Ret;
+// LLVM_ATTRIBUTE_ALWAYS_INLINE
+// APInt runOpWithExpandOnOverflow(
+//     const APInt &A, const APInt &B,
+//     function_ref<APInt(const APInt &, const APInt &, bool &Overflow)> Op) {
+//   bool Overflow;
+//   APInt Ret = Op(A, B, Overflow);
+//   if (!Overflow)
+//     return Ret;
 
-  Width *= 2;
-  Ret = Op(A.sext(Width), B.sext(Width), Overflow);
-  assert(!Overflow && "double width should be sufficient to avoid overflow!");
-  return Ret;
-}
-
+//   Width *= 2;
+//   Ret = Op(A, B, Overflow);
+//   assert(!Overflow && "double width should be sufficient to avoid overflow!");
+//   return Ret;
+// }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator+(const SlowDynamicAPInt &O) const {
-  return SlowDynamicAPInt(
-      runOpWithExpandOnOverflow(Val, O.Val, std::mem_fn(&APInt::sadd_ov)));
+  return SlowDynamicAPInt(Val + O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator-(const SlowDynamicAPInt &O) const {
-  return SlowDynamicAPInt(
-      runOpWithExpandOnOverflow(Val, O.Val, std::mem_fn(&APInt::ssub_ov)));
+  return SlowDynamicAPInt(Val - O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator*(const SlowDynamicAPInt &O) const {
-  return SlowDynamicAPInt(
-      runOpWithExpandOnOverflow(Val, O.Val, std::mem_fn(&APInt::smul_ov)));
+  return SlowDynamicAPInt(Val * O.Val);
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator/(const SlowDynamicAPInt &O) const {
-  return SlowDynamicAPInt(
-      runOpWithExpandOnOverflow(Val, O.Val, std::mem_fn(&APInt::sdiv_ov)));
+  return SlowDynamicAPInt(Val.sdiv(O.Val));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
@@ -405,21 +399,19 @@ SlowDynamicAPInt abs(const SlowDynamicAPInt &X) {
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt ceilDiv(const SlowDynamicAPInt &LHS,
                                  const SlowDynamicAPInt &RHS) {
-  if (RHS == -1)
-    return -LHS;
-  unsigned Width = getMaxWidth(LHS.Val, RHS.Val);
+  // if (RHS == -1)
+  //   return -LHS;
   return SlowDynamicAPInt(APIntOps::RoundingSDiv(
-      LHS.Val.sext(Width), RHS.Val.sext(Width), APInt::Rounding::UP));
+      LHS.Val, RHS.Val, APInt::Rounding::UP));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt floorDiv(const SlowDynamicAPInt &LHS,
                                   const SlowDynamicAPInt &RHS) {
-  if (RHS == -1)
-    return -LHS;
-  unsigned Width = getMaxWidth(LHS.Val, RHS.Val);
+  // if (RHS == -1)
+  //   return -LHS;
   return SlowDynamicAPInt(APIntOps::RoundingSDiv(
-      LHS.Val.sext(Width), RHS.Val.sext(Width), APInt::Rounding::DOWN));
+      LHS.Val, RHS.Val, APInt::Rounding::DOWN));
 }
 // The RHS is always expected to be positive, and the result
 /// is always non-negative.
@@ -434,9 +426,8 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt gcd(const SlowDynamicAPInt &A,
                              const SlowDynamicAPInt &B) {
   assert(A >= 0 && B >= 0 && "operands must be non-negative!");
-  unsigned Width = getMaxWidth(A.Val, B.Val);
   return SlowDynamicAPInt(
-      APIntOps::GreatestCommonDivisor(A.Val.sext(Width), B.Val.sext(Width)));
+      APIntOps::GreatestCommonDivisor(A.Val, B.Val));
 }
 
 /// Returns the least common multiple of A and B.
@@ -452,18 +443,17 @@ SlowDynamicAPInt lcm(const SlowDynamicAPInt &A,
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator%(const SlowDynamicAPInt &O) const {
-  unsigned Width = std::max(Val.getBitWidth(), O.Val.getBitWidth());
-  return SlowDynamicAPInt(Val.sext(Width).srem(O.Val.sext(Width)));
+  return SlowDynamicAPInt(Val.srem(O.Val));
 }
 
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE
 SlowDynamicAPInt SlowDynamicAPInt::operator-() const {
-  if (Val.isMinSignedValue()) {
-    /// Overflow only occurs when the value is the minimum possible value.
-    APInt Ret = Val.sext(2 * Val.getBitWidth());
-    return SlowDynamicAPInt(-Ret);
-  }
+  // if (Val.isMinSignedValue()) {
+  //   /// Overflow only occurs when the value is the minimum possible value.
+  //   APInt Ret = Val.sext(2 * Val.getBitWidth());
+  //   return SlowDynamicAPInt(-Ret);
+  // }
   return SlowDynamicAPInt(-Val);
 }
 

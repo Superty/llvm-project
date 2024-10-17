@@ -779,6 +779,11 @@ expectComputedVolumeIsValidOverapprox(const IntegerPolyhedron &poly,
 // }
 
 TEST(IntegerPolyhedronTest, benchmark) {
+  // APInt x(128, 2);
+  // x = -x;
+  // x.dump();
+  // EXPECT_TRUE(x.slt(-1));
+  
 for (int i = 0; i < 10; ++i) {
   // Bounded sets with only inequalities.
   // 0 <= 7x <= 5
