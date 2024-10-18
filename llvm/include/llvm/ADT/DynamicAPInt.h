@@ -323,7 +323,6 @@ LLVMDynamicAPInt::operator*(const LLVMDynamicAPInt &O) const {
     bool Overflow = MulOverflow(getSmall(), O.getSmall(), Result.getSmall());
     if (LLVM_LIKELY(!Overflow))
       return Result;
-    exit(1);
     return LLVMDynamicAPInt(detail::SlowDynamicAPInt(*this) *
                         detail::SlowDynamicAPInt(O));
   }
