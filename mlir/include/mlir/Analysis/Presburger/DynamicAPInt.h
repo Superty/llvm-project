@@ -118,7 +118,7 @@ public:
     ValLarge.Val.BitWidth = 0;
   }
   LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt() : DynamicAPInt(0) {}
-  LLVM_ATTRIBUTE_ALWAYS_INLINE ~DynamicAPInt() {
+  inline ~DynamicAPInt() {
     if (LLVM_UNLIKELY(isLarge()))
       ValLarge.detail::SlowDynamicAPInt::~SlowDynamicAPInt();
   }
