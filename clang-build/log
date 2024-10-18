@@ -1,0 +1,5 @@
+int64 --  815 ms
+int64 exit-on-overflow --  836 ms
+full -- 1402 ms
+apint 64  -- 3.3s
+apint 128 -- 19.7 s
