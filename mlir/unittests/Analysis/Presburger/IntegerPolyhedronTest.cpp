@@ -1494,8 +1494,8 @@ TEST(IntegerPolyhedronTest, intBenchmark) {
   auto total = x;
   for (int i = 4; i <= 100000000; ++i) {
     total = (total*x)*i;
-    // total = (total - x / c) % y;
-    // total = (total + d*x)  % y;
+    total = (total - x / c) % y;
+    total = (total + d*x)  % y;
   }
   std::cerr << total << '\n';
 }
@@ -1505,8 +1505,8 @@ TEST(IntegerPolyhedronTest, dynIntBenchmark) {
   auto total = x;
   for (int i = 4; i <= 100000000; ++i) {
     total = (total*x)*i;
-    // total = (total - x / c) % y;
-    // total = (total + d*x)  % y;
+    total = (total - x / c) % y;
+    total = (total + d*x)  % y;
   }
   total.dump();
 }
