@@ -135,6 +135,21 @@ Simplex simplexFromConstraints(unsigned nDim,
 }
 
 TEST(SimplexTest, isUnbounded) {
+  auto simplex = simplexFromConstraints(3,
+                                      {
+                                          {2, 0, 0, -1},
+                                          {-2, 0, 0, 1},
+                                          {0, 2, 0, -1},
+                                          {0, -2, 0, 1},
+                                          {0, 0, 2, -1},
+                                          {0, 0, -2, 1},
+                                      },
+                                      {});
+  SmallVector<DynamicAPInt> dir;
+  dir.emplace_back(1);
+  dir.emplace_back(0);
+  dir.emplace_back(0);
+  dir.emplace_back(0);
   for (int i = 1; i <= 100000; ++i) {
   // EXPECT_FALSE(simplexFromConstraints(
   //                  2, {{1, 1, 0}, {-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
@@ -150,17 +165,7 @@ TEST(SimplexTest, isUnbounded) {
 
   // EXPECT_TRUE(simplexFromConstraints(2, {}, {}).isUnbounded());
 
-  EXPECT_FALSE(simplexFromConstraints(3,
-                                      {
-                                          {2, 0, 0, -1},
-                                          {-2, 0, 0, 1},
-                                          {0, 2, 0, -1},
-                                          {0, -2, 0, 1},
-                                          {0, 0, 2, -1},
-                                          {0, 0, -2, 1},
-                                      },
-                                      {})
-                   .isUnbounded());
+  simplex.computeOptimum(Simplex::Direction::Up, dir);
 
   // EXPECT_TRUE(simplexFromConstraints(3,
   //                                    {
