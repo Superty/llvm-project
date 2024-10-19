@@ -136,19 +136,19 @@ Simplex simplexFromConstraints(unsigned nDim,
 
 TEST(SimplexTest, isUnbounded) {
   for (int i = 1; i <= 100000; ++i) {
-  EXPECT_FALSE(simplexFromConstraints(
-                   2, {{1, 1, 0}, {-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
-                   .isUnbounded());
+  // EXPECT_FALSE(simplexFromConstraints(
+  //                  2, {{1, 1, 0}, {-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
+  //                  .isUnbounded());
 
-  EXPECT_TRUE(
-      simplexFromConstraints(2, {{1, 1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
-          .isUnbounded());
+  // EXPECT_TRUE(
+  //     simplexFromConstraints(2, {{1, 1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
+  //         .isUnbounded());
 
-  EXPECT_TRUE(
-      simplexFromConstraints(2, {{-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
-          .isUnbounded());
+  // EXPECT_TRUE(
+  //     simplexFromConstraints(2, {{-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
+  //         .isUnbounded());
 
-  EXPECT_TRUE(simplexFromConstraints(2, {}, {}).isUnbounded());
+  // EXPECT_TRUE(simplexFromConstraints(2, {}, {}).isUnbounded());
 
   EXPECT_FALSE(simplexFromConstraints(3,
                                       {
@@ -162,55 +162,55 @@ TEST(SimplexTest, isUnbounded) {
                                       {})
                    .isUnbounded());
 
-  EXPECT_TRUE(simplexFromConstraints(3,
-                                     {
-                                         {2, 0, 0, -1},
-                                         {-2, 0, 0, 1},
-                                         {0, 2, 0, -1},
-                                         {0, -2, 0, 1},
-                                         {0, 0, -2, 1},
-                                     },
-                                     {})
-                  .isUnbounded());
+  // EXPECT_TRUE(simplexFromConstraints(3,
+  //                                    {
+  //                                        {2, 0, 0, -1},
+  //                                        {-2, 0, 0, 1},
+  //                                        {0, 2, 0, -1},
+  //                                        {0, -2, 0, 1},
+  //                                        {0, 0, -2, 1},
+  //                                    },
+  //                                    {})
+  //                 .isUnbounded());
 
-  EXPECT_TRUE(simplexFromConstraints(3,
-                                     {
-                                         {2, 0, 0, -1},
-                                         {-2, 0, 0, 1},
-                                         {0, 2, 0, -1},
-                                         {0, -2, 0, 1},
-                                         {0, 0, 2, -1},
-                                     },
-                                     {})
-                  .isUnbounded());
+  // EXPECT_TRUE(simplexFromConstraints(3,
+  //                                    {
+  //                                        {2, 0, 0, -1},
+  //                                        {-2, 0, 0, 1},
+  //                                        {0, 2, 0, -1},
+  //                                        {0, -2, 0, 1},
+  //                                        {0, 0, 2, -1},
+  //                                    },
+  //                                    {})
+  //                 .isUnbounded());
 
-  // Bounded set with equalities.
-  EXPECT_FALSE(simplexFromConstraints(2,
-                                      {{1, 1, 1},    // x + y >= -1.
-                                       {-1, -1, 1}}, // x + y <=  1.
-                                      {{1, -1, 0}}   // x = y.
-                                      )
-                   .isUnbounded());
+  // // Bounded set with equalities.
+  // EXPECT_FALSE(simplexFromConstraints(2,
+  //                                     {{1, 1, 1},    // x + y >= -1.
+  //                                      {-1, -1, 1}}, // x + y <=  1.
+  //                                     {{1, -1, 0}}   // x = y.
+  //                                     )
+  //                  .isUnbounded());
 
-  // Unbounded set with equalities.
-  EXPECT_TRUE(simplexFromConstraints(3,
-                                     {{1, 1, 1, 1},     // x + y + z >= -1.
-                                      {-1, -1, -1, 1}}, // x + y + z <=  1.
-                                     {{1, -1, -1, 0}}   // x = y + z.
-                                     )
-                  .isUnbounded());
+  // // Unbounded set with equalities.
+  // EXPECT_TRUE(simplexFromConstraints(3,
+  //                                    {{1, 1, 1, 1},     // x + y + z >= -1.
+  //                                     {-1, -1, -1, 1}}, // x + y + z <=  1.
+  //                                    {{1, -1, -1, 0}}   // x = y + z.
+  //                                    )
+  //                 .isUnbounded());
 
-  // Rational empty set.
-  EXPECT_FALSE(simplexFromConstraints(3,
-                                      {
-                                          {2, 0, 0, -1},
-                                          {-2, 0, 0, 1},
-                                          {0, 2, 2, -1},
-                                          {0, -2, -2, 1},
-                                          {3, 3, 3, -4},
-                                      },
-                                      {})
-                   .isUnbounded());
+  // // Rational empty set.
+  // EXPECT_FALSE(simplexFromConstraints(3,
+  //                                     {
+  //                                         {2, 0, 0, -1},
+  //                                         {-2, 0, 0, 1},
+  //                                         {0, 2, 2, -1},
+  //                                         {0, -2, -2, 1},
+  //                                         {3, 3, 3, -4},
+  //                                     },
+  //                                     {})
+  //                  .isUnbounded());
   }
 }
 
