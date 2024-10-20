@@ -1040,14 +1040,14 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
   for (unsigned row = nRedundant, e = getNumRows(); row < e; ++row) {
     if (skipRow && row == *skipRow)
       continue;
-    DynamicAPInt elem = tableau(row, col);
+    const DynamicAPInt &elem = tableau(row, col);
     if (elem == 0)
       continue;
     if (!unknownFromRow(row).restricted)
       continue;
     if (signMatchesDirection(elem, direction))
       continue;
-    DynamicAPInt constTerm = tableau(row, 1);
+    const DynamicAPInt &constTerm = tableau(row, 1);
 
     if (!retRow) {
       retRow = row;
@@ -1056,7 +1056,7 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
       continue;
     }
 
-    DynamicAPInt diff = retConst * elem - constTerm * retElem;
+    const DynamicAPInt &diff = retConst * elem - constTerm * retElem;
     if ((diff == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
         (diff != 0 && !signMatchesDirection(diff, direction))) {
       retRow = row;
