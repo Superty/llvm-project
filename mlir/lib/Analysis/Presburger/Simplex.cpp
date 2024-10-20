@@ -1036,7 +1036,7 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
   // retConst being used uninitialized in the initialization of `diff` below. In
   // reality, these are always initialized when that line is reached since these
   // are set whenever retRow is set.
-  DynamicAPInt retElem, retConst;
+  const DynamicAPInt *retElem, *retConst;
   for (unsigned row = nRedundant, e = getNumRows(); row < e; ++row) {
     if (skipRow && row == *skipRow)
       continue;
@@ -1051,17 +1051,17 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
 
     if (!retRow) {
       retRow = row;
-      retElem = elem;
-      retConst = constTerm;
+      retElem = &elem;
+      retConst = &constTerm;
       continue;
     }
 
-    const DynamicAPInt &diff = retConst * elem - constTerm * retElem;
+    const DynamicAPInt &diff = *retConst * elem - constTerm * *retElem;
     if ((diff == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
         (diff != 0 && !signMatchesDirection(diff, direction))) {
       retRow = row;
-      retElem = elem;
-      retConst = constTerm;
+      // retElem = elem;
+      // retConst = constTerm;
     }
   }
   return retRow;
