@@ -887,7 +887,7 @@ std::optional<SimplexBase::Pivot>
 Simplex::findPivot(int row, Direction direction) const {
   std::optional<unsigned> col;
   for (unsigned j = 2, e = getNumColumns(); j < e; ++j) {
-    DynamicAPInt elem = tableau(row, j);
+    const DynamicAPInt &elem = tableau(row, j);
     if (elem == 0)
       continue;
 
