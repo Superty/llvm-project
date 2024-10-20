@@ -65,7 +65,7 @@ public:
     return data[row * nReservedColumns + column];
   }
 
-  T at(unsigned row, unsigned column) const {
+  const T &at(unsigned row, unsigned column) const {
     assert(row < nRows && "Row outside of range");
     assert(column < nColumns && "Column outside of range");
     return data[row * nReservedColumns + column];
@@ -73,7 +73,7 @@ public:
 
   T &operator()(unsigned row, unsigned column) { return at(row, column); }
 
-  T operator()(unsigned row, unsigned column) const { return at(row, column); }
+  const T &operator()(unsigned row, unsigned column) const { return at(row, column); }
 
   bool operator==(const Matrix<T> &m) const;
 
