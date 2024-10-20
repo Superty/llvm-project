@@ -135,7 +135,7 @@ Simplex simplexFromConstraints(unsigned nDim,
 }
 
 TEST(SimplexTest, isUnbounded) {
-  auto simplex = simplexFromConstraints(3,
+  auto templatea = simplexFromConstraints(3,
                                       {
                                           {2, 0, 0, -1},
                                           {-2, 0, 0, 1},
@@ -150,8 +150,36 @@ TEST(SimplexTest, isUnbounded) {
   dir.emplace_back(0);
   dir.emplace_back(0);
   dir.emplace_back(0);
-  for (int i = 1; i <= 10000000; ++i)
-    simplex.computeOptimum(Simplex::Direction::Up, dir);
+
+  unsigned conIndex = templatea.addRow(dir);
+  unsigned row = templatea.con[conIndex].pos;
+  
+  std::vector<Simplex> simplices(1000000, templatea);
+
+  
+  auto startTime = std::chrono::high_resolution_clock::now();
+  for (auto &simplex : simplices) {
+  //   if (simplex.isEmpty())
+  //     exit(2);
+    simplex.pivot(1, 2);
+    // std::optional<Simplex::Pivot> maybePivot = simplex.findPivot(row, Simplex::Direction::Up);
+    // if (!maybePivot)
+    //   exit(2);
+    // llvm::errs() << maybePivot->row << ' ' << maybePivot->column << '\n';
+    // exit(2);
+      // If findPivot returns a pivot involving the row itself, then the optimum
+      // is unbounded, so we return std::nullopt.
+      // if (maybePivot->row == row)
+      //   exit(2);
+      // simplex.pivot(*maybePivot);
+    // }
+    // simplex.computeRowOptimum(Simplex::Direction::Up, row);
+  }
+  auto stopTime = std::chrono::high_resolution_clock::now();
+  auto timeTaken =
+      std::chrono::duration<double, std::milli>(stopTime - startTime).count();
+  llvm::errs() << int64_t(timeTaken) << "ms\n";
+
   // EXPECT_FALSE(simplexFromConstraints(
   //                  2, {{1, 1, 0}, {-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})
   //                  .isUnbounded());

@@ -1,4 +1,4 @@
-// #include "mlir/Analysis/Presburger/DynamicAPInt.h"
+#include "mlir/Analysis/Presburger/DynamicAPInt.h"
 
 // using namespace llvm;
 

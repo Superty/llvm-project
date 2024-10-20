@@ -207,7 +207,6 @@ public:
   void print(raw_ostream &os) const;
   void dump() const;
 
-protected:
   /// Construct a SimplexBase with the specified number of variables and fixed
   /// columns. The first overload should be used when there are nosymbols.
   /// With the second overload, the specified range of vars will be marked
@@ -424,7 +423,6 @@ public:
   /// Get a snapshot of the current state. This is used for rolling back.
   unsigned getSnapshot() { return SimplexBase::getSnapshotBasis(); }
 
-protected:
   LexSimplexBase(unsigned nVar) : SimplexBase(nVar, /*mustUseBigM=*/true) {}
   LexSimplexBase(unsigned nVar, const llvm::SmallBitVector &isSymbol)
       : SimplexBase(nVar, /*mustUseBigM=*/true, isSymbol) {}
@@ -501,7 +499,6 @@ public:
   bool isSeparateInequality(ArrayRef<DynamicAPInt> coeffs);
   bool isRedundantInequality(ArrayRef<DynamicAPInt> coeffs);
 
-private:
   /// Returns the current sample point, which may contain non-integer (rational)
   /// coordinates. Returns an empty optimum when the tableau is empty.
   ///
@@ -620,7 +617,6 @@ public:
   /// passed in the SymbolicLexSimplex constructor.
   SymbolicLexOpt computeSymbolicIntegerLexMin();
 
-private:
   /// Perform all pivots that do not require branching.
   ///
   /// Return failure if the tableau became empty, indicating that the polytope
@@ -813,7 +809,6 @@ public:
   /// coordinates. Returns an empty optional when the tableau is empty.
   std::optional<SmallVector<Fraction, 8>> getRationalSample() const;
 
-private:
   friend class GBRSimplex;
 
   /// Restore the unknown to a non-negative sample value.
@@ -878,7 +873,6 @@ public:
   };
   ~SimplexRollbackScopeExit() { simplex.rollback(snapshot); }
 
-private:
   SimplexBase &simplex;
   unsigned snapshot;
 };
