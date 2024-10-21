@@ -15,6 +15,7 @@
 #include "mlir/Analysis/Presburger/PresburgerSpace.h"
 #include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Support/Compiler.h"
 #include "llvm/Support/LogicalResult.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -339,18 +340,45 @@ presburger::getDivLowerBound(ArrayRef<DynamicAPInt> dividend,
   return ineq;
 }
 
-DynamicAPInt presburger::gcdRange(ArrayRef<DynamicAPInt> range) {
+DynamicAPInt gcdRangeSlowPath(ArrayRef<DynamicAPInt> range) {
   DynamicAPInt gcd(0);
   for (const DynamicAPInt &elem : range) {
-    gcd = llvm::gcd(gcd, abs(elem));
+    gcd = llvm::gcd(gcd, elem);
     if (gcd == 1)
       return gcd;
   }
   return gcd;
 }
 
+DynamicAPInt presburger::gcdRange(ArrayRef<DynamicAPInt> range) {
+  DynamicAPInt gcd(0);
+  for (const DynamicAPInt &elem : range) {
+    if (LLVM_LIKELY(elem.isSmall())) {
+      gcd.ValSmall = std::gcd(gcd.ValSmall, elem.ValSmall);
+      if (gcd.ValSmall == 1)
+        return gcd;
+    } else {
+      return gcdRangeSlowPath(range);
+    }
+  }
+  return gcd;
+}
+
+int64_t presburger::gcdRangeCopy(ArrayRef<DynamicAPInt> range) {
+  DynamicAPInt gcd(0);
+  for (const DynamicAPInt &elem : range) {
+    if (LLVM_LIKELY(elem.isSmall())) {
+      gcd.ValSmall = std::gcd(gcd.ValSmall, elem.ValSmall);
+      if (gcd.ValSmall == 1)
+        return 1;
+    }
+  }
+  return gcd.ValSmall;
+}
+
 DynamicAPInt presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range) {
   DynamicAPInt gcd = gcdRange(range);
+  // llvm::errs() << "gcd = " << gcd << '\n';
   if ((gcd == 0) || (gcd == 1))
     return gcd;
   for (DynamicAPInt &elem : range)

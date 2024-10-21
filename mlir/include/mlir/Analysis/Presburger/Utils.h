@@ -262,6 +262,7 @@ void mergeLocalVars(IntegerRelation &relA, IntegerRelation &relB,
 
 /// Compute the gcd of the range.
 DynamicAPInt gcdRange(ArrayRef<DynamicAPInt> range);
+int64_t gcdRangeCopy(ArrayRef<DynamicAPInt> range);
 
 /// Divide the range by its gcd and return the gcd.
 DynamicAPInt normalizeRange(MutableArrayRef<DynamicAPInt> range);
