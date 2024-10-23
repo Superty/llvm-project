@@ -1063,7 +1063,8 @@ void IntegerRelation::gcdTightenInequalities() {
   unsigned numCols = getNumCols();
   for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
     // Normalize the constraint and tighten the constant term by the GCD.
-    DynamicAPInt gcd = inequalities.normalizeRow(i, getNumCols() - 1);
+    DynamicAPInt gcd;
+    inequalities.normalizeRow(i, getNumCols() - 1, &gcd);
     if (gcd > 1)
       atIneq(i, numCols - 1) = floorDiv(atIneq(i, numCols - 1), gcd);
   }

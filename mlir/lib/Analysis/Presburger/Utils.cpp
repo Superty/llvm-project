@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <numeric>
 #include <optional>
+#include <algorithm>
 
 using namespace mlir;
 using namespace presburger;
@@ -364,53 +365,115 @@ DynamicAPInt presburger::gcdRange(ArrayRef<DynamicAPInt> range) {
   return gcd;
 }
 
-int64_t presburger::gcdRangeCopy(ArrayRef<DynamicAPInt> range) {
-  DynamicAPInt gcd(0);
-  for (const DynamicAPInt &elem : range) {
-    if (LLVM_LIKELY(elem.isSmall())) {
-      gcd.ValSmall = std::gcd(gcd.ValSmall, elem.ValSmall);
-      if (gcd.ValSmall == 1)
-        return 1;
-    }
-  }
-  return gcd.ValSmall;
-}
+// int64_t presburger::gcdRangeCopy(ArrayRef<DynamicAPInt> range) {
+//   DynamicAPInt gcd(0);
+//   for (const DynamicAPInt &elem : range) {
+//     if (LLVM_LIKELY(elem.isSmall())) {
+//       gcd.ValSmall = std::gcd(gcd.ValSmall, elem.ValSmall);
+//       if (gcd.ValSmall == 1)
+//         return 1;
+//     }
+//   }
+//   return gcd.ValSmall;
+// }
 
-DynamicAPInt presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range) {
+void presburger::normalizeRangeSlow(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut) {
   DynamicAPInt gcd = gcdRange(range);
-  // llvm::errs() << "gcd = " << gcd << '\n';
-  if ((gcd == 0) || (gcd == 1))
-    return gcd;
+  if ((gcd == 0) || (gcd == 1)) {
+    if (gcdOut)
+      *gcdOut = gcd;
+    return;
+  }
   for (DynamicAPInt &elem : range)
     elem /= gcd;
-  return gcd;
+  if (gcdOut)
+    *gcdOut = gcd;
 }
 
-void presburger::normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range) {
+void presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range) {
   int64_t gcd = 0;
   const unsigned K = 2;
-  // for (unsigned i = 0; i < range.size(); ++i) {
-  //   bool allSmall = true;
-  //   // #pragma unroll
-  //   for (int j = i; j < i + K; ++j)
-  //     allSmall &= range[j].isSmall();
-  //   if (LLVM_UNLIKELY(allSmall)) {
-  //     normalizeRange(range);
-  //     return;
-  //   }
+  for (unsigned i = 0; i < range.size(); i += K) {
+    bool allSmall = true;
 
-  //   // #pragma unroll
-  //   for (unsigned j = i; j < i + K; ++j) {
-  //     gcd = std::gcd(gcd, range[j].ValSmall);
-  //     if (gcd == 1)
-  //       break;
-  //   }
-  // }
+    unsigned e = std::min<unsigned>(range.size(), i + K);
+
+    #pragma unroll
+    for (unsigned j = i; j < e; ++j)
+      allSmall &= range[j].isSmall();
+    if (LLVM_UNLIKELY(!allSmall)) {
+      normalizeRangeSlow(range);
+      return;
+    }
+
+    #pragma unroll
+    for (unsigned j = i; j < e; ++j) {
+      gcd = std::gcd(gcd, range[j].ValSmall);
+      if (gcd == 1)
+        break;
+    }
+  }
   if ((gcd == 0) || (gcd == 1))
     return;
-  // for (DynamicAPInt &elem : range)
-  //   elem.ValSmall /= gcd;
+  for (DynamicAPInt &elem : range)
+    elem.ValSmall /= gcd;
 }
+
+void presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut) {
+  int64_t gcd = 0;
+  const unsigned K = 2;
+  for (unsigned i = 0; i < range.size(); i += K) {
+    bool allSmall = true;
+
+    unsigned e = std::min<unsigned>(range.size(), i + K);
+
+    #pragma unroll
+    for (unsigned j = i; j < e; ++j)
+      allSmall &= range[j].isSmall();
+    if (LLVM_UNLIKELY(!allSmall)) {
+      normalizeRangeSlow(range);
+      return;
+    }
+
+    #pragma unroll
+    for (unsigned j = i; j < e; ++j) {
+      gcd = std::gcd(gcd, range[j].ValSmall);
+      if (gcd == 1)
+        break;
+    }
+  }
+  gcdOut->ValSmall = gcd;
+  if ((gcd == 0) || (gcd == 1))
+    return;
+  for (DynamicAPInt &elem : range)
+    elem.ValSmall /= gcd;
+}
+
+// void presburger::normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range) {
+//   int64_t gcd = 0;
+//   const unsigned K = 2;
+//   for (unsigned i = 0; i < range.size(); ++i) {
+//     bool allSmall = true;
+//     // #pragma unroll
+//     for (int j = i; j < i + K; ++j)
+//       allSmall &= range[j].isSmall();
+//     if (LLVM_UNLIKELY(allSmall)) {
+//       normalizeRange(range);
+//       return;
+//     }
+
+//     // #pragma unroll
+//     for (unsigned j = i; j < i + K; ++j) {
+//       gcd = std::gcd(gcd, range[j].ValSmall);
+//       if (gcd == 1)
+//         break;
+//     }
+//   }
+//   if ((gcd == 0) || (gcd == 1))
+//     return;
+//   for (DynamicAPInt &elem : range)
+//     elem.ValSmall /= gcd;
+// }
 
 void presburger::normalizeDiv(MutableArrayRef<DynamicAPInt> num,
                               DynamicAPInt &denom) {

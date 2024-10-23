@@ -265,8 +265,10 @@ DynamicAPInt gcdRange(ArrayRef<DynamicAPInt> range);
 int64_t gcdRangeCopy(ArrayRef<DynamicAPInt> range);
 
 /// Divide the range by its gcd and return the gcd.
-DynamicAPInt normalizeRange(MutableArrayRef<DynamicAPInt> range);
-void normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range);
+void normalizeRange(MutableArrayRef<DynamicAPInt> range);
+void normalizeRange(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut);
+void normalizeRangeSlow(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut = nullptr);
+// void normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range);
 
 /// Normalize the given (numerator, denominator) pair by dividing out the
 /// common factors between them. The numerator here is an affine expression

@@ -540,13 +540,22 @@ std::pair<IntMatrix, IntMatrix> IntMatrix::computeHermiteNormalForm() const {
   return {h, u};
 }
 
-DynamicAPInt IntMatrix::normalizeRow(unsigned row, unsigned cols) {
-  return normalizeRange(getRow(row).slice(0, cols));
+void IntMatrix::normalizeRow(unsigned row, unsigned cols) {
+  normalizeRange(getRow(row).slice(0, cols));
 }
 
-DynamicAPInt IntMatrix::normalizeRow(unsigned row) {
-  return normalizeRow(row, getNumColumns());
+void IntMatrix::normalizeRow(unsigned row) {
+  normalizeRow(row, getNumColumns());
 }
+
+void IntMatrix::normalizeRow(unsigned row, unsigned cols, DynamicAPInt *gcd) {
+  normalizeRange(getRow(row).slice(0, cols), gcd);
+}
+
+void IntMatrix::normalizeRow(unsigned row, DynamicAPInt *gcd) {
+  normalizeRow(row, getNumColumns(), gcd);
+}
+
 
 DynamicAPInt IntMatrix::determinant(IntMatrix *inverse) const {
   assert(nRows == nColumns &&

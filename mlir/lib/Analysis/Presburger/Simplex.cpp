@@ -896,11 +896,12 @@ Simplex::findPivot(int row, Direction direction, bool skipFindRow) const {
   std::optional<unsigned> col;
   for (unsigned j = 2, e = getNumColumns(); j < e; ++j) {
     const DynamicAPInt &elem = tableau(row, j);
-    if (elem == 0)
+    int elemSign = sign(elem);
+    if (elemSign == 0)
       continue;
 
     if (unknownFromColumn(j).restricted &&
-        !signMatchesDirection(elem, direction))
+        !signMatchesDirection(elemSign, direction))
       continue;
     if (!col || colUnknown[j] < colUnknown[*col])
       col = j;
@@ -958,44 +959,44 @@ void SimplexBase::pivot(Pivot pair) { pivot(pair.row, pair.column); }
 /// The pivot row transform is accomplished be swapping a with the pivot row's
 /// common denominator and negating the pivot row except for the pivot column
 /// element.
-void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
-  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
-  assert(!unknownFromColumn(pivotCol).isSymbol);
+// void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
+//   assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+//   assert(!unknownFromColumn(pivotCol).isSymbol);
 
-  swapRowWithCol(pivotRow, pivotCol);
-  std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
-  // We need to negate the whole pivot row except for the pivot column.
-  if (tableau(pivotRow, 0) < 0) {
-    // If the denominator is negative, we negate the row by simply negating the
-    // denominator.
-    tableau(pivotRow, 0) = -tableau(pivotRow, 0);
-    tableau(pivotRow, pivotCol) = -tableau(pivotRow, pivotCol);
-  } else {
-    for (unsigned col = 1, e = getNumColumns(); col < e; ++col) {
-      if (col == pivotCol)
-        continue;
-      tableau(pivotRow, col) = -tableau(pivotRow, col);
-    }
-  }
-  tableau.normalizeRow(pivotRow);
+//   swapRowWithCol(pivotRow, pivotCol);
+//   std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
+//   // We need to negate the whole pivot row except for the pivot column.
+//   if (tableau(pivotRow, 0) < 0) {
+//     // If the denominator is negative, we negate the row by simply negating the
+//     // denominator.
+//     tableau(pivotRow, 0) = -tableau(pivotRow, 0);
+//     tableau(pivotRow, pivotCol) = -tableau(pivotRow, pivotCol);
+//   } else {
+//     for (unsigned col = 1, e = getNumColumns(); col < e; ++col) {
+//       if (col == pivotCol)
+//         continue;
+//       tableau(pivotRow, col) = -tableau(pivotRow, col);
+//     }
+//   }
+//   tableau.normalizeRow(pivotRow);
 
-  for (unsigned row = 0, numRows = getNumRows(); row < numRows; ++row) {
-    if (row == pivotRow)
-      continue;
-    if (tableau(row, pivotCol) == 0) // Nothing to do.
-      continue;
-    tableau(row, 0) *= tableau(pivotRow, 0);
-    for (unsigned col = 1, numCols = getNumColumns(); col < numCols; ++col) {
-      if (col == pivotCol)
-        continue;
-      // Add rather than subtract because the pivot row has been negated.
-      tableau(row, col) = tableau(row, col) * tableau(pivotRow, 0) +
-                          tableau(row, pivotCol) * tableau(pivotRow, col);
-    }
-    tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
-    tableau.normalizeRow(row);
-  }
-}
+//   for (unsigned row = 0, numRows = getNumRows(); row < numRows; ++row) {
+//     if (row == pivotRow)
+//       continue;
+//     if (tableau(row, pivotCol) == 0) // Nothing to do.
+//       continue;
+//     tableau(row, 0) *= tableau(pivotRow, 0);
+//     for (unsigned col = 1, numCols = getNumColumns(); col < numCols; ++col) {
+//       if (col == pivotCol)
+//         continue;
+//       // Add rather than subtract because the pivot row has been negated.
+//       tableau(row, col) = tableau(row, col) * tableau(pivotRow, 0) +
+//                           tableau(row, pivotCol) * tableau(pivotRow, col);
+//     }
+//     tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
+//     tableau.normalizeRow(row);
+//   }
+// }
 
 void SimplexBase::pivotCopySlow(unsigned pivotRow, unsigned pivotCol) {
   for (unsigned row = 0, numRows = getNumRows(); row < numRows; ++row) {
@@ -1016,7 +1017,7 @@ void SimplexBase::pivotCopySlow(unsigned pivotRow, unsigned pivotCol) {
   }
 }
 
-void SimplexBase::pivotCopy(unsigned pivotRow, unsigned pivotCol) {
+void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
   assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
   assert(!unknownFromColumn(pivotCol).isSymbol);
 
@@ -1036,7 +1037,7 @@ void SimplexBase::pivotCopy(unsigned pivotRow, unsigned pivotCol) {
       tableau(pivotRow, col).negate();
     }
   }
-  // normalizeRangeCopy(tableau.getRow(pivotRow).slice(0, tableau.getNumColumns()));
+  normalizeRange(tableau.getRow(pivotRow).slice(0, tableau.getNumColumns()));
 
   if (tableau(pivotRow, 0).isLarge())
     return pivotCopySlow(pivotRow, pivotCol);
@@ -1075,7 +1076,7 @@ void SimplexBase::pivotCopy(unsigned pivotRow, unsigned pivotCol) {
       }
     }
     tableau(row, pivotCol) *= alpha;
-    // normalizeRangeCopy(tableau.getRow(row).slice(0, tableau.getNumColumns()));
+    normalizeRange(tableau.getRow(row).slice(0, tableau.getNumColumns()));
   }
 }
 
@@ -1133,11 +1134,12 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
     if (skipRow && row == *skipRow)
       continue;
     const DynamicAPInt &elem = tableau(row, col);
-    if (elem == 0)
+    int elemSign = sign(elem);
+    if (elemSign == 0)
       continue;
     if (!unknownFromRow(row).restricted)
       continue;
-    if (signMatchesDirection(elem, direction))
+    if (signMatchesDirection(elemSign, direction))
       continue;
     const DynamicAPInt &constTerm = tableau(row, 1);
 
@@ -1148,9 +1150,9 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
       continue;
     }
 
-    const DynamicAPInt &diff = *retConst * elem - constTerm * *retElem;
-    if ((diff == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
-        (diff != 0 && !signMatchesDirection(diff, direction))) {
+    int diffSign = cmp(*retConst * elem, constTerm * *retElem);
+    if ((diffSign == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
+        (diffSign != 0 && !signMatchesDirection(diffSign, direction))) {
       retRow = row;
       retElem = &elem;
       retConst = &constTerm;

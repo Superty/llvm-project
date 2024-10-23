@@ -189,6 +189,7 @@ public:
 
   friend DynamicAPInt abs(const DynamicAPInt &X);
   friend int sign(const DynamicAPInt &X);
+  friend int cmp(const DynamicAPInt &X, const DynamicAPInt &Y);
   friend DynamicAPInt ceilDiv(const DynamicAPInt &LHS, const DynamicAPInt &RHS);
   friend DynamicAPInt floorDiv(const DynamicAPInt &LHS,
                                const DynamicAPInt &RHS);
@@ -383,6 +384,19 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE int sign(const DynamicAPInt &X) {
   return X > 0 ? 1 : 0;
 }
 
+LLVM_ATTRIBUTE_ALWAYS_INLINE int cmp(const DynamicAPInt &X, const DynamicAPInt &Y) {
+  if (LLVM_LIKELY(X.isSmall() && Y.isSmall())) {
+    if (X.ValSmall < Y.ValSmall)
+      return -1;
+    return X.ValSmall > Y.ValSmall ? 1 : 0;
+  }
+
+  if (X < 0)
+    return -1;
+  return X > 0 ? 1 : 0;
+}
+
+
 // Division overflows only occur when negating the minimal possible value.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt ceilDiv(const DynamicAPInt &LHS,
                                                   const DynamicAPInt &RHS) {
@@ -419,10 +433,10 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt mod(const DynamicAPInt &LHS,
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt gcd(const DynamicAPInt &A,
                                               const DynamicAPInt &B) {
   // assert(A >= 0 && B >= 0 && "operands must be non-negative!");
-  // if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
+  if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
     return DynamicAPInt(std::gcd(A.ValSmall, B.ValSmall));
-  // return DynamicAPInt(
-  //     gcd(detail::SlowDynamicAPInt(abs(A)), detail::SlowDynamicAPInt(abs(B))));
+  return DynamicAPInt(
+      gcd(detail::SlowDynamicAPInt(abs(A)), detail::SlowDynamicAPInt(abs(B))));
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE void gcdEq(DynamicAPInt &A,
@@ -469,7 +483,7 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &DynamicAPInt::negate() {
       ValSmall = -ValSmall;
       return *this;
     }
-    // return *this = DynamicAPInt(-detail::SlowDynamicAPInt(*this));
+    return *this = DynamicAPInt(-detail::SlowDynamicAPInt(*this));
   }
   return *this = DynamicAPInt(-detail::SlowDynamicAPInt(*this));
 }

@@ -276,10 +276,12 @@ public:
 
   /// Divide the first `nCols` of the specified row by their GCD.
   /// Returns the GCD of the first `nCols` of the specified row.
-  DynamicAPInt normalizeRow(unsigned row, unsigned nCols);
+  void normalizeRow(unsigned row, unsigned nCols);
   /// Divide the columns of the specified row by their GCD.
   /// Returns the GCD of the columns of the specified row.
-  DynamicAPInt normalizeRow(unsigned row);
+  void normalizeRow(unsigned row);
+  void normalizeRow(unsigned row, unsigned nCols, DynamicAPInt *gcdOut);
+  void normalizeRow(unsigned row, DynamicAPInt *gcdOut);
 
   // Compute the determinant of the matrix (cubic time).
   // Stores the integer inverse of the matrix in the pointer

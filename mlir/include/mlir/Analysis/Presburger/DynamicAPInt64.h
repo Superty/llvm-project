@@ -187,6 +187,7 @@ public:
   DynamicAPInt &divByPositiveInPlace(const DynamicAPInt &O);
 
   friend inline int sign(const DynamicAPInt &X);
+  friend inline int cmp(const DynamicAPInt &X, const DynamicAPInt &Y);
 
   friend DynamicAPInt abs(const DynamicAPInt &X);
   friend DynamicAPInt ceilDiv(const DynamicAPInt &LHS, const DynamicAPInt &RHS);
@@ -832,6 +833,18 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE int sign(const DynamicAPInt &X) {
   if (X.ValSmall < 0)
     return -1;
   return X.ValSmall > 0 ? 1 : 0;
+}
+
+LLVM_ATTRIBUTE_ALWAYS_INLINE int cmp(const DynamicAPInt &X, const DynamicAPInt &Y) {
+  // if (LLVM_LIKELY(X.isSmall() && Y.isSmall())) {
+    if (X.ValSmall < Y.ValSmall)
+      return -1;
+    return X.ValSmall > Y.ValSmall ? 1 : 0;
+  // }
+
+  // if (X < 0)
+  //   return -1;
+  // return X > 0 ? 1 : 0;
 }
   
 } // namespace llvm
