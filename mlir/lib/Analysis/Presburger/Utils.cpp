@@ -390,63 +390,55 @@ void presburger::normalizeRangeSlow(MutableArrayRef<DynamicAPInt> range, Dynamic
     *gcdOut = gcd;
 }
 
-void presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range) {
-  int64_t gcd = 0;
-  const unsigned K = 2;
-  for (unsigned i = 0; i < range.size(); i += K) {
-    bool allSmall = true;
-
-    unsigned e = std::min<unsigned>(range.size(), i + K);
-
-    #pragma unroll
-    for (unsigned j = i; j < e; ++j)
-      allSmall &= range[j].isSmall();
-    if (LLVM_UNLIKELY(!allSmall)) {
-      normalizeRangeSlow(range);
-      return;
-    }
-
-    #pragma unroll
-    for (unsigned j = i; j < e; ++j) {
-      gcd = std::gcd(gcd, range[j].ValSmall);
-      if (gcd == 1)
-        break;
-    }
-  }
-  if ((gcd == 0) || (gcd == 1))
-    return;
-  for (DynamicAPInt &elem : range)
-    elem.ValSmall /= gcd;
-}
-
 void presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut) {
-  int64_t gcd = 0;
+  int64_t gcd(0);
   const unsigned K = 2;
-  for (unsigned i = 0; i < range.size(); i += K) {
+  unsigned i;
+  for (i = K; i < range.size(); i += K) {
     bool allSmall = true;
-
-    unsigned e = std::min<unsigned>(range.size(), i + K);
-
     #pragma unroll
-    for (unsigned j = i; j < e; ++j)
-      allSmall &= range[j].isSmall();
+    for (unsigned j = i - K; j < i; ++j) {
+      const auto &elem = range[j];
+      allSmall &= elem.isSmall();
+    }
     if (LLVM_UNLIKELY(!allSmall)) {
-      normalizeRangeSlow(range);
+      return normalizeRangeSlow(range, gcdOut);
+    }
+    #pragma unroll
+    for (unsigned j = i - K; j < i; ++j) {
+      const auto &elem = range[j];
+      gcd = std::gcd(gcd, elem.ValSmall);
+    }
+    if (gcd == 1) {
+      if (gcdOut)
+        *gcdOut = gcd;
       return;
     }
-
-    #pragma unroll
-    for (unsigned j = i; j < e; ++j) {
-      gcd = std::gcd(gcd, range[j].ValSmall);
-      if (gcd == 1)
-        break;
+  }
+  for (unsigned j = i - K; j < std::min<unsigned>(i, range.size()); ++j) {
+    const auto &elem = range[j];
+    if (LLVM_LIKELY(elem.isSmall())) {
+      gcd = std::gcd(gcd, elem.ValSmall);
+      if (gcd == 1) {
+        if (gcdOut)
+          *gcdOut = gcd;
+        return;
+      }
+    } else {
+      return normalizeRangeSlow(range, gcdOut);
+      // return gcdRangeSlowPath(range);
     }
   }
-  gcdOut->ValSmall = gcd;
-  if ((gcd == 0) || (gcd == 1))
+
+  if ((gcd == 0) || (gcd == 1)) {
+    if (gcdOut)
+      *gcdOut = gcd;
     return;
+  }
   for (DynamicAPInt &elem : range)
     elem.ValSmall /= gcd;
+  if (gcdOut)
+    *gcdOut = gcd;
 }
 
 // void presburger::normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range) {

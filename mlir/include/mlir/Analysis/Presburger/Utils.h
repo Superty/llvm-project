@@ -265,8 +265,7 @@ DynamicAPInt gcdRange(ArrayRef<DynamicAPInt> range);
 int64_t gcdRangeCopy(ArrayRef<DynamicAPInt> range);
 
 /// Divide the range by its gcd and return the gcd.
-void normalizeRange(MutableArrayRef<DynamicAPInt> range);
-void normalizeRange(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut);
+void normalizeRange(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut = nullptr);
 void normalizeRangeSlow(MutableArrayRef<DynamicAPInt> range, DynamicAPInt *gcdOut = nullptr);
 // void normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range);
 
