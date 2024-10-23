@@ -267,6 +267,8 @@ public:
   /// Pivot the row with the column.
   void pivot(unsigned row, unsigned col);
   void pivot(Pivot pair);
+  void pivotCopy(unsigned row, unsigned col);
+  void pivotCopySlow(unsigned row, unsigned col);
 
   /// Returns the unknown associated with index.
   const Unknown &unknownFromIndex(int index) const;
@@ -825,7 +827,7 @@ public:
   ///
   /// Returns a (row, col) pair denoting a pivot, or an empty Optional if
   /// no valid pivot exists.
-  std::optional<Pivot> findPivot(int row, Direction direction) const;
+  std::optional<Pivot> findPivot(int row, Direction direction, bool skipFindRow = false) const;
 
   /// Find a row that can be used to pivot the column in the specified
   /// direction. If skipRow is not null, then this row is excluded
@@ -836,6 +838,8 @@ public:
   /// Returns the row to pivot to, or an empty Optional if the column
   /// is unbounded in the specified direction.
   std::optional<unsigned> findPivotRow(std::optional<unsigned> skipRow,
+                                       Direction direction, unsigned col) const;
+  unsigned findPivotRowCopy(std::optional<unsigned> skipRow,
                                        Direction direction, unsigned col) const;
 
   /// Undo the addition of the last constraint while preserving tableau

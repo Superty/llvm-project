@@ -46,6 +46,7 @@ namespace llvm {
 /// doesn't overlap with ValSmall (see static_assert_layout). Using std::variant
 /// instead would lead to significantly worse performance.
 class DynamicAPInt {
+public:
   union {
     int64_t ValSmall;
     detail::SlowDynamicAPInt ValLarge;
@@ -112,7 +113,6 @@ class DynamicAPInt {
     return getLarge();
   }
 
-public:
   LLVM_ATTRIBUTE_ALWAYS_INLINE explicit DynamicAPInt(int64_t Val)
       : ValSmall(Val) {
     ValLarge.Val.BitWidth = 0;
@@ -177,6 +177,7 @@ public:
   DynamicAPInt &operator%=(int64_t O);
 
   DynamicAPInt operator-() const;
+  DynamicAPInt &negate();
   DynamicAPInt &operator++();
   DynamicAPInt &operator--();
 
@@ -184,13 +185,16 @@ public:
   // This is slightly more efficient because it saves an overflow check.
   DynamicAPInt divByPositive(const DynamicAPInt &O) const;
   DynamicAPInt &divByPositiveInPlace(const DynamicAPInt &O);
+  DynamicAPInt &divByPositiveInPlace(int64_t O);
 
   friend DynamicAPInt abs(const DynamicAPInt &X);
+  friend int sign(const DynamicAPInt &X);
   friend DynamicAPInt ceilDiv(const DynamicAPInt &LHS, const DynamicAPInt &RHS);
   friend DynamicAPInt floorDiv(const DynamicAPInt &LHS,
                                const DynamicAPInt &RHS);
   // The operands must be non-negative for gcd.
   friend DynamicAPInt gcd(const DynamicAPInt &A, const DynamicAPInt &B);
+  friend void gcdEq(DynamicAPInt &A, const DynamicAPInt &B);
   friend DynamicAPInt lcm(const DynamicAPInt &A, const DynamicAPInt &B);
   friend DynamicAPInt mod(const DynamicAPInt &LHS, const DynamicAPInt &RHS);
 
@@ -289,6 +293,7 @@ DynamicAPInt::operator<=(const DynamicAPInt &O) const {
     return ValSmall <= O.ValSmall;
   return detail::SlowDynamicAPInt(*this) <= detail::SlowDynamicAPInt(O);
 }
+
 LLVM_ATTRIBUTE_ALWAYS_INLINE bool
 DynamicAPInt::operator>=(const DynamicAPInt &O) const {
   if (LLVM_LIKELY(isSmall() && O.isSmall()))
@@ -365,6 +370,19 @@ DynamicAPInt::operator/(const DynamicAPInt &O) const {
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt abs(const DynamicAPInt &X) {
   return DynamicAPInt(X >= 0 ? X : -X);
 }
+
+LLVM_ATTRIBUTE_ALWAYS_INLINE int sign(const DynamicAPInt &X) {
+  if (LLVM_LIKELY(X.isSmall())) {
+    if (X.ValSmall < 0)
+      return -1;
+    return X.ValSmall > 0 ? 1 : 0;
+  }
+
+  if (X < 0)
+    return -1;
+  return X > 0 ? 1 : 0;
+}
+
 // Division overflows only occur when negating the minimal possible value.
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt ceilDiv(const DynamicAPInt &LHS,
                                                   const DynamicAPInt &RHS) {
@@ -400,11 +418,23 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt mod(const DynamicAPInt &LHS,
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt gcd(const DynamicAPInt &A,
                                               const DynamicAPInt &B) {
-  assert(A >= 0 && B >= 0 && "operands must be non-negative!");
-  if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
+  // assert(A >= 0 && B >= 0 && "operands must be non-negative!");
+  // if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
     return DynamicAPInt(std::gcd(A.ValSmall, B.ValSmall));
-  return DynamicAPInt(
-      gcd(detail::SlowDynamicAPInt(A), detail::SlowDynamicAPInt(B)));
+  // return DynamicAPInt(
+  //     gcd(detail::SlowDynamicAPInt(abs(A)), detail::SlowDynamicAPInt(abs(B))));
+}
+
+LLVM_ATTRIBUTE_ALWAYS_INLINE void gcdEq(DynamicAPInt &A,
+                                                const DynamicAPInt &B) {
+  // assert(A >= 0 && B >= 0 && "operands must be non-negative!");
+  if (LLVM_LIKELY(A.isSmall() && B.isSmall())) {
+    A.ValSmall = std::gcd(A.ValSmall, B.ValSmall);
+    return;
+  }
+    // return DynamicAPInt(std::gcd(A.ValSmall, B.ValSmall));
+  A = DynamicAPInt(
+      gcd(detail::SlowDynamicAPInt(abs(A)), detail::SlowDynamicAPInt(abs(B))));
 }
 
 /// Returns the least common multiple of A and B.
@@ -431,6 +461,17 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt DynamicAPInt::operator-() const {
     return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
   }
   return DynamicAPInt(-detail::SlowDynamicAPInt(*this));
+}
+
+LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &DynamicAPInt::negate() {
+  if (LLVM_LIKELY(isSmall())) {
+    if (LLVM_LIKELY(ValSmall != std::numeric_limits<int64_t>::min())) {
+      ValSmall = -ValSmall;
+      return *this;
+    }
+    // return *this = DynamicAPInt(-detail::SlowDynamicAPInt(*this));
+  }
+  return *this = DynamicAPInt(-detail::SlowDynamicAPInt(*this));
 }
 
 /// ---------------------------------------------------------------------------
@@ -570,6 +611,18 @@ DynamicAPInt::divByPositiveInPlace(const DynamicAPInt &O) {
   assert(O > 0);
   if (LLVM_LIKELY(isSmall() && O.isSmall())) {
     ValSmall /= O.ValSmall;
+    return *this;
+  }
+  return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /
+                              detail::SlowDynamicAPInt(O));
+}
+
+// Division overflows only occur when the divisor is -1.
+LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &
+DynamicAPInt::divByPositiveInPlace(int64_t O) {
+  assert(O > 0);
+  if (LLVM_LIKELY(isSmall())) {
+    ValSmall /= O;
     return *this;
   }
   return *this = DynamicAPInt(detail::SlowDynamicAPInt(*this) /

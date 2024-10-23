@@ -19,6 +19,7 @@
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/LogicalResult.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <functional>
@@ -183,11 +184,18 @@ unsigned SimplexBase::addRow(ArrayRef<DynamicAPInt> coeffs,
 }
 
 namespace {
+LLVM_ATTRIBUTE_ALWAYS_INLINE
 bool signMatchesDirection(const DynamicAPInt &elem, Direction direction) {
   assert(elem != 0 && "elem should not be 0");
   return direction == Direction::Up ? elem > 0 : elem < 0;
 }
 
+LLVM_ATTRIBUTE_ALWAYS_INLINE
+bool signMatchesDirection(int sgn, Direction direction) {
+  assert(sgn != 0 && "sgn should not be 0");
+  return direction == Direction::Up ? sgn > 0 : sgn < 0;
+}
+  
 Direction flippedDirection(Direction direction) {
   return direction == Direction::Up ? Direction::Down : Simplex::Direction::Up;
 }
@@ -884,7 +892,7 @@ unsigned LexSimplexBase::getLexMinPivotColumn(unsigned row, unsigned colA,
 /// If multiple columns are valid, we break ties by considering a lexicographic
 /// ordering where we prefer unknowns with lower index.
 std::optional<SimplexBase::Pivot>
-Simplex::findPivot(int row, Direction direction) const {
+Simplex::findPivot(int row, Direction direction, bool skipFindRow) const {
   std::optional<unsigned> col;
   for (unsigned j = 2, e = getNumColumns(); j < e; ++j) {
     const DynamicAPInt &elem = tableau(row, j);
@@ -903,6 +911,8 @@ Simplex::findPivot(int row, Direction direction) const {
 
   Direction newDirection =
       tableau(row, *col) < 0 ? flippedDirection(direction) : direction;
+  if (skipFindRow)
+    return Pivot{static_cast<unsigned int>(row), *col};
   std::optional<unsigned> maybePivotRow = findPivotRow(row, newDirection, *col);
   return Pivot{maybePivotRow.value_or(row), *col};
 }
@@ -987,6 +997,88 @@ void SimplexBase::pivot(unsigned pivotRow, unsigned pivotCol) {
   }
 }
 
+void SimplexBase::pivotCopySlow(unsigned pivotRow, unsigned pivotCol) {
+  for (unsigned row = 0, numRows = getNumRows(); row < numRows; ++row) {
+    if (row == pivotRow)
+      continue;
+    if (tableau(row, pivotCol) == 0) // Nothing to do.
+      continue;
+    tableau(row, 0) *= tableau(pivotRow, 0);
+    for (unsigned col = 1, numCols = getNumColumns(); col < numCols; ++col) {
+      if (col == pivotCol)
+        continue;
+      // Add rather than subtract because the pivot row has been negated.
+      tableau(row, col) *= tableau(pivotRow, 0);
+      tableau(row, col) += tableau(row, pivotCol) * tableau(pivotRow, col);
+    }
+    tableau(row, pivotCol) *= tableau(pivotRow, pivotCol);
+    tableau.normalizeRow(row);
+  }
+}
+
+void SimplexBase::pivotCopy(unsigned pivotRow, unsigned pivotCol) {
+  assert(pivotCol >= getNumFixedCols() && "Refusing to pivot invalid column");
+  assert(!unknownFromColumn(pivotCol).isSymbol);
+
+  swapRowWithCol(pivotRow, pivotCol);
+  std::swap(tableau(pivotRow, 0), tableau(pivotRow, pivotCol));
+
+  // We need to negate the whole pivot row except for the pivot column.
+  if (tableau(pivotRow, 0) < 0) {
+    // If the denominator is negative, we negate the row by simply negating the
+    // denominator.
+    tableau(pivotRow, 0).negate();
+    tableau(pivotRow, pivotCol).negate();
+  } else {
+    for (unsigned col = 1, e = getNumColumns(); col < e; ++col) {
+      if (col == pivotCol)
+        continue;
+      tableau(pivotRow, col).negate();
+    }
+  }
+  // normalizeRangeCopy(tableau.getRow(pivotRow).slice(0, tableau.getNumColumns()));
+
+  if (tableau(pivotRow, 0).isLarge())
+    return pivotCopySlow(pivotRow, pivotCol);
+  int64_t denom = tableau(pivotRow, 0).ValSmall;
+  if (tableau(pivotRow, pivotCol).isLarge())
+    return pivotCopySlow(pivotRow, pivotCol);
+  int64_t alpha = tableau(pivotRow, pivotCol).ValSmall;
+
+  for (unsigned row = 0, numRows = getNumRows(); row < numRows; ++row) {
+    if (row == pivotRow)
+      continue;
+    if (tableau(row, pivotCol) == 0) // Nothing to do.
+      continue;
+    tableau(row, 0) *= denom;
+    for (unsigned col = 1, numCols = getNumColumns(); col < numCols; ++col) {
+      if (col == pivotCol)
+        continue;
+      // Add rather than subtract because the pivot row has been negated.
+      auto &cur = tableau(row, col);
+      auto &x = tableau(row, pivotCol);
+      auto &y = tableau(pivotRow, col);
+      if (LLVM_LIKELY(cur.isSmall() && x.isSmall() && y.isSmall())) {
+        bool overflow = false;
+        int64_t val;
+        overflow |= llvm::MulOverflow(cur.ValSmall, denom, val);
+        int64_t outer;
+        overflow |= llvm::MulOverflow(x.ValSmall, y.ValSmall, outer);
+        overflow |= llvm::AddOverflow(val, outer, val);
+        if (LLVM_LIKELY(!overflow)) {
+          cur.ValSmall = val;
+        } else {
+          cur = cur*denom + x*y;
+        }
+      } else {
+        cur = cur*denom + x*y;
+      }
+    }
+    tableau(row, pivotCol) *= alpha;
+    // normalizeRangeCopy(tableau.getRow(row).slice(0, tableau.getNumColumns()));
+  }
+}
+
 /// Perform pivots until the unknown has a non-negative sample value or until
 /// no more upward pivots can be performed. Return success if we were able to
 /// bring the row to a non-negative sample value, and failure otherwise.
@@ -1060,9 +1152,51 @@ std::optional<unsigned> Simplex::findPivotRow(std::optional<unsigned> skipRow,
     if ((diff == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
         (diff != 0 && !signMatchesDirection(diff, direction))) {
       retRow = row;
-      // retElem = elem;
-      // retConst = constTerm;
+      retElem = &elem;
+      retConst = &constTerm;
     }
+  }
+  return retRow;
+}
+
+unsigned Simplex::findPivotRowCopy(std::optional<unsigned> skipRow,
+                                              Direction direction,
+                                              unsigned col) const {
+  unsigned retRow;
+  // Initialize these to zero in order to silence a warning about retElem and
+  // retConst being used uninitialized in the initialization of `diff` below. In
+  // reality, these are always initialized when that line is reached since these
+  // are set whenever retRow is set.
+  const DynamicAPInt *retElem, *retConst;
+  for (unsigned row = nRedundant, e = getNumRows(); row < e; ++row) {
+    // if (skipRow && row == *skipRow)
+    //   continue;
+    const DynamicAPInt &elem = tableau(row, col);
+    // int sgn = llvm::sign(elem);
+    if (elem.ValSmall == 0)
+      continue;
+    // if (!unknownFromRow(row).restricted)
+    //   continue;
+    // if (signMatchesDirection(sgn, direction))
+    //   continue;
+    // const DynamicAPInt &constTerm = tableau(row, 1);
+
+    // if (!retRow) {
+    //   retRow = row;
+    //   // retElem = &elem;
+    //   // retConst = &constTerm;
+    //   continue;
+    // }
+    // return row;
+    retRow = row;
+
+    // const DynamicAPInt &diff = *retConst * elem - constTerm * *retElem;
+    // if ((diff == 0 && rowUnknown[row] < rowUnknown[*retRow]) ||
+    //     (diff != 0 && !signMatchesDirection(diff, direction))) {
+    //   retRow = row;
+    //   retElem = &elem;
+    //   retConst = &constTerm;
+    // }
   }
   return retRow;
 }

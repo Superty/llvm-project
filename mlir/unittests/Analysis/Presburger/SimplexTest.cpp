@@ -154,15 +154,21 @@ TEST(SimplexTest, isUnbounded) {
   unsigned conIndex = templatea.addRow(dir);
   unsigned row = templatea.con[conIndex].pos;
   
-  std::vector<Simplex> simplices(1000000, templatea);
-
-  
+  std::vector<Simplex> simplices(10000000, templatea);
   auto startTime = std::chrono::high_resolution_clock::now();
+  int64_t sum = 0;
   for (auto &simplex : simplices) {
   //   if (simplex.isEmpty())
   //     exit(2);
-    simplex.pivot(1, 2);
+    // auto x = gcdRange(simplex.tableau.getRow(1));
+    // sum += x.ValSmall;
+    // if (x != 1)
+      // exit(8);
+    simplex.pivotCopy(1, 2);
     // std::optional<Simplex::Pivot> maybePivot = simplex.findPivot(row, Simplex::Direction::Up);
+    // std::optional<unsigned> maybePivot = simplex.findPivotRowCopy(6, Simplex::Direction::Up, 2);
+    // if (!maybePivot)
+    //   exit(7);
     // if (!maybePivot)
     //   exit(2);
     // llvm::errs() << maybePivot->row << ' ' << maybePivot->column << '\n';
@@ -179,6 +185,8 @@ TEST(SimplexTest, isUnbounded) {
   auto timeTaken =
       std::chrono::duration<double, std::milli>(stopTime - startTime).count();
   llvm::errs() << int64_t(timeTaken) << "ms\n";
+  // if (sum != 10000000)
+  //   exit(6);
 
   // EXPECT_FALSE(simplexFromConstraints(
   //                  2, {{1, 1, 0}, {-1, -1, 0}, {1, -1, 5}, {-1, 1, -5}}, {})

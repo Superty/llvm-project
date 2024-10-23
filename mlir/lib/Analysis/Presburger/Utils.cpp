@@ -386,6 +386,32 @@ DynamicAPInt presburger::normalizeRange(MutableArrayRef<DynamicAPInt> range) {
   return gcd;
 }
 
+void presburger::normalizeRangeCopy(MutableArrayRef<DynamicAPInt> range) {
+  int64_t gcd = 0;
+  const unsigned K = 2;
+  // for (unsigned i = 0; i < range.size(); ++i) {
+  //   bool allSmall = true;
+  //   // #pragma unroll
+  //   for (int j = i; j < i + K; ++j)
+  //     allSmall &= range[j].isSmall();
+  //   if (LLVM_UNLIKELY(allSmall)) {
+  //     normalizeRange(range);
+  //     return;
+  //   }
+
+  //   // #pragma unroll
+  //   for (unsigned j = i; j < i + K; ++j) {
+  //     gcd = std::gcd(gcd, range[j].ValSmall);
+  //     if (gcd == 1)
+  //       break;
+  //   }
+  // }
+  if ((gcd == 0) || (gcd == 1))
+    return;
+  // for (DynamicAPInt &elem : range)
+  //   elem.ValSmall /= gcd;
+}
+
 void presburger::normalizeDiv(MutableArrayRef<DynamicAPInt> num,
                               DynamicAPInt &denom) {
   assert(denom > 0 && "denom must be positive!");

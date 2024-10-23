@@ -46,6 +46,7 @@ namespace llvm {
 /// doesn't overlap with ValSmall (see static_assert_layout). Using std::variant
 /// instead would lead to significantly worse performance.
 class DynamicAPInt {
+public:
   // union {
     int64_t ValSmall;
     // detail::SlowDynamicAPInt ValLarge;
@@ -81,9 +82,13 @@ class DynamicAPInt {
     return true;
     // return ValLarge.Val.BitWidth == 0;
   }
-  // LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isLarge() const {
-  //   return !isSmall();
-  // }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE constexpr bool isLarge() const {
+    return !isSmall();
+  }
+  LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt &negate() {
+    ValSmall = -ValSmall;
+    return *this;
+  }
   /// Get the stored value. For getSmall/Large,
   /// the stored value should be small/large.
   // LLVM_ATTRIBUTE_ALWAYS_INLINE int64_t getSmall() const {
@@ -180,6 +185,8 @@ public:
   // This is slightly more efficient because it saves an overflow check.
   DynamicAPInt divByPositive(const DynamicAPInt &O) const;
   DynamicAPInt &divByPositiveInPlace(const DynamicAPInt &O);
+
+  friend inline int sign(const DynamicAPInt &X);
 
   friend DynamicAPInt abs(const DynamicAPInt &X);
   friend DynamicAPInt ceilDiv(const DynamicAPInt &LHS, const DynamicAPInt &RHS);
@@ -404,7 +411,7 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE DynamicAPInt gcd(const DynamicAPInt &A,
                                               const DynamicAPInt &B) {
   assert(A >= 0 && B >= 0 && "operands must be non-negative!");
   // if (LLVM_LIKELY(A.isSmall() && B.isSmall()))
-    return DynamicAPInt(std::gcd(A.ValSmall, B.ValSmall));
+    return DynamicAPInt(std::gcd(A.ValSmall, std::abs(B.ValSmall)));
   // return DynamicAPInt(
   //     gcd(detail::SlowDynamicAPInt(A), detail::SlowDynamicAPInt(B)));
 }
@@ -821,6 +828,12 @@ inline raw_ostream &DynamicAPInt::print(raw_ostream &OS) const {
 
 inline void DynamicAPInt::dump() const { print(dbgs()); }
 
+LLVM_ATTRIBUTE_ALWAYS_INLINE int sign(const DynamicAPInt &X) {
+  if (X.ValSmall < 0)
+    return -1;
+  return X.ValSmall > 0 ? 1 : 0;
+}
+  
 } // namespace llvm
 
 #endif // LLVM_ADT_DYNAMICAPINT_H
