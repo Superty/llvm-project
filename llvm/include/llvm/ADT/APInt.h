@@ -31,7 +31,7 @@ class hash_code;
 class raw_ostream;
 struct Align;
 class LLVMDynamicAPInt;
-class DynamicAPInt;
+// class DynamicAPInt;
 
 template <typename T> class SmallVectorImpl;
 template <typename T> class ArrayRef;
@@ -1899,7 +1899,7 @@ private:
 
   // Make DynamicAPInt a friend so it can access BitWidth directly.
   friend LLVMDynamicAPInt;
-  friend DynamicAPInt;
+  // friend DynamicAPInt;
 
   /// This constructor is used only internally for speed of construction of
   /// temporaries. It is unsafe since it takes ownership of the pointer, so it
